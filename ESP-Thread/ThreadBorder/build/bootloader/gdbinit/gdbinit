@@ -1,0 +1,2 @@
+source /home/izerocs/Documents/GitHub/HomeThread/ESP-Thread/ThreadBorder/build/bootloader/gdbinit/symbols
+source /home/izerocs/Documents/GitHub/HomeThread/ESP-Thread/ThreadBorder/build/bootloader/gdbinit/connect

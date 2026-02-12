@@ -1,0 +1,24 @@
+dependencies:
+  cmd_system:
+    dependencies: []
+    source:
+      path: /home/izerocs/esp/v5.5.2/esp-idf/examples/system/console/advanced/components/cmd_system
+      type: local
+    version: '*'
+  idf:
+    source:
+      type: idf
+    version: 5.5.2
+  ot_examples_common:
+    dependencies:
+    - name: cmd_system
+      path: ${IDF_PATH}/examples/system/console/advanced/components/cmd_system
+    source:
+      path: /home/izerocs/esp/v5.5.2/esp-idf/examples/openthread/ot_common_components/ot_examples_common
+      type: local
+    version: '*'
+direct_dependencies:
+- ot_examples_common
+manifest_hash: 698073e025b3fbc5e30a37861688911502bf1c998167e7719839830a80f9f60a
+target: esp32h2
+version: 2.0.0
