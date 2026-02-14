@@ -5,6 +5,30 @@ dependencies:
       path: /home/izerocs/esp/v5.5.2/esp-idf/examples/system/console/advanced/components/cmd_system
       type: local
     version: '*'
+  espressif/esp_ot_cli_extension:
+    component_hash: 03491d02d3b20bc026d70a891e9c9004bf3bc2f29ca7ae19cbdfe50f207dc938
+    dependencies:
+    - name: espressif/iperf
+      registry_url: https://components.espressif.com
+      require: private
+      version: ^0.1.0
+    - name: idf
+      require: private
+      version: '>=5.0'
+    source:
+      registry_url: https://components.espressif.com/
+      type: service
+    version: 1.4.0
+  espressif/iperf:
+    component_hash: f4c2beaae50478a626995130d2611c628b7a568cd0799022758c05658928410c
+    dependencies:
+    - name: idf
+      require: private
+      version: '>=4.3'
+    source:
+      registry_url: https://components.espressif.com
+      type: service
+    version: 0.1.4
   idf:
     source:
       type: idf
@@ -18,7 +42,8 @@ dependencies:
       type: local
     version: '*'
 direct_dependencies:
+- espressif/esp_ot_cli_extension
 - ot_examples_common
-manifest_hash: 698073e025b3fbc5e30a37861688911502bf1c998167e7719839830a80f9f60a
+manifest_hash: dc6914b6bedd8ec07991ada3ab59f3b52f76688b9c5538a8c36525326c09aebc
 target: esp32h2
 version: 2.0.0

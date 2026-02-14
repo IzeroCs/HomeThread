@@ -1,0 +1,14 @@
+node_modules
+.git
+.gitignore
+*.md
+.vscode
+.idea
+*.swp
+*.swo
+dist
+build
+logs
+*.log
+.env
+.env.local

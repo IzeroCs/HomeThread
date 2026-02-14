@@ -1,0 +1,14 @@
+idf_component_register(
+    SRCS 
+        "main.c"
+        "rgb_led_endpoint.c"
+    INCLUDE_DIRS 
+        "."
+    PRIV_REQUIRES 
+        openthread
+        driver
+        nvs_flash
+        esp_event
+        esp_netif
+        json
+)

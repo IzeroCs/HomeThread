@@ -1,0 +1,37 @@
+{
+  "name": "@dashboard-thread/backend",
+  "version": "1.0.0",
+  "description": "Backend WebSocket server for Thread Network Dashboard",
+  "main": "dist/server.js",
+  "scripts": {
+    "dev": "nodemon --exec ts-node src/server.ts",
+    "build": "tsc",
+    "start": "node dist/server.js",
+    "type-check": "tsc --noEmit",
+    "clean": "rm -rf dist"
+  },
+  "keywords": [
+    "thread",
+    "openthread",
+    "websocket",
+    "dashboard"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "socket.io": "^4.7.2",
+    "dotenv": "^16.3.1",
+    "winston": "^3.11.0",
+    "zod": "^3.22.4"
+  },
+  "engines": {
+    "node": ">=20.0.0",
+    "npm": ">=10.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.5",
+    "nodemon": "^3.0.2",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.3.3"
+  }
+}
