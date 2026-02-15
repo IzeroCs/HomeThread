@@ -14,5 +14,6 @@
     "--compile-commands-dir=/home/izerocs/Documents/GitHub/HomeThread/ESP-Thread/ThreadBorder/build"
   ],
   "idf.port": "/dev/ttyACM0",
-  "idf.flashType": "UART"
+"idf.flashType": "UART",
+"idf.pythonInstallPath": "/usr/bin/python3"
 }
