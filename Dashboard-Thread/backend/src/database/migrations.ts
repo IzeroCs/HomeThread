@@ -32,6 +32,16 @@ const migrations: Migration[] = [
       `);
     },
   },
+  {
+    name: "002_serial_config_single_row",
+    up: (db) => {
+      // Chỉ giữ 1 record (id lớn nhất), xóa các record cũ
+      db.exec(`
+        DELETE FROM serial_config
+        WHERE id NOT IN (SELECT MAX(id) FROM serial_config)
+      `);
+    },
+  },
 ];
 
 /**

@@ -184,4 +184,24 @@ export class SerialConfigService {
     const result = stmt.get() as { count: number };
     return result.count > 0;
   }
+
+  /**
+   * Lưu hoặc cập nhật cấu hình (chỉ giữ 1 record)
+   * Nếu đã có config thì update, không thì create mới
+   */
+  saveOrUpdate(config: Omit<SerialConfig, "id" | "createdAt" | "updatedAt">): SerialConfig {
+    const existing = this.getLatest();
+    if (existing?.id) {
+      const updated = this.update(existing.id, {
+        serialPort: config.serialPort,
+        baudRate: config.baudRate,
+        commandPrefix: config.commandPrefix,
+      });
+      if (!updated) {
+        throw new Error("Failed to update config");
+      }
+      return updated;
+    }
+    return this.create(config);
+  }
 }

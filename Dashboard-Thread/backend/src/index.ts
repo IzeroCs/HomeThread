@@ -1,5 +1,5 @@
 /**
- * Backend: OpenThread CLI qua UART (ESP32-H2 ot-br).
+ * Backend: WebSocket server cho OpenThread CLI qua UART (ESP32-H2 ot-br).
  */
 
 import "dotenv/config";
@@ -20,6 +20,12 @@ const serialConfigService = new SerialConfigService();
 
 // Khởi tạo HTTP server và WebSocket
 const httpServer = createServer();
+
+// Tối ưu memory cho HTTP server
+httpServer.maxConnections = 50;
+httpServer.timeout = 60000;
+httpServer.keepAliveTimeout = 5000;
+
 const wsServer = new WebSocketServer(httpServer, serialConfigService);
 
 // Khởi động server

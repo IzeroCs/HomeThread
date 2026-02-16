@@ -47,7 +47,13 @@ export class SerialPortService {
           if (line) {
             // Log raw data để debug (có thể comment lại sau)
             console.log(`[Serial RX] ${line}`);
+            
+            // Giới hạn buffer size để tránh memory leak
+            if (this.dataBuffer.length > 1000) {
+              this.dataBuffer.shift();
+            }
             this.dataBuffer.push(line);
+            
             // Thông báo cho các listener
             this.dataListeners.forEach((listener) => listener(line));
           }
@@ -89,8 +95,14 @@ export class SerialPortService {
    */
   async close(): Promise<void> {
     return new Promise((resolve) => {
+      // Cleanup listeners
+      this.dataListeners.clear();
+      this.dataBuffer = [];
+
       if (!this.port || !this.port.isOpen) {
         this.isConnected = false;
+        this.port = null;
+        this.parser = null;
         resolve();
         return;
       }

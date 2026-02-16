@@ -1,54 +1,125 @@
-import { useState, FormEvent } from "react";
-import { SerialConfig, saveSerialConfig } from "../utils/SerialConfig";
+import { useState, useEffect, FormEvent } from "react";
+import { SerialConfig } from "../utils/SerialConfig";
+import "./SerialConfigForm.scss";
+
+const DEFAULT_CONFIG: SerialConfig = {
+  serialPort: "/dev/ttyACM0",
+  baudRate: 115200,
+  commandPrefix: "ot",
+};
 
 interface SerialConfigFormProps {
+  initialConfig?: SerialConfig | null;
   onSave: (config: SerialConfig) => void;
+  onTestConnect?: (config: SerialConfig) => Promise<{ success: boolean; error?: string }>;
 }
 
-export default function SerialConfigForm({ onSave }: SerialConfigFormProps) {
-  const [formData, setFormData] = useState<SerialConfig>({
-    serialPort: "/dev/ttyACM0",
-    baudRate: 115200,
-    commandPrefix: "ot",
-  });
+function validateForm(formData: SerialConfig): Partial<Record<keyof SerialConfig, string>> {
+  const newErrors: Partial<Record<keyof SerialConfig, string>> = {};
+  if (!formData.serialPort.trim()) {
+    newErrors.serialPort = "Serial port is required";
+  }
+  if (formData.baudRate < 9600 || formData.baudRate > 2000000) {
+    newErrors.baudRate = "Baud rate must be between 9600 and 2000000";
+  }
+  if (!formData.commandPrefix.trim()) {
+    newErrors.commandPrefix = "Command prefix is required";
+  }
+  return newErrors;
+}
+
+export default function SerialConfigForm({ initialConfig, onSave, onTestConnect }: SerialConfigFormProps) {
+  const [formData, setFormData] = useState<SerialConfig>(
+    initialConfig ?? DEFAULT_CONFIG
+  );
+
+  useEffect(() => {
+    if (initialConfig) {
+      setFormData(initialConfig);
+    } else {
+      setFormData(DEFAULT_CONFIG);
+    }
+  }, [initialConfig]);
 
   const [errors, setErrors] = useState<Partial<Record<keyof SerialConfig, string>>>({});
+  const [testStatus, setTestStatus] = useState<{ type: "idle" | "loading" | "success" | "error"; message?: string }>({ type: "idle" });
+  const [testSucceeded, setTestSucceeded] = useState(false);
+
+  const handleFieldChange = <K extends keyof SerialConfig>(field: K, value: SerialConfig[K]) => {
+    setFormData((prev) => ({ ...prev, [field]: value }));
+    setTestSucceeded(false);
+  };
 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
-
-    // Validation
-    const newErrors: Partial<Record<keyof SerialConfig, string>> = {};
-
-    if (!formData.serialPort.trim()) {
-      newErrors.serialPort = "Serial port is required";
-    }
-
-    if (formData.baudRate < 9600 || formData.baudRate > 2000000) {
-      newErrors.baudRate = "Baud rate must be between 9600 and 2000000";
-    }
-
-    if (!formData.commandPrefix.trim()) {
-      newErrors.commandPrefix = "Command prefix is required";
-    }
-
+    const newErrors = validateForm(formData);
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
       return;
     }
-
     setErrors({});
-    saveSerialConfig(formData);
+    setTestStatus({ type: "idle" });
     onSave(formData);
   };
+
+  const handleTestConnect = async () => {
+    const newErrors = validateForm(formData);
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
+      return;
+    }
+    setErrors({});
+    if (!onTestConnect) {
+      setTestStatus({ type: "error", message: "Test connect not available" });
+      return;
+    }
+    setTestStatus({ type: "loading" });
+    const result = await onTestConnect(formData);
+    if (result.success) {
+      setTestStatus({ type: "success", message: "Connection successful" });
+      setTestSucceeded(true);
+    } else {
+      setTestStatus({ type: "error", message: result.error ?? "Connection failed" });
+      setTestSucceeded(false);
+    }
+  };
+
+  const canSave = !onTestConnect || testSucceeded;
 
   return (
     <div className="config-container">
       <div className="config-card">
         <h2>Serial Port Configuration</h2>
         <p className="config-description">
-          Configure serial port settings for ESP32-H2 ot-br connection
+          Configure serial port settings connection
         </p>
+
+        {(testStatus.type === "success" ||
+          testStatus.type === "error" ||
+          Object.keys(errors).length > 0) && (
+          <div className="config-alert" role="alert">
+            {testStatus.type === "success" && (
+              <span className="config-alert-message config-alert-success">
+                {testStatus.message}
+              </span>
+            )}
+            {testStatus.type === "error" && (
+              <span className="config-alert-message config-alert-error">
+                {testStatus.message}
+              </span>
+            )}
+            {testStatus.type !== "success" &&
+              testStatus.type !== "error" &&
+              Object.keys(errors).length > 0 && (
+                <span className="config-alert-message config-alert-error">
+                  {errors.serialPort ||
+                    errors.baudRate ||
+                    errors.commandPrefix ||
+                    "Please check the fields below."}
+                </span>
+              )}
+          </div>
+        )}
 
         <form onSubmit={handleSubmit} className="config-form">
           <div className="form-group">
@@ -57,9 +128,7 @@ export default function SerialConfigForm({ onSave }: SerialConfigFormProps) {
               type="text"
               id="serialPort"
               value={formData.serialPort}
-              onChange={(e) =>
-                setFormData({ ...formData, serialPort: e.target.value })
-              }
+              onChange={(e) => handleFieldChange("serialPort", e.target.value)}
               placeholder="/dev/ttyACM0"
               className={errors.serialPort ? "error" : ""}
             />
@@ -79,10 +148,7 @@ export default function SerialConfigForm({ onSave }: SerialConfigFormProps) {
               id="baudRate"
               value={formData.baudRate}
               onChange={(e) =>
-                setFormData({
-                  ...formData,
-                  baudRate: parseInt(e.target.value, 10) || 115200,
-                })
+                handleFieldChange("baudRate", parseInt(e.target.value, 10) || 115200)
               }
               min="9600"
               max="2000000"
@@ -103,9 +169,7 @@ export default function SerialConfigForm({ onSave }: SerialConfigFormProps) {
               type="text"
               id="commandPrefix"
               value={formData.commandPrefix}
-              onChange={(e) =>
-                setFormData({ ...formData, commandPrefix: e.target.value })
-              }
+              onChange={(e) => handleFieldChange("commandPrefix", e.target.value)}
               placeholder="ot"
               className={errors.commandPrefix ? "error" : ""}
             />
@@ -117,9 +181,25 @@ export default function SerialConfigForm({ onSave }: SerialConfigFormProps) {
             </small>
           </div>
 
-          <button type="submit" className="submit-button">
-            Save Configuration
-          </button>
+          <div className="form-actions">
+            {onTestConnect && (
+              <button
+                type="button"
+                className="test-connect-button"
+                onClick={handleTestConnect}
+                disabled={testStatus.type === "loading"}
+              >
+                {testStatus.type === "loading" ? "Testing…" : "Test Connect"}
+              </button>
+            )}
+            <button
+              type="submit"
+              className="submit-button"
+              disabled={onTestConnect ? !canSave : false}
+            >
+              Save Configuration
+            </button>
+          </div>
         </form>
       </div>
     </div>
