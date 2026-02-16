@@ -27,3 +27,4 @@ frontend/dist/
 
 # Backend
 backend/dist/
+backend/data/

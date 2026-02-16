@@ -2,7 +2,7 @@
  * CLI Wrapper - Gửi lệnh OpenThread CLI và parse response
  */
 
-import { SerialPortService } from "./serialPort";
+import { SerialPortService } from "./SerialPort";
 
 export interface CLIResponse {
   success: boolean;
@@ -10,13 +10,30 @@ export interface CLIResponse {
   error?: string;
 }
 
+export interface CLIWrapperConfig {
+  commandPrefix?: string;
+  timeoutMs?: number;
+}
+
 export class CLIWrapper {
   private serialPort: SerialPortService;
   private timeoutMs: number;
+  private commandPrefix: string;
 
-  constructor(serialPort: SerialPortService, timeoutMs: number = 5000) {
+  constructor(
+    serialPort: SerialPortService,
+    config: CLIWrapperConfig | number = 5000
+  ) {
     this.serialPort = serialPort;
-    this.timeoutMs = timeoutMs;
+    
+    // Hỗ trợ cả cách cũ (chỉ timeout) và cách mới (config object)
+    if (typeof config === "number") {
+      this.timeoutMs = config;
+      this.commandPrefix = "ot";
+    } else {
+      this.timeoutMs = config.timeoutMs ?? 5000;
+      this.commandPrefix = config.commandPrefix ?? "ot";
+    }
   }
 
   /**
@@ -43,8 +60,13 @@ export class CLIWrapper {
     });
 
     try {
+      // Thêm tiền tố vào lệnh nếu có
+      const fullCommand = this.commandPrefix
+        ? `${this.commandPrefix} ${command}`
+        : command;
+
       // Gửi lệnh
-      await this.serialPort.write(command);
+      await this.serialPort.write(fullCommand);
 
       // Chờ response với timeout
       const response = await this.waitForResponse(responseLines);
