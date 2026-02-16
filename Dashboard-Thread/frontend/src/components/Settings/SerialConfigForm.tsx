@@ -1,5 +1,5 @@
 import { useState, useEffect, FormEvent } from "react";
-import { SerialConfig } from "../utils/SerialConfig";
+import { SerialConfig } from "../../utils/SerialConfig";
 import "./SerialConfigForm.scss";
 
 const DEFAULT_CONFIG: SerialConfig = {

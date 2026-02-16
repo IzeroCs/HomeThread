@@ -1,0 +1,157 @@
+@use "../styles/variables" as *;
+
+.status-page {
+  background: white;
+  border-radius: $border-radius;
+  padding: 32px;
+  box-shadow: $shadow;
+  max-width: 800px;
+  width: 100%;
+
+  h1 {
+    margin: 0 0 24px 0;
+    color: $text-primary;
+    font-size: 32px;
+    font-weight: 600;
+  }
+}
+
+.status-section {
+  margin-bottom: 28px;
+
+  &:last-child {
+    margin-bottom: 0;
+  }
+
+  h2 {
+    margin: 0 0 12px 0;
+    color: $text-primary;
+    font-size: 18px;
+    font-weight: 600;
+  }
+}
+
+.status-card {
+  background: $bg-light;
+  border-radius: $border-radius-small;
+  padding: 20px;
+}
+
+.status-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 10px;
+
+  &:last-child {
+    margin-bottom: 0;
+  }
+
+  &.status-row-block {
+    flex-direction: column;
+  }
+}
+
+.status-label {
+  flex-shrink: 0;
+  font-weight: 500;
+  color: $text-secondary;
+  font-size: 14px;
+  min-width: 120px;
+}
+
+.status-value {
+  color: $text-primary;
+  font-size: 14px;
+  word-break: break-all;
+
+  &.status-value-block {
+    white-space: pre-wrap;
+  }
+}
+
+.status-badge {
+  padding: 4px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+
+  &.connected {
+    background: #d4edda;
+    color: #155724;
+  }
+
+  &.disconnected {
+    background: #f8d7da;
+    color: #721c24;
+  }
+}
+
+.status-error {
+  margin: 0;
+  color: #721c24;
+  font-size: 14px;
+}
+
+.status-muted {
+  margin: 0;
+  color: $text-muted;
+  font-size: 14px;
+}
+
+.status-ipaddr-block {
+  margin-top: 10px;
+
+  .status-label {
+    display: block;
+    margin-bottom: 6px;
+  }
+}
+
+.status-ipaddr-lines {
+  margin-left: 120px;
+  padding: 12px;
+  background: white;
+  border: 1px solid $border-color;
+  border-radius: $border-radius-small;
+  font-size: 13px;
+}
+
+.status-ipaddr-row {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding: 4px 0;
+
+  &:not(:last-child) {
+    border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+  }
+}
+
+.status-ipaddr-tag {
+  flex-shrink: 0;
+  font-size: 11px;
+  font-weight: 600;
+  color: $text-muted;
+  min-width: 100px;
+}
+
+.status-ipaddr-value {
+  font-family: ui-monospace, monospace;
+  font-size: 12px;
+  word-break: break-all;
+  color: $text-primary;
+}
+
+.status-card-dataset {
+  margin-top: 16px;
+
+  .status-ipaddr-lines {
+    max-height: 280px;
+    overflow-y: auto;
+  }
+}
+
+.status-ipaddr-lines-empty {
+  color: $text-muted;
+}

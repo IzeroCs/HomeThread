@@ -1,0 +1,235 @@
+@use "../../styles/variables" as *;
+
+.ot-config-container {
+  width: 100%;
+  max-width: 600px;
+}
+
+.ot-config-card {
+  background: white;
+  border-radius: $border-radius;
+  padding: 32px;
+  box-shadow: $shadow;
+
+  h2 {
+    margin: 0 0 8px 0;
+    color: $text-primary;
+    font-size: 28px;
+    font-weight: 600;
+  }
+}
+
+.ot-config-description {
+  color: $text-secondary;
+  margin: 0 0 16px 0;
+  font-size: 14px;
+}
+
+.ot-config-alert {
+  margin-bottom: 20px;
+  padding: 12px 16px;
+  border-radius: $border-radius-small;
+  font-size: 14px;
+
+  &.ot-config-alert-warn {
+    background: #fff3cd;
+    color: #856404;
+  }
+
+  &.ot-config-alert-success {
+    background: #d4edda;
+    color: #155724;
+  }
+
+  &.ot-config-alert-error {
+    background: #f8d7da;
+    color: #721c24;
+  }
+}
+
+.ot-config-form {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+
+  .ot-config-checkbox-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 12px;
+    cursor: pointer;
+    font-weight: 500;
+    color: $text-primary;
+    font-size: 14px;
+    position: relative;
+
+    input[type="checkbox"] {
+      position: absolute;
+      opacity: 0;
+      width: 22px;
+      height: 22px;
+      left: 0;
+      top: 50%;
+      transform: translateY(-50%);
+      margin: 0;
+      cursor: pointer;
+      z-index: 1;
+    }
+
+    // Custom box (::before)
+    &::before {
+      content: "";
+      display: inline-block;
+      width: 22px;
+      height: 22px;
+      flex-shrink: 0;
+      border: 2px solid $border-color;
+      border-radius: 6px;
+      background: white;
+      transition: border-color 0.2s, background 0.2s, box-shadow 0.2s;
+    }
+
+    &:hover::before {
+      border-color: $primary-color;
+    }
+
+    &:has(input:checked)::before {
+      background: $primary-gradient;
+      border-color: transparent;
+      box-shadow: 0 2px 8px rgba(102, 126, 234, 0.35);
+    }
+
+    // Checkmark (::after) — căn giữa ô 22×22; dịch nhẹ phải để L-shape trông cân
+    &::after {
+      content: "";
+      position: absolute;
+      left: 12px;
+      top: 11px;
+      width: 6px;
+      height: 11px;
+      border: solid white;
+      border-width: 0 2px 2px 0;
+      transform: translate(-50%, -50%) rotate(45deg) scale(0);
+      transition: transform 0.2s;
+    }
+
+    &:has(input:checked)::after {
+      transform: translate(-50%, -50%) rotate(45deg) scale(1);
+    }
+  }
+
+  .ot-config-checkbox-text {
+    user-select: none;
+  }
+
+  .form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+
+    label {
+      font-weight: 500;
+      color: $text-primary;
+      font-size: 14px;
+    }
+
+    input {
+      padding: 12px 16px;
+      border: 2px solid $border-color;
+      border-radius: $border-radius-small;
+      font-size: 16px;
+      font-family: inherit;
+
+      &:focus {
+        outline: none;
+        border-color: $primary-color;
+      }
+
+      &:disabled {
+        background: $bg-light;
+        cursor: not-allowed;
+      }
+    }
+  }
+
+  .form-hint {
+    color: $text-muted;
+    font-size: 12px;
+  }
+}
+
+.ot-config-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  justify-content: flex-end;
+  margin-top: 8px;
+}
+
+.ot-config-btn {
+  padding: 12px 24px;
+  border: none;
+  border-radius: $border-radius-small;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.2s;
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+
+  &.load {
+    background: #6c757d;
+    color: white;
+
+    &:hover:not(:disabled) {
+      background: #5a6268;
+    }
+  }
+
+  &.apply {
+    background: $primary-gradient;
+    color: white;
+
+    &:hover:not(:disabled) {
+      opacity: 0.95;
+    }
+  }
+}
+
+.apply-dots {
+  display: inline-block;
+  margin-left: 2px;
+
+  span {
+    animation: apply-dot-blink 1.2s ease-in-out infinite;
+    opacity: 0;
+
+    &:nth-child(1) {
+      animation-delay: 0s;
+    }
+    &:nth-child(2) {
+      animation-delay: 0.4s;
+    }
+    &:nth-child(3) {
+      animation-delay: 0.8s;
+    }
+  }
+}
+
+@keyframes apply-dot-blink {
+  0% {
+    opacity: 0;
+  }
+  25% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 1;
+  }
+  75%,
+  100% {
+    opacity: 0;
+  }
+}

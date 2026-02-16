@@ -13,27 +13,36 @@ export interface CLIResponse {
 export interface CLIWrapperConfig {
   commandPrefix?: string;
   timeoutMs?: number;
+  /** Delay (ms) sau mỗi lệnh trước khi lệnh tiếp theo — tránh thiết bị tràn buffer */
+  delayAfterMs?: number;
 }
 
 export class CLIWrapper {
   private serialPort: SerialPortService;
   private timeoutMs: number;
   private commandPrefix: string;
+  private delayAfterMs: number;
 
   constructor(
     serialPort: SerialPortService,
     config: CLIWrapperConfig | number = 5000
   ) {
     this.serialPort = serialPort;
-    
+
     // Hỗ trợ cả cách cũ (chỉ timeout) và cách mới (config object)
     if (typeof config === "number") {
       this.timeoutMs = config;
       this.commandPrefix = "ot";
+      this.delayAfterMs = 300;
     } else {
       this.timeoutMs = config.timeoutMs ?? 5000;
       this.commandPrefix = config.commandPrefix ?? "ot";
+      this.delayAfterMs = config.delayAfterMs ?? 300;
     }
+  }
+
+  private delay(ms: number): Promise<void> {
+    return new Promise((resolve) => setTimeout(resolve, ms));
   }
 
   /**
@@ -72,6 +81,7 @@ export class CLIWrapper {
       const response = await this.waitForResponse(responseLines);
 
       unsubscribe();
+      await this.delay(this.delayAfterMs);
       return response;
     } catch (error) {
       unsubscribe();

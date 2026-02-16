@@ -8,6 +8,9 @@ import type {
   SerialConfigFromBackend,
   SerialStatus,
   CliResponse,
+  OtConfig,
+  OtThreadState,
+  OtTableData,
 } from "../types/websocket";
 
 // Dev: thử proxy trước, nếu không được thì connect trực tiếp
@@ -38,6 +41,21 @@ export interface UseWebSocketReturn {
     commandPrefix: string;
   }) => Promise<{ success: boolean; error?: string }>;
   sendCliCommand: (command: string, id?: string) => void;
+  otConfig: OtConfig | null;
+  getOtConfig: () => void;
+  setOtConfig: (data: { panid?: string; channel?: number; networkName?: string }) => Promise<{ success: boolean; error?: string }>;
+  threadRunning: boolean | null;
+  /** Raw state: leader, router, child, detached, disabled — dùng để đổi màu dot TopNav */
+  threadState: string | null;
+  getThreadState: () => void;
+  setThreadRunning: (running: boolean) => Promise<{ success: boolean; error?: string }>;
+  threadRunOnConnect: boolean;
+  getThreadRunOnConnect: () => void;
+  setThreadRunOnConnect: (run: boolean) => void;
+  routerTable: OtTableData | null;
+  childTable: OtTableData | null;
+  getRouterTable: () => void;
+  getChildTable: () => void;
   onSerialData: (callback: (data: string) => void) => () => void;
   onCliResponse: (callback: (data: CliResponse) => void) => () => void;
 }
@@ -49,6 +67,12 @@ export function useWebSocket(): UseWebSocketReturn {
   const [config, setConfig] = useState<SerialConfigFromBackend | null>(null);
   const [configError, setConfigError] = useState<string | null>(null);
   const [serialError, setSerialError] = useState<string | null>(null);
+  const [otConfig, setOtConfigState] = useState<OtConfig | null>(null);
+  const [threadRunning, setThreadRunningState] = useState<boolean | null>(null);
+  const [threadState, setThreadState] = useState<string | null>(null);
+  const [threadRunOnConnect, setThreadRunOnConnectState] = useState<boolean>(false);
+  const [routerTable, setRouterTable] = useState<OtTableData | null>(null);
+  const [childTable, setChildTable] = useState<OtTableData | null>(null);
 
   const connect = useCallback(() => {
     if (socketRef.current?.connected) {
@@ -70,11 +94,14 @@ export function useWebSocket(): UseWebSocketReturn {
       setSerialError(null);
       socket.emit("config:get");
       socket.emit("serial:status");
+      socket.emit("ot:getThreadRunOnConnect");
     });
 
     socket.on("disconnect", (reason) => {
       setConnected(false);
       setSerialStatus(null);
+      setThreadRunningState(null);
+      setThreadState(null);
     });
 
     socket.on("connect_error", (err) => {
@@ -121,6 +148,32 @@ export function useWebSocket(): UseWebSocketReturn {
 
     socket.on("serial:error", (data: { error?: string }) => {
       setSerialError(data?.error ?? "Serial error");
+    });
+
+    socket.on("ot:config", (data: OtConfig) => {
+      setOtConfigState(data.error ? { error: data.error } : data);
+    });
+
+    socket.on("ot:threadState", (data: OtThreadState) => {
+      if (data.error) {
+        setThreadRunningState(null);
+        setThreadState(null);
+      } else {
+        setThreadRunningState(data.running ?? null);
+        setThreadState(data.state ?? null);
+      }
+    });
+
+    socket.on("ot:threadRunOnConnect", (data: { runOnConnect: boolean }) => {
+      setThreadRunOnConnectState(!!data.runOnConnect);
+    });
+
+    socket.on("ot:routerTable", (data: OtTableData) => {
+      setRouterTable(data);
+    });
+
+    socket.on("ot:childTable", (data: OtTableData) => {
+      setChildTable(data);
     });
 
     socketRef.current = socket;
@@ -184,6 +237,67 @@ export function useWebSocket(): UseWebSocketReturn {
     socketRef.current?.emit("cli:command", { command, id });
   }, []);
 
+  const getOtConfig = useCallback(() => {
+    setOtConfigState(null);
+    socketRef.current?.emit("ot:getConfig");
+  }, []);
+
+  const setOtConfig = useCallback(
+    (data: { panid?: string; channel?: number; networkName?: string }): Promise<{ success: boolean; error?: string }> =>
+      new Promise((resolve) => {
+        if (!socketRef.current) {
+          resolve({ success: false, error: "Not connected" });
+          return;
+        }
+        const handler = (result: { success: boolean; error?: string }) => {
+          socketRef.current?.off("ot:setConfig:result", handler);
+          resolve(result);
+        };
+        socketRef.current.once("ot:setConfig:result", handler);
+        socketRef.current.emit("ot:setConfig", data);
+      }),
+    []
+  );
+
+  const getThreadState = useCallback(() => {
+    setThreadRunningState(null);
+    socketRef.current?.emit("ot:getThreadState");
+  }, []);
+
+  const setThreadRunning = useCallback(
+    (running: boolean): Promise<{ success: boolean; error?: string }> =>
+      new Promise((resolve) => {
+        if (!socketRef.current) {
+          resolve({ success: false, error: "Not connected" });
+          return;
+        }
+        const handler = (result: { success: boolean; error?: string }) => {
+          socketRef.current?.off("ot:setThreadRunning:result", handler);
+          resolve(result);
+        };
+        socketRef.current.once("ot:setThreadRunning:result", handler);
+        socketRef.current.emit("ot:setThreadRunning", { running });
+      }),
+    []
+  );
+
+  const getThreadRunOnConnect = useCallback(() => {
+    socketRef.current?.emit("ot:getThreadRunOnConnect");
+  }, []);
+
+  const setThreadRunOnConnect = useCallback((run: boolean) => {
+    setThreadRunOnConnectState(run);
+    socketRef.current?.emit("ot:setThreadRunOnConnect", { runOnConnect: run });
+  }, []);
+
+  const getRouterTable = useCallback(() => {
+    socketRef.current?.emit("ot:getRouterTable");
+  }, []);
+
+  const getChildTable = useCallback(() => {
+    socketRef.current?.emit("ot:getChildTable");
+  }, []);
+
   const onSerialData = useCallback((callback: (data: string) => void) => {
     if (!socketRef.current) {
       return () => {};
@@ -235,6 +349,20 @@ export function useWebSocket(): UseWebSocketReturn {
     disconnectSerial,
     testSerialConnect,
     sendCliCommand,
+    otConfig,
+    getOtConfig,
+    setOtConfig,
+    threadRunning,
+    threadState,
+    getThreadState,
+    setThreadRunning,
+    threadRunOnConnect,
+    getThreadRunOnConnect,
+    setThreadRunOnConnect,
+    routerTable,
+    childTable,
+    getRouterTable,
+    getChildTable,
     onSerialData,
     onCliResponse,
   };

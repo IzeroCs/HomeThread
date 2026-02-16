@@ -1,158 +1,112 @@
 @use "../styles/variables" as *;
 
-.dashboard {
+.dashboard-page {
   background: white;
   border-radius: $border-radius;
   padding: 32px;
   box-shadow: $shadow;
-  max-width: 800px;
+  max-width: 100%;
   width: 100%;
 
   h1 {
-    margin: 0 0 32px 0;
+    margin: 0 0 24px 0;
     color: $text-primary;
     font-size: 32px;
     font-weight: 600;
   }
-
-  &.dashboard-empty {
-    text-align: center;
-
-    .empty-message {
-      color: $text-secondary;
-      margin: 0 0 24px 0;
-      font-size: 16px;
-    }
-  }
 }
 
-.connection-status {
-  background: $bg-light;
-  border-radius: $border-radius-small;
-  padding: 20px;
-  margin-bottom: 24px;
-}
+.dashboard-section {
+  margin-bottom: 28px;
 
-.status-row {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin-bottom: 8px;
-
-  &:last-of-type {
+  &:last-child {
     margin-bottom: 0;
   }
 }
 
-.status-label {
-  font-weight: 500;
-  color: $text-secondary;
-  font-size: 14px;
-  min-width: 100px;
-}
-
-.status-badge {
-  padding: 4px 12px;
-  border-radius: 6px;
-  font-size: 12px;
-  font-weight: 600;
-
-  &.connected {
-    background: #d4edda;
-    color: #155724;
-  }
-
-  &.disconnected {
-    background: #f8d7da;
-    color: #721c24;
-  }
-}
-
-.status-error {
-  margin-top: 12px;
-  padding: 8px 12px;
-  background: #f8d7da;
-  color: #721c24;
-  border-radius: 6px;
-  font-size: 13px;
-}
-
-.serial-actions {
+.dashboard-section-header {
   display: flex;
-  gap: 12px;
-  margin-top: 16px;
-}
-
-.change-config-button {
-  padding: 12px 24px;
-  background: #6c757d;
-  color: white;
-  border: none;
-  border-radius: $border-radius-small;
-  font-size: 14px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: background-color 0.2s;
-
-  &:hover:not(:disabled) {
-    background: #5a6268;
-  }
-
-  &:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-  }
-
-  &.disconnect {
-    background: #dc3545;
-
-    &:hover:not(:disabled) {
-      background: #c82333;
-    }
-  }
-}
-
-.config-info {
-  margin-top: 24px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 12px;
 
   h2 {
-    margin: 0 0 16px 0;
+    margin: 0;
     color: $text-primary;
-    font-size: 20px;
+    font-size: 18px;
     font-weight: 600;
   }
 }
 
-.config-display {
+.dashboard-refresh {
+  padding: 8px 16px;
   background: $bg-light;
+  border: 1px solid $border-color;
   border-radius: $border-radius-small;
-  padding: 20px;
-  margin-bottom: 24px;
-}
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  color: $text-primary;
 
-.config-item {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 12px 0;
-  border-bottom: 1px solid $border-color;
+  &:hover:not(:disabled) {
+    background: darken($bg-light, 3%);
+  }
 
-  &:last-child {
-    border-bottom: none;
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
   }
 }
 
-.config-label {
-  font-weight: 500;
-  color: $text-secondary;
+.dashboard-table-wrap {
+  background: $bg-light;
+  border-radius: $border-radius-small;
+  padding: 16px;
+  overflow-x: auto;
+}
+
+.dashboard-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+
+  th,
+  td {
+    padding: 10px 12px;
+    text-align: left;
+    border-bottom: 1px solid $border-color;
+  }
+
+  th {
+    font-weight: 600;
+    color: $text-secondary;
+    background: rgba(0, 0, 0, 0.03);
+  }
+
+  td {
+    color: $text-primary;
+    font-family: ui-monospace, monospace;
+    font-size: 13px;
+  }
+
+  tbody tr:last-child td {
+    border-bottom: none;
+  }
+
+  tbody tr:hover td {
+    background: rgba(0, 0, 0, 0.02);
+  }
+}
+
+.dashboard-muted {
+  margin: 0;
+  color: $text-muted;
   font-size: 14px;
 }
 
-.config-value {
-  color: $text-primary;
+.dashboard-error {
+  margin: 0;
+  color: #721c24;
   font-size: 14px;
-  font-family: "Courier New", monospace;
-  background: white;
-  padding: 4px 12px;
-  border-radius: 4px;
 }

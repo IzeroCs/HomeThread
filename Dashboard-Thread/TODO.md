@@ -18,6 +18,7 @@
 - [x] **Phân tách kết quả**: Parse output (dòng kết thúc, prompt "> ", lỗi "Error") để biết khi nào lệnh xong và trả đúng nội dung cho API
   - Parse tự động detect "Done", "Error", và prompt "> "
   - Timeout configurable (default 5000ms)
+  - Lọc dòng log firmware (ESP-IDF: I/E/W/D (timestamp) ...) khỏi output CLI; ưu tiên dòng đúng format (panid/channel/state) để tránh nhầm log với kết quả lệnh
 - [x] **WebSocket API**: Thay thế HTTP/API bằng WebSocket với socket.io
   - `status` - Lấy trạng thái serial port
   - `serial:connect` - Kết nối serial port
@@ -42,7 +43,11 @@
 
 - [ ] **Giao diện nhập lệnh**: Ô input để gõ lệnh OpenThread (vd `state`, `scan`, `joiner start 0`), nút "Gửi" hoặc Enter
 - [ ] **Hiển thị kết quả**: Vùng hiển thị output (terminal-style hoặc log): in từng dòng/block text backend trả về
-- [ ] **Trạng thái kết nối**: Hiển thị "Đã kết nối / Chưa kết nối / Lỗi" tới backend (và nếu có thì tới UART)
+- [x] **Trạng thái kết nối**: Hiển thị "Đã kết nối / Chưa kết nối / Lỗi" tới backend (và nếu có thì tới UART)
+  - Trang **Status** hiển thị Serial (port, baud) + OpenThread (PAN ID, Channel, Network Name, IP Address, Dataset Active)
+  - Khi thread state chuyển sang leader/router/child thì gọi lại getOtConfig (dataset active lúc disabled/detached báo Not Found)
+  - Dataset Active: card riêng, hiển thị dạng bảng Key: Value giống IP Address
+- [ ] **Trang Status: gửi quá nhiều lệnh lấy thông tin** — Giảm tần suất / debounce getOtConfig (vd khi state leader); sửa sau.
 - [ ] **Lệnh thường dùng**: Nút shortcut cho các lệnh hay dùng: `state`, `scan`, `joiner start/stop`, `commissioner start/stop`, `networkname`, v.v.
 - [ ] **Lịch sử lệnh**: Lưu và cho phép chọn lại lệnh đã gửi (localStorage hoặc chỉ trong session)
 - [ ] **Realtime (nếu backend có WebSocket)**: Tab/mode "Live terminal": mọi dòng từ UART hiển thị realtime, vẫn có thể gửi lệnh từ cùng giao diện
@@ -57,6 +62,7 @@
 - [ ] **Quyền cổng serial**: Trên Linux: user trong group `dialout` hoặc rule udev cho USB serial của ESP32-H2
 - [x] **Tài liệu**: README ngắn: phần cứng (ESP32-H2, ot-br, UART), cách cấu hình cổng/baud, cách chạy backend + frontend
   - README.md đã có cấu trúc và hướng dẫn cơ bản
+- [ ] **WebSocket: kết nối 1 lần nhưng báo kết nối nhiều lần** — Sửa sau; hiện dùng tạm.
 
 ---
 
@@ -70,8 +76,10 @@
    - Đã chuyển từ Express HTTP sang WebSocket với socket.io
    - Implement đầy đủ WebSocket events cho CLI và serial port
    - Realtime data streaming từ serial port
-3. Frontend: form gửi lệnh + hiển thị kết quả, gọi API
-4. Sau đó: shortcut lệnh, lịch sử, cấu hình, WebSocket (nếu cần terminal realtime)
+3. [x] Frontend: Trang Status (Serial + OpenThread config, refresh khi leader, Dataset Active dạng bảng)
+4. [x] Frontend: Trang Dashboard (Router Table, Child Table); trang mặc định khi mở app là Dashboard
+5. Frontend: form gửi lệnh + hiển thị kết quả, gọi API
+6. Sau đó: shortcut lệnh, lịch sử, cấu hình, WebSocket (nếu cần terminal realtime)
 
 ---
 
@@ -107,3 +115,28 @@
 - **TypeScript**:
   - Đã chuyển từ ESM sang CommonJS để import không cần extension `.js`
   - Tất cả code đã được type-safe
+
+- **WebSocketServer – lọc output CLI** (`backend/src/server/WebSocketServer.ts`):
+  - `filterCliOutput()`: loại dòng log ESP-IDF (`I/E/W/D (số) ...`) khỏi output lệnh CLI
+  - `pickValueLine(lines, options)`: lấy giá trị panid/channel/networkName với format đúng (tránh PAN ID nhận nhầm "I (3460) OT_STATE: netif up")
+  - `getCurrentThreadState()`: chỉ chấp nhận state trong [leader, router, child, detached, disabled] sau khi lọc log
+
+- **WebSocketServer – hàng đợi lệnh CLI** (`backend/src/server/WebSocketServer.ts`):
+  - `cliQueue` + `executeCommandQueued(command)`: mọi lệnh CLI (getThreadState, getOtConfig, router/child table, setConfig, cli:command, …) chạy **tuần tự**, tránh xung đột khi nhiều khu vực (Dashboard, Status, App poll) gọi cùng lúc trên một serial
+
+### Frontend – Trang Status
+- **Status** (`frontend/src/components/Status.tsx`):
+  - Serial: trạng thái kết nối, port, baud rate
+  - OpenThread: PAN ID, Channel, Network Name, IP Address (bảng tag + value), Dataset Active (card riêng, bảng Key: Value như ipaddr)
+  - Khi `threadState` là leader/router/child → gọi lại `getOtConfig()` để refresh dataset active và ipaddr (tránh "Not Found" lúc disabled/detached)
+- **TopNav**: nút Status, hiển thị thread state (leader/router/child)
+- **App**: route `/status`, poll `getThreadState()` mỗi 4s khi serial đã kết nối; trang mặc định khi mở app là **Dashboard**
+
+### Frontend – Trang Dashboard
+- **Dashboard** (`frontend/src/components/Dashboard.tsx`):
+  - Chỉ hiển thị **Router Table** và **Child Table** (bỏ hết nội dung cũ: connection status, config info)
+  - Backend: `ot:getRouterTable`, `ot:getChildTable`; parse output bảng OpenThread (`parseTableOutput`), emit `ot:routerTable`, `ot:childTable`
+  - Frontend: `routerTable`, `childTable`, `getRouterTable()`, `getChildTable()`; khi mount và đã kết nối serial thì gọi lấy dữ liệu; **tự động làm mới** mỗi 4 giây; nút "Làm mới" cho từng bảng
+  - Gọi tuần tự: router table trước, sau 1.5s mới gọi child table (tránh hai lệnh cùng lúc trên serial)
+  - Dừng hẳn khi rời tab: `mountedRef` + cleanup interval và timeout từ `refreshTables()` khi unmount; không xóa data khi gọi get (cập nhật tại chỗ, không nháy bảng)
+- **App**: trang mặc định `useState<NavPage>("dashboard")` → mở app thấy Dashboard trước

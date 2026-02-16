@@ -24,3 +24,25 @@ export interface CliResponse {
   output?: string[];
   error?: string;
 }
+
+export interface OtConfig {
+  panid?: string;
+  channel?: number;
+  networkName?: string;
+  ipaddr?: string;
+  datasetActive?: string;
+  error?: string;
+}
+
+export interface OtThreadState {
+  running?: boolean;
+  /** Raw state từ thiết bị: leader, router, child, detached, disabled */
+  state?: string;
+  error?: string;
+}
+
+export interface OtTableData {
+  headers?: string[];
+  rows?: string[][];
+  error?: string;
+}

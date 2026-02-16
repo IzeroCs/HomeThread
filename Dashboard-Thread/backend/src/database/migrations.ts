@@ -42,6 +42,21 @@ const migrations: Migration[] = [
       `);
     },
   },
+  {
+    name: "003_app_settings",
+    up: (db) => {
+      db.exec(`
+        CREATE TABLE IF NOT EXISTS app_settings (
+          key TEXT PRIMARY KEY,
+          value TEXT NOT NULL
+        )
+      `);
+      // Mặc định: không tự chạy Thread khi kết nối
+      db.exec(`
+        INSERT OR IGNORE INTO app_settings (key, value) VALUES ('thread_run_on_connect', '0')
+      `);
+    },
+  },
 ];
 
 /**
@@ -85,7 +100,7 @@ export function runMigrations(): void {
 
   for (const migration of migrations) {
     if (!hasMigrationRun(db, migration.name)) {
-      console.log(`Running migration: ${migration.name}`);
+      console.log(`[Migration] Running: ${migration.name}`);
       migration.up(db);
       markMigrationRun(db, migration.name);
       executedCount++;
@@ -93,8 +108,8 @@ export function runMigrations(): void {
   }
 
   if (executedCount > 0) {
-    console.log(`Executed ${executedCount} migration(s)`);
+    console.log(`[Migration] Executed ${executedCount} migration(s)`);
   } else {
-    console.log("All migrations are up to date");
+    console.log("[Migration] All migrations are up to date");
   }
 }

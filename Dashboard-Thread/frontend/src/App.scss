@@ -5,6 +5,11 @@
   display: flex;
   flex-direction: column;
   background: $primary-gradient;
+
+  &--waiting {
+    justify-content: center;
+    align-items: center;
+  }
 }
 
 .app-main {
@@ -23,9 +28,53 @@
   justify-content: center;
   min-height: 60vh;
   padding: 20px 0;
+
+  .app-layout--waiting & {
+    min-height: auto;
+  }
 }
 
 .loading {
   color: white;
   font-size: 18px;
+}
+
+.waiting-for-backend {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  text-align: center;
+}
+
+.waiting-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: white;
+  animation: waiting-pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes waiting-pulse {
+  0%,
+  100% {
+    opacity: 0.4;
+    transform: scale(0.9);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.1);
+  }
+}
+
+.waiting-message {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.waiting-hint {
+  margin: 0;
+  font-size: 14px;
+  opacity: 0.9;
 }

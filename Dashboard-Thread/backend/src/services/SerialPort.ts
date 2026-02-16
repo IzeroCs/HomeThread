@@ -17,9 +17,16 @@ export class SerialPortService {
   private isConnected: boolean = false;
   private dataBuffer: string[] = [];
   private dataListeners: Set<(data: string) => void> = new Set();
+  private closedByUs: boolean = false;
+  private onDisconnectCallback: (() => void) | null = null;
 
   constructor(config: SerialPortConfig) {
     this.config = config;
+  }
+
+  /** Gọi khi port đóng bất ngờ (rút dây, lỗi) – không gọi khi close() chủ động */
+  setOnDisconnect(cb: () => void): void {
+    this.onDisconnectCallback = cb;
   }
 
   /**
@@ -29,6 +36,8 @@ export class SerialPortService {
     if (this.isConnected && this.port?.isOpen) {
       return;
     }
+
+    this.closedByUs = false;
 
     return new Promise((resolve, reject) => {
       try {
@@ -46,7 +55,7 @@ export class SerialPortService {
           const line = data.toString().trim();
           if (line) {
             // Log raw data để debug (có thể comment lại sau)
-            console.log(`[Serial RX] ${line}`);
+            console.log(`[Serial] RX: ${line}`);
             
             // Giới hạn buffer size để tránh memory leak
             if (this.dataBuffer.length > 1000) {
@@ -59,27 +68,38 @@ export class SerialPortService {
           }
         });
 
-        // Xử lý lỗi
-        this.port.on("error", (err) => {
-          console.error("Serial port error:", err);
+        const triggerDisconnect = () => {
           this.isConnected = false;
+          this.port = null;
+          this.parser = null;
+          this.dataListeners.clear();
+          this.dataBuffer = [];
+          if (!this.closedByUs && this.onDisconnectCallback) {
+            this.onDisconnectCallback();
+          }
+        };
+
+        // Xử lý lỗi (rút dây, lỗi phần cứng)
+        this.port.on("error", (err) => {
+          console.error("[Serial] Port error:", err);
+          triggerDisconnect();
           reject(err);
         });
 
-        // Xử lý khi port đóng
+        // Xử lý khi port đóng (rút dây hoặc close chủ động)
         this.port.on("close", () => {
-          console.log("Serial port closed");
-          this.isConnected = false;
+          console.log("[Serial] Port closed");
+          triggerDisconnect();
         });
 
         // Mở port
         this.port.open((err) => {
           if (err) {
-            console.error("Failed to open serial port:", err);
+            console.error("[Serial] Failed to open port:", err);
             this.isConnected = false;
             reject(err);
           } else {
-            console.log(`Serial port opened: ${this.config.path} @ ${this.config.baudRate} baud`);
+            console.log(`[Serial] Port opened: ${this.config.path} @ ${this.config.baudRate} baud`);
             this.isConnected = true;
             resolve();
           }
@@ -95,7 +115,7 @@ export class SerialPortService {
    */
   async close(): Promise<void> {
     return new Promise((resolve) => {
-      // Cleanup listeners
+      this.closedByUs = true;
       this.dataListeners.clear();
       this.dataBuffer = [];
 
@@ -109,7 +129,7 @@ export class SerialPortService {
 
       this.port.close((err) => {
         if (err) {
-          console.error("Error closing serial port:", err);
+          console.error("[Serial] Error closing port:", err);
         }
         this.isConnected = false;
         this.port = null;
@@ -128,7 +148,7 @@ export class SerialPortService {
     }
 
     // Log command để debug
-    console.log(`[Serial TX] ${data}`);
+    console.log(`[Serial] TX: ${data}`);
 
     return new Promise((resolve, reject) => {
       this.port!.write(data + "\r\n", (err) => {

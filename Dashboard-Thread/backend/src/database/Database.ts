@@ -28,7 +28,7 @@ export function getDatabase(): Database.Database {
   dbInstance.pragma("foreign_keys = ON");
   dbInstance.pragma("journal_mode = WAL");
 
-  console.log(`Database initialized: ${DB_PATH}`);
+  console.log(`[DB] Initialized: ${DB_PATH}`);
 
   return dbInstance;
 }
@@ -37,6 +37,6 @@ export function closeDatabase(): void {
   if (dbInstance) {
     dbInstance.close();
     dbInstance = null;
-    console.log("Database closed");
+    console.log("[DB] Closed");
   }
 }

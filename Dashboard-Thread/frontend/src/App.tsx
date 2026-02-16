@@ -1,9 +1,11 @@
 import { useState, useEffect } from "react";
 import type { SerialConfigFromBackend } from "./types/websocket";
 import { useWebSocketContext } from "./hooks/useWebSocketContext";
-import SerialConfigForm from "./components/SerialConfigForm";
+import Settings from "./components/Settings";
+import SerialConfigForm from "./components/Settings/SerialConfigForm";
+import Status from "./components/Status";
+import Dashboard from "./components/Dashboard";
 import TopNav, { type NavPage } from "./components/TopNav";
-import "./components/Dashboard.scss";
 import "./App.scss";
 
 function App() {
@@ -14,18 +16,25 @@ function App() {
     connected: wsConnected,
     serialStatus,
     config: backendConfig,
-    configError,
-    serialError,
     saveConfig: wsSaveConfig,
     testSerialConnect,
-    connectSerial,
-    disconnectSerial,
+    getThreadState,
+    threadState,
+    threadRunOnConnect,
   } = useWebSocketContext();
 
   // Config chỉ lấy từ backend qua WebSocket
   useEffect(() => {
     setConfig(backendConfig ?? null);
   }, [backendConfig]);
+
+  // Khi đã cấu hình tự chạy Thread và serial connect: poll state (leader/router/child/detached) để cập nhật symbol TopNav
+  useEffect(() => {
+    if (!serialStatus?.isConnected || !threadRunOnConnect) return;
+    getThreadState();
+    const interval = setInterval(getThreadState, 4000);
+    return () => clearInterval(interval);
+  }, [serialStatus?.isConnected, threadRunOnConnect, getThreadState]);
 
   const handleConfigSave = (newConfig: {
     serialPort: string;
@@ -42,8 +51,14 @@ function App() {
 
   if (!wsConnected) {
     return (
-      <div className="app-container">
-        <div className="loading">Connecting to backend...</div>
+      <div className="app-layout app-layout--waiting">
+        <div className="app-container">
+          <div className="loading waiting-for-backend">
+            <span className="waiting-dot" />
+            <p className="waiting-message">Waiting for backend...</p>
+            <p className="waiting-hint">Start the backend or reconnecting.</p>
+          </div>
+        </div>
       </div>
     );
   }
@@ -68,90 +83,31 @@ function App() {
 
   return (
     <div className="app-layout">
-      <TopNav currentPage={page} onNavigate={setPage} />
+      <TopNav
+        currentPage={page}
+        onNavigate={setPage}
+        serialConnected={serialStatus?.isConnected ?? false}
+        threadState={threadState}
+        threadRunOnConnect={threadRunOnConnect}
+      />
       <main className="app-main">
+        {page === "status" && (
+          <div className="app-container">
+            <Status />
+          </div>
+        )}
         {page === "settings" && (
           <div className="app-container">
-            <SerialConfigForm
-              initialConfig={config ?? null}
-              onSave={handleConfigSave}
+            <Settings
+              serialConfig={config ?? null}
+              onSaveSerialConfig={handleConfigSave}
               onTestConnect={testSerialConnect}
             />
           </div>
         )}
         {page === "dashboard" && (
           <div className="app-container">
-            <div className="dashboard">
-                <h1>Dashboard Thread</h1>
-
-                <div className="connection-status">
-                  <div className="status-row">
-                    <span className="status-label">WebSocket:</span>
-                    <span
-                      className={`status-badge ${wsConnected ? "connected" : "disconnected"}`}
-                    >
-                      {wsConnected ? "Connected" : "Disconnected"}
-                    </span>
-                  </div>
-                  <div className="status-row">
-                    <span className="status-label">Serial Port:</span>
-                    <span
-                      className={`status-badge ${
-                        serialStatus?.isConnected ? "connected" : "disconnected"
-                      }`}
-                    >
-                      {serialStatus?.isConnected ? "Connected" : "Disconnected"}
-                    </span>
-                  </div>
-                  {(configError || serialError) && (
-                    <div className="status-error">
-                      {configError || serialError}
-                    </div>
-                  )}
-                  <div className="serial-actions">
-                    <button
-                      type="button"
-                      className="change-config-button"
-                      disabled={!wsConnected}
-                      onClick={connectSerial}
-                    >
-                      Connect Serial
-                    </button>
-                    <button
-                      type="button"
-                      className="change-config-button disconnect"
-                      disabled={!wsConnected || !serialStatus?.isConnected}
-                      onClick={disconnectSerial}
-                    >
-                      Disconnect Serial
-                    </button>
-                  </div>
-                </div>
-
-                <div className="config-info">
-                  <h2>Current Configuration</h2>
-                  <div className="config-display">
-                    <div className="config-item">
-                      <span className="config-label">Serial Port:</span>
-                      <span className="config-value">{config.serialPort}</span>
-                    </div>
-                    <div className="config-item">
-                      <span className="config-label">Baud Rate:</span>
-                      <span className="config-value">{config.baudRate}</span>
-                    </div>
-                    <div className="config-item">
-                      <span className="config-label">Command Prefix:</span>
-                      <span className="config-value">{config.commandPrefix}</span>
-                    </div>
-                  </div>
-                  <button
-                    className="change-config-button"
-                    onClick={() => setPage("settings")}
-                  >
-                    Change Configuration
-                  </button>
-                </div>
-              </div>
+            <Dashboard />
           </div>
         )}
       </main>
