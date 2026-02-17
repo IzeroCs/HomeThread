@@ -1,14 +1,5 @@
 idf_component_register(
-    SRCS 
-        "main.c"
-        "rgb_led_endpoint.c"
-    INCLUDE_DIRS 
-        "."
-    PRIV_REQUIRES 
-        openthread
-        driver
-        nvs_flash
-        esp_event
-        esp_netif
-        json
+    SRCS "main.c" "led_udp_server.c"
+    INCLUDE_DIRS "."
+    PRIV_REQUIRES esp_event nvs_flash openthread driver lwip ot_examples_common
 )

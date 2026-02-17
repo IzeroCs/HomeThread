@@ -1,4 +1,3 @@
-import { useEffect } from "react";
 import { useWebSocketContext } from "../hooks/useWebSocketContext";
 import "./Status.scss";
 
@@ -26,19 +25,9 @@ function parseDatasetLine(line: string): { tag: string; value: string } {
 const RUNNING_STATES = ["leader", "router", "child"];
 
 export default function Status() {
-  const { serialStatus, otConfig, getOtConfig, threadState } = useWebSocketContext();
+  const { serialStatus, otConfig, threadState } = useWebSocketContext();
   const isConnected = serialStatus?.isConnected ?? false;
-  const isThreadRunning =
-    threadState != null && RUNNING_STATES.includes(threadState.toLowerCase());
-
-  useEffect(() => {
-    if (isConnected) getOtConfig();
-  }, [isConnected, getOtConfig]);
-
-  // Khi state chuyển sang leader/router/child → gửi lại lệnh lấy thông tin (dataset active, ipaddr lúc disabled/detached báo Not Found)
-  useEffect(() => {
-    if (isConnected && isThreadRunning) getOtConfig();
-  }, [isConnected, isThreadRunning, getOtConfig]);
+  // OT config do backend interval (6s) broadcast; frontend chỉ hiển thị otConfig từ context.
 
   const ipaddrLines =
     otConfig?.ipaddr != null && otConfig.ipaddr !== ""

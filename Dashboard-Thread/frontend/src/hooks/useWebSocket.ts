@@ -56,6 +56,9 @@ export interface UseWebSocketReturn {
   childTable: OtTableData | null;
   getRouterTable: () => void;
   getChildTable: () => void;
+  joinerTable: OtTableData | null;
+  getJoinerTable: () => void;
+  commissionerConnect: (eui64: string, psk: string, timeoutSeconds?: number) => Promise<{ success: boolean; error?: string }>;
   onSerialData: (callback: (data: string) => void) => () => void;
   onCliResponse: (callback: (data: CliResponse) => void) => () => void;
 }
@@ -73,6 +76,7 @@ export function useWebSocket(): UseWebSocketReturn {
   const [threadRunOnConnect, setThreadRunOnConnectState] = useState<boolean>(false);
   const [routerTable, setRouterTable] = useState<OtTableData | null>(null);
   const [childTable, setChildTable] = useState<OtTableData | null>(null);
+  const [joinerTable, setJoinerTable] = useState<OtTableData | null>(null);
 
   const connect = useCallback(() => {
     if (socketRef.current?.connected) {
@@ -174,6 +178,10 @@ export function useWebSocket(): UseWebSocketReturn {
 
     socket.on("ot:childTable", (data: OtTableData) => {
       setChildTable(data);
+    });
+
+    socket.on("commissioner:joinerTable", (data: OtTableData) => {
+      setJoinerTable(data);
     });
 
     socketRef.current = socket;
@@ -298,6 +306,27 @@ export function useWebSocket(): UseWebSocketReturn {
     socketRef.current?.emit("ot:getChildTable");
   }, []);
 
+  const getJoinerTable = useCallback(() => {
+    socketRef.current?.emit("commissioner:getJoinerTable");
+  }, []);
+
+  const commissionerConnect = useCallback(
+    (eui64: string, psk: string, timeoutSeconds?: number): Promise<{ success: boolean; error?: string }> =>
+      new Promise((resolve) => {
+        if (!socketRef.current) {
+          resolve({ success: false, error: "Not connected" });
+          return;
+        }
+        const handler = (result: { success: boolean; error?: string }) => {
+          socketRef.current?.off("commissioner:connect:result", handler);
+          resolve(result);
+        };
+        socketRef.current.once("commissioner:connect:result", handler);
+        socketRef.current.emit("commissioner:connect", { eui64, psk, timeout: timeoutSeconds });
+      }),
+    []
+  );
+
   const onSerialData = useCallback((callback: (data: string) => void) => {
     if (!socketRef.current) {
       return () => {};
@@ -363,6 +392,9 @@ export function useWebSocket(): UseWebSocketReturn {
     childTable,
     getRouterTable,
     getChildTable,
+    joinerTable,
+    getJoinerTable,
+    commissionerConnect,
     onSerialData,
     onCliResponse,
   };

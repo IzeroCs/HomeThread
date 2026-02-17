@@ -37,17 +37,21 @@
   - Tự động mở port khi gửi lệnh nếu chưa mở
   - Graceful shutdown với SIGINT/SIGTERM
   - Error handling và logging chi tiết
+- [x] **Commissioner (joiner)**: WebSocket event `commissioner:connect` với `{ eui64, psk }`; backend gửi `commissioner start` rồi `commissioner joiner add <eui64> <psk> 120` qua CLI; emit `commissioner:connect:result` với `{ success, error? }`
 - [ ] **Bảo mật (nếu cần)**: Auth cho API, HTTPS, giới hạn IP nếu chạy trong mạng nội bộ
 
 ## Frontend
 
-- [ ] **Giao diện nhập lệnh**: Ô input để gõ lệnh OpenThread (vd `state`, `scan`, `joiner start 0`), nút "Gửi" hoặc Enter
-- [ ] **Hiển thị kết quả**: Vùng hiển thị output (terminal-style hoặc log): in từng dòng/block text backend trả về
+- [x] **Giao diện nhập lệnh**: Trang **Console** – ô input lệnh OpenThread, nút "Gửi", gọi `sendCliCommand()`; nhận output qua `onCliResponse()`; log box chiều cao cố định 320px, cuộn khi tràn
+- [x] **Hiển thị kết quả**: Vùng log terminal-style trên Console: in lệnh đã gửi (`> cmd`) và từng dòng output/error từ `cli:response`
 - [x] **Trạng thái kết nối**: Hiển thị "Đã kết nối / Chưa kết nối / Lỗi" tới backend (và nếu có thì tới UART)
   - Trang **Status** hiển thị Serial (port, baud) + OpenThread (PAN ID, Channel, Network Name, IP Address, Dataset Active)
   - Khi thread state chuyển sang leader/router/child thì gọi lại getOtConfig (dataset active lúc disabled/detached báo Not Found)
   - Dataset Active: card riêng, hiển thị dạng bảng Key: Value giống IP Address
 - [ ] **Trang Status: gửi quá nhiều lệnh lấy thông tin** — Giảm tần suất / debounce getOtConfig (vd khi state leader); sửa sau.
+- [x] **Trang Commissioner**: Form EUI64 + PSK, nút "Kết nối" gọi `commissionerConnect(eui64, psk)`; trạng thái "Đang kết nối..." (ba chấm); alert thành công/lỗi; chỉ hiện trên TopNav khi state = leader
+- [x] **Trang Console**: TopNav có nút Console; component Console với log box (height 320px), form lệnh CLI + Gửi
+- [x] **Form thống nhất**: Commissioner, SerialConfigForm, OpenThreadConfigForm dùng chung `form-page`, `form-card`, `form-page-title`, `form-page-description`, `form-page-alert`, `form-page-form` (max-width 640px) trong `_form.scss`
 - [ ] **Lệnh thường dùng**: Nút shortcut cho các lệnh hay dùng: `state`, `scan`, `joiner start/stop`, `commissioner start/stop`, `networkname`, v.v.
 - [ ] **Lịch sử lệnh**: Lưu và cho phép chọn lại lệnh đã gửi (localStorage hoặc chỉ trong session)
 - [ ] **Realtime (nếu backend có WebSocket)**: Tab/mode "Live terminal": mọi dòng từ UART hiển thị realtime, vẫn có thể gửi lệnh từ cùng giao diện
@@ -77,9 +81,10 @@
    - Implement đầy đủ WebSocket events cho CLI và serial port
    - Realtime data streaming từ serial port
 3. [x] Frontend: Trang Status (Serial + OpenThread config, refresh khi leader, Dataset Active dạng bảng)
-4. [x] Frontend: Trang Dashboard (Router Table, Child Table); trang mặc định khi mở app là Dashboard
-5. Frontend: form gửi lệnh + hiển thị kết quả, gọi API
-6. Sau đó: shortcut lệnh, lịch sử, cấu hình, WebSocket (nếu cần terminal realtime)
+4. [x] Frontend: Trang Dashboard (Router Table, Child Table)
+5. [x] Frontend: Trang Console (form gửi lệnh CLI + log output); Commissioner (EUI64/PSK, commissionerConnect); form thống nhất (form-page/form-card/…)
+6. [x] Trang mặc định khi mở app: Commissioner
+7. Sau đó: shortcut lệnh, lịch sử lệnh, Live terminal (nếu cần)
 
 ---
 
@@ -130,7 +135,7 @@
   - OpenThread: PAN ID, Channel, Network Name, IP Address (bảng tag + value), Dataset Active (card riêng, bảng Key: Value như ipaddr)
   - Khi `threadState` là leader/router/child → gọi lại `getOtConfig()` để refresh dataset active và ipaddr (tránh "Not Found" lúc disabled/detached)
 - **TopNav**: nút Status, hiển thị thread state (leader/router/child)
-- **App**: route `/status`, poll `getThreadState()` mỗi 4s khi serial đã kết nối; trang mặc định khi mở app là **Dashboard**
+- **App**: poll `getThreadState()` mỗi 4s khi serial đã kết nối
 
 ### Frontend – Trang Dashboard
 - **Dashboard** (`frontend/src/components/Dashboard.tsx`):
@@ -139,4 +144,23 @@
   - Frontend: `routerTable`, `childTable`, `getRouterTable()`, `getChildTable()`; khi mount và đã kết nối serial thì gọi lấy dữ liệu; **tự động làm mới** mỗi 4 giây; nút "Làm mới" cho từng bảng
   - Gọi tuần tự: router table trước, sau 1.5s mới gọi child table (tránh hai lệnh cùng lúc trên serial)
   - Dừng hẳn khi rời tab: `mountedRef` + cleanup interval và timeout từ `refreshTables()` khi unmount; không xóa data khi gọi get (cập nhật tại chỗ, không nháy bảng)
-- **App**: trang mặc định `useState<NavPage>("dashboard")` → mở app thấy Dashboard trước
+- **App**: trang mặc định `useState<NavPage>("commissioner")` → mở app thấy Commissioner trước
+
+### Frontend – Trang Commissioner
+- **Commissioner** (`frontend/src/components/Commissioner.tsx`):
+  - Form EUI64 + PSK; nút "Kết nối" gọi `commissionerConnect(eui64, psk)` từ WebSocket context
+  - Loading: "Đang kết nối" + ba chấm (animation); input/button disabled khi đang gửi
+  - Alert thành công/lỗi sau khi backend trả `commissioner:connect:result`
+- **Backend**: `commissioner:connect` → validate EUI64 (16 hex), PSK; `commissioner start` rồi `commissioner joiner add <eui64> <psk> 120`; emit `commissioner:connect:result`
+- **TopNav**: nút Commissioner chỉ bật khi `threadState === "leader"`
+
+### Frontend – Trang Console
+- **Console** (`frontend/src/components/Console.tsx`):
+  - TopNav có nút Console (giữa Commissioner và Settings)
+  - Vùng log: nền tối, font monospace, **height 320px** cố định, overflow-y auto; hiển thị lệnh (`> cmd`) và output/error từ `cli:response`
+  - Form: input "Lệnh CLI", nút "Gửi"; gọi `sendCliCommand(cmd)`, subscribe `onCliResponse` để append vào log
+  - Cảnh báo khi chưa kết nối serial; input/nút disable khi chưa kết nối
+
+### Frontend – Form thống nhất
+- **`_form.scss`**: `.form-page` (max-width 640px), `.form-card`, `.form-page-title`, `.form-page-description`, `.form-page-alert` (warn/success/error), `.form-page-form` (gap 24px); khoảng cách description–form (margin-bottom description 28px)
+- **Commissioner, SerialConfigForm, OpenThreadConfigForm**: dùng chung class form-page/form-card/…; mỗi component chỉ giữ style đặc thù (nút Test Connect, checkbox OT, v.v.)

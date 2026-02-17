@@ -8,6 +8,8 @@ import { ReadlineParser } from "@serialport/parser-readline";
 export interface SerialPortConfig {
   path: string;
   baudRate: number;
+  /** Lệnh trong danh sách này sẽ không log RX/TX (vd "state" → ẩn "ot state" và response). */
+  quietCommands?: string[];
 }
 
 export class SerialPortService {
@@ -19,9 +21,22 @@ export class SerialPortService {
   private dataListeners: Set<(data: string) => void> = new Set();
   private closedByUs: boolean = false;
   private onDisconnectCallback: (() => void) | null = null;
+  /** Đang trong response của lệnh quiet → không log RX cho đến khi thấy prompt ">". */
+  private responseIsQuiet: boolean = false;
 
   constructor(config: SerialPortConfig) {
     this.config = config;
+  }
+
+  /** Lệnh có nằm trong quietCommands không (khớp cả "ot state" và "state"). */
+  private isQuietCommand(data: string): boolean {
+    const commands = this.config.quietCommands;
+    if (!commands?.length) return false;
+    const cmd = data.trim().toLowerCase();
+    return commands.some((q) => {
+      const qq = q.trim().toLowerCase();
+      return cmd === qq || cmd.endsWith(" " + qq);
+    });
   }
 
   /** Gọi khi port đóng bất ngờ (rút dây, lỗi) – không gọi khi close() chủ động */
@@ -54,9 +69,12 @@ export class SerialPortService {
         this.parser.on("data", (data: string) => {
           const line = data.toString().trim();
           if (line) {
-            // Log raw data để debug (có thể comment lại sau)
-            console.log(`[Serial] RX: ${line}`);
-            
+            if (!this.responseIsQuiet) {
+              console.log(`[Serial] RX: ${line}`);
+            }
+            if (line === ">" || line.endsWith(">")) {
+              this.responseIsQuiet = false;
+            }
             // Giới hạn buffer size để tránh memory leak
             if (this.dataBuffer.length > 1000) {
               this.dataBuffer.shift();
@@ -147,8 +165,12 @@ export class SerialPortService {
       throw new Error("Serial port is not open");
     }
 
-    // Log command để debug
-    console.log(`[Serial] TX: ${data}`);
+    const quiet = this.isQuietCommand(data);
+    if (quiet) {
+      this.responseIsQuiet = true;
+    } else {
+      console.log(`[Serial] TX: ${data}`);
+    }
 
     return new Promise((resolve, reject) => {
       this.port!.write(data + "\r\n", (err) => {

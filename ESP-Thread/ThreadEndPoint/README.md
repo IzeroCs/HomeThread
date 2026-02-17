@@ -1,106 +1,101 @@
-# Thread Endpoint - RGB LED Control
+# ThreadEndPoint – LED on/off qua Thread
 
-Ứng dụng OpenThread endpoint để điều khiển LED RGB trên ESP32-C6 thông qua CoAP.
+Endpoint Thread chạy trên **ESP32-C6** hoặc **ESP32-H2** (chỉ hai target này được hỗ trợ): join mạng qua Commissioner (PSKd), sau đó nhận lệnh bật/tắt LED qua UDP.
 
 ## Tính năng
 
-- Điều khiển LED RGB qua CoAP endpoint
-- Hỗ trợ GET để đọc trạng thái màu hiện tại
-- Hỗ trợ POST/PUT để thiết lập màu mới
-- Điều chỉnh độ sáng (brightness)
-- Sử dụng LEDC (LED Controller) của ESP32-C6 để điều khiển PWM
+- **OpenThread Joiner**: thiết bị join mạng Thread bằng **PSKd** (Pre-Shared Key for Device), Commissioner trên border router add joiner với cùng PSKd.
+- **LED**: bật/tắt LED (GPIO 8 mặc định, có thể đổi trong `main/led_udp_server.c`).
+- **UDP**: sau khi join, lắng nghe **port 5684**, nhận chuỗi `on` / `off` (UDP payload) để điều khiển LED.
 
-## Cấu hình GPIO
+## Joiner và PSKd (Pre-Shared Key for Device)
 
-Mặc định sử dụng các GPIO sau (có thể thay đổi trong `main.c`):
-- **Red channel**: GPIO 8
-- **Green channel**: GPIO 9  
-- **Blue channel**: GPIO 10
+Trong OpenThread, **Joiner** là thiết bị muốn vào mạng Thread; **Commissioner** (thường chạy trên Border Router) là bên xác thực và cấp credential cho Joiner.
 
-## CoAP Endpoint
+### PSKd theo tiêu chuẩn Thread (base32-thread)
 
-**URI**: `coap://[IPv6]:5683/rgb/led`
+PSKd **không phải** chuỗi ký tự tùy ý. Thread spec định nghĩa **Joiner Device Credential** với bảng ký tự **base32-thread**:
 
-### GET Request
-Lấy trạng thái màu hiện tại.
+- **Bảng ký tự**: 32 ký tự – chữ in hoa và số: `0-9` (10) và `A-Y` **loại trừ** `I`, `O`, `Q`, `Z` (22 chữ) để tránh nhầm khi đọc/ghi (vd QR, nhập tay).
+- **Độ dài**: **6–32** ký tự (OpenThread: `kMinLength` = 6, `kMaxLength` = 32).
+- Chuỗi phải **chỉ gồm** các ký tự trên; nếu có ký tự khác (vd chữ thường, khoảng trắng, I/O/Q/Z) OpenThread trả `kErrorInvalidArgs`.
 
-**Response** (JSON):
-```json
-{
-  "r": 255,
-  "g": 128,
-  "b": 0,
-  "brightness": 255
-}
-```
+Trên API/CLI, chuỗi bạn nhập (vd `joiner start J01NME`, `commissioner joiner add * H01THREAD`) chính là **Joiner Credential** – Joiner và Commissioner phải dùng **cùng chuỗi**, và chuỗi đó phải thỏa format base32-thread trên.
 
-### POST/PUT Request
-Thiết lập màu mới.
+- **Ví dụ hợp lệ**: `J01NME`, `H01THREAD` (phải **toàn chữ IN HOA**). Một số Commissioner chỉ chấp nhận dạng **1 chữ đầu + dãy số + chữ** (vd `H01THREAD`, `J01NME`); hai chữ liền ở đầu (vd `HOMETHREAD01`) có thể báo lỗi.
+- **Ví dụ không hợp lệ**: `HomeThread01` (chữ thường), `HOMETHREAD01` (hai chữ đầu `HO` có thể lỗi tùy Commissioner), `J01NME!` (ký tự đặc biệt), `JOIN` (dưới 6 ký tự).
 
-**Request Body** (JSON):
-```json
-{
-  "r": 255,
-  "g": 0,
-  "b": 0,
-  "brightness": 128
-}
-```
+**Lưu ý:** **PSKc** (Pre-Shared Key for the Commissioner) là thứ **khác** – dùng để Commissioner bên ngoài (vd app, OT Commissioner CLI) xác thực với Border Router, được tạo từ Network Name + Extended PAN ID + Commissioner Passphrase (công cụ `pskc`).
 
-**Response**: Trả về màu đã được thiết lập (format giống GET response).
+### Cấu hình PSKd / Commissioner trên Border Router
 
-## Build và Flash
+PSKd (Joiner Credential) mặc định trong code: **`H01THREAD`** (trong `main/main.c`) – dạng 1 chữ + số + chữ. Phải **toàn chữ IN HOA**.
 
-1. Cài đặt **ESP-IDF 5.5.2** (đã kiểm tra tương thích; 5.1+ có thể dùng được).
-2. Cấu hình target:
-   ```bash
-   idf.py set-target esp32c6
-   ```
-3. Build project:
-   ```bash
-   idf.py build
-   ```
-4. Flash và monitor:
-   ```bash
-   idf.py flash monitor
-   ```
+Trên **Border Router** (OTBR, ThreadBorder có Commissioner, v.v.):
 
-## Sử dụng với CoAP Client
-
-### Sử dụng coap-client (libcoap)
-
-**Đọc màu hiện tại:**
 ```bash
-coap-client -m get coap://[IPv6]:5683/rgb/led
+# Bật Commissioner (nếu chưa bật)
+commissioner start
+
+# Cho phép joiner có cùng Joiner Credential (OpenThread CLI: commissioner joiner add)
+# PSKd: toàn chữ IN HOA; nên dạng 1 chữ + số + chữ (vd H01THREAD)
+commissioner joiner add * H01THREAD
 ```
 
-**Thiết lập màu đỏ:**
+Sau đó bật nguồn (hoặc reset) endpoint. Thiết bị sẽ tìm Commissioner, xác thực bằng cùng Joiner Credential và nhận dataset, rồi join mạng. Khi đã join, log có dạng: `Joined Thread network` và UDP server chạy trên port 5684.
+
+**Đổi PSKd:** sửa macro `JOINER_PSKD` trong `main/main.c` và dùng **cùng chuỗi** đó trong lệnh add joiner trên Commissioner.
+
+### EUI64 của endpoint
+
+**EUI64** (64-bit Extended Unique Identifier) là định danh duy nhất của thiết bị (thường từ eFuse). Trên ESP32-C6/ESP32-H2, firmware **in EUI64 ra log** khi khởi động (dòng `EUI64: xxxxxxxxxxxxxxxx`).
+
+- Dùng khi muốn **chỉ cho phép một thiết bị** join: trên Commissioner chạy `commissioner joiner add <eui64> <pskd>` (vd: `commissioner joiner add 2f57d222545271f1 H01THREAD`) thay vì `*`.
+- Lấy EUI64: flash firmware, mở serial monitor, xem dòng log `EUI64: ...` ngay sau khi boot.
+
+## Điều khiển LED qua UDP
+
+Khi endpoint đã join và có IPv6:
+
+- **Port**: 5684 (UDP)
+- **Payload** (dạng text):
+  - `on` → bật LED
+  - `off` → tắt LED
+
+Ví dụ từ máy trong cùng Thread network (biết IPv6 của endpoint):
+
 ```bash
-coap-client -m post coap://[IPv6]:5683/rgb/led -e '{"r":255,"g":0,"b":0,"brightness":255}'
+# Thay <THREAD_IPV6> bằng mesh-local hoặc link-local IPv6 của endpoint
+echo -n "on"  | nc -u -w1 <THREAD_IPV6> 5684
+echo -n "off" | nc -u -w1 <THREAD_IPV6> 5684
 ```
 
-**Thiết lập màu xanh lá với độ sáng 50%:**
+Hoặc dùng script/python gửi UDP tới `[<ipv6>]:5684` với payload `on` / `off`.
+
+## Build & flash
+
+Project **chỉ build được** với `esp32c6` hoặc `esp32h2` (có native 802.15.4).
+
 ```bash
-coap-client -m post coap://[IPv6]:5683/rgb/led -e '{"r":0,"g":255,"b":0,"brightness":128}'
+cd ESP-Thread/ThreadEndPoint
+idf.py set-target esp32c6   # hoặc: idf.py set-target esp32h2
+idf.py build
+idf.py -p /dev/ttyUSB0 flash monitor
 ```
 
-### Sử dụng OpenThread CLI
+## Cấu hình
 
-Trong OpenThread CLI trên thiết bị khác:
-```
-coap post coap://[IPv6]:5683/rgb/led {"r":255,"g":0,"b":0,"brightness":255}
-coap get coap://[IPv6]:5683/rgb/led
-```
+- **Target**: chỉ **ESP32-C6** hoặc **ESP32-H2** (native 802.15.4).
+- **OpenThread**: FTD, Joiner bật; Border Router & Commissioner tắt.
+- **LED GPIO**: mặc định **GPIO 8** (ESP32-C6 DevKit). Đổi `s_led_gpio` trong `main/led_udp_server.c` nếu dùng chân khác hoặc LED ngoài.
 
-## Lưu ý
+## Lưu ý / Troubleshooting
 
-- Đảm bảo ESP32-C6 đã join vào Thread network trước khi sử dụng endpoint
-- Kiểm tra và điều chỉnh GPIO pins trong `main.c` theo hardware của bạn
-- LED RGB cần được kết nối với các GPIO thông qua transistor hoặc driver phù hợp nếu cần dòng cao
-- Đối với LED RGB common cathode, có thể cần đảo ngược logic PWM
+- **`Failed to process UDP: InvalidState` (MLE)**: Cảnh báo bình thường khi thiết bị đang ở trạng thái Joiner/Disabled. Mạng Thread có MLE (Mesh Link Establishment) gửi UDP; thiết bị nhận được nhưng không xử lý vì chưa attach → stack báo InvalidState. Có thể bỏ qua, không ảnh hưởng quá trình join.
 
-## Dependencies
+## Tóm tắt flow
 
-- ESP-IDF OpenThread component
-- LEDC driver (built-in ESP-IDF)
-- cJSON library (built-in ESP-IDF)
+1. Flash firmware lên ESP32-C6.
+2. Trên border router: `commissioner start` rồi `commissioner joiner add * H01THREAD`.
+3. Endpoint join mạng, in log "Joined Thread network", UDP server chạy trên port 5684.
+4. Gửi UDP `on` / `off` tới `<endpoint_ipv6>:5684` để bật/tắt LED.

@@ -1,0 +1,46 @@
+@use "../styles/form";
+@use "../styles/variables" as *;
+
+.console-card {
+  max-width: 720px;
+}
+
+.console-log {
+  background: #1e1e1e;
+  color: #d4d4d4;
+  border-radius: $border-radius-small;
+  padding: 16px;
+  height: 320px;
+  overflow-y: auto;
+  font-family: ui-monospace, "Cascadia Code", "Source Code Pro", Menlo, monospace;
+  font-size: 13px;
+  line-height: 1.5;
+  margin-bottom: 24px;
+}
+
+.console-log-placeholder {
+  color: $text-muted;
+  font-style: italic;
+}
+
+.console-log-line {
+  white-space: pre-wrap;
+  word-break: break-all;
+
+  &--command {
+    color: #9cdcfe;
+    font-weight: 600;
+  }
+
+  &--output {
+    color: #d4d4d4;
+  }
+
+  &--error {
+    color: #f48771;
+  }
+}
+
+.console-form {
+  margin-top: 0;
+}

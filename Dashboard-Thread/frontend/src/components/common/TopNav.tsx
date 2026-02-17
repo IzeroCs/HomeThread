@@ -1,6 +1,6 @@
 import "./TopNav.scss";
 
-export type NavPage = "dashboard" | "status" | "settings";
+export type NavPage = "dashboard" | "status" | "commissioner" | "console" | "settings";
 
 interface TopNavProps {
   /** Chỉ hiện logo, ẩn Dashboard/Settings */
@@ -11,6 +11,8 @@ interface TopNavProps {
   threadState?: string | null;
   /** Đã bật "tự chạy Thread" → tím mặc định, xanh lá chỉ khi state leader/router/child; chưa bật thì cam */
   threadRunOnConnect?: boolean;
+  /** Tổng router + child (hiển thị bên cạnh "Dashboard" khi có) */
+  dashboardCount?: number | null;
   currentPage?: NavPage;
   onNavigate?: (page: NavPage) => void;
 }
@@ -20,10 +22,12 @@ export default function TopNav({
   serialConnected = false,
   threadState = null,
   threadRunOnConnect = false,
+  dashboardCount = null,
   currentPage = "dashboard",
   onNavigate = () => {},
 }: TopNavProps) {
   const isLeader = threadState && ["leader", "router", "child"].includes(threadState.toLowerCase());
+  const isCommissionerEnabled = threadState?.toLowerCase() === "leader";
   const useThreadColor = serialConnected && threadRunOnConnect;
   // Khi đã bật tự chạy: xanh lá chỉ khi leader/router/child; còn lại (detached/disabled/null/lỗi) → tím. Cam chỉ khi chưa bật tự chạy.
   const statusClass = !serialConnected
@@ -62,8 +66,31 @@ export default function TopNav({
               type="button"
               className={`top-nav-link ${currentPage === "dashboard" ? "active" : ""}`}
               onClick={() => onNavigate("dashboard")}
+              title={dashboardCount !== undefined && dashboardCount !== null ? `Dashboard (${dashboardCount} thiết bị)` : "Dashboard"}
             >
-              Dashboard
+              Dashboard{dashboardCount !== undefined && dashboardCount !== null ? ` (${dashboardCount})` : ""}
+            </button>
+            <button
+              type="button"
+              className={`top-nav-link ${currentPage === "commissioner" ? "active" : ""}`}
+              onClick={() => onNavigate("commissioner")}
+              disabled={currentPage !== "commissioner" && !isCommissionerEnabled}
+              title={
+                isCommissionerEnabled
+                  ? "Commissioner"
+                  : currentPage === "commissioner"
+                    ? "Đang ở Commissioner (cần state leader để dùng)"
+                    : "Chỉ khả dụng khi state là leader"
+              }
+            >
+              Commissioner
+            </button>
+            <button
+              type="button"
+              className={`top-nav-link ${currentPage === "console" ? "active" : ""}`}
+              onClick={() => onNavigate("console")}
+            >
+              Console
             </button>
             <button
               type="button"

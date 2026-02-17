@@ -85,43 +85,42 @@ export default function SerialConfigForm({ initialConfig, onSave, onTestConnect 
   };
 
   const canSave = !onTestConnect || testSucceeded;
+  const alertMessage =
+    testStatus.type === "success"
+      ? testStatus.message
+      : testStatus.type === "error"
+        ? testStatus.message
+        : Object.keys(errors).length > 0
+          ? errors.serialPort ||
+            errors.baudRate ||
+            errors.commandPrefix ||
+            "Please check the fields below."
+          : null;
+  const alertType =
+    testStatus.type === "success"
+      ? "success"
+      : testStatus.type === "error" || Object.keys(errors).length > 0
+        ? "error"
+        : null;
 
   return (
-    <div className="config-container">
-      <div className="config-card">
-        <h2>Serial Port Configuration</h2>
-        <p className="config-description">
+    <div className="form-page">
+      <div className="form-card">
+        <h2 className="form-page-title">Serial Port Configuration</h2>
+        <p className="form-page-description">
           Configure serial port settings connection
         </p>
 
-        {(testStatus.type === "success" ||
-          testStatus.type === "error" ||
-          Object.keys(errors).length > 0) && (
-          <div className="config-alert" role="alert">
-            {testStatus.type === "success" && (
-              <span className="config-alert-message config-alert-success">
-                {testStatus.message}
-              </span>
-            )}
-            {testStatus.type === "error" && (
-              <span className="config-alert-message config-alert-error">
-                {testStatus.message}
-              </span>
-            )}
-            {testStatus.type !== "success" &&
-              testStatus.type !== "error" &&
-              Object.keys(errors).length > 0 && (
-                <span className="config-alert-message config-alert-error">
-                  {errors.serialPort ||
-                    errors.baudRate ||
-                    errors.commandPrefix ||
-                    "Please check the fields below."}
-                </span>
-              )}
+        {alertMessage && alertType && (
+          <div
+            className={`form-page-alert form-page-alert-${alertType}`}
+            role="alert"
+          >
+            {alertMessage}
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="config-form">
+        <form onSubmit={handleSubmit} className="form-page-form">
           <div className="form-group">
             <label htmlFor="serialPort">Serial Port</label>
             <input
@@ -194,7 +193,7 @@ export default function SerialConfigForm({ initialConfig, onSave, onTestConnect 
             )}
             <button
               type="submit"
-              className="submit-button"
+              className="btn-primary submit-button"
               disabled={onTestConnect ? !canSave : false}
             >
               Save Configuration

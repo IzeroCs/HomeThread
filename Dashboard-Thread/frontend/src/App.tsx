@@ -5,12 +5,14 @@ import Settings from "./components/Settings";
 import SerialConfigForm from "./components/Settings/SerialConfigForm";
 import Status from "./components/Status";
 import Dashboard from "./components/Dashboard";
-import TopNav, { type NavPage } from "./components/TopNav";
+import Commissioner from "./components/Commissioner";
+import Console from "./components/Console";
+import TopNav, { type NavPage } from "./components/common/TopNav";
 import "./App.scss";
 
 function App() {
   const [config, setConfig] = useState<SerialConfigFromBackend | null>(null);
-  const [page, setPage] = useState<NavPage>("dashboard");
+  const [page, setPage] = useState<NavPage>("commissioner");
 
   const {
     connected: wsConnected,
@@ -18,23 +20,20 @@ function App() {
     config: backendConfig,
     saveConfig: wsSaveConfig,
     testSerialConnect,
-    getThreadState,
     threadState,
     threadRunOnConnect,
+    routerTable,
+    childTable,
   } = useWebSocketContext();
+
+  const dashboardCount = (routerTable?.rows?.length ?? 0) + (childTable?.rows?.length ?? 0);
 
   // Config chỉ lấy từ backend qua WebSocket
   useEffect(() => {
     setConfig(backendConfig ?? null);
   }, [backendConfig]);
 
-  // Khi đã cấu hình tự chạy Thread và serial connect: poll state (leader/router/child/detached) để cập nhật symbol TopNav
-  useEffect(() => {
-    if (!serialStatus?.isConnected || !threadRunOnConnect) return;
-    getThreadState();
-    const interval = setInterval(getThreadState, 4000);
-    return () => clearInterval(interval);
-  }, [serialStatus?.isConnected, threadRunOnConnect, getThreadState]);
+  // Thread state do backend poll (interval 4s) và broadcast ot:threadState; frontend chỉ lắng nghe, không gọi lệnh.
 
   const handleConfigSave = (newConfig: {
     serialPort: string;
@@ -89,6 +88,7 @@ function App() {
         serialConnected={serialStatus?.isConnected ?? false}
         threadState={threadState}
         threadRunOnConnect={threadRunOnConnect}
+        dashboardCount={dashboardCount}
       />
       <main className="app-main">
         {page === "status" && (
@@ -108,6 +108,16 @@ function App() {
         {page === "dashboard" && (
           <div className="app-container">
             <Dashboard />
+          </div>
+        )}
+        {page === "commissioner" && (
+          <div className="app-container">
+            <Commissioner />
+          </div>
+        )}
+        {page === "console" && (
+          <div className="app-container">
+            <Console />
           </div>
         )}
       </main>

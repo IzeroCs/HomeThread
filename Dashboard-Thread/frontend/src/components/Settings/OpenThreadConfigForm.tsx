@@ -63,26 +63,26 @@ export default function OpenThreadConfigForm() {
   };
 
   return (
-    <div className="ot-config-container">
-      <div className="ot-config-card">
-        <h2>OpenThread / Thread</h2>
-        <p className="ot-config-description">
+    <div className="form-page">
+      <div className="form-card">
+        <h2 className="form-page-title">OpenThread / Thread</h2>
+        <p className="form-page-description">
           Cấu hình Panid, Channel, Network Name trên thiết bị. Cần kết nối serial trước.
         </p>
 
         {!isConnected && (
-          <div className="ot-config-alert ot-config-alert-warn">
+          <div className="form-page-alert form-page-alert-warn">
             Chưa kết nối serial. Vào Dashboard → Connect Serial rồi quay lại đây.
           </div>
         )}
 
         {message && (
-          <div className={`ot-config-alert ot-config-alert-${message.type}`}>
+          <div className={`form-page-alert form-page-alert-${message.type}`}>
             {message.text}
           </div>
         )}
 
-        <div className="ot-config-form">
+        <div className="form-page-form">
           <div className="form-group">
             <label htmlFor="ot-panid">PAN ID</label>
             <input
@@ -131,7 +131,7 @@ export default function OpenThreadConfigForm() {
               </span>
             </label>
           </div>
-          <div className="ot-config-actions">
+          <div className="form-actions">
             <button
               type="button"
               className="ot-config-btn load"

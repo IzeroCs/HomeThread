@@ -21,6 +21,36 @@ export class WebSocketServer {
   private autoReconnectEnabled = true;
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
 
+  /** Thread state: backend poll một lần, broadcast cho mọi client — tránh nhiều frontend gọi lệnh gây crash ESP */
+  private lastThreadState: { running: boolean; state?: string } | null = null;
+  private threadStateIntervalId: ReturnType<typeof setInterval> | null = null;
+  private static readonly THREAD_STATE_POLL_MS = 4000;
+
+  /** OT config (Status): backend interval, frontend chỉ nhận */
+  private lastOtConfig: {
+    panid?: string;
+    channel?: number;
+    networkName?: string;
+    ipaddr?: string;
+    datasetActive?: string;
+    error?: string;
+  } | null = null;
+  private otConfigIntervalId: ReturnType<typeof setInterval> | null = null;
+  private static readonly OT_CONFIG_POLL_MS = 6000;
+
+  /** Router/Child table (Dashboard): backend interval, frontend chỉ nhận */
+  private lastRouterTable: { headers?: string[]; rows?: string[][]; error?: string } | null = null;
+  private lastChildTable: { headers?: string[]; rows?: string[][]; error?: string } | null = null;
+  private dashboardTableIntervalId: ReturnType<typeof setInterval> | null = null;
+  private dashboardTableChildTimeoutId: ReturnType<typeof setTimeout> | null = null;
+  private static readonly DASHBOARD_TABLE_POLL_MS = 6000;
+  private static readonly CHILD_TABLE_DELAY_MS = 1500;
+
+  /** Joiner table (Commissioner): backend interval, frontend chỉ nhận */
+  private lastJoinerTable: { headers?: string[]; rows?: string[][]; error?: string } | null = null;
+  private joinerTableIntervalId: ReturnType<typeof setInterval> | null = null;
+  private static readonly JOINER_TABLE_POLL_MS = 6000;
+
   /** Hàng đợi lệnh CLI: chỉ một lệnh chạy tại một thời điểm, tránh xung đột với getThreadState/getOtConfig/router table/child table từ nhiều nơi. */
   private cliQueue: Promise<void> = Promise.resolve();
 
@@ -61,6 +91,200 @@ export class WebSocketServer {
     this.setupEventHandlers();
   }
 
+  /** Poll state một lần và broadcast cho mọi client; cập nhật lastThreadState */
+  private async pollThreadState(): Promise<void> {
+    if (!this.cliWrapper || !this.serialPort?.getStatus().isConnected) return;
+    try {
+      const stateLine = await this.getCurrentThreadState();
+      const running = ["detached", "child", "router", "leader"].includes(stateLine);
+      this.lastThreadState = { running, state: stateLine || undefined };
+      this.io.emit("ot:threadState", this.lastThreadState);
+      if (stateLine === "disabled" && this.appSettingsService.getThreadRunOnConnect()) {
+        this.maybeStartThreadFromPreference().catch((err) =>
+          console.warn("[Serial] Auto-restart Thread after disabled failed:", err)
+        );
+      }
+    } catch {
+      this.lastThreadState = null;
+      this.io.emit("ot:threadState", { error: "Failed to get thread state." });
+    }
+  }
+
+  private startThreadStatePolling(): void {
+    if (this.threadStateIntervalId != null) return;
+    if (!this.serialPort?.getStatus().isConnected) return;
+    this.threadStateIntervalId = setInterval(() => {
+      this.pollThreadState();
+    }, WebSocketServer.THREAD_STATE_POLL_MS);
+    this.pollThreadState();
+  }
+
+  private stopThreadStatePolling(): void {
+    if (this.threadStateIntervalId != null) {
+      clearInterval(this.threadStateIntervalId);
+      this.threadStateIntervalId = null;
+    }
+    this.lastThreadState = null;
+    this.io.emit("ot:threadState", { error: "Serial not connected. Connect serial first." });
+  }
+
+  /** Lấy payload OT config (panid, channel, networkName, ipaddr, dataset active) — không emit */
+  private async fetchOtConfigPayload(): Promise<{
+    panid?: string;
+    channel?: number;
+    networkName?: string;
+    ipaddr?: string;
+    datasetActive?: string;
+    error?: string;
+  }> {
+    if (!this.cliWrapper || !this.serialPort?.getStatus().isConnected) {
+      return { error: "Serial not connected. Connect serial first." };
+    }
+    const panidRes = await this.executeCommandQueued("panid");
+    const channelRes = await this.executeCommandQueued("channel");
+    const networkNameRes = await this.executeCommandQueued("networkname");
+    const ipaddrRes = await this.executeCommandQueued("ipaddr");
+    const datasetRes = await this.executeCommandQueued("dataset active");
+    const pickValueLines = (raw: string[]): string[] => this.filterCliOutput(raw);
+    const panid = this.pickValueLine(panidRes.output, { panid: true });
+    const channelStr = this.pickValueLine(channelRes.output, { channel: true });
+    const networkName = this.pickValueLine(networkNameRes.output, { networkName: true });
+    const ipaddrLines = pickValueLines(ipaddrRes.output);
+    const ipaddr = ipaddrLines.length > 0 ? ipaddrLines.join("\n") : undefined;
+    const datasetLines = pickValueLines(datasetRes.output);
+    const datasetActive = datasetLines.length > 0 ? datasetLines.join("\n") : undefined;
+    return {
+      panid,
+      channel: channelStr ? parseInt(channelStr, 10) : undefined,
+      networkName,
+      ipaddr,
+      datasetActive,
+    };
+  }
+
+  private async pollOtConfig(): Promise<void> {
+    if (!this.serialPort?.getStatus().isConnected) return;
+    try {
+      const payload = await this.fetchOtConfigPayload();
+      this.lastOtConfig = payload;
+      this.io.emit("ot:config", payload);
+    } catch (error) {
+      this.lastOtConfig = { error: error instanceof Error ? error.message : "Unknown error" };
+      this.io.emit("ot:config", this.lastOtConfig);
+    }
+  }
+
+  private startOtConfigPolling(): void {
+    if (this.otConfigIntervalId != null) return;
+    if (!this.serialPort?.getStatus().isConnected) return;
+    this.otConfigIntervalId = setInterval(() => {
+      this.pollOtConfig();
+    }, WebSocketServer.OT_CONFIG_POLL_MS);
+    this.pollOtConfig();
+  }
+
+  private stopOtConfigPolling(): void {
+    if (this.otConfigIntervalId != null) {
+      clearInterval(this.otConfigIntervalId);
+      this.otConfigIntervalId = null;
+    }
+    this.lastOtConfig = null;
+    this.io.emit("ot:config", { error: "Serial not connected. Connect serial first." });
+  }
+
+  private async pollRouterTable(): Promise<void> {
+    if (!this.cliWrapper || !this.serialPort?.getStatus().isConnected) return;
+    try {
+      const res = await this.executeCommandQueued("router table");
+      const { headers, rows } = this.parseTableOutput(res.output);
+      this.lastRouterTable = { headers, rows };
+      this.io.emit("ot:routerTable", this.lastRouterTable);
+    } catch (error) {
+      this.lastRouterTable = { error: error instanceof Error ? error.message : "Unknown error" };
+      this.io.emit("ot:routerTable", this.lastRouterTable);
+    }
+  }
+
+  private async pollChildTable(): Promise<void> {
+    if (!this.cliWrapper || !this.serialPort?.getStatus().isConnected) return;
+    try {
+      const res = await this.executeCommandQueued("child table");
+      const { headers, rows } = this.parseTableOutput(res.output);
+      this.lastChildTable = { headers, rows };
+      this.io.emit("ot:childTable", this.lastChildTable);
+    } catch (error) {
+      this.lastChildTable = { error: error instanceof Error ? error.message : "Unknown error" };
+      this.io.emit("ot:childTable", this.lastChildTable);
+    }
+  }
+
+  private runDashboardTablePoll(): void {
+    if (!this.serialPort?.getStatus().isConnected) return;
+    this.pollRouterTable();
+    if (this.dashboardTableChildTimeoutId != null) {
+      clearTimeout(this.dashboardTableChildTimeoutId);
+    }
+    this.dashboardTableChildTimeoutId = setTimeout(() => {
+      this.dashboardTableChildTimeoutId = null;
+      this.pollChildTable();
+    }, WebSocketServer.CHILD_TABLE_DELAY_MS);
+  }
+
+  private startDashboardTablePolling(): void {
+    if (this.dashboardTableIntervalId != null) return;
+    if (!this.serialPort?.getStatus().isConnected) return;
+    this.dashboardTableIntervalId = setInterval(() => {
+      this.runDashboardTablePoll();
+    }, WebSocketServer.DASHBOARD_TABLE_POLL_MS);
+    this.runDashboardTablePoll();
+  }
+
+  private stopDashboardTablePolling(): void {
+    if (this.dashboardTableChildTimeoutId != null) {
+      clearTimeout(this.dashboardTableChildTimeoutId);
+      this.dashboardTableChildTimeoutId = null;
+    }
+    if (this.dashboardTableIntervalId != null) {
+      clearInterval(this.dashboardTableIntervalId);
+      this.dashboardTableIntervalId = null;
+    }
+    this.lastRouterTable = null;
+    this.lastChildTable = null;
+    this.io.emit("ot:routerTable", { error: "Serial not connected. Connect serial first." });
+    this.io.emit("ot:childTable", { error: "Serial not connected. Connect serial first." });
+  }
+
+  private async pollJoinerTable(): Promise<void> {
+    if (!this.cliWrapper || !this.serialPort?.getStatus().isConnected) return;
+    try {
+      const res = await this.executeCommandQueued("commissioner joiner table");
+      const { headers, rows } = this.parseTableOutput(res.output);
+      this.lastJoinerTable = { headers, rows };
+      this.io.emit("commissioner:joinerTable", this.lastJoinerTable);
+    } catch (error) {
+      this.lastJoinerTable = { error: error instanceof Error ? error.message : "Unknown error" };
+      this.io.emit("commissioner:joinerTable", this.lastJoinerTable);
+    }
+  }
+
+  private startJoinerTablePolling(): void {
+    if (this.joinerTableIntervalId != null) return;
+    if (!this.serialPort?.getStatus().isConnected) return;
+    this.joinerTableIntervalId = setInterval(() => {
+      this.pollJoinerTable();
+    }, WebSocketServer.JOINER_TABLE_POLL_MS);
+    this.pollJoinerTable();
+  }
+
+  private stopJoinerTablePolling(): void {
+    if (this.joinerTableIntervalId != null) {
+      clearInterval(this.joinerTableIntervalId);
+      this.joinerTableIntervalId = null;
+    }
+    this.lastJoinerTable = null;
+    this.io.emit("commissioner:joinerTable", { error: "Serial not connected. Connect serial first." });
+  }
+
   private setupEventHandlers(): void {
     this.io.on("connection", (socket: Socket) => {
       console.log(`[WS] Client connected: ${socket.id}`);
@@ -70,6 +294,21 @@ export class WebSocketServer {
 
       // Gửi trạng thái serial port hiện tại
       this.sendSerialStatus(socket);
+      if (this.lastThreadState != null) {
+        socket.emit("ot:threadState", this.lastThreadState);
+      }
+      if (this.lastOtConfig != null) {
+        socket.emit("ot:config", this.lastOtConfig);
+      }
+      if (this.lastRouterTable != null) {
+        socket.emit("ot:routerTable", this.lastRouterTable);
+      }
+      if (this.lastChildTable != null) {
+        socket.emit("ot:childTable", this.lastChildTable);
+      }
+      if (this.lastJoinerTable != null) {
+        socket.emit("commissioner:joinerTable", this.lastJoinerTable);
+      }
 
       // Config events
       socket.on("config:get", () => {
@@ -144,10 +383,17 @@ export class WebSocketServer {
         await this.applyThreadRunPreferenceNow(runOnConnect);
       });
       socket.on("ot:getRouterTable", async () => {
-        await this.handleOtGetTable(socket, "router table", "ot:routerTable");
+        await this.handleOtGetRouterTable(socket);
       });
       socket.on("ot:getChildTable", async () => {
-        await this.handleOtGetTable(socket, "child table", "ot:childTable");
+        await this.handleOtGetChildTable(socket);
+      });
+
+      socket.on("commissioner:connect", async (data: { eui64?: string; psk?: string; timeout?: number }) => {
+        await this.handleCommissionerConnect(socket, data);
+      });
+      socket.on("commissioner:getJoinerTable", async () => {
+        await this.handleCommissionerGetJoinerTable(socket);
       });
 
       // Xử lý khi client ngắt kết nối
@@ -292,6 +538,7 @@ export class WebSocketServer {
     this.serialPort = new SerialPortService({
       path: config.serialPort,
       baudRate: config.baudRate,
+      quietCommands: ["state", "panid", "channel", "networkname", "ipaddr", "dataset active", "router table", "child table", "commissioner joiner table"],
     });
 
     this.serialPort.setOnDisconnect(() => this.onSerialDisconnected());
@@ -310,6 +557,10 @@ export class WebSocketServer {
 
   /** Serial đóng bất ngờ (rút dây) → lên lịch reconnect */
   private onSerialDisconnected(): void {
+    this.stopThreadStatePolling();
+    this.stopOtConfigPolling();
+    this.stopDashboardTablePolling();
+    this.stopJoinerTablePolling();
     this.serialDataUnsubscribe = null;
     this.serialPort = null;
     this.cliWrapper = null;
@@ -373,6 +624,10 @@ export class WebSocketServer {
       this.io.emit("serial:connected", { success: true, status: this.serialPort!.getStatus() });
       this.io.emit("serial:status", this.serialPort!.getStatus());
       console.log("[Serial] Connected (OpenThread):", config.serialPort);
+      this.startThreadStatePolling();
+      this.startOtConfigPolling();
+      this.startDashboardTablePolling();
+      this.startJoinerTablePolling();
       await this.maybeStartThreadFromPreference();
     } catch (error) {
       console.error("[Serial] Connection failed:", error);
@@ -403,6 +658,10 @@ export class WebSocketServer {
         status: this.serialPort!.getStatus(),
       });
       this.io.emit("serial:status", this.serialPort!.getStatus());
+      this.startThreadStatePolling();
+      this.startOtConfigPolling();
+      this.startDashboardTablePolling();
+      this.startJoinerTablePolling();
       await this.maybeStartThreadFromPreference();
     } catch (error) {
       socket.emit("serial:error", {
@@ -417,6 +676,10 @@ export class WebSocketServer {
     try {
       this.autoReconnectEnabled = false;
       this.clearReconnectTimer();
+      this.stopThreadStatePolling();
+      this.stopOtConfigPolling();
+      this.stopDashboardTablePolling();
+      this.stopJoinerTablePolling();
       if (this.serialPort) {
         await this.serialPort.close();
         this.serialPort = null;
@@ -562,22 +825,106 @@ export class WebSocketServer {
     return { headers, rows: dataRows };
   }
 
-  private async handleOtGetTable(
-    socket: Socket,
-    command: string,
-    eventName: "ot:routerTable" | "ot:childTable"
-  ): Promise<void> {
-    if (!this.cliWrapper || !this.serialPort?.getStatus().isConnected) {
-      socket.emit(eventName, { error: "Serial not connected. Connect serial first." });
+  /** Trả router table: cache hoặc poll một lần rồi broadcast. */
+  private async handleOtGetRouterTable(socket: Socket): Promise<void> {
+    if (!this.serialPort?.getStatus().isConnected) {
+      socket.emit("ot:routerTable", { error: "Serial not connected. Connect serial first." });
+      return;
+    }
+    if (this.lastRouterTable != null) {
+      socket.emit("ot:routerTable", this.lastRouterTable);
       return;
     }
     try {
-      const res = await this.executeCommandQueued(command);
-      const { headers, rows } = this.parseTableOutput(res.output);
-      socket.emit(eventName, { headers, rows });
+      await this.pollRouterTable();
+      if (this.lastRouterTable != null) {
+        socket.emit("ot:routerTable", this.lastRouterTable);
+      }
+    } catch (error) {
+      socket.emit("ot:routerTable", {
+        error: error instanceof Error ? error.message : "Unknown error",
+      });
+    }
+  }
+
+  /** Trả child table: cache hoặc poll một lần rồi broadcast. */
+  private async handleOtGetChildTable(socket: Socket): Promise<void> {
+    if (!this.serialPort?.getStatus().isConnected) {
+      socket.emit("ot:childTable", { error: "Serial not connected. Connect serial first." });
+      return;
+    }
+    if (this.lastChildTable != null) {
+      socket.emit("ot:childTable", this.lastChildTable);
+      return;
+    }
+    try {
+      await this.pollChildTable();
+      if (this.lastChildTable != null) {
+        socket.emit("ot:childTable", this.lastChildTable);
+      }
+    } catch (error) {
+      socket.emit("ot:childTable", {
+        error: error instanceof Error ? error.message : "Unknown error",
+      });
+    }
+  }
+
+  /** Trả joiner table: cache hoặc poll một lần rồi broadcast. */
+  private async handleCommissionerGetJoinerTable(socket: Socket): Promise<void> {
+    if (!this.serialPort?.getStatus().isConnected) {
+      socket.emit("commissioner:joinerTable", { error: "Serial not connected. Connect serial first." });
+      return;
+    }
+    if (this.lastJoinerTable != null) {
+      socket.emit("commissioner:joinerTable", this.lastJoinerTable);
+      return;
+    }
+    try {
+      await this.pollJoinerTable();
+      if (this.lastJoinerTable != null) {
+        socket.emit("commissioner:joinerTable", this.lastJoinerTable);
+      }
+    } catch (error) {
+      socket.emit("commissioner:joinerTable", {
+        error: error instanceof Error ? error.message : "Unknown error",
+      });
+    }
+  }
+
+  /** Commissioner: thêm joiner với EUI64, PSK và timeout (giây). */
+  private async handleCommissionerConnect(
+    socket: Socket,
+    data: { eui64?: string; psk?: string; timeout?: number }
+  ): Promise<void> {
+    const eventName = "commissioner:connect:result";
+    if (!this.cliWrapper || !this.serialPort?.getStatus().isConnected) {
+      socket.emit(eventName, { success: false, error: "Serial not connected. Connect serial first." });
+      return;
+    }
+    const rawEui64 = (data.eui64 ?? "").trim().toLowerCase().replace(/^0x/, "").replace(/[\s-]/g, "");
+    const psk = (data.psk ?? "").trim();
+    const allowedTimeouts = [30, 60, 120, 180, 500];
+    const timeout = data.timeout != null && allowedTimeouts.includes(data.timeout) ? data.timeout : 60;
+    if (!/^[0-9a-f]{16}$/.test(rawEui64)) {
+      socket.emit(eventName, { success: false, error: "EUI64 must be 16 hex characters (e.g. f0f5bdfffe104b24)." });
+      return;
+    }
+    if (!psk) {
+      socket.emit(eventName, { success: false, error: "PSK is required." });
+      return;
+    }
+    try {
+      await this.executeCommandQueued("commissioner start");
+      const joinerRes = await this.executeCommandQueued(`commissioner joiner add ${rawEui64} ${psk} ${timeout}`);
+      if (!joinerRes.success) {
+        socket.emit(eventName, { success: false, error: joinerRes.error ?? "Joiner add failed." });
+        return;
+      }
+      socket.emit(eventName, { success: true });
     } catch (error) {
       socket.emit(eventName, {
-        error: error instanceof Error ? error.message : "Unknown error",
+        success: false,
+        error: error instanceof Error ? error.message : "Commissioner connect failed.",
       });
     }
   }
@@ -606,37 +953,21 @@ export class WebSocketServer {
     return filtered[0] ?? "";
   }
 
-  /** Cấu hình OpenThread đọc từ thiết bị (panid, channel, networkname, ipaddr, dataset active) */
+  /** Trả OT config cho client: nếu đã có cache thì gửi luôn; không thì fetch một lần rồi broadcast. */
   private async handleOtGetConfig(socket: Socket): Promise<void> {
-    if (!this.cliWrapper || !this.serialPort?.getStatus().isConnected) {
+    if (!this.serialPort?.getStatus().isConnected) {
       socket.emit("ot:config", { error: "Serial not connected. Connect serial first." });
       return;
     }
+    if (this.lastOtConfig != null) {
+      socket.emit("ot:config", this.lastOtConfig);
+      return;
+    }
     try {
-      const panidRes = await this.executeCommandQueued("panid");
-      const channelRes = await this.executeCommandQueued("channel");
-      const networkNameRes = await this.executeCommandQueued("networkname");
-      const ipaddrRes = await this.executeCommandQueued("ipaddr");
-      const datasetRes = await this.executeCommandQueued("dataset active");
-
-      const pickValueLines = (rawLines: string[]): string[] =>
-        this.filterCliOutput(rawLines);
-
-      const panid = this.pickValueLine(panidRes.output, { panid: true });
-      const channel = this.pickValueLine(channelRes.output, { channel: true });
-      const networkName = this.pickValueLine(networkNameRes.output, { networkName: true });
-      const ipaddrLines = pickValueLines(ipaddrRes.output);
-      const ipaddr = ipaddrLines.length > 0 ? ipaddrLines.join("\n") : undefined;
-      const datasetLines = pickValueLines(datasetRes.output);
-      const datasetActive = datasetLines.length > 0 ? datasetLines.join("\n") : undefined;
-
-      socket.emit("ot:config", {
-        panid,
-        channel: channel ? parseInt(channel, 10) : undefined,
-        networkName,
-        ipaddr,
-        datasetActive,
-      });
+      await this.pollOtConfig();
+      if (this.lastOtConfig != null) {
+        socket.emit("ot:config", this.lastOtConfig);
+      }
     } catch (error) {
       socket.emit("ot:config", {
         error: error instanceof Error ? error.message : "Unknown error",
@@ -683,13 +1014,15 @@ export class WebSocketServer {
 
   private static readonly THREAD_STATES = ["leader", "router", "child", "detached", "disabled"];
 
-  /** Lấy state Thread hiện tại (leader/router/child/detached/disabled) — không emit */
+  /** Lấy state Thread hiện tại (leader/router/child/detached/disabled) — không emit. Chỉ nhận dòng đúng state, bỏ qua log (vd Commissioner: Joiner). */
   private async getCurrentThreadState(): Promise<string> {
     if (!this.cliWrapper) return "";
     const stateRes = await this.executeCommandQueued("state");
     const lines = this.filterCliOutput(stateRes.output);
-    const first = (lines[0] ?? "").toLowerCase();
-    return WebSocketServer.THREAD_STATES.includes(first) ? first : "";
+    const valid = lines
+      .map((l) => l.trim().toLowerCase())
+      .find((l) => WebSocketServer.THREAD_STATES.includes(l));
+    return valid ?? "";
   }
 
   /** Lấy panid/channel/networkName hiện tại từ thiết bị — không emit */
@@ -802,26 +1135,20 @@ export class WebSocketServer {
     }
   }
 
-  /** Lấy trạng thái Thread đang chạy hay tắt (chỉ leader/router/child/detached = đang chạy) */
+  /** Trả state cho client: nếu đã có cache thì gửi luôn; không thì poll một lần rồi broadcast (tránh nhiều client gọi = nhiều lệnh ESP). */
   private async handleOtGetThreadState(socket: Socket): Promise<void> {
     if (!this.cliWrapper || !this.serialPort?.getStatus().isConnected) {
       socket.emit("ot:threadState", { error: "Serial not connected. Connect serial first." });
       return;
     }
+    if (this.lastThreadState != null) {
+      socket.emit("ot:threadState", this.lastThreadState);
+      return;
+    }
     try {
-      const stateRes = await this.executeCommandQueued("state");
-      const lines = stateRes.output
-        .map((l) => l.trim())
-        .filter((l) => l && !l.includes(">"));
-      const stateLine = (lines[0] ?? "").toLowerCase();
-      // Chuẩn OpenThread: chỉ 4 state này = Thread đang chạy; disabled hoặc chuỗi lạ = tắt
-      const running = ["detached", "child", "router", "leader"].includes(stateLine);
-      socket.emit("ot:threadState", { running, state: stateLine || undefined });
-      // ESP reset → state disabled nhưng preference "tự chạy" bật → tự chạy lại thread
-      if (stateLine === "disabled" && this.appSettingsService.getThreadRunOnConnect()) {
-        this.maybeStartThreadFromPreference().catch((err) =>
-          console.warn("[Serial] Auto-restart Thread after disabled failed:", err)
-        );
+      await this.pollThreadState();
+      if (this.lastThreadState != null) {
+        socket.emit("ot:threadState", this.lastThreadState);
       }
     } catch (error) {
       socket.emit("ot:threadState", {

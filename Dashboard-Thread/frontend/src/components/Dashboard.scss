@@ -1,3 +1,4 @@
+@use "sass:color";
 @use "../styles/variables" as *;
 
 .dashboard-page {
@@ -7,9 +8,13 @@
   box-shadow: $shadow;
   max-width: 100%;
   width: 100%;
+}
+
+.dashboard-header {
+  margin-bottom: 24px;
 
   h1 {
-    margin: 0 0 24px 0;
+    margin: 0 0 8px 0;
     color: $text-primary;
     font-size: 32px;
     font-weight: 600;
@@ -50,7 +55,7 @@
   color: $text-primary;
 
   &:hover:not(:disabled) {
-    background: darken($bg-light, 3%);
+    background: color.adjust($bg-light, $lightness: -3%);
   }
 
   &:disabled {
@@ -60,9 +65,6 @@
 }
 
 .dashboard-table-wrap {
-  background: $bg-light;
-  border-radius: $border-radius-small;
-  padding: 16px;
   overflow-x: auto;
 }
 
@@ -70,6 +72,8 @@
   width: 100%;
   border-collapse: collapse;
   font-size: 14px;
+  border-radius: 4px;
+  overflow: hidden;
 
   th,
   td {
@@ -78,16 +82,30 @@
     border-bottom: 1px solid $border-color;
   }
 
+  thead tr:first-child th:first-child {
+    border-top-left-radius: 4px;
+  }
+  thead tr:first-child th:last-child {
+    border-top-right-radius: 4px;
+  }
+  tbody tr:last-child td:first-child {
+    border-bottom-left-radius: 4px;
+  }
+  tbody tr:last-child td:last-child {
+    border-bottom-right-radius: 4px;
+  }
+
   th {
     font-weight: 600;
-    color: $text-secondary;
-    background: rgba(0, 0, 0, 0.03);
+    color: $text-primary;
+    background: color.mix(white, $primary-color, 82%);
   }
 
   td {
     color: $text-primary;
     font-family: ui-monospace, monospace;
     font-size: 13px;
+    background: $bg-light;
   }
 
   tbody tr:last-child td {
@@ -95,7 +113,11 @@
   }
 
   tbody tr:hover td {
-    background: rgba(0, 0, 0, 0.02);
+    background: color.adjust($bg-light, $lightness: -3%);
+  }
+
+  tbody tr.dashboard-table-row-clickable {
+    cursor: pointer;
   }
 }
 

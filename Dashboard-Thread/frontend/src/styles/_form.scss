@@ -1,0 +1,149 @@
+/**
+ * Form chung: container, card, tiêu đề, mô tả, alert, form, nhóm ô nhập, nút.
+ * Dùng cho Commissioner, Settings (SerialConfigForm, OpenThreadConfigForm), v.v.
+ */
+@use "variables" as *;
+
+// --- Container & card (thống nhất config-container, ot-config-container, commissioner-page) ---
+.form-page {
+  width: 100%;
+  max-width: 640px;
+}
+
+.form-card {
+  background: white;
+  border-radius: $border-radius;
+  padding: 32px;
+  box-shadow: $shadow;
+}
+
+.form-page-title {
+  margin: 0 0 8px 0;
+  color: $text-primary;
+  font-size: 28px;
+  font-weight: 600;
+}
+
+.form-page-description {
+  color: $text-secondary;
+  margin: 0 0 30px 0;
+  font-size: 14px;
+}
+
+.form-page-alert {
+  margin-bottom: 20px;
+  padding: 12px 16px;
+  border-radius: $border-radius-small;
+  font-size: 14px;
+  font-weight: 500;
+
+  &.form-page-alert-warn {
+    background: #fff3cd;
+    color: #856404;
+  }
+
+  &.form-page-alert-success {
+    background: #d4edda;
+    color: #155724;
+  }
+
+  &.form-page-alert-error {
+    background: #f8d7da;
+    color: #721c24;
+  }
+}
+
+.form-page-form {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+// --- Form group, input, actions, buttons ---
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+
+  &:last-child {
+    margin-bottom: 0;
+  }
+
+  label {
+    font-weight: 600;
+    color: $text-primary;
+    font-size: 14px;
+  }
+
+  input {
+    width: 100%;
+    padding: 12px 16px;
+    border: 2px solid $border-color;
+    border-radius: $border-radius-small;
+    font-size: 16px;
+    color: $text-primary;
+    background: white;
+    font-family: inherit;
+    transition: border-color 0.2s;
+
+    &::placeholder {
+      color: $text-muted;
+    }
+
+    &:focus {
+      outline: none;
+      border-color: $primary-color;
+    }
+
+    &.error {
+      border-color: $error-color;
+    }
+
+    &:disabled {
+      background: $bg-light;
+      cursor: not-allowed;
+    }
+  }
+}
+
+.form-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.btn-primary {
+  padding: 12px 24px;
+  background: $primary-color;
+  color: white;
+  border: none;
+  border-radius: $border-radius-small;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.2s;
+
+  &:hover:not(:disabled) {
+    opacity: 0.9;
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+}
+
+.form-hint {
+  color: $text-muted;
+  font-size: 12px;
+  margin-top: -4px;
+}
+
+.error-message {
+  color: $error-color;
+  font-size: 12px;
+  margin-top: -4px;
+}
