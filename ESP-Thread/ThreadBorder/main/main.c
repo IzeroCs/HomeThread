@@ -111,7 +111,7 @@ void app_main(void)
         esp_openthread_lock_release();
     }
 
-    ESP_ERROR_CHECK(led_status_start(NULL));  /* LED: boot=đỏ nhấp nháy, detached=xanh dương nhấp nháy, leader=xanh lá tĩnh */
+    ESP_ERROR_CHECK(led_status_start(NULL));  /* LED: disabled=đỏ nhấp nháy, detached=xanh dương nhấp nháy, leader=xanh lá tĩnh, router=tím tĩnh, child=xanh dương tĩnh */
 
     /* Start device registry CoAP server */
     ESP_ERROR_CHECK(device_registry_server_init());

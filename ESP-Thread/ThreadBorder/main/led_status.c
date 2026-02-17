@@ -1,7 +1,8 @@
 /*
  * LED status cho ot-br trên ESP32-H2.
  * WS2812 (1 chân data, mặc định GPIO 8) qua RMT.
- * Boot: đỏ nhấp nháy | Detached: xanh dương nhấp nháy | Leader: xanh lá tĩnh.
+ * Disabled: đỏ nhấp nháy | Detached: xanh dương nhấp nháy
+ * Leader: xanh lá tĩnh | Router: tím tĩnh | Child: xanh dương tĩnh.
  */
 
 #include "led_status.h"
@@ -85,12 +86,23 @@ static void led_status_task(void *arg)
         bool blink_on = (tick / (BLINK_MS / TASK_MS)) % 2;
 
         if (role == OT_DEVICE_ROLE_DISABLED) {
+            /* Disabled: đỏ nhấp nháy */
             set_rgb(blink_on ? BRIGHTNESS : 0, 0, 0);
         } else if (role == OT_DEVICE_ROLE_DETACHED) {
+            /* Detached: xanh dương nhấp nháy */
             set_rgb(0, 0, blink_on ? BRIGHTNESS : 0);
-        } else {
-            /* Leader / Router / Child: xanh lá tĩnh */
+        } else if (role == OT_DEVICE_ROLE_LEADER) {
+            /* Leader: xanh lá tĩnh */
             set_rgb(0, BRIGHTNESS, 0);
+        } else if (role == OT_DEVICE_ROLE_ROUTER) {
+            /* Router: tím tĩnh */
+            set_rgb(BRIGHTNESS, 0, BRIGHTNESS);
+        } else if (role == OT_DEVICE_ROLE_CHILD) {
+            /* Child: xanh dương tĩnh */
+            set_rgb(0, 0, BRIGHTNESS);
+        } else {
+            /* Unknown role: tắt đèn */
+            set_rgb(0, 0, 0);
         }
         flush_led();
         tick += TASK_MS;

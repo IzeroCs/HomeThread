@@ -1,7 +1,7 @@
 /*
  * Status LED - Core: RGB LED (WS2812) hien thi trang thai Thread.
  * Boot = do nhap nhay, chua join = vang nhap nhay, detached = xanh duong nhap nhay.
- * Attached: Leader = tim tinh, Router = xanh duong tinh, Child = xanh la tinh (goi status_led_set_attached_role).
+ * Attached: Child = xanh duong tinh, Router = tim tinh, Leader = xanh la tinh (goi status_led_set_attached_role).
  */
 #pragma once
 
@@ -18,14 +18,14 @@ typedef enum {
     STATUS_LED_BOOT,       /**< Do nhap nhay - moi boot. */
     STATUS_LED_NOT_JOINED, /**< Vang nhap nhay - chua join. */
     STATUS_LED_DETACHED,   /**< Xanh duong nhap nhay - da join nhung detached. */
-    STATUS_LED_ATTACHED,   /**< Attached: mau phu thuoc status_led_set_attached_role (leader=tim, router=xanh duong, child=xanh la). */
+    STATUS_LED_ATTACHED,   /**< Attached: mau phu thuoc status_led_set_attached_role (child=xanh duong, router=tim, leader=xanh la). */
 } status_led_state_t;
 
 /** Role khi attached: ung voi mau tinh. */
 typedef enum {
-    STATUS_LED_ATTACHED_CHILD,  /**< Xanh la tinh. */
-    STATUS_LED_ATTACHED_ROUTER, /**< Xanh duong tinh. */
-    STATUS_LED_ATTACHED_LEADER, /**< Tim tinh. */
+    STATUS_LED_ATTACHED_CHILD,  /**< Xanh duong tinh. */
+    STATUS_LED_ATTACHED_ROUTER, /**< Tim tinh. */
+    STATUS_LED_ATTACHED_LEADER, /**< Xanh la tinh. */
 } status_led_attached_role_t;
 
 /** Cau hinh (neu 0 dung default tu Kconfig). */
@@ -53,7 +53,7 @@ esp_err_t status_led_start(const status_led_config_t *config);
 void status_led_set_state(status_led_state_t state);
 
 /**
- * Dat role khi attached: Leader = tim tinh, Router = xanh duong tinh, Child = xanh la tinh.
+ * Dat role khi attached: Child = xanh duong tinh, Router = tim tinh, Leader = xanh la tinh.
  * Chi ap dung khi state la STATUS_LED_ATTACHED. Goi sau status_led_set_state(STATUS_LED_ATTACHED)
  * hoac khi nhan OPENTHREAD_EVENT_ROLE_CHANGED.
  *

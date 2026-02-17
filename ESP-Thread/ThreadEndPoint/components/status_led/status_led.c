@@ -73,16 +73,19 @@ static void status_led_task(void *arg)
     while (1) {
         status_led_state_t st = s_state;
         if (st == STATUS_LED_ATTACHED) {
-            /* Leader = tim, Router = xanh duong, Child = xanh la */
+            /* Child = xanh duong, Router = tim, Leader = xanh la */
             switch (s_attached_role) {
-                case STATUS_LED_ATTACHED_LEADER:
-                    set_rgb(BRIGHTNESS, 0, BRIGHTNESS);  /* tim */
-                    break;
-                case STATUS_LED_ATTACHED_ROUTER:
+                case STATUS_LED_ATTACHED_CHILD:
                     set_rgb(0, 0, BRIGHTNESS);  /* xanh duong */
                     break;
+                case STATUS_LED_ATTACHED_ROUTER:
+                    set_rgb(BRIGHTNESS, 0, BRIGHTNESS);  /* tim */
+                    break;
+                case STATUS_LED_ATTACHED_LEADER:
+                    set_rgb(0, BRIGHTNESS, 0);  /* xanh la */
+                    break;
                 default:
-                    set_rgb(0, BRIGHTNESS, 0);  /* xanh la (child) */
+                    set_rgb(0, 0, BRIGHTNESS);  /* xanh duong (default) */
                     break;
             }
             flush_led();
