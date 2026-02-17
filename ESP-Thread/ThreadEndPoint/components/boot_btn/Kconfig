@@ -1,0 +1,26 @@
+menu "Boot Button"
+
+config BOOT_BTN_GPIO_DEFAULT
+    int "GPIO so cua nut BOOT (mac dinh theo target)"
+    default 9 if IDF_TARGET_ESP32C6
+    default 9 if IDF_TARGET_ESP32H2
+    default 9
+    help
+        Tu dong theo board: ESP32-C6-DevKitC-1 va ESP32-H2-DevKitM-1 deu dung GPIO 9.
+        Co the doi trong menuconfig neu board khac.
+
+config BOOT_BTN_HOLD_MS_DEFAULT
+    int "Thoi gian giu (ms) de kich hoat long press"
+    default 5000
+    range 1000 30000
+    help
+        Giu nut trong khoang nay de goi on_long_press.
+
+config BOOT_BTN_POLL_MS_DEFAULT
+    int "Chu ky poll (ms)"
+    default 200
+    range 50 500
+    help
+        Tan so kiem tra trang thai nut.
+
+endmenu

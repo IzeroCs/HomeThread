@@ -538,7 +538,7 @@ export class WebSocketServer {
     this.serialPort = new SerialPortService({
       path: config.serialPort,
       baudRate: config.baudRate,
-      quietCommands: ["state", "panid", "channel", "networkname", "ipaddr", "dataset active", "router table", "child table", "commissioner joiner table"],
+      quietCommands: ["state", "panid", "channel", "networkname", "ipaddr", "dataset active", "router table", "child table", "commissioner joiner table", "reset"],
     });
 
     this.serialPort.setOnDisconnect(() => this.onSerialDisconnected());
@@ -602,21 +602,49 @@ export class WebSocketServer {
       }
       await this.serialPort!.open();
 
+      // Gửi reset ngay khi mở serial để đồng bộ khi ESP đã chạy trước (tránh phải nhấn reset cứng). Gửi trước mọi lệnh khác.
+      try {
+        await this.cliWrapper!.executeCommandWithPrefix("reset", "ot");
+      } catch {
+        // Bỏ qua (timeout / không phản hồi) — thiết bị có thể đang ở trạng thái không nhận lệnh
+      }
+      const resetWaitMs = 5000;
+      console.log("[Serial] Reset sent (ot reset), waiting", resetWaitMs, "ms for device to reboot…");
+      await new Promise((r) => setTimeout(r, resetWaitMs));
+
       let res = await this.executeCommandQueued("version");
       if (!this.isOpenThreadResponse(res, "version")) {
         res = await this.executeCommandQueued("state");
         if (!this.isOpenThreadResponse(res, "state")) {
-          if (this.serialDataUnsubscribe) {
-            this.serialDataUnsubscribe();
-            this.serialDataUnsubscribe = null;
+          // Prefix trong config (vd. "t") có thể không được thiết bị nhận ("Unrecognized command") — thử prefix "ot"
+          const outputText = (res.output ?? []).join(" ").toLowerCase();
+          if (outputText.includes("unrecognized")) {
+            res = await this.cliWrapper!.executeCommandWithPrefix("version", "ot");
+            if (!this.isOpenThreadResponse(res, "version")) {
+              res = await this.cliWrapper!.executeCommandWithPrefix("state", "ot");
+            }
+            if (this.isOpenThreadResponse(res, "version") || this.isOpenThreadResponse(res, "state")) {
+              const timeoutMs = parseInt(process.env.CLI_TIMEOUT_MS ?? "5000", 10);
+              this.cliWrapper = new CLIWrapper(this.serialPort!, {
+                commandPrefix: "ot",
+                timeoutMs,
+              });
+              console.log("[Serial] Using prefix 'ot' for this session (device did not recognize '" + (config.commandPrefix || "") + "').");
+            }
           }
-          await this.serialPort!.close();
-          this.serialPort = null;
-          this.cliWrapper = null;
-          console.log("[Serial] Device is not OpenThread, closing port and will retry later.");
-          this.io.emit("serial:status", { isConnected: false, path: config.serialPort, baudRate: config.baudRate });
-          this.scheduleReconnect();
-          return;
+          if (!this.isOpenThreadResponse(res, "version") && !this.isOpenThreadResponse(res, "state")) {
+            if (this.serialDataUnsubscribe) {
+              this.serialDataUnsubscribe();
+              this.serialDataUnsubscribe = null;
+            }
+            await this.serialPort!.close();
+            this.serialPort = null;
+            this.cliWrapper = null;
+            console.log("[Serial] Device is not OpenThread, closing port and will retry later.");
+            this.io.emit("serial:status", { isConnected: false, path: config.serialPort, baudRate: config.baudRate });
+            this.scheduleReconnect();
+            return;
+          }
         }
       }
 

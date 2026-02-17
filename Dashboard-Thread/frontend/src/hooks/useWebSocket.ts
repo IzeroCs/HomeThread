@@ -13,11 +13,11 @@ import type {
   OtTableData,
 } from "../types/websocket";
 
-// Dev: thử proxy trước, nếu không được thì connect trực tiếp
-// Production: set VITE_WS_URL
+// Dev: dùng cùng origin (vd. http://<IP>:5173) để truy cập từ LAN qua proxy
+// Production: set VITE_WS_URL hoặc dùng cùng host
 const WS_URL =
   import.meta.env.VITE_WS_URL ??
-  (import.meta.env.DEV ? "http://localhost:3000" : "http://localhost:3000");
+  (typeof window !== "undefined" ? window.location.origin : "http://localhost:3000");
 
 export interface UseWebSocketReturn {
   connected: boolean;

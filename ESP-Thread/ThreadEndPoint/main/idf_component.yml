@@ -1,4 +1,0 @@
-## Khi bat CONFIG_OPENTHREAD_CLI=y can component nay de goi ot_console_start() (REPL doc lenh tu UART)
-dependencies:
-  ot_examples_common:
-    path: ${IDF_PATH}/examples/openthread/ot_common_components/ot_examples_common

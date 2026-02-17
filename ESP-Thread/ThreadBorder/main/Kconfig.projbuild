@@ -1,3 +1,15 @@
 menu "OpenThread FTD Example"
 
+config LED_STATUS_ENABLE
+    bool "Bật LED trạng thái RGB WS2812 (boot=đỏ nhấp nháy, detached=xanh dương nhấp nháy, leader=xanh lá tĩnh)"
+    default y
+    help
+        LED WS2812/addressable 1 chân data trên ESP32-H2 (mặc định GPIO 8).
+
+config LED_STATUS_GPIO
+    int "GPIO cho LED RGB data (WS2812)"
+    depends on LED_STATUS_ENABLE
+    default 8
+    range 0 27
+
 endmenu

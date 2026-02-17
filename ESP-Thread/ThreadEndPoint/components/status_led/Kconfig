@@ -1,0 +1,18 @@
+menu "Status LED (RGB WS2812)"
+
+config STATUS_LED_GPIO_DEFAULT
+    int "GPIO cua RGB LED (WS2812, 1 data line)"
+    default 8 if IDF_TARGET_ESP32C6
+    default 8 if IDF_TARGET_ESP32H2
+    default 8
+    help
+        ESP32-C6-DevKitC-1 va ESP32-H2-DevKitM-1 deu dung GPIO 8 cho RGB LED.
+
+config STATUS_LED_BLINK_MS
+    int "Chu ky nhap nhay (ms)"
+    default 500
+    range 200 2000
+    help
+        Thoi gian on/off cho cac trang thai nhap nhay (do, vang, xanh duong).
+
+endmenu

@@ -70,9 +70,8 @@ export class CLIWrapper {
 
     try {
       // Thêm tiền tố vào lệnh nếu có
-      const fullCommand = this.commandPrefix
-        ? `${this.commandPrefix} ${command}`
-        : command;
+      const prefix = this.commandPrefix;
+      const fullCommand = prefix ? `${prefix} ${command}` : command;
 
       // Gửi lệnh
       await this.serialPort.write(fullCommand);
@@ -80,6 +79,31 @@ export class CLIWrapper {
       // Chờ response với timeout
       const response = await this.waitForResponse(responseLines);
 
+      unsubscribe();
+      await this.delay(this.delayAfterMs);
+      return response;
+    } catch (error) {
+      unsubscribe();
+      throw error;
+    }
+  }
+
+  /**
+   * Gửi một lệnh với prefix tạm thời (vd. fallback "ot" khi prefix trong config không được nhận).
+   */
+  async executeCommandWithPrefix(command: string, overridePrefix: string): Promise<CLIResponse> {
+    if (!this.serialPort.getStatus().isConnected) {
+      throw new Error("Serial port is not connected");
+    }
+    this.serialPort.readBuffer();
+    const responseLines: string[] = [];
+    const unsubscribe = this.serialPort.onData((line) => {
+      responseLines.push(line);
+    });
+    try {
+      const fullCommand = overridePrefix ? `${overridePrefix} ${command}` : command;
+      await this.serialPort.write(fullCommand);
+      const response = await this.waitForResponse(responseLines);
       unsubscribe();
       await this.delay(this.delayAfterMs);
       return response;

@@ -1,0 +1,24 @@
+menu "Thread Joiner"
+
+config THREAD_JOINER_PSKD_DEFAULT
+    string "Default PSKd (Joiner credential)"
+    default "H01THREAD"
+    help
+        Default PSKd for Thread commissioning (6-32 chars, base32-thread).
+        Must match "commissioner joiner add * <pskd>" on Border Router.
+
+config THREAD_JOINER_RETRY_SEC
+    int "Joiner retry interval (seconds) - loi chung"
+    default 30
+    range 10 300
+    help
+        Khi Joiner that bai (loi khac NotFound), tu dong thu lai sau N giay.
+
+config THREAD_JOINER_RETRY_NOT_FOUND_SEC
+    int "Joiner retry interval (seconds) khi loi NotFound - Commissioner chua bat"
+    default 5
+    range 2 60
+    help
+        Khi Joiner tra ve NotFound (Commissioner chua san sang), thu lai sau N giay thay vi RETRY_SEC.
+
+endmenu

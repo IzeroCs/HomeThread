@@ -1,0 +1,18 @@
+menu "Entity Model"
+
+config ENTITY_MODEL_MAX_TYPES
+    int "Max entity types (type registry)"
+    default 4
+    range 1 16
+    help
+        Maximum number of entity types that can be registered
+        (e.g. on_off_light, temperature_sensor).
+
+config ENTITY_MODEL_MAX_ENTITIES
+    int "Max entities"
+    default 8
+    range 1 32
+    help
+        Maximum number of entities (e.g. light.0, sensor.0).
+
+endmenu
