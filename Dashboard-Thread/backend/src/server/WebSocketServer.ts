@@ -12,7 +12,7 @@ import { CLIWrapper, type CLIResponse } from "../services/CliWrapper";
 const RECONNECT_INTERVAL_MS = 3000;
 
 /** Bật/tắt gửi lệnh serial lấy dữ liệu: Status, Router table, Child table, Commissioner list. Đổi thành false để tắt. */
-const AUTO_FETCH_DATA = false;
+const AUTO_FETCH_DATA = true;
 
 export class WebSocketServer {
   private io: Server;

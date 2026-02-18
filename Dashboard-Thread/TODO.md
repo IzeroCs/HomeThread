@@ -52,6 +52,7 @@
 - [x] **Trang Commissioner**: Form EUI64 + PSK, nút "Kết nối" gọi `commissionerConnect(eui64, psk)`; trạng thái "Đang kết nối..." (ba chấm); alert thành công/lỗi; chỉ hiện trên TopNav khi state = leader
 - [x] **Trang Console**: TopNav có nút Console; component Console với log box (height 320px), form lệnh CLI + Gửi
 - [x] **Form thống nhất**: Commissioner, SerialConfigForm, OpenThreadConfigForm dùng chung `form-page`, `form-card`, `form-page-title`, `form-page-description`, `form-page-alert`, `form-page-form` (max-width 640px) trong `_form.scss`
+- [ ] **Settings – Khởi động Thread**: Checkbox "Khởi động Thread" chỉ áp dụng khi nhấn nút "Áp dụng"; hiện tại check/uncheck đang áp dụng ngay (sai). Sửa: checkbox chỉ cập nhật state form (local), gửi lệnh Thread start/stop khi nhấn "Áp dụng".
 - [ ] **Lệnh thường dùng**: Nút shortcut cho các lệnh hay dùng: `state`, `scan`, `joiner start/stop`, `commissioner start/stop`, `networkname`, v.v.
 - [ ] **Lịch sử lệnh**: Lưu và cho phép chọn lại lệnh đã gửi (localStorage hoặc chỉ trong session)
 - [ ] **Realtime (nếu backend có WebSocket)**: Tab/mode "Live terminal": mọi dòng từ UART hiển thị realtime, vẫn có thể gửi lệnh từ cùng giao diện

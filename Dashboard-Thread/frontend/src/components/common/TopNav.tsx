@@ -5,11 +5,11 @@ export type NavPage = "dashboard" | "status" | "commissioner" | "console" | "set
 interface TopNavProps {
   /** Chỉ hiện logo, ẩn Dashboard/Settings */
   logoOnly?: boolean;
-  /** Trạng thái serial: false = xám; true = cam (chưa bật tự chạy) hoặc tím/xanh lá (đã bật tự chạy) */
+  /** Trạng thái serial: false = xám; true = cam/tím/xanh lá/xanh dương theo state (xem threadState) */
   serialConnected?: boolean;
-  /** State Thread: leader/router/child → xanh lá; còn lại (detached/disabled/null/lỗi) → tím khi đã bật tự chạy */
+  /** State Thread: leader → xanh lá, router → tím, child → xanh dương; detached/disabled → cam */
   threadState?: string | null;
-  /** Đã bật "tự chạy Thread" → tím mặc định, xanh lá chỉ khi state leader/router/child; chưa bật thì cam */
+  /** Đã bật "tự chạy Thread" → màu theo state; chưa bật thì cam */
   threadRunOnConnect?: boolean;
   /** Tổng router + child (hiển thị bên cạnh "Dashboard" khi có) */
   dashboardCount?: number | null;
@@ -26,16 +26,20 @@ export default function TopNav({
   currentPage = "dashboard",
   onNavigate = () => {},
 }: TopNavProps) {
-  const isLeader = threadState && ["leader", "router", "child"].includes(threadState.toLowerCase());
   const isCommissionerEnabled = threadState?.toLowerCase() === "leader";
   const useThreadColor = serialConnected && threadRunOnConnect;
-  // Khi đã bật tự chạy: xanh lá chỉ khi leader/router/child; còn lại (detached/disabled/null/lỗi) → tím. Cam chỉ khi chưa bật tự chạy.
+  const stateLower = threadState?.toLowerCase();
+  // child → xanh dương, router → tím, leader → xanh lá; detached/disabled/null → cam. Chưa bật tự chạy → cam.
   const statusClass = !serialConnected
     ? "status-disconnected"
-    : useThreadColor
-      ? isLeader
-        ? "status-thread-green"
-        : "status-thread-purple"
+    : useThreadColor && stateLower
+      ? stateLower === "child"
+        ? "status-thread-blue"
+        : stateLower === "router"
+          ? "status-thread-purple"
+          : stateLower === "leader"
+            ? "status-thread-green"
+            : "status-serial"
       : "status-serial";
   const statusTitle = !serialConnected
     ? "Chưa kết nối serial"

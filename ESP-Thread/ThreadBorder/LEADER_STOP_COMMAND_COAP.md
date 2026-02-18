@@ -87,17 +87,22 @@ static void network_stop_handler(void *aContext, otMessage *aMessage,
 
     ESP_LOGI(TAG, "Received stop command from Border Router");
 
+    // QUAN TRỌNG 1: Dùng otCoapMessageInitResponse (không phải otCoapMessageInit) để copy Message ID
+    // và Token từ request sang response. Client OpenThread khớp response với request bằng token;
+    // nếu response không có cùng token, client sẽ không gọi callback → timeout dù endpoint đã gửi 2.05.
+    // QUAN TRỌNG 2: Gửi response trước, sau đó mới stop network.
+    otMessage *response = otCoapNewMessage(instance, NULL);
+    if (response) {
+        otCoapMessageInitResponse(response, aMessage, OT_COAP_TYPE_ACKNOWLEDGMENT, OT_COAP_CODE_CONTENT);
+        otCoapSendResponse(instance, response, aMessageInfo);
+    }
+
     if (esp_openthread_lock_acquire(pdMS_TO_TICKS(1000))) {
+        vTaskDelay(pdMS_TO_TICKS(100));  // Cho response kịp gửi ra trước khi tắt mạng
         otThreadSetEnabled(instance, false);
         otIp6SetEnabled(instance, false);
         esp_openthread_lock_release();
         ESP_LOGI(TAG, "Thread network stopped as requested");
-    }
-
-    otMessage *response = otCoapNewMessage(instance, NULL);
-    if (response) {
-        otCoapMessageInit(response, OT_COAP_TYPE_ACKNOWLEDGMENT, OT_COAP_CODE_CONTENT);
-        otCoapSendResponse(instance, response, aMessageInfo);
     }
 }
 
@@ -125,11 +130,10 @@ Border Router (Router/Child)          Leader (Current)
      |------------------------------------->|
      |                                      |
      |                                      | Match resource "network"
-     |                                      | Stop Thread network
-     |                                      |
-     |  2.05 Content                        |
-     |  Type: ACKNOWLEDGMENT                 |
+     |                                      | 1. Gửi 2.05 Content trước
+     |  2.05 Content (ACK)                  |
      |<-------------------------------------|
+     |                                      | 2. Sau đó mới stop Thread network
      |                                      |
 ```
 
@@ -283,6 +287,8 @@ Code hiện tại trong `leader_rloc_check_task` đã check mỗi 5 giây và s�
 6. **Retry**: Border Router sẽ tự động retry nếu không nhận được response
 7. **Leader Address**: Border Router tự động lấy Leader RLOC16 và construct address
 8. **Leader Election Timing**: Sau khi Leader cũ offline, cần đợi **1-2.5 phút** để Leader mới được bầu
+9. **Endpoint: Gửi response trước khi stop**: Endpoint phải gửi CoAP 2.05 **trước**, sau đó mới gọi `otThreadSetEnabled(false)`. Nếu stop network trước rồi mới send response thì mạng đã tắt, client không nhận được → timeout dù endpoint đã gửi 2.05.
+10. **Endpoint: Response phải copy Message ID + Token từ request**: Client OpenThread chỉ gọi callback khi response **cùng token** (và Message ID) với request. Nếu endpoint dùng `otCoapMessageInit()` rồi gửi response thì response có token/ID khác → client không nhận diện → **timeout**. Phải dùng **`otCoapMessageInitResponse(response, aMessage, type, code)`** (truyền con trỏ request `aMessage`) để copy Message ID và Token từ request sang response.
 
 ---
 
@@ -293,7 +299,7 @@ Code hiện tại trong `leader_rloc_check_task` đã check mỗi 5 giây và s�
 - [ ] Register resource `mUriPath = "network"` (một segment) với handler
 - [ ] Trong handler: check method = GET (0.01); GET không có payload
 - [ ] (Tùy chọn) Check device role = Leader trước khi stop
-- [ ] Stop Thread network (`otThreadSetEnabled(false)`)
+- [ ] **Gửi response trước**: dùng `otCoapMessageInitResponse(response, aMessage, ...)` (truyền request `aMessage`) để copy Message ID + Token → client mới nhận được; sau đó mới `otThreadSetEnabled(false)`
 - [ ] Send response: `2.05 Content` (success) hoặc `4.03`/`5.03` (error)
 
 ---
@@ -302,3 +308,4 @@ Code hiện tại trong `leader_rloc_check_task` đã check mỗi 5 giây và s�
 
 - **POST → GET:** Lệnh stop chuyển từ POST sang GET; GET không payload, endpoint chỉ cần check method GET và path "network".
 - **Path một segment:** Do OpenThread match resource theo full path, client gửi chỉ `/network` (một Uri-Path option) để match resource "network"; không gửi `/network/stop` (hai segment) vì khi đó path = "network/stop" không match resource "network".
+- **Response phải dùng InitResponse:** Client khớp response với request bằng Message ID + Token. Endpoint phải dùng `otCoapMessageInitResponse(response, aMessage, ...)` thay vì `otCoapMessageInit(response, ...)` để copy token/ID từ request, nếu không client sẽ timeout dù endpoint đã gửi 2.05.

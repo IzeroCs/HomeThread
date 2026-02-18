@@ -8,8 +8,9 @@ idf_component_register(
         nvs_flash
         vfs
         freertos
-        thread_joiner
+        joiner
         boot_btn
         status_led
         device_registry
+        thread_coap
 )

@@ -23,6 +23,7 @@ static const char *TAG = "leader_control";
 #define COAP_RESPONSE_TIMEOUT_MS 5000
 #define DEFAULT_MAX_RETRIES 3
 #define LEADER_RLOC_CHECK_INTERVAL_MS 5000  // Check every 5 seconds
+#define LEADER_STOP_RETRY_INTERVAL_MS 120000  // Retry stop command after 20 seconds if Leader still exists
 
 // CoAP response handler context
 typedef struct {
@@ -133,7 +134,7 @@ static void construct_leader_rloc_address(otInstance *instance, uint16_t rloc16,
 }
 
 /**
- * Get Leader RLOC16 and log it
+ * Get Leader RLOC16 and log it. Chỉ log Partition ID / Weight khi state khác detached.
  */
 esp_err_t leader_control_log_leader_rloc16(void)
 {
@@ -148,6 +149,13 @@ esp_err_t leader_control_log_leader_rloc16(void)
         return ESP_ERR_TIMEOUT;
     }
 
+    otDeviceRole role = otThreadGetDeviceRole(instance);
+    if (role == OT_DEVICE_ROLE_DETACHED || role == OT_DEVICE_ROLE_DISABLED) {
+        ESP_LOGI(TAG, "Device detached/disabled, skip leader/partition/weight log");
+        esp_openthread_lock_release();
+        return ESP_OK;
+    }
+
     // Get Leader RLOC16 using helper function
     uint16_t leader_rloc16 = 0xffff;
     otError err = get_leader_rloc16(instance, &leader_rloc16);
@@ -157,16 +165,18 @@ esp_err_t leader_control_log_leader_rloc16(void)
         return ESP_FAIL;
     }
 
-    ESP_LOGI(TAG, "=== Current Leader Info ===");
+    ESP_LOGI(TAG, "=== Current Leader Info (role != detached) ===");
     ESP_LOGI(TAG, "Leader RLOC16: 0x%04x", leader_rloc16);
 
-    // Also get Leader Data for additional info
+    // Partition ID, Leader weight, Local leader weight (chỉ có khi đã attach)
     otLeaderData leader_data;
     err = otThreadGetLeaderData(instance, &leader_data);
     if (err == OT_ERROR_NONE) {
+        uint8_t local_weight = otThreadGetLocalLeaderWeight(instance);
+        ESP_LOGI(TAG, "Partition ID: 0x%08lX", (unsigned long)leader_data.mPartitionId);
+        ESP_LOGI(TAG, "Leader Weight (current): %u", (unsigned)leader_data.mWeighting);
+        ESP_LOGI(TAG, "Local Leader Weight (this device): %u", (unsigned)local_weight);
         ESP_LOGI(TAG, "Leader Router ID: %d", leader_data.mLeaderRouterId);
-        ESP_LOGI(TAG, "Leader Weight: %d", leader_data.mWeighting);
-        ESP_LOGI(TAG, "Partition ID: 0x%08lx", (unsigned long)leader_data.mPartitionId);
     }
 
     esp_openthread_lock_release();
@@ -178,7 +188,7 @@ esp_err_t leader_control_log_leader_rloc16(void)
  * Returns ESP_OK if sent successfully, ESP_FAIL otherwise
  * Sets *success to true if Leader acknowledged, false otherwise
  */
-static esp_err_t send_coap_stop_command_once(otInstance *instance, uint16_t leader_rloc16s, bool *success)
+static esp_err_t send_coap_stop_command_once(otInstance *instance, uint16_t leader_rloc16, bool *success)
 {
     *success = false;
 
@@ -186,23 +196,9 @@ static esp_err_t send_coap_stop_command_once(otInstance *instance, uint16_t lead
         return ESP_ERR_INVALID_STATE;
     }
 
-    // // Construct Leader RLOC address
-    // otIp6Address leader_address;
-    // construct_leader_rloc_address(instance, leader_rloc16, &leader_address);
-
-
-    otIp6Address leader_rloc;
-    otError ot_err = otThreadGetLeaderRloc(instance, &leader_rloc);
-    if (ot_err != OT_ERROR_NONE) {
-        esp_openthread_lock_release();
-        ESP_LOGW(TAG, "CoAP: get Leader RLOC failed: %s", otThreadErrorToString(ot_err));
-        return ESP_FAIL;
-    }
-
-    char leader_addr_str[40];
-    otIp6AddressToString(&leader_rloc, leader_addr_str, sizeof(leader_addr_str));
-    uint16_t leader_rloc16 = (leader_rloc.mFields.m8[14] << 8) | leader_rloc.mFields.m8[15];
-    ESP_LOGI(TAG, "Leader RLOC: 0x%04x = %s", (unsigned)leader_rloc16, leader_addr_str);
+    // Construct Leader RLOC address
+    otIp6Address leader_address;
+    construct_leader_rloc_address(instance, leader_rloc16, &leader_address);
 
     // Reset response context
     memset(&s_response_ctx, 0, sizeof(s_response_ctx));
@@ -235,8 +231,7 @@ static esp_err_t send_coap_stop_command_once(otInstance *instance, uint16_t lead
     // Prepare message info
     otMessageInfo message_info;
     memset(&message_info, 0, sizeof(message_info));
-    // memcpy(&message_info.mPeerAddr, &leader_address, sizeof(otIp6Address));
-    message_info.mPeerAddr = leader_rloc;
+    memcpy(&message_info.mPeerAddr, &leader_address, sizeof(otIp6Address));
     message_info.mPeerPort = OT_DEFAULT_COAP_PORT;
 
     // Send CoAP request
@@ -282,9 +277,10 @@ static void leader_rloc_check_task(void *arg)
     (void)arg;
     static uint16_t last_leader_rloc16 = 0xffff;
     static bool last_send_success = false;
+    static uint32_t last_send_time_ms = 0;  // Timestamp of last successful send
 
     // Wait a bit for network to start
-    vTaskDelay(pdMS_TO_TICKS(3000));
+    vTaskDelay(pdMS_TO_TICKS(5000));
 
     while (1) {
         otInstance *instance = esp_openthread_get_instance();
@@ -310,38 +306,60 @@ static void leader_rloc_check_task(void *arg)
                         ESP_LOGI(TAG, "Partition ID: 0x%08lx", (unsigned long)leader_data.mPartitionId);
                     }
 
+                    // Check if enough time has passed since last successful send
+                    uint32_t current_time_ms = xTaskGetTickCount() * portTICK_PERIOD_MS;
+                    bool retry_timeout = (last_send_success &&
+                                          (last_leader_rloc16 != 0xffff) &&
+                                          (leader_rloc16 == last_leader_rloc16) &&
+                                          (current_time_ms - last_send_time_ms >= LEADER_STOP_RETRY_INTERVAL_MS));
+
                     // Send CoAP stop command if:
                     // 1. First time (last_leader_rloc16 == 0xffff)
-                    // 2. Leader RLOC16 changed
-                    // 3. Last send was not successful
+                    // 2. Leader RLOC16 changed (new Leader)
+                    // 3. Last send was not successful (retry on failure)
+                    // 4. Retry timeout: Leader still exists after sending successfully (for testing/retry)
                     bool should_send = (last_leader_rloc16 == 0xffff) ||
                                        (leader_rloc16 != last_leader_rloc16) ||
-                                       (!last_send_success);
+                                       (!last_send_success) ||
+                                       retry_timeout;
 
                     if (should_send) {
+                        // Log reason for sending
+                        if (last_leader_rloc16 == 0xffff) {
+                            ESP_LOGI(TAG, "Sending CoAP stop command (first time, Leader RLOC16: 0x%04x)...", leader_rloc16);
+                        } else if (leader_rloc16 != last_leader_rloc16) {
+                            ESP_LOGI(TAG, "Sending CoAP stop command (Leader changed: 0x%04x -> 0x%04x)...",
+                                     last_leader_rloc16, leader_rloc16);
+                        } else if (retry_timeout) {
+                            ESP_LOGI(TAG, "Sending CoAP stop command (retry timeout - Leader still exists, RLOC16: 0x%04x)...", leader_rloc16);
+                        } else {
+                            ESP_LOGI(TAG, "Sending CoAP stop command (retry on failure, Leader RLOC16: 0x%04x)...", leader_rloc16);
+                        }
+
                         esp_openthread_lock_release();
 
-                        ESP_LOGI(TAG, "Sending CoAP stop command to Leader (RLOC16: 0x%04x)...", leader_rloc16);
                         bool success = false;
                         esp_err_t send_err = send_coap_stop_command_once(instance, leader_rloc16, &success);
 
                         if (send_err == ESP_OK && success) {
-                            ESP_LOGI(TAG, "✓ CoAP stop command acknowledged by Leader");
+                            ESP_LOGI(TAG, "✓ CoAP stop command acknowledged by Leader (RLOC16: 0x%04x)", leader_rloc16);
                             last_send_success = true;
+                            last_leader_rloc16 = leader_rloc16;  // Update only after success
+                            last_send_time_ms = current_time_ms;  // Record timestamp for retry timeout
                         } else {
-                            ESP_LOGW(TAG, "✗ CoAP stop command failed or not acknowledged (err: %d, success: %d)",
-                                     send_err, success);
+                            ESP_LOGW(TAG, "✗ CoAP stop command failed or not acknowledged (err: %d, success: %d, RLOC16: 0x%04x)",
+                                     send_err, success, leader_rloc16);
                             last_send_success = false;
+                            // Don't update last_leader_rloc16 on failure - will retry next time
                         }
-
-                        last_leader_rloc16 = leader_rloc16;
 
                         // Re-acquire lock for next iteration
                         if (!esp_openthread_lock_acquire(pdMS_TO_TICKS(1000))) {
                             ESP_LOGW(TAG, "Failed to re-acquire lock");
                         }
                     } else {
-                        ESP_LOGD(TAG, "Skipping CoAP send (Leader RLOC16 unchanged: 0x%04x)", leader_rloc16);
+                        ESP_LOGD(TAG, "Skipping CoAP send (Leader RLOC16 unchanged: 0x%04x, last_send_success=%d)",
+                                 leader_rloc16, last_send_success);
                     }
                 }
             } else if (role == OT_DEVICE_ROLE_LEADER) {
@@ -351,6 +369,7 @@ static void leader_rloc_check_task(void *arg)
                 ESP_LOGI(TAG, "Our RLOC16: 0x%04x", our_rloc16);
                 last_leader_rloc16 = 0xffff;  // Reset to trigger send when we become Router/Child again
                 last_send_success = false;
+                last_send_time_ms = 0;  // Reset timestamp
             }
             // If role is DETACHED or DISABLED, don't do anything
 

@@ -106,9 +106,8 @@ void app_main(void)
         // Set device properties (returns void)
         otThreadSetDeviceProperties(instance, &device_props);
 
-        // Get and log the calculated leader weight
-        uint8_t leader_weight = otThreadGetLocalLeaderWeight(instance);
-        ESP_LOGI(TAG, "Leader weight set: adjustment=+16, calculated weight=%d", leader_weight);
+        // Preferred Leader Partition Id cao nhất (0xFFFFFFFF)
+        otThreadSetPreferredLeaderPartitionId(instance, 0xFFFFFFFF);
 
         esp_openthread_lock_release();
     }

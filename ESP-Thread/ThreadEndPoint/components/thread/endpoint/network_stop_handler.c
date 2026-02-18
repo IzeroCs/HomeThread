@@ -16,12 +16,16 @@
 #include "openthread/thread.h"
 #include "status_led.h"
 #include "network_stop_handler.h"
+#include "thread_coap.h"
 
 static const char *TAG = "network_stop";
+#define NETWORK_STOP_WAIT_SECONDS 120
+/* OpenThread CoAP match full URI only (not prefix). Path = segment1/segment2. */
+#define NETWORK_STOP_URI_PATH_FULL   "network/stop"
 
-#define COAP_DEFAULT_PORT 5683
-#define NETWORK_STOP_WAIT_SECONDS 240
 static bool s_resource_registered = false;
+/* true = đang trong chu kỳ stop → wait → start; tránh request trùng gây start/stop chồng chéo */
+static volatile bool s_network_stop_in_progress = false;
 
 /* Task để handle stop Thread, wait, và restart */
 static void network_stop_restart_task(void *pvParameters)
@@ -52,7 +56,7 @@ static void network_stop_restart_task(void *pvParameters)
     ESP_LOGI(TAG, "Waiting %d seconds before restarting Thread...", NETWORK_STOP_WAIT_SECONDS);
     for (int i = 0; i < NETWORK_STOP_WAIT_SECONDS; i++) {
         vTaskDelay(pdMS_TO_TICKS(1000));
-        if ((i + 1) % 60 == 0) {
+        if ((i + 1) % 10 == 0) {
             ESP_LOGI(TAG, "Waiting... %d seconds remaining", NETWORK_STOP_WAIT_SECONDS - (i + 1));
         }
     }
@@ -66,7 +70,21 @@ static void network_stop_restart_task(void *pvParameters)
         ESP_LOGI(TAG, "Thread network restarted - Border Router should become Leader");
     }
 
+    /* Chu kỳ stop → wait → start đã xong, cho phép nhận lệnh stop mới */
+    s_network_stop_in_progress = false;
     vTaskDelete(NULL);
+}
+
+/* Đang trong chu kỳ stop → wait → start: không chạy lại logic stop, chỉ trả response */
+static bool is_stop_cycle_in_progress(void)
+{
+    return s_network_stop_in_progress;
+}
+
+/* Bật flag khi nhận lệnh stop (Leader chấp nhận, bắt đầu chu kỳ) */
+static void set_stop_cycle_in_progress(void)
+{
+    s_network_stop_in_progress = true;
 }
 
 /* CoAP handler cho GET /network/stop */
@@ -75,11 +93,24 @@ static void network_stop_handler(void *aContext, otMessage *aMessage,
 {
     (void)aContext;
 
-    ESP_LOGI(TAG, "Network stop handler");
     otInstance *instance = esp_openthread_get_instance();
     if (!instance) {
         return;
     }
+
+    /* Đang trong chu kỳ stop → wait → start: chỉ trả 2.05, không chạy stop/restart trùng */
+    if (is_stop_cycle_in_progress()) {
+        ESP_LOGD(TAG, "Stop cycle in progress, ignoring new request but sending response");
+        /* Vẫn gửi response để client không timeout */
+        otMessage *response = otCoapNewMessage(instance, NULL);
+        if (response) {
+            otCoapMessageInitResponse(response, aMessage, OT_COAP_TYPE_ACKNOWLEDGMENT, OT_COAP_CODE_CONTENT);
+            otCoapSendResponse(instance, response, aMessageInfo);
+        }
+        return;
+    }
+
+    ESP_LOGI(TAG, "Network stop handler");
 
     /* Check method: phải là GET */
     otCoapCode code = otCoapMessageGetCode(aMessage);
@@ -88,22 +119,24 @@ static void network_stop_handler(void *aContext, otMessage *aMessage,
         return;
     }
 
-    /* Parse URI path */
+    /* Parse URI path: First = segment 0, muốn thêm thì each bằng GetNextOption. */
     otCoapOptionIterator iterator;
     otCoapOptionIteratorInit(&iterator, aMessage);
     char segments[2][64] = {{0}};
     int seg_count = 0;
 
-    const otCoapOption *option;
-    while ((option = otCoapOptionIteratorGetNextOption(&iterator)) != NULL && seg_count < 2) {
-        if (option->mNumber == OT_COAP_OPTION_URI_PATH) {
-            uint16_t seg_len = option->mLength;
-            if (seg_len >= sizeof(segments[0])) seg_len = sizeof(segments[0]) - 1;
-            uint16_t offset = iterator.mNextOptionOffset - seg_len;
-            otMessageRead(aMessage, offset, segments[seg_count], seg_len);
-            segments[seg_count][seg_len] = '\0';
-            seg_count++;
+    const otCoapOption *option = otCoapOptionIteratorGetFirstOptionMatching(&iterator, OT_COAP_OPTION_URI_PATH);
+    while (option != NULL && seg_count < 2) {
+        uint16_t seg_len = option->mLength;
+        if (seg_len >= sizeof(segments[0])) {
+            seg_len = sizeof(segments[0]) - 1;
         }
+        if (seg_len > 0 &&
+            otCoapOptionIteratorGetOptionValue(&iterator, segments[seg_count]) == OT_ERROR_NONE) {
+            segments[seg_count][seg_len] = '\0';
+        }
+        seg_count++;
+        option = otCoapOptionIteratorGetNextOptionMatching(&iterator, OT_COAP_OPTION_URI_PATH);
     }
 
     /* Check URI path: /network/stop */
@@ -128,10 +161,10 @@ static void network_stop_handler(void *aContext, otMessage *aMessage,
 
     if (role != OT_DEVICE_ROLE_LEADER) {
         ESP_LOGW(TAG, "network_stop_handler: Device is not Leader (role=%d), ignoring", role);
-        /* Send error response */
+        /* Send error response: copy Message ID + Token từ request để client nhận diện response */
         otMessage *response = otCoapNewMessage(instance, NULL);
         if (response) {
-            otCoapMessageInit(response, OT_COAP_TYPE_ACKNOWLEDGMENT, OT_COAP_CODE_FORBIDDEN);
+            otCoapMessageInitResponse(response, aMessage, OT_COAP_TYPE_ACKNOWLEDGMENT, OT_COAP_CODE_FORBIDDEN);
             otCoapSendResponse(instance, response, aMessageInfo);
         }
         return;
@@ -145,21 +178,22 @@ static void network_stop_handler(void *aContext, otMessage *aMessage,
     TaskHandle_t task_handle = NULL;
     if (xTaskCreate(network_stop_restart_task, "network_stop", 4096, NULL, 5, &task_handle) != pdPASS) {
         ESP_LOGE(TAG, "Failed to create network_stop_restart_task");
-        /* Send error response */
         otMessage *response = otCoapNewMessage(instance, NULL);
         if (response) {
-            otCoapMessageInit(response, OT_COAP_TYPE_ACKNOWLEDGMENT, OT_COAP_CODE_SERVICE_UNAVAILABLE);
+            otCoapMessageInitResponse(response, aMessage, OT_COAP_TYPE_ACKNOWLEDGMENT, OT_COAP_CODE_SERVICE_UNAVAILABLE);
             otCoapSendResponse(instance, response, aMessageInfo);
         }
         return;
     }
 
-    /* Send success response */
+    /* Send success response: copy Message ID + Token từ request để client nhận diện response */
     otMessage *response = otCoapNewMessage(instance, NULL);
     if (response) {
-        otCoapMessageInit(response, OT_COAP_TYPE_ACKNOWLEDGMENT, OT_COAP_CODE_CONTENT);
+        otCoapMessageInitResponse(response, aMessage, OT_COAP_TYPE_ACKNOWLEDGMENT, OT_COAP_CODE_CONTENT);
         otCoapSendResponse(instance, response, aMessageInfo);
         ESP_LOGI(TAG, "Sent 2.05 Content response");
+        /* Bật flag: đang trong chu kỳ stop → wait → start; tắt khi task restart xong */
+        set_stop_cycle_in_progress();
     }
 }
 
@@ -176,23 +210,22 @@ esp_err_t network_stop_handler_register(void)
         return ESP_OK;
     }
 
+    /* Start CoAP server (dùng chung với các component khác) */
+    esp_err_t err = thread_coap_server_start();
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG, "thread_coap_server_start failed: %s", esp_err_to_name(err));
+        return err;
+    }
+
     if (!esp_openthread_lock_acquire(pdMS_TO_TICKS(500))) {
         ESP_LOGE(TAG, "Failed to acquire OpenThread lock");
         return ESP_ERR_TIMEOUT;
     }
 
-    /* Start CoAP server nếu chưa start */
-    otError err = otCoapStart(instance, COAP_DEFAULT_PORT);
-    if (err != OT_ERROR_NONE && err != OT_ERROR_ALREADY) {
-        esp_openthread_lock_release();
-        ESP_LOGE(TAG, "otCoapStart failed: %s", otThreadErrorToString(err));
-        return ESP_FAIL;
-    }
-
-    /* Register resource: /network */
+    /* Register resource: full URI path only (CoAP exact match, no prefix) */
     static otCoapResource s_network_resource;
     memset(&s_network_resource, 0, sizeof(s_network_resource));
-    s_network_resource.mUriPath = "network/stop";
+    s_network_resource.mUriPath = NETWORK_STOP_URI_PATH_FULL;
     s_network_resource.mHandler = network_stop_handler;
     s_network_resource.mContext = NULL;
 
@@ -201,6 +234,6 @@ esp_err_t network_stop_handler_register(void)
 
     esp_openthread_lock_release();
 
-    ESP_LOGI(TAG, "CoAP resource '/network' registered for stop command");
+    ESP_LOGI(TAG, "CoAP resource '%s' registered (full URI match)", NETWORK_STOP_URI_PATH_FULL);
     return ESP_OK;
 }

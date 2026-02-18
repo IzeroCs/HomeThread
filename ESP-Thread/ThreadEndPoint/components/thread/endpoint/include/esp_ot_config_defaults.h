@@ -1,6 +1,6 @@
 /*
- * OpenThread default config macros for thread_endpoint_core.
- * 
+ * OpenThread default config macros for thread endpoint.
+ *
  * Cung cấp các macro default config cho OpenThread initialization.
  */
 #pragma once

@@ -20,12 +20,11 @@
 #include "openthread/thread.h"
 #include "entity_coap_server.h"
 #include "entity_model.h"
+#include "thread_coap.h"
 
 static const char *TAG = "entity_coap";
 
-#define COAP_DEFAULT_PORT 5683
-
-static bool s_coap_started = false;
+static bool s_resource_registered = false;
 
 /* Parse URI path: /entities/{entity_id}[/{attr}]
  * Returns: entity_id (out), attr (out, can be NULL), success
@@ -235,22 +234,21 @@ esp_err_t entity_coap_server_start(void)
         return ESP_ERR_INVALID_STATE;
     }
     
-    if (s_coap_started) {
-        ESP_LOGW(TAG, "CoAP server already started");
-        return ESP_ERR_INVALID_STATE;
+    if (s_resource_registered) {
+        ESP_LOGW(TAG, "Entity CoAP resource already registered");
+        return ESP_OK;
+    }
+    
+    /* Start CoAP server (dùng chung với các component khác) */
+    esp_err_t err = thread_coap_server_start();
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG, "thread_coap_server_start failed: %s", esp_err_to_name(err));
+        return err;
     }
     
     if (!esp_openthread_lock_acquire(pdMS_TO_TICKS(500))) {
         ESP_LOGE(TAG, "Failed to acquire OpenThread lock");
         return ESP_ERR_TIMEOUT;
-    }
-    
-    /* Start CoAP server (nếu chưa start bởi device_registry) */
-    otError err = otCoapStart(instance, COAP_DEFAULT_PORT);
-    if (err != OT_ERROR_NONE && err != OT_ERROR_ALREADY) {
-        esp_openthread_lock_release();
-        ESP_LOGE(TAG, "otCoapStart failed: %s", otThreadErrorToString(err));
-        return ESP_FAIL;
     }
     
     /* Register resource: /entities (handles all /entities paths) */
@@ -264,9 +262,8 @@ esp_err_t entity_coap_server_start(void)
     
     esp_openthread_lock_release();
     
-    s_coap_started = true;
-    ESP_LOGI(TAG, "Entity CoAP server started on port %d", COAP_DEFAULT_PORT);
-    ESP_LOGI(TAG, "Resources: GET /entities, GET /entities/{id}[/{attr}], PUT /entities/{id}/{attr}");
+    s_resource_registered = true;
+    ESP_LOGI(TAG, "Entity CoAP resource registered: GET /entities, GET /entities/{id}[/{attr}], PUT /entities/{id}/{attr}");
     
     return ESP_OK;
 }

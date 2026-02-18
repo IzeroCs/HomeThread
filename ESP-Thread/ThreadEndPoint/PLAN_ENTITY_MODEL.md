@@ -386,10 +386,10 @@ Sau khi chạy ổn: mở rộng type/entity khác theo nhu cầu (sensor, dimme
 
 - ✅ `components/entity_model/` - Core entity model
 - ✅ `components/device_registry/` - CoAP client để register device
-- ✅ `components/thread_joiner/` - Thread joiner với callback
+- ✅ `components/thread/joiner/` - Thread joiner với callback
 - ✅ `components/status_led/` - Status LED indicator
 - ✅ `components/boot_btn/` - Boot button handler
-- ✅ `components/thread_endpoint_core/` - Thread endpoint + CoAP resource `/network/stop` (network_stop_handler: chỉ Leader xử lý, stop → đợi 240s → restart)
+- ✅ `components/thread/endpoint/` - Thread endpoint + CoAP resource `/network/stop` (network_stop_handler: chỉ Leader xử lý, stop → đợi 240s → restart)
 
 ## 13. Example: light_on_off
 
@@ -400,4 +400,4 @@ Sau khi chạy ổn: mở rộng type/entity khác theo nhu cầu (sensor, dimme
 ## 14. Tài liệu liên quan
 
 - `BORDER_ROUTER_COAP_SERVER.md` - Hướng dẫn implement CoAP server trên Border Router
-- `LEADER_STOP_COMMAND_COAP.md` - CoAP GET/POST `/network/stop` cho Leader, triển khai trong thread_endpoint_core (network_stop_handler)
+- `LEADER_STOP_COMMAND_COAP.md` - CoAP GET/POST `/network/stop` cho Leader, triển khai trong component thread/endpoint (network_stop_handler)

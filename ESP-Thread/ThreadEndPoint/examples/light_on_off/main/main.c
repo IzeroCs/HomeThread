@@ -1,7 +1,7 @@
 /*
  * Example light_on_off: Thread Endpoint với Entity Model và CoAP.
  *
- * Sử dụng thread_endpoint_core, entity_coap_server, network_stop handler.
+ * Sử dụng thread/endpoint, entity_coap_server, network_stop handler.
  */
 #include "esp_err.h"
 #include "esp_log.h"
@@ -50,11 +50,11 @@ static void on_joined(void *ctx)
         return;
     }
 
-    // err = entity_coap_server_start();
-    // if (err != ESP_OK) {
-    //     ESP_LOGE(TAG, "entity_coap_server_start: %s", esp_err_to_name(err));
-    //     return;
-    // }
+    err = entity_coap_server_start();
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG, "entity_coap_server_start: %s", esp_err_to_name(err));
+        return;
+    }
 
     s_app_initialized = true;
     ESP_LOGI(TAG, "Application initialized successfully");

@@ -21,7 +21,7 @@ typedef void (*device_registry_callback_fn)(bool success, void *ctx);
 
 /**
  * Update Leader RLOC address (gọi khi join hoặc state change).
- * Tự động được gọi trong thread_endpoint_core, nhưng có thể gọi thủ công nếu cần.
+ * Tự động được gọi trong component endpoint (thread/endpoint), nhưng có thể gọi thủ công nếu cần.
  */
 void device_registry_update_leader_rloc(void);
 

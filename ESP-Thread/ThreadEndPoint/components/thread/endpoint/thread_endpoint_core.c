@@ -1,6 +1,7 @@
 /*
  * Thread Endpoint Core - Implementation.
  */
+#include <inttypes.h>
 #include <stdio.h>
 #include <string.h>
 #include "esp_err.h"
@@ -32,6 +33,26 @@ static const char *TAG = "thread_endpoint";
 static thread_endpoint_config_t s_config;
 static bool s_started = false;
 static TaskHandle_t s_registry_task_handle = NULL;
+
+/* Log Leader Data (partition, leader router id, weight, data version) */
+static void log_leader_data(void)
+{
+    otInstance *instance = esp_openthread_get_instance();
+    if (!instance || !esp_openthread_lock_acquire(pdMS_TO_TICKS(200))) {
+        return;
+    }
+    otLeaderData ld;
+    otError err = otThreadGetLeaderData(instance, &ld);
+    uint8_t local_leader_weight = otThreadGetLocalLeaderWeight(instance);
+    esp_openthread_lock_release();
+    if (err != OT_ERROR_NONE) {
+        ESP_LOGW(TAG, "Leader data: get failed %s", otThreadErrorToString(err));
+        return;
+    }
+    ESP_LOGI(TAG, "LeaderData: partition_id=0x%08" PRIx32 " leader_router_id=%u weighting=%u (partition Leader) local_weight=%u data_ver=%u stable_ver=%u",
+             (uint32_t)ld.mPartitionId, ld.mLeaderRouterId, ld.mWeighting, local_leader_weight,
+             ld.mDataVersion, ld.mStableDataVersion);
+}
 
 /* Update LED role khi Thread role thay đổi */
 static void update_attached_led_role(void)
@@ -92,14 +113,15 @@ static void on_openthread_event(void *arg, esp_event_base_t base, int32_t id, vo
     } else if (id == (int32_t)OPENTHREAD_EVENT_ROLE_CHANGED && thread_joiner_is_joined()) {
         status_led_set_state(STATUS_LED_ATTACHED);
         update_attached_led_role();
+        log_leader_data();
 
         /* Update Leader RLOC khi role thay đổi */
         device_registry_update_leader_rloc();
 
-        /* Re-register device khi role thay đổi - TẮT ở main */
-        /* if (s_registry_task_handle) {
+        /* Re-register device khi role thay đổi (child → router, router → child, ...) */
+        if (s_registry_task_handle) {
             xTaskNotifyGive(s_registry_task_handle);
-        } */
+        }
     }
 }
 
@@ -114,11 +136,11 @@ static void on_joined_wrapper(void *ctx)
     }
 
     /* Set Leader Weight = -16 để tránh trở thành Leader */
-    if (instance && esp_openthread_lock_acquire(pdMS_TO_TICKS(500))) {
-        otThreadSetLocalLeaderWeight(instance, 0);
-        esp_openthread_lock_release();
-        ESP_LOGI(TAG, "Leader Weight set to -16");
-    }
+    // if (instance && esp_openthread_lock_acquire(pdMS_TO_TICKS(500))) {
+    //     otThreadSetLocalLeaderWeight(instance, -16);
+    //     esp_openthread_lock_release();
+    //     ESP_LOGI(TAG, "Leader Weight set to -16");
+    // }
 
     /* Set router selection jitter */
     if (s_config.router_selection_jitter > 0) {
@@ -132,9 +154,10 @@ static void on_joined_wrapper(void *ctx)
     /* Update LED */
     status_led_set_state(STATUS_LED_ATTACHED);
     update_attached_led_role();
+    log_leader_data();
 
     /* Update Leader RLOC sau khi join */
-    // device_registry_update_leader_rloc();
+    device_registry_update_leader_rloc();
 
     /* Register CoAP resource /network/stop (nếu bật trong config) */
     if (s_config.enable_network_stop_handler) {
@@ -149,11 +172,11 @@ static void on_joined_wrapper(void *ctx)
         s_config.on_joined(s_config.ctx);
     }
 
-    /* Auto register device lên Border Router - TẮT tạm */
-    /* esp_err_t err = device_registry_init();
+    /* Auto register device lên Border Router */
+    esp_err_t err = device_registry_init();
     if (err == ESP_OK && s_registry_task_handle) {
         xTaskNotifyGive(s_registry_task_handle);
-    } */
+    }
 }
 
 esp_err_t thread_endpoint_start(const thread_endpoint_config_t *config)

@@ -77,6 +77,14 @@
     }
   }
 
+  &.status-thread-blue {
+    background: #1976d2;
+
+    &::after {
+      border-color: #1976d2;
+    }
+  }
+
   &.status-thread-purple {
     background: #7b1fa2;
 

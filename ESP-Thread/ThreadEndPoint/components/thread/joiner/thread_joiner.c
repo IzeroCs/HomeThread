@@ -15,6 +15,9 @@
 #include "openthread/ip6.h"
 #include "openthread/joiner.h"
 #include "openthread/thread.h"
+#include "sdkconfig.h"
+/* Include OpenThread custom config để có OPENTHREAD_CONFIG_MLE_DEVICE_PROPERTY_LEADER_WEIGHT_ENABLE */
+#include "../../../openthread_custom_config.h"
 #if OPENTHREAD_FTD && OPENTHREAD_CONFIG_MLE_DEVICE_PROPERTY_LEADER_WEIGHT_ENABLE
 #include "openthread/thread_ftd.h"
 #endif
@@ -292,15 +295,25 @@ void thread_joiner_set_prefer_not_leader(bool prefer_not_leader)
     const otDeviceProperties *cur = otThreadGetDeviceProperties(instance);
     if (cur) {
         memcpy(&props, cur, sizeof(props));
-        props.mLeaderWeightAdjustment = prefer_not_leader ? -16 : 0;
-        otThreadSetDeviceProperties(instance, &props);
-        ESP_LOGI(TAG, "Prefer not leader: %s (Leader Weight adj %d)", prefer_not_leader ? "yes" : "no", (int)props.mLeaderWeightAdjustment);
+    } else {
+        memset(&props, 0, sizeof(props));
     }
+    /* Cấu hình device properties cho endpoint: weight -16, không BR, battery, unstable */
+    props.mLeaderWeightAdjustment = -16;
+    props.mIsBorderRouter = false;
+    props.mPowerSupply = OT_POWER_SUPPLY_BATTERY;
+    props.mIsUnstable = true;
+
+    otThreadSetDeviceProperties(instance, &props);
+    otThreadSetPreferredLeaderPartitionId(instance, 0x00000000);
+    ESP_LOGI(TAG, "Prefer not leader: %s -> weight_adj=%d (border_router=no, power=battery, unstable=yes)",
+             prefer_not_leader ? "yes" : "no", (int)props.mLeaderWeightAdjustment);
     esp_openthread_lock_release();
 }
 #else
 void thread_joiner_set_prefer_not_leader(bool prefer_not_leader)
 {
     (void)prefer_not_leader;
+    ESP_LOGI(TAG, "Prefer not leader: %s (disabled, no FTD/LEADER_WEIGHT)", prefer_not_leader ? "yes" : "no");
 }
 #endif

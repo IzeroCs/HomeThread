@@ -1,6 +1,6 @@
 /*
  * Thread Endpoint Core - Application framework wrapper.
- * 
+ *
  * Tích hợp các phần common cho Thread endpoint:
  * - OpenThread initialization
  * - Status LED (auto update theo Thread state/role)
@@ -8,7 +8,7 @@
  * - Thread joiner
  * - Device registry (auto register khi join)
  * - Event handling
- * 
+ *
  * User chỉ cần implement callback on_joined() để setup application-specific.
  */
 #pragma once
@@ -27,7 +27,7 @@ extern "C" {
  * - Add entities
  * - Start CoAP server
  * - Setup application-specific logic
- * 
+ *
  * @param ctx User context (từ config)
  */
 typedef void (*thread_endpoint_on_joined_fn)(void *ctx);
@@ -46,7 +46,7 @@ typedef struct {
 
 /**
  * Khởi động Thread Endpoint Core.
- * 
+ *
  * Hàm này sẽ:
  * 1. Init NVS, event loop, netif, OpenThread
  * 2. Start status LED (auto update theo Thread state)
@@ -54,10 +54,10 @@ typedef struct {
  * 4. Start thread joiner
  * 5. Register event handlers (auto update LED, auto register device)
  * 6. Log EUI64
- * 
+ *
  * @param config Cấu hình (NULL = dùng defaults)
  * @return ESP_OK nếu thành công
- * 
+ *
  * @note Sau khi join thành công, on_joined callback sẽ được gọi.
  * @note Status LED sẽ tự động update theo Thread state và role.
  * @note Device sẽ tự động register lên Border Router khi join.
