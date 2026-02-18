@@ -84,19 +84,66 @@ static void on_boot_long_press(void *ctx)
 }
 
 /* Task để register device (tránh stack overflow trong event handler) */
+/* Gửi định kỳ mỗi 2 giây sau khi device đã join */
 static void registry_task(void *pvParameters)
 {
     (void)pvParameters;
+    bool started_periodic = false;
+    const TickType_t periodic_interval = pdMS_TO_TICKS(5000); // 2 seconds
 
     while (1) {
-        /* Wait for notification */
+        /* Wait for notification (khi join hoặc role change) */
         ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
 
         /* Delay để network ready */
         vTaskDelay(pdMS_TO_TICKS(1000));
 
-        /* Register device */
+        /* Register device lần đầu */
         device_registry_register(NULL, NULL);
+
+        /* Bắt đầu gửi định kỳ mỗi 2 giây */
+        if (!started_periodic) {
+            started_periodic = true;
+            ESP_LOGI(TAG, "Starting periodic device model registration (every 2s)");
+        }
+
+        /* Gửi định kỳ mỗi 2 giây */
+        while (started_periodic) {
+            vTaskDelay(periodic_interval);
+
+            /* Kiểm tra device đã join chưa */
+            otInstance *instance = esp_openthread_get_instance();
+            if (!instance) {
+                continue;
+            }
+
+            bool is_joined = false;
+            if (esp_openthread_lock_acquire(pdMS_TO_TICKS(200))) {
+                otDeviceRole role = otThreadGetDeviceRole(instance);
+                is_joined = (role != OT_DEVICE_ROLE_DISABLED && role != OT_DEVICE_ROLE_DETACHED);
+                esp_openthread_lock_release();
+            } else {
+                /* Không lấy được lock, skip lần này */
+                continue;
+            }
+
+            if (is_joined) {
+                /* Gửi device model lên Leader */
+                device_registry_register(NULL, NULL);
+            } else {
+                /* Device đã detached, dừng gửi định kỳ */
+                started_periodic = false;
+                ESP_LOGI(TAG, "Device detached, stopping periodic registration");
+                break;
+            }
+
+            /* Kiểm tra xem có notification mới không (role change) */
+            if (ulTaskNotifyTake(pdFALSE, 0) > 0) {
+                /* Có notification mới, gửi ngay và tiếp tục loop */
+                vTaskDelay(pdMS_TO_TICKS(100)); // Delay nhỏ để network ready
+                device_registry_register(NULL, NULL);
+            }
+        }
     }
 }
 

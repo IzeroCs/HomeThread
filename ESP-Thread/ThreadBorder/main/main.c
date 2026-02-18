@@ -30,9 +30,9 @@
 #include "ot_examples_common.h"
 
 #include "led_status.h"
-/* Tạm tắt device registry để test leader control */
-/* #include "device_registry_server.h" */
+#include "device_registry_server.h"  // Header ở device_registry/include/
 #include "leader_control_client.h"
+#include "state_change_notifier.h"
 
 #include "openthread/thread.h"
 #include "openthread/thread_ftd.h"
@@ -114,10 +114,10 @@ void app_main(void)
 
     ESP_ERROR_CHECK(led_status_start(NULL));  /* LED: disabled=đỏ nhấp nháy, detached=xanh dương nhấp nháy, leader=xanh lá tĩnh, router=tím tĩnh, child=xanh dương tĩnh */
 
-    /* Tạm tắt device registry để test leader control */
-    /* ESP_ERROR_CHECK(device_registry_server_init()); */
+    /* Initialize Device Registry Server (CoAP server cho device registration) */
+    ESP_ERROR_CHECK(device_registry_server_init());
 
-    /* CoAP cần start để leader_control_client gửi được (khi tắt device registry) */
+    /* CoAP đã được start bởi device_registry_server_init(), nhưng giữ lại để đảm bảo leader_control_client có thể dùng */
     instance = esp_openthread_get_instance();
     if (instance && esp_openthread_lock_acquire(pdMS_TO_TICKS(1000))) {
         otError err = otCoapStart(instance, OT_DEFAULT_COAP_PORT);
@@ -131,6 +131,9 @@ void app_main(void)
 
     /* Initialize Leader Control Client (network stop) */
     ESP_ERROR_CHECK(leader_control_client_init());
+
+    /* Initialize State Change Notifier (notify Backend khi có thay đổi) */
+    ESP_ERROR_CHECK(state_change_notifier_init());
 
 #if CONFIG_OPENTHREAD_CLI_ESP_EXTENSION
     esp_cli_custom_command_init();

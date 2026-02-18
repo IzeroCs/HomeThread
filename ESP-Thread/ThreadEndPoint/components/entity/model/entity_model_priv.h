@@ -6,17 +6,15 @@
 #include "entity_model.h"
 #include "sdkconfig.h"
 
-/* Internal type registry entry (callback-based approach) */
+/* Internal type registry entry (for type_id mapping) */
 typedef struct entity_type_registry {
-    const char *type_id;
-    entity_get_attr_fn get_cb;
-    entity_set_attr_fn set_cb;
+    const char *type_id;          // String ID: "on_off_light", "temperature_sensor"
+    entity_type_t type_enum;       // Enum: ENTITY_TYPE_LIGHT, ENTITY_TYPE_SENSOR
 } entity_type_registry_t;
 
-/* Internal entity entry (callback-based approach) */
+/* Internal entity entry (struct-based approach) */
 typedef struct entity_entry {
-    const char *entity_id;
-    const char *name;
-    const entity_type_registry_t *type;
-    void *instance_data;
+    entity_base_t base;            // Full base structure with all fields
+    entity_type_t type_enum;       // Entity type enum for casting
+    void *entity_struct;           // Pointer to entity_light_t, entity_sensor_t, etc.
 } entity_entry_t;

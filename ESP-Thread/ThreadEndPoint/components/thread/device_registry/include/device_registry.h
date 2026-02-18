@@ -42,7 +42,7 @@ bool device_registry_get_leader_rloc(otIp6Address *leader_rloc);
 esp_err_t device_registry_init(void);
 
 /**
- * Register device len Leader: gui CoAP POST /devices/register voi device_model.
+ * Register device len Leader: gui CoAP POST /device/register voi device_model.
  * 
  * TODO: Update to struct-based approach
  *   - Use device_model_t struct

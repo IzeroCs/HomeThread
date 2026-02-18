@@ -2,18 +2,26 @@
  * Example light_on_off: Thread Endpoint với Entity Model và CoAP.
  *
  * Sử dụng thread/endpoint, entity_coap_server, network_stop handler.
- * 
- * TODO: Migrate to struct-based approach (see MIGRATION_TO_STRUCT_BASED.md)
  */
 #include "esp_err.h"
 #include "esp_log.h"
 #include "on_off_light.h"
+#include "entity_model.h"
+#include "device_model.h"
 #include "entity_coap_server.h"
 #include "thread_endpoint.h"
 
 static const char *TAG = "light_on_off";
 
 #define LIGHT_GPIO  2   /* Den on/off noi ngoai; RGB status dung GPIO 8 */
+
+// Device info constants (ESP-IDF style)
+#define ESP_MANUFACTURER_NAME    "Espressif"
+#define ESP_MODEL_IDENTIFIER     "ESP32-C6"
+#define ESP_SW_VERSION           "1.0.0"
+#define ESP_HW_VERSION           "v1.0"
+#define ESP_DEVICE_TYPE          "light_controller"
+#define ESP_DEVICE_NAME          "Light Controller"
 
 /* Flag để tránh init nhiều lần khi on_joined() được gọi lại */
 static bool s_app_initialized = false;
@@ -28,22 +36,36 @@ static void on_joined(void *ctx)
         return;
     }
 
-    ESP_LOGI(TAG, "Joined Thread -> init entity + CoAP server");
+    ESP_LOGI(TAG, "Joined Thread -> init device model + entity model + CoAP server");
 
-    /* TODO: Migrate to struct-based approach */
-    /* 
-     * Old approach removed:
-     *   entity_model_init();
-     *   on_off_light_register_type();
-     *   on_off_light_add(&light_cfg);
-     * 
-     * New approach (after migration):
-     *   1. entity_model_init();
-     *   2. on_off_light_register_type();  // Register type ID
-     *   3. on_off_light_add(&light_cfg);  // Create entity_light_t and add
-     */
+    // Initialize Device Model with device info (ESP-IDF style: designated initializers)
+    // device_id and mac_address will be auto-generated if not provided
+    device_info_t device_info = {
+        .device_name = ESP_DEVICE_NAME,
+        .device_type = ESP_DEVICE_TYPE,
+        .manufacturer = ESP_MANUFACTURER_NAME,
+        .model = ESP_MODEL_IDENTIFIER,
+        .sw_version = ESP_SW_VERSION,
+        .hw_version = ESP_HW_VERSION,
+    };
+
+    esp_err_t err = device_model_init(&device_info);
+    if (err != 0) {
+        ESP_LOGE(TAG, "device_model_init failed: %d", err);
+        return;
+    }
     
-    esp_err_t err = on_off_light_register_type();
+    // Get device_id from Device Model (after auto-generation)
+    device_model_t *device = device_model_get();
+    if (device) {
+        ESP_LOGI(TAG, "Device Model initialized: device_id=%s", device->info.device_id);
+    }
+
+    // Initialize entity model
+    entity_model_init();
+
+    // Register light type
+    err = on_off_light_register_type();
     if (err != ESP_OK) {
         ESP_LOGE(TAG, "on_off_light_register_type: %s", esp_err_to_name(err));
         return;
@@ -62,7 +84,12 @@ static void on_joined(void *ctx)
         return;
     }
 
-    /* TODO: entity_coap_server_start() may need updates after migration */
+    // Sync entities to Device Model (for serialization)
+    err = device_model_sync_entities();
+    if (err != 0) {
+        ESP_LOGW(TAG, "device_model_sync_entities failed: %d", err);
+    }
+
     err = entity_coap_server_start();
     if (err != ESP_OK) {
         ESP_LOGE(TAG, "entity_coap_server_start: %s", esp_err_to_name(err));

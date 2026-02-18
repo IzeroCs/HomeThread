@@ -11,9 +11,6 @@ import { CLIWrapper, type CLIResponse } from "../services/CliWrapper";
 
 const RECONNECT_INTERVAL_MS = 3000;
 
-/** Bật/tắt gửi lệnh serial lấy dữ liệu: Status, Router table, Child table, Commissioner list. Đổi thành false để tắt. */
-const AUTO_FETCH_DATA = true;
-
 export class WebSocketServer {
   private io: Server;
   private serialConfigService: SerialConfigService;
@@ -314,17 +311,10 @@ export class WebSocketServer {
     }
   }
 
-  /** Bật polling (Status, OT config, Router/Child table, Joiner table) nếu config AUTO_FETCH_DATA bật; nếu tắt thì chỉ chạy keepalive nhẹ để thiết bị không đứng. */
+  /** Chỉ chạy keepalive nhẹ để thiết bị không đứng; dữ liệu lấy theo NOTIFY events. */
   private startPollingIfEnabled(): void {
     if (!this.serialPort?.getStatus().isConnected) return;
-    if (AUTO_FETCH_DATA) {
-      this.startThreadStatePolling();
-      this.startOtConfigPolling();
-      this.startDashboardTablePolling();
-      this.startJoinerTablePolling();
-    } else {
-      this.startSerialKeepalive();
-    }
+    this.startSerialKeepalive();
   }
 
   private setupEventHandlers(): void {
@@ -594,6 +584,8 @@ export class WebSocketServer {
     // Đăng ký listener để broadcast dữ liệu realtime và lưu unsubscribe function
     this.serialDataUnsubscribe = this.serialPort.onData((data) => {
       this.io.emit("serial:data", data);
+      // Xử lý NOTIFY events từ leader
+      this.handleNotifyEvent(data);
     });
   }
 
@@ -1355,6 +1347,184 @@ export class WebSocketServer {
         error: error instanceof Error ? error.message : "Unknown error",
         command: command,
       });
+    }
+  }
+
+  /** Xử lý NOTIFY events từ leader - gửi lệnh command để leader gửi dữ liệu */
+  private handleNotifyEvent(data: string): void {
+    if (!data || typeof data !== "string") return;
+    if (!this.cliWrapper || !this.serialPort?.getStatus().isConnected) return;
+    
+    // Match tương đối (không match full) vì có thể có thêm số hoặc text khác trong dòng
+    const upperData = data.toUpperCase();
+    
+    if (upperData.includes("NOTIFY:STATE_CHANGED")) {
+      console.log("[NOTIFY] State changed detected, requesting state from leader...");
+      this.requestStateFromLeader().catch((err) => 
+        console.warn("[NOTIFY] Failed to request state:", err)
+      );
+    } else if (upperData.includes("NOTIFY:NETWORKNAME_CHANGED")) {
+      console.log("[NOTIFY] Network name changed detected, requesting networkname...");
+      this.requestNetworkNameFromLeader().catch((err) => 
+        console.warn("[NOTIFY] Failed to request networkname:", err)
+      );
+    } else if (upperData.includes("NOTIFY:CHANNEL_CHANGED")) {
+      console.log("[NOTIFY] Channel changed detected, requesting channel...");
+      this.requestChannelFromLeader().catch((err) => 
+        console.warn("[NOTIFY] Failed to request channel:", err)
+      );
+    } else if (upperData.includes("NOTIFY:IPADDR_CHANGED")) {
+      console.log("[NOTIFY] IP address changed detected, requesting full config (panid, channel, networkname, ipaddr, dataset active)...");
+      this.requestConfigFromLeader().catch((err) =>
+        console.warn("[NOTIFY] Failed to request full config:", err)
+      );
+    } else if (upperData.includes("NOTIFY:CHILD_TABLE_CHANGED")) {
+      console.log("[NOTIFY] Child table changed detected, requesting child table from leader...");
+      this.requestChildTableFromLeader().catch((err) => 
+        console.warn("[NOTIFY] Failed to request child table:", err)
+      );
+    } else if (upperData.includes("NOTIFY:ROUTER_TABLE_CHANGED")) {
+      console.log("[NOTIFY] Router table changed detected, requesting router table from leader...");
+      this.requestRouterTableFromLeader().catch((err) => 
+        console.warn("[NOTIFY] Failed to request router table:", err)
+      );
+    } else if (upperData.includes("NOTIFY:COMMISSIONER_JOINER_CHANGED")) {
+      console.log("[NOTIFY] Commissioner joiner changed detected, requesting joiner table from leader...");
+      this.requestJoinerTableFromLeader().catch((err) => 
+        console.warn("[NOTIFY] Failed to request joiner table:", err)
+      );
+    } else if (upperData.includes("NOTIFY:DATASET_ACTIVE_CHANGED")) {
+      console.log("[NOTIFY] Dataset active changed detected, requesting dataset active...");
+      this.requestDatasetActiveFromLeader().catch((err) => 
+        console.warn("[NOTIFY] Failed to request dataset active:", err)
+      );
+    }
+  }
+
+  /** Gửi lệnh "networkname", merge vào lastOtConfig và emit */
+  private async requestNetworkNameFromLeader(): Promise<void> {
+    try {
+      const res = await this.executeCommandQueued("networkname");
+      const networkName = this.pickValueLine(res.output, { networkName: true });
+      this.lastOtConfig = { ...(this.lastOtConfig ?? {}), networkName };
+      this.io.emit("ot:config", this.lastOtConfig);
+    } catch (error) {
+      console.warn("[NOTIFY] Error requesting networkname:", error);
+    }
+  }
+
+  /** Gửi lệnh "channel", merge vào lastOtConfig và emit */
+  private async requestChannelFromLeader(): Promise<void> {
+    try {
+      const res = await this.executeCommandQueued("channel");
+      const channelStr = this.pickValueLine(res.output, { channel: true });
+      const channel = channelStr ? parseInt(channelStr, 10) : undefined;
+      this.lastOtConfig = { ...(this.lastOtConfig ?? {}), channel };
+      this.io.emit("ot:config", this.lastOtConfig);
+    } catch (error) {
+      console.warn("[NOTIFY] Error requesting channel:", error);
+    }
+  }
+
+  /** Gửi lệnh "ipaddr", merge vào lastOtConfig và emit */
+  private async requestIpaddrFromLeader(): Promise<void> {
+    try {
+      const res = await this.executeCommandQueued("ipaddr");
+      const lines = this.filterCliOutput(res.output);
+      const ipaddr = lines.length > 0 ? lines.join("\n") : undefined;
+      this.lastOtConfig = { ...(this.lastOtConfig ?? {}), ipaddr };
+      this.io.emit("ot:config", this.lastOtConfig);
+    } catch (error) {
+      console.warn("[NOTIFY] Error requesting ipaddr:", error);
+    }
+  }
+
+  /** Gửi lệnh "dataset active", merge vào lastOtConfig và emit */
+  private async requestDatasetActiveFromLeader(): Promise<void> {
+    try {
+      const res = await this.executeCommandQueued("dataset active");
+      const lines = this.filterCliOutput(res.output);
+      const datasetActive = lines.length > 0 ? lines.join("\n") : undefined;
+      this.lastOtConfig = { ...(this.lastOtConfig ?? {}), datasetActive };
+      this.io.emit("ot:config", this.lastOtConfig);
+    } catch (error) {
+      console.warn("[NOTIFY] Error requesting dataset active:", error);
+    }
+  }
+
+  /** Gửi lệnh OpenThread CLI để leader gửi state, parse và emit */
+  private async requestStateFromLeader(): Promise<void> {
+    try {
+      const stateLine = await this.getCurrentThreadState();
+      if (stateLine) {
+        const running = ["detached", "child", "router", "leader"].includes(stateLine);
+        this.lastThreadState = { running, state: stateLine };
+        this.io.emit("ot:threadState", this.lastThreadState);
+        if (stateLine === "disabled" && this.appSettingsService.getThreadRunOnConnect()) {
+          this.maybeStartThreadFromPreference().catch((err) =>
+            console.warn("[Serial] Auto-restart Thread after disabled failed:", err)
+          );
+        }
+      }
+    } catch (error) {
+      console.warn("[NOTIFY] Error requesting state:", error);
+      this.lastThreadState = null;
+      this.io.emit("ot:threadState", { error: "Failed to get thread state." });
+    }
+  }
+
+  /** Gửi lệnh OpenThread CLI để leader gửi config, parse và emit */
+  private async requestConfigFromLeader(): Promise<void> {
+    try {
+      const payload = await this.fetchOtConfigPayload();
+      this.lastOtConfig = payload;
+      this.io.emit("ot:config", payload);
+    } catch (error) {
+      console.warn("[NOTIFY] Error requesting config:", error);
+      this.lastOtConfig = { error: error instanceof Error ? error.message : "Unknown error" };
+      this.io.emit("ot:config", this.lastOtConfig);
+    }
+  }
+
+  /** Gửi lệnh OpenThread CLI để leader gửi router table, parse và emit */
+  private async requestRouterTableFromLeader(): Promise<void> {
+    try {
+      const res = await this.executeCommandQueued("router table");
+      const { headers, rows } = this.parseTableOutput(res.output);
+      this.lastRouterTable = { headers, rows };
+      this.io.emit("ot:routerTable", this.lastRouterTable);
+    } catch (error) {
+      console.warn("[NOTIFY] Error requesting router table:", error);
+      this.lastRouterTable = { error: error instanceof Error ? error.message : "Unknown error" };
+      this.io.emit("ot:routerTable", this.lastRouterTable);
+    }
+  }
+
+  /** Gửi lệnh OpenThread CLI để leader gửi child table, parse và emit */
+  private async requestChildTableFromLeader(): Promise<void> {
+    try {
+      const res = await this.executeCommandQueued("child table");
+      const { headers, rows } = this.parseTableOutput(res.output);
+      this.lastChildTable = { headers, rows };
+      this.io.emit("ot:childTable", this.lastChildTable);
+    } catch (error) {
+      console.warn("[NOTIFY] Error requesting child table:", error);
+      this.lastChildTable = { error: error instanceof Error ? error.message : "Unknown error" };
+      this.io.emit("ot:childTable", this.lastChildTable);
+    }
+  }
+
+  /** Gửi lệnh OpenThread CLI để leader gửi joiner table, parse và emit */
+  private async requestJoinerTableFromLeader(): Promise<void> {
+    try {
+      const res = await this.executeCommandQueued("commissioner joiner table");
+      const { headers, rows } = this.parseTableOutput(res.output);
+      this.lastJoinerTable = { headers, rows };
+      this.io.emit("commissioner:joinerTable", this.lastJoinerTable);
+    } catch (error) {
+      console.warn("[NOTIFY] Error requesting joiner table:", error);
+      this.lastJoinerTable = { error: error instanceof Error ? error.message : "Unknown error" };
+      this.io.emit("commissioner:joinerTable", this.lastJoinerTable);
     }
   }
 

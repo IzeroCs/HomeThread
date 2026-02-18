@@ -5,7 +5,7 @@
  *   GET /entities/{entity_id} → get entity info (default attr)
  *   GET /entities/{entity_id}/{attr} → get attribute value
  *   PUT /entities/{entity_id}/{attr} → set attribute value
- * 
+ *
  * TODO: Migrate to struct-based approach (see MIGRATION_TO_STRUCT_BASED.md)
  *       - Use device_model_t and entity structs
  *       - Replace entity_describe/get/set with struct-based APIs
@@ -37,12 +37,12 @@ static bool parse_entity_path(otMessage *message, char *entity_id_buf, size_t en
 {
     otCoapOptionIterator iterator;
     otCoapOptionIteratorInit(&iterator, message);
-    
+
     /* Find URI path options */
     bool found_entities = false;
     int path_segments = 0;
     char segments[3][64] = {{0}};  /* entities, entity_id, attr */
-    
+
     const otCoapOption *option;
     uint16_t value_start_offset = 0;
     while ((option = otCoapOptionIteratorGetNextOption(&iterator)) != NULL) {
@@ -50,31 +50,31 @@ static bool parse_entity_path(otMessage *message, char *entity_id_buf, size_t en
             if (path_segments >= 3) {
                 break;  /* Too many segments */
             }
-            
+
             uint16_t path_len = option->mLength;
             if (path_len >= sizeof(segments[0])) {
                 path_len = sizeof(segments[0]) - 1;
             }
-            
+
             /* Read option value from message */
             /* mNextOptionOffset points to start of next option after GetNextOption */
             /* Current option value ends at mNextOptionOffset, starts at mNextOptionOffset - path_len */
             value_start_offset = iterator.mNextOptionOffset - path_len;
             otMessageRead(message, value_start_offset, segments[path_segments], path_len);
             segments[path_segments][path_len] = '\0';
-            
+
             if (path_segments == 0 && strcmp(segments[0], "entities") == 0) {
                 found_entities = true;
             }
-            
+
             path_segments++;
         }
     }
-    
+
     if (!found_entities || path_segments < 2) {
         return false;  /* Not /entities path or missing entity_id */
     }
-    
+
     /* segments[0] = "entities", segments[1] = entity_id, segments[2] = attr (optional) */
     size_t id_len = strlen(segments[1]);
     if (id_len >= entity_id_len) {
@@ -82,7 +82,7 @@ static bool parse_entity_path(otMessage *message, char *entity_id_buf, size_t en
     }
     strncpy(entity_id_buf, segments[1], id_len);
     entity_id_buf[id_len] = '\0';
-    
+
     if (path_segments >= 3 && attr_buf) {
         size_t attr_str_len = strlen(segments[2]);
         if (attr_str_len >= attr_len) {
@@ -93,7 +93,7 @@ static bool parse_entity_path(otMessage *message, char *entity_id_buf, size_t en
     } else if (attr_buf) {
         attr_buf[0] = '\0';
     }
-    
+
     return true;
 }
 
@@ -105,14 +105,14 @@ static void entities_handler(void *aContext, otMessage *aMessage, const otMessag
     if (!instance) {
         return;
     }
-    
+
     otCoapCode request_code = otCoapMessageGetCode(aMessage);
-    
+
     /* Parse URI path to determine request type */
     char entity_id[64];
     char attr[32];
     bool has_entity_id = parse_entity_path(aMessage, entity_id, sizeof(entity_id), attr, sizeof(attr));
-    
+
     /* Check if this is GET /entities (only "entities" path, no entity_id) */
     otCoapOptionIterator iterator;
     otCoapOptionIteratorInit(&iterator, aMessage);
@@ -123,7 +123,7 @@ static void entities_handler(void *aContext, otMessage *aMessage, const otMessag
             path_segment_count++;
         }
     }
-    
+
     /* GET /entities → describe all entities (only 1 path segment: "entities") */
     if (request_code == OT_COAP_CODE_GET && path_segment_count == 1) {
         /* TODO: Migrate to struct-based approach
@@ -135,7 +135,7 @@ static void entities_handler(void *aContext, otMessage *aMessage, const otMessag
         thread_coap_send_response(aMessage, aMessageInfo, OT_COAP_CODE_NOT_IMPLEMENTED, NULL, 0);
         return;
     }
-    
+
     /* GET /entities/{entity_id}[/{attr}] → get entity/attribute */
     if (request_code == OT_COAP_CODE_GET && has_entity_id) {
         /* TODO: Migrate to struct-based approach
@@ -149,7 +149,7 @@ static void entities_handler(void *aContext, otMessage *aMessage, const otMessag
         thread_coap_send_response(aMessage, aMessageInfo, OT_COAP_CODE_NOT_IMPLEMENTED, NULL, 0);
         return;
     }
-    
+
     /* PUT /entities/{entity_id}/{attr} → set attribute value */
     if ((request_code == OT_COAP_CODE_PUT || request_code == OT_COAP_CODE_POST) && has_entity_id) {
         if (attr[0] == '\0') {
@@ -157,7 +157,7 @@ static void entities_handler(void *aContext, otMessage *aMessage, const otMessag
             thread_coap_send_response(aMessage, aMessageInfo, OT_COAP_CODE_BAD_REQUEST, NULL, 0);
             return;
         }
-        
+
         /* Read payload (value) */
         uint16_t offset = otMessageGetOffset(aMessage);
         uint16_t payload_len = otMessageGetLength(aMessage) - offset;
@@ -169,15 +169,15 @@ static void entities_handler(void *aContext, otMessage *aMessage, const otMessag
             otMessageRead(aMessage, offset, value_buf, payload_len);
             value_buf[payload_len] = '\0';
             /* Trim whitespace */
-            while (payload_len > 0 && (value_buf[payload_len - 1] == '\r' || 
-                                        value_buf[payload_len - 1] == '\n' || 
+            while (payload_len > 0 && (value_buf[payload_len - 1] == '\r' ||
+                                        value_buf[payload_len - 1] == '\n' ||
                                         value_buf[payload_len - 1] == ' ')) {
                 value_buf[--payload_len] = '\0';
             }
         } else {
             value_buf[0] = '\0';
         }
-        
+
         /* TODO: Migrate to struct-based approach
          *   - Find entity by ID from device_model_t
          *   - Parse value and update entity struct field
@@ -188,7 +188,7 @@ static void entities_handler(void *aContext, otMessage *aMessage, const otMessag
         thread_coap_send_response(aMessage, aMessageInfo, OT_COAP_CODE_NOT_IMPLEMENTED, NULL, 0);
         return;
     }
-    
+
     /* Unsupported method */
     thread_coap_send_response(aMessage, aMessageInfo, OT_COAP_CODE_METHOD_NOT_ALLOWED, NULL, 0);
 }
@@ -199,7 +199,7 @@ esp_err_t entity_coap_server_start(void)
         ESP_LOGW(TAG, "Entity CoAP resource already registered");
         return ESP_OK;
     }
-    
+
     /* Register resource: OpenThread CoAP match exact full path */
     /* Chỉ đăng ký resource "entities" để match /entities (GET all entities) */
     /* Các path /entities/{id} và /entities/{id}/{attr} sẽ KHÔNG match vì OpenThread không hỗ trợ prefix/wildcard */
@@ -211,9 +211,7 @@ esp_err_t entity_coap_server_start(void)
         ESP_LOGE(TAG, "thread_coap_add_resource failed: %s", esp_err_to_name(err));
         return err;
     }
-    
+
     s_resource_registered = true;
-    ESP_LOGW(TAG, "WARNING: OpenThread CoAP match exact full path only. Paths like /entities/{id} will return 4.04 Not Found");
-    
     return ESP_OK;
 }

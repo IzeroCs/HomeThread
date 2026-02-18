@@ -1,10 +1,6 @@
 /*
  * Device Registry - CoAP client wrapper implementation.
  * Dung OpenThread CoAP API de gui POST request len Leader.
- * 
- * TODO: Migrate to struct-based approach (see MIGRATION_TO_STRUCT_BASED.md)
- *       - Use device_model_t struct from entity/model/include/device_model.h
- *       - Serialize device_model_t → CBOR
  */
 #include <string.h>
 #include "esp_err.h"
@@ -19,13 +15,15 @@
 #include "openthread/thread.h"
 #include "openthread/thread_ftd.h"
 #include "device_registry.h"
+#include "device_model.h"
+#include "entity_serialization.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 
 static const char *TAG = "device_registry";
 
 #define COAP_DEFAULT_PORT 5683
-#define REGISTER_URI_PATH "devices"
+#define REGISTER_URI_PATH "device"
 #define REGISTER_URI_PATH_REGISTER "register"
 
 static bool s_coap_started = false;
@@ -82,27 +80,26 @@ __attribute__((unused)) static otError get_leader_rloc16(otInstance *instance, u
 }
 
 /* CoAP response handler */
-/* TODO: Will be used after migration when CoAP POST is implemented */
-__attribute__((unused)) static void coap_response_handler(void *aContext, otMessage *aMessage, const otMessageInfo *aMessageInfo, otError aError)
+static void coap_response_handler(void *aContext, otMessage *aMessage, const otMessageInfo *aMessageInfo, otError aError)
 {
     (void)aContext;
     (void)aMessageInfo;
-    
+
     bool success = false;
     if (aError == OT_ERROR_NONE && aMessage != NULL) {
         otCoapCode code = otCoapMessageGetCode(aMessage);
         if (code >= OT_COAP_CODE_CREATED && code <= OT_COAP_CODE_CONTENT) {
             success = true;
-            ESP_LOGI(TAG, "Device registered successfully (CoAP %d.%02d)", 
+            ESP_LOGI(TAG, "Device registered successfully (CoAP %d.%02d)",
                      (int)(code >> 5), (int)(code & 0x1f));
         } else {
-            ESP_LOGW(TAG, "Device registration failed (CoAP %d.%02d)", 
+            ESP_LOGW(TAG, "Device registration failed (CoAP %d.%02d)",
                      (int)(code >> 5), (int)(code & 0x1f));
         }
     } else {
         ESP_LOGW(TAG, "CoAP response error: %s", otThreadErrorToString(aError));
     }
-    
+
     if (s_callback) {
         s_callback(success, s_callback_ctx);
     }
@@ -117,11 +114,11 @@ void device_registry_update_leader_rloc(void)
     if (!instance) {
         return;
     }
-    
+
     if (!esp_openthread_lock_acquire(pdMS_TO_TICKS(200))) {
         return;
     }
-    
+
     /* Get Leader RLOC address */
     otError err = otThreadGetLeaderRloc(instance, &s_leader_rloc);
     if (err == OT_ERROR_NONE) {
@@ -134,7 +131,7 @@ void device_registry_update_leader_rloc(void)
         s_leader_rloc_valid = false;
         ESP_LOGW(TAG, "Cannot get Leader RLOC: %s", otThreadErrorToString(err));
     }
-    
+
     esp_openthread_lock_release();
 }
 
@@ -146,12 +143,12 @@ bool device_registry_get_leader_rloc(otIp6Address *leader_rloc)
     if (!leader_rloc) {
         return false;
     }
-    
+
     if (s_leader_rloc_valid) {
         *leader_rloc = s_leader_rloc;
         return true;
     }
-    
+
     return false;
 }
 
@@ -187,23 +184,23 @@ esp_err_t device_registry_init(void)
 }
 
 /**
- * Register device lên Leader: gửi CoAP POST /devices/register với device model.
- * 
+ * Register device lên Leader: gửi CoAP POST /device/register với device model.
+ *
  * TODO: Migrate to struct-based approach
  *   1. Include headers:
  *      #include "entity_model.h"
  *      #include "device_model.h"
  *      #include "entity_serialization.h"
- *   
+ *
  *   2. Create device_model_t struct:
  *      device_model_t device = {0};
  *      - Fill device.info from device metadata
  *      - Fill entities from entity model (entity_get_by_index, etc.)
  *      - Fill network info (rloc16, ml_eid, role)
- *   
+ *
  *   3. Serialize device_model_t → CBOR:
  *      serialize_device_cbor(&device, buffer, buffer_size)
- *   
+ *
  *   4. Send CoAP POST with CBOR payload
  */
 esp_err_t device_registry_register(device_registry_callback_fn callback, void *ctx)
@@ -219,51 +216,173 @@ esp_err_t device_registry_register(device_registry_callback_fn callback, void *c
         return ESP_ERR_INVALID_STATE;
     }
 
-    /* Check device da join chua */
+    /* Check device da join chua và lấy thông tin network */
     if (!esp_openthread_lock_acquire(pdMS_TO_TICKS(200))) {
         return ESP_ERR_TIMEOUT;
     }
+    
     otDeviceRole role = otThreadGetDeviceRole(instance);
     if (role == OT_DEVICE_ROLE_DISABLED || role == OT_DEVICE_ROLE_DETACHED) {
         esp_openthread_lock_release();
         ESP_LOGW(TAG, "Device not joined yet");
         return ESP_ERR_INVALID_STATE;
     }
-    esp_openthread_lock_release();
 
-    /* Lay thong tin device */
+    /* Lay thong tin device (phải có lock) */
     uint16_t rloc16 = 0;
     uint16_t parent_rloc16 = 0;
+    const otIp6Address *ml_eid = NULL;
+    uint8_t role_enum = 0;
 
+    rloc16 = otThreadGetRloc16(instance);
+    ml_eid = otThreadGetMeshLocalEid(instance);
+
+    // Convert role to uint8_t và lấy parent RLOC16
+    switch (role) {
+        case OT_DEVICE_ROLE_CHILD:
+            role_enum = 0;
+            // Get parent RLOC16 (only CHILD has parent)
+            {
+                otRouterInfo parent_info;
+                memset(&parent_info, 0, sizeof(parent_info)); // Initialize struct
+                otError parent_err = otThreadGetParentInfo(instance, &parent_info);
+                if (parent_err == OT_ERROR_NONE) {
+                    parent_rloc16 = parent_info.mRloc16;
+                }
+            }
+            break;
+        case OT_DEVICE_ROLE_LEADER:
+            role_enum = 1;
+            // Leader has no parent
+            parent_rloc16 = 0;
+            break;
+        case OT_DEVICE_ROLE_ROUTER:
+            role_enum = 2;
+            // Router may have parent, but for now we don't track it
+            parent_rloc16 = 0;
+            break;
+        default:
+            role_enum = 0;
+            parent_rloc16 = 0;
+            break;
+    }
+
+    esp_openthread_lock_release();
+
+    /* Check Device Model initialized */
+    device_model_t *device = device_model_get();
+    if (!device) {
+        ESP_LOGE(TAG, "Device Model not initialized, call device_model_init() first");
+        return ESP_ERR_INVALID_STATE;
+    }
+
+    // Update Device Model network info
+    uint8_t ipv6_bytes[16] = {0};
+    if (ml_eid) {
+        memcpy(ipv6_bytes, ml_eid->mFields.m8, 16);
+    }
+    device_model_update_network(rloc16, ipv6_bytes, role_enum);
+
+    // Sync entities from Entity Model
+    if (device_model_sync_entities() < 0) {
+        esp_openthread_lock_release();
+        ESP_LOGE(TAG, "Failed to sync entities");
+        return ESP_FAIL;
+    }
+
+    esp_openthread_lock_release();
+
+    // Serialize device model to CBOR
+    uint8_t cbor_buffer[1024]; // TODO: Make configurable
+    const char *ml_eid_str = NULL; // Not used anymore, device_model has ipv6_addr
+    int cbor_len = entity_serialize_cbor(rloc16, ml_eid_str, parent_rloc16, cbor_buffer, sizeof(cbor_buffer));
+    if (cbor_len < 0) {
+        ESP_LOGE(TAG, "Failed to serialize device model to CBOR");
+        return ESP_FAIL;
+    }
+
+    ESP_LOGI(TAG, "Serialized device model: %d bytes", cbor_len);
+
+    // Get Leader RLOC
+    if (!s_leader_rloc_valid) {
+        ESP_LOGW(TAG, "Leader RLOC not available, cannot send register request");
+        return ESP_ERR_INVALID_STATE;
+    }
+    
+    // Log Leader RLOC16 for debugging
+    uint16_t leader_rloc16 = extract_rloc16_from_ip6(&s_leader_rloc);
+    ESP_LOGI(TAG, "Leader RLOC16: 0x%04x", leader_rloc16);
+
+    // Store callback for response handler
+    s_callback = callback;
+    s_callback_ctx = ctx;
+
+    // Send CoAP POST request
     if (!esp_openthread_lock_acquire(pdMS_TO_TICKS(500))) {
         return ESP_ERR_TIMEOUT;
     }
 
-    rloc16 = otThreadGetRloc16(instance);
-    /* TODO: ml_eid will be used after migration */
-    /* const otIp6Address *ml_eid = otThreadGetMeshLocalEid(instance); */
-    
-    if (role == OT_DEVICE_ROLE_CHILD) {
-        otRouterInfo parent_info;
-        if (otThreadGetParentInfo(instance, &parent_info) == OT_ERROR_NONE) {
-            parent_rloc16 = parent_info.mRloc16;
-        }
+    otMessage *message = otCoapNewMessage(instance, NULL);
+    if (!message) {
+        esp_openthread_lock_release();
+        ESP_LOGE(TAG, "Failed to create CoAP message");
+        return ESP_ERR_NO_MEM;
     }
 
-    /* TODO: Serialize device_model_t to CBOR */
-    /* Old approach removed - was calling entity_serialize_cbor() */
-    /* 
-     * New approach:
-     *   1. Create device_model_t struct
-     *   2. Fill device.info
-     *   3. Fill entities array from entity model
-     *   4. Fill network info (rloc16, ml_eid, role)
-     *   5. Serialize to CBOR using serialize_device_cbor()
-     */
-    
-    ESP_LOGW(TAG, "device_registry_register() - Not implemented yet (migration pending)");
-    ESP_LOGI(TAG, "Would register: rloc16=0x%04x, parent=0x%04x", rloc16, parent_rloc16);
-    
+    // Initialize CoAP message
+    otCoapMessageInit(message, OT_COAP_TYPE_CONFIRMABLE, OT_COAP_CODE_POST);
+
+    // Set URI path: /device/register
+    otError err = otCoapMessageAppendUriPathOptions(message, REGISTER_URI_PATH);
+    if (err != OT_ERROR_NONE) {
+        otMessageFree(message);
+        esp_openthread_lock_release();
+        ESP_LOGE(TAG, "Failed to append URI path: %s", otThreadErrorToString(err));
+        return ESP_FAIL;
+    }
+    err = otCoapMessageAppendUriPathOptions(message, REGISTER_URI_PATH_REGISTER);
+    if (err != OT_ERROR_NONE) {
+        otMessageFree(message);
+        esp_openthread_lock_release();
+        ESP_LOGE(TAG, "Failed to append URI path register: %s", otThreadErrorToString(err));
+        return ESP_FAIL;
+    }
+
+    // Set Content-Format: application/cbor
+    err = otCoapMessageAppendContentFormatOption(message, OT_COAP_OPTION_CONTENT_FORMAT_CBOR);
+    if (err != OT_ERROR_NONE) {
+        otMessageFree(message);
+        esp_openthread_lock_release();
+        ESP_LOGE(TAG, "Failed to append Content-Format: %s", otThreadErrorToString(err));
+        return ESP_FAIL;
+    }
+
+    // Set payload marker and append CBOR data
+    otCoapMessageSetPayloadMarker(message);
+    err = otMessageAppend(message, cbor_buffer, cbor_len);
+    if (err != OT_ERROR_NONE) {
+        otMessageFree(message);
+        esp_openthread_lock_release();
+        ESP_LOGE(TAG, "Failed to append payload: %s", otThreadErrorToString(err));
+        return ESP_FAIL;
+    }
+
+    // Prepare message info (destination: Leader)
+    otMessageInfo message_info;
+    memset(&message_info, 0, sizeof(message_info));
+    message_info.mPeerAddr = s_leader_rloc;
+    message_info.mPeerPort = COAP_DEFAULT_PORT;
+
+    // Send request
+    err = otCoapSendRequest(instance, message, &message_info, coap_response_handler, NULL);
     esp_openthread_lock_release();
-    return ESP_ERR_NOT_SUPPORTED;
+
+    if (err != OT_ERROR_NONE) {
+        ESP_LOGE(TAG, "Failed to send CoAP request: %s", otThreadErrorToString(err));
+        return ESP_FAIL;
+    }
+
+    ESP_LOGI(TAG, "CoAP POST /device/register sent to Leader (device_rloc16=0x%04x, parent_rloc16=0x%04x, leader_rloc16=0x%04x)", 
+             rloc16, parent_rloc16, leader_rloc16);
+    return ESP_OK;
 }

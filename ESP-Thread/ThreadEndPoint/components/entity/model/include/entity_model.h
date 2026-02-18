@@ -68,21 +68,20 @@ void entity_model_init(void);
 
 /**
  * Register an entity type.
- * type_id: e.g. "on_off_light", "temperature_sensor"
- * get_cb / set_cb: can be NULL if not supported (e.g. sensor only get).
+ * type_id: String identifier (e.g. "on_off_light", "temperature_sensor")
+ * type_enum: Entity type enum (ENTITY_TYPE_LIGHT, ENTITY_TYPE_SENSOR, etc.)
  * Return 0 on success, -1 if registry full or type_id already registered.
  */
-int entity_register_type(const char *type_id,
-                         entity_get_attr_fn get_cb,
-                         entity_set_attr_fn set_cb);
+int entity_register_type(const char *type_id, entity_type_t type_enum);
 
 /**
  * Add an entity.
- * type_id must have been registered. instance_data is passed to get/set callbacks.
- * Return 0 on success, -1 if type_id unknown or entity list full.
+ * entity_struct: Pointer to entity struct (entity_light_t*, entity_sensor_t*, etc.)
+ *                Must have entity_base_t base at the start of the struct.
+ * type_enum: Entity type enum for validation (must match base.type).
+ * Return 0 on success, -1 if validation fails or entity list full.
  */
-int entity_add(const char *entity_id, const char *type_id,
-               const char *name, void *instance_data);
+int entity_add(void *entity_struct, entity_type_t type_enum);
 
 /**
  * Write description of all entities into buf (text format).
@@ -103,6 +102,41 @@ int entity_get(const char *entity_id, const char *attr,
  * Return 0 on success, -1 if entity or attr not found / error.
  */
 int entity_set(const char *entity_id, const char *attr, const char *value);
+
+/**
+ * Get entity struct pointer by entity_id.
+ * Returns pointer to entity struct (entity_light_t*, etc.) or NULL if not found.
+ * type_out: Output parameter for entity type (can be NULL).
+ */
+void* entity_get_struct(const char *entity_id, entity_type_t *type_out);
+
+/**
+ * Get total number of entities.
+ */
+int entity_get_count(void);
+
+/**
+ * Get entity struct by index.
+ * Returns pointer to entity struct or NULL if index invalid.
+ * type_out: Output parameter for entity type (can be NULL).
+ */
+void* entity_get_by_index(int index, entity_type_t *type_out);
+
+/**
+ * Update entity timestamp to current time.
+ */
+void entity_update_timestamp(const char *entity_id);
+
+/**
+ * Set entity available status.
+ */
+void entity_set_available(const char *entity_id, bool available);
+
+/**
+ * Remove entity from model.
+ * Return 0 on success, -1 if entity not found.
+ */
+int entity_remove(const char *entity_id);
 
 #ifdef __cplusplus
 }

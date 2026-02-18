@@ -23,7 +23,7 @@ static const char *TAG = "leader_control";
 #define COAP_RESPONSE_TIMEOUT_MS 5000
 #define DEFAULT_MAX_RETRIES 3
 #define LEADER_RLOC_CHECK_INTERVAL_MS 5000  // Check every 5 seconds
-#define LEADER_STOP_RETRY_INTERVAL_MS 120000  // Retry stop command after 120 seconds if Leader still exists
+#define LEADER_STOP_RETRY_INTERVAL_MS 30000  // Retry stop command after 120 seconds if Leader still exists
 
 // CoAP response handler context
 typedef struct {
@@ -163,20 +163,6 @@ esp_err_t leader_control_log_leader_rloc16(void)
         ESP_LOGE(TAG, "Failed to get Leader RLOC16: %d", err);
         esp_openthread_lock_release();
         return ESP_FAIL;
-    }
-
-    ESP_LOGI(TAG, "=== Current Leader Info (role != detached) ===");
-    ESP_LOGI(TAG, "Leader RLOC16: 0x%04x", leader_rloc16);
-
-    // Partition ID, Leader weight, Local leader weight (chỉ có khi đã attach)
-    otLeaderData leader_data;
-    err = otThreadGetLeaderData(instance, &leader_data);
-    if (err == OT_ERROR_NONE) {
-        uint8_t local_weight = otThreadGetLocalLeaderWeight(instance);
-        ESP_LOGI(TAG, "Partition ID: 0x%08lX", (unsigned long)leader_data.mPartitionId);
-        ESP_LOGI(TAG, "Leader Weight (current): %u", (unsigned)leader_data.mWeighting);
-        ESP_LOGI(TAG, "Local Leader Weight (this device): %u", (unsigned)local_weight);
-        ESP_LOGI(TAG, "Leader Router ID: %d", leader_data.mLeaderRouterId);
     }
 
     esp_openthread_lock_release();
@@ -363,16 +349,10 @@ static void leader_rloc_check_task(void *arg)
                     }
                 }
             } else if (role == OT_DEVICE_ROLE_LEADER) {
-                // If we are the Leader, log our own RLOC16 and reset tracking
-                uint16_t our_rloc16 = otThreadGetRloc16(instance);
-                ESP_LOGI(TAG, "=== This device is Leader ===");
-                ESP_LOGI(TAG, "Our RLOC16: 0x%04x", our_rloc16);
                 last_leader_rloc16 = 0xffff;  // Reset to trigger send when we become Router/Child again
                 last_send_success = false;
                 last_send_time_ms = 0;  // Reset timestamp
             }
-            // If role is DETACHED or DISABLED, don't do anything
-
             esp_openthread_lock_release();
         }
 
