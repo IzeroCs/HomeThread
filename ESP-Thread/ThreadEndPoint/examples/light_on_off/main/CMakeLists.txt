@@ -5,5 +5,5 @@ idf_component_register(
         driver
         entity_model
         entity_coap_server
-        endpoint
+        thread
 )

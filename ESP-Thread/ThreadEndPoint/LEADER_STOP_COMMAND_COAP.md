@@ -310,14 +310,27 @@ Code hiện tại trong `leader_rloc_check_task` đã check mỗi 5 giây và s�
 
 ---
 
+## Implementation Location
+
+Handler được triển khai trong:
+- **File**: `components/thread/thread_network_stop.c`
+- **Header**: `components/thread/include/thread_network_stop.h`
+- **Component**: `thread` (cùng với `thread_joiner.c` và `thread_endpoint.c`)
+
+CoAP server utilities được chia sẻ trong:
+- **Component**: `components/thread/coap/` (thread_coap)
+- **API**: `thread_coap_start()`, `thread_coap_add_resource()`, `thread_coap_send_response()`
+
+---
+
 ## Implementation Checklist cho Endpoint
 
 - [ ] Enable CoAP API (`OPENTHREAD_CONFIG_COAP_API_ENABLE`)
-- [ ] Start CoAP server (`otCoapStart()`)
+- [ ] Start CoAP server (`thread_coap_start()` hoặc `otCoapStart()`)
 - [ ] Register resource `mUriPath = "network"` (một segment) với handler
 - [ ] Trong handler: check method = GET (0.01); GET không có payload
 - [ ] (Tùy chọn) Check device role = Leader trước khi stop
-- [ ] **Gửi response trước**: dùng `otCoapMessageInitResponse(response, aMessage, ...)` (truyền request `aMessage`) để copy Message ID + Token → client mới nhận được; sau đó mới `otThreadSetEnabled(false)`
+- [ ] **Gửi response trước**: dùng `thread_coap_send_response()` hoặc `otCoapMessageInitResponse(response, aMessage, ...)` (truyền request `aMessage`) để copy Message ID + Token → client mới nhận được; sau đó mới `otThreadSetEnabled(false)`
 - [ ] Send response: `2.05 Content` (success) hoặc `4.03`/`5.03` (error)
 
 ---

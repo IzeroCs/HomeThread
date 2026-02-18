@@ -135,7 +135,7 @@
   - Serial: trạng thái kết nối, port, baud rate
   - OpenThread: PAN ID, Channel, Network Name, IP Address (bảng tag + value), Dataset Active (card riêng, bảng Key: Value như ipaddr)
   - Khi `threadState` là leader/router/child → gọi lại `getOtConfig()` để refresh dataset active và ipaddr (tránh "Not Found" lúc disabled/detached)
-- **TopNav**: nút Status, hiển thị thread state (leader/router/child)
+- **TopNav**: nút Status, hiển thị thread state (leader/router/child); symbol đổi màu theo state (xanh lá/tím/xanh dương/cam/xám)
 - **App**: poll `getThreadState()` mỗi 4s khi serial đã kết nối
 
 ### Frontend – Trang Dashboard
@@ -187,3 +187,11 @@
 #### Frontend – Truy cập LAN
 - **Vite**: `server.host: true` — dev server lắng nghe trên `0.0.0.0`, truy cập từ máy khác bằng `http://<IP-máy>:5173`.
 - **WebSocket/API**: `WS_URL` dùng `window.location.origin` khi không set `VITE_WS_URL` — khi mở từ LAN, request đi qua cùng host (proxy Vite chuyển tiếp tới backend).
+
+#### Frontend – TopNav symbol màu sắc
+- **TopNav symbol** (`frontend/src/components/common/TopNav.tsx`): Symbol trạng thái đổi màu theo thread state:
+  - **Xanh lá** (`status-thread-green`) — leader
+  - **Tím** (`status-thread-purple`) — router
+  - **Xanh dương** (`status-thread-blue`) — child
+  - **Cam** (`status-serial`) — disabled/detached hoặc chưa bật "tự chạy Thread"
+  - **Xám** (`status-disconnected`) — chưa kết nối serial

@@ -4,6 +4,8 @@
 
 Border Router gửi CoAP **GET** request đến Leader hiện tại để yêu cầu Leader offline, từ đó Border Router có thể trở thành Leader mới.
 
+**Leader Control Client** chạy suốt vòng đời của device (từ khi boot đến khi reboot), tự động monitor Leader và gửi lệnh stop khi cần thiết.
+
 ---
 
 ## CoAP Request Format (hiện tại)
@@ -205,14 +207,53 @@ Example:
 ### Test từ Border Router
 Border Router sẽ tự động gửi khi:
 - Device là Router hoặc Child
-- Leader RLOC16 thay đổi
-- Lần gửi trước không thành công
+- First time (chưa gửi lần nào)
+- Leader RLOC16 thay đổi (Leader mới)
+- Lần gửi trước không thành công (retry on failure)
+- Retry timeout: Đã gửi thành công nhưng Leader vẫn còn sau 2 phút
+
+**Test retry timeout**: Comment phần stop Thread ở endpoint → Client sẽ gửi lần đầu → nhận 2.05 → đợi 2 phút → gửi lại → lặp lại cho đến khi Leader offline hoặc RLOC16 thay đổi.
 
 ### Test từ CLI (nếu cần)
 ```bash
 # Gửi CoAP GET đến Leader (path /network, một segment)
 ot coap get fdde:ad00:beef:0:0:ff:fe00:d400 5683 /network
 ```
+
+---
+
+## Client Behavior (Border Router)
+
+### Task Lifecycle
+
+Leader Control Client chạy suốt vòng đời của device:
+- **Khởi tạo**: Task được tạo trong `leader_control_client_init()` khi boot
+- **Chạy liên tục**: Task chạy vô hạn (`while(1)`) với interval 5 giây
+- **Chỉ dừng**: Khi device reboot/shutdown
+
+### Khi nào gửi lệnh stop?
+
+Border Router sẽ gửi CoAP stop command khi một trong các điều kiện sau:
+
+1. **First time**: Chưa gửi lần nào (`last_leader_rloc16 == 0xffff`)
+2. **Leader changed**: Leader RLOC16 thay đổi (Leader mới được bầu)
+3. **Retry on failure**: Lần gửi trước thất bại (timeout hoặc response error)
+4. **Retry timeout**: Đã gửi thành công và nhận 2.05, nhưng sau **2 phút** (`LEADER_STOP_RETRY_INTERVAL_MS`) Leader vẫn còn đó (RLOC16 không đổi)
+
+### Retry Logic
+
+- **Retry on failure**: Nếu gửi thất bại (timeout hoặc error response), sẽ retry ở lần check tiếp theo (5 giây sau)
+- **Retry timeout**: Sau khi gửi thành công, nếu Leader vẫn còn sau 2 phút, sẽ gửi lại để đảm bảo Leader offline
+- **Skip**: Nếu đã gửi thành công và chưa đến retry timeout, sẽ skip (không gửi lại)
+
+### Log Messages
+
+Client sẽ log rõ lý do gửi:
+- `"Sending CoAP stop command (first time, Leader RLOC16: 0xXXXX)..."`
+- `"Sending CoAP stop command (Leader changed: 0xXXXX -> 0xYYYY)..."`
+- `"Sending CoAP stop command (retry timeout - Leader still exists, RLOC16: 0xXXXX)..."`
+- `"Sending CoAP stop command (retry on failure, Leader RLOC16: 0xXXXX)..."`
+- `"Skipping CoAP send (Leader RLOC16 unchanged: 0xXXXX, last_send_success=1)"`
 
 ---
 
@@ -284,11 +325,17 @@ Code hiện tại trong `leader_rloc_check_task` đã check mỗi 5 giây và s�
 3. **Path**: Chỉ một segment `"network"` (OpenThread match full path, nên không dùng `/network/stop`)
 4. **Type**: Request phải là `CONFIRMABLE` để đảm bảo nhận được response
 5. **Timeout**: Border Router đợi response trong 5 giây (COAP_RESPONSE_TIMEOUT_MS)
-6. **Retry**: Border Router sẽ tự động retry nếu không nhận được response
-7. **Leader Address**: Border Router tự động lấy Leader RLOC16 và construct address
-8. **Leader Election Timing**: Sau khi Leader cũ offline, cần đợi **1-2.5 phút** để Leader mới được bầu
-9. **Endpoint: Gửi response trước khi stop**: Endpoint phải gửi CoAP 2.05 **trước**, sau đó mới gọi `otThreadSetEnabled(false)`. Nếu stop network trước rồi mới send response thì mạng đã tắt, client không nhận được → timeout dù endpoint đã gửi 2.05.
-10. **Endpoint: Response phải copy Message ID + Token từ request**: Client OpenThread chỉ gọi callback khi response **cùng token** (và Message ID) với request. Nếu endpoint dùng `otCoapMessageInit()` rồi gửi response thì response có token/ID khác → client không nhận diện → **timeout**. Phải dùng **`otCoapMessageInitResponse(response, aMessage, type, code)`** (truyền con trỏ request `aMessage`) để copy Message ID và Token từ request sang response.
+6. **Retry on failure**: Border Router sẽ tự động retry nếu không nhận được response hoặc response không thành công
+7. **Retry timeout**: Sau khi gửi thành công và nhận 2.05, nếu sau **2 phút** (LEADER_STOP_RETRY_INTERVAL_MS) mà Leader vẫn còn đó (RLOC16 không đổi), Border Router sẽ gửi lại lệnh stop. Điều này hữu ích khi Leader nhận lệnh nhưng chưa stop (test/debug) hoặc cần retry định kỳ.
+8. **Leader Address**: Border Router tự động lấy Leader RLOC16 và construct address
+9. **Leader Election Timing**: Sau khi Leader cũ offline, cần đợi **1-2.5 phút** để Leader mới được bầu
+10. **Task lifecycle**: Leader Control Client chạy suốt vòng đời device (từ boot đến reboot), check Leader mỗi 5 giây (LEADER_RLOC_CHECK_INTERVAL_MS) và gửi lệnh khi:
+    - First time (chưa gửi lần nào)
+    - Leader RLOC16 thay đổi (Leader mới)
+    - Gửi thất bại (retry)
+    - Retry timeout (đã gửi thành công nhưng Leader vẫn còn sau 2 phút)
+11. **Endpoint: Gửi response trước khi stop**: Endpoint phải gửi CoAP 2.05 **trước**, sau đó mới gọi `otThreadSetEnabled(false)`. Nếu stop network trước rồi mới send response thì mạng đã tắt, client không nhận được → timeout dù endpoint đã gửi 2.05.
+12. **Endpoint: Response phải copy Message ID + Token từ request**: Client OpenThread chỉ gọi callback khi response **cùng token** (và Message ID) với request. Nếu endpoint dùng `otCoapMessageInit()` rồi gửi response thì response có token/ID khác → client không nhận diện → **timeout**. Phải dùng **`otCoapMessageInitResponse(response, aMessage, type, code)`** (truyền con trỏ request `aMessage`) để copy Message ID và Token từ request sang response.
 
 ---
 
@@ -309,3 +356,5 @@ Code hiện tại trong `leader_rloc_check_task` đã check mỗi 5 giây và s�
 - **POST → GET:** Lệnh stop chuyển từ POST sang GET; GET không payload, endpoint chỉ cần check method GET và path "network".
 - **Path một segment:** Do OpenThread match resource theo full path, client gửi chỉ `/network` (một Uri-Path option) để match resource "network"; không gửi `/network/stop` (hai segment) vì khi đó path = "network/stop" không match resource "network".
 - **Response phải dùng InitResponse:** Client khớp response với request bằng Message ID + Token. Endpoint phải dùng `otCoapMessageInitResponse(response, aMessage, ...)` thay vì `otCoapMessageInit(response, ...)` để copy token/ID từ request, nếu không client sẽ timeout dù endpoint đã gửi 2.05.
+- **Retry timeout logic:** Thêm logic retry định kỳ: sau khi gửi thành công và nhận 2.05, nếu sau 2 phút mà Leader vẫn còn đó (RLOC16 không đổi), sẽ gửi lại lệnh stop. Điều này cho phép retry khi Leader nhận lệnh nhưng chưa stop (test/debug) hoặc cần retry định kỳ.
+- **Task lifecycle:** Leader Control Client chạy suốt vòng đời device, check Leader mỗi 5 giây và gửi lệnh theo điều kiện (first time, Leader changed, retry on failure, retry timeout).

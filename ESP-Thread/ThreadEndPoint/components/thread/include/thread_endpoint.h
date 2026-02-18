@@ -1,5 +1,5 @@
 /*
- * Thread Endpoint Core - Application framework wrapper.
+ * Thread Endpoint - Application framework wrapper.
  *
  * Tích hợp các phần common cho Thread endpoint:
  * - OpenThread initialization
@@ -33,7 +33,7 @@ extern "C" {
 typedef void (*thread_endpoint_on_joined_fn)(void *ctx);
 
 /**
- * Cấu hình Thread Endpoint Core.
+ * Cấu hình Thread Endpoint.
  */
 typedef struct {
     const char *pskd;                    ///< PSKd cho Thread joiner (NULL = dùng CONFIG_THREAD_JOINER_PSKD_DEFAULT)
@@ -45,7 +45,7 @@ typedef struct {
 } thread_endpoint_config_t;
 
 /**
- * Khởi động Thread Endpoint Core.
+ * Khởi động Thread Endpoint.
  *
  * Hàm này sẽ:
  * 1. Init NVS, event loop, netif, OpenThread

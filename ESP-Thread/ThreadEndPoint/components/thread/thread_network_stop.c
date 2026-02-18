@@ -1,5 +1,5 @@
 /*
- * Network Stop Handler - Implementation.
+ * Thread Network Stop - Implementation.
  *
  * Handler cho CoAP POST /network/stop command từ Border Router.
  */
@@ -15,10 +15,10 @@
 #include "openthread/message.h"
 #include "openthread/thread.h"
 #include "status_led.h"
-#include "network_stop_handler.h"
+#include "thread_network_stop.h"
 #include "thread_coap.h"
 
-static const char *TAG = "network_stop";
+static const char *TAG = "thread_network_stop";
 #define NETWORK_STOP_WAIT_SECONDS 120
 /* OpenThread CoAP match full URI only (not prefix). Path = segment1/segment2. */
 #define NETWORK_STOP_URI_PATH_FULL   "network/stop"
@@ -101,12 +101,7 @@ static void network_stop_handler(void *aContext, otMessage *aMessage,
     /* Đang trong chu kỳ stop → wait → start: chỉ trả 2.05, không chạy stop/restart trùng */
     if (is_stop_cycle_in_progress()) {
         ESP_LOGD(TAG, "Stop cycle in progress, ignoring new request but sending response");
-        /* Vẫn gửi response để client không timeout */
-        otMessage *response = otCoapNewMessage(instance, NULL);
-        if (response) {
-            otCoapMessageInitResponse(response, aMessage, OT_COAP_TYPE_ACKNOWLEDGMENT, OT_COAP_CODE_CONTENT);
-            otCoapSendResponse(instance, response, aMessageInfo);
-        }
+        thread_coap_send_response(aMessage, aMessageInfo, OT_COAP_CODE_CONTENT, NULL, 0);
         return;
     }
 
@@ -161,12 +156,7 @@ static void network_stop_handler(void *aContext, otMessage *aMessage,
 
     if (role != OT_DEVICE_ROLE_LEADER) {
         ESP_LOGW(TAG, "network_stop_handler: Device is not Leader (role=%d), ignoring", role);
-        /* Send error response: copy Message ID + Token từ request để client nhận diện response */
-        otMessage *response = otCoapNewMessage(instance, NULL);
-        if (response) {
-            otCoapMessageInitResponse(response, aMessage, OT_COAP_TYPE_ACKNOWLEDGMENT, OT_COAP_CODE_FORBIDDEN);
-            otCoapSendResponse(instance, response, aMessageInfo);
-        }
+        thread_coap_send_response(aMessage, aMessageInfo, OT_COAP_CODE_FORBIDDEN, NULL, 0);
         return;
     }
 
@@ -178,62 +168,33 @@ static void network_stop_handler(void *aContext, otMessage *aMessage,
     TaskHandle_t task_handle = NULL;
     if (xTaskCreate(network_stop_restart_task, "network_stop", 4096, NULL, 5, &task_handle) != pdPASS) {
         ESP_LOGE(TAG, "Failed to create network_stop_restart_task");
-        otMessage *response = otCoapNewMessage(instance, NULL);
-        if (response) {
-            otCoapMessageInitResponse(response, aMessage, OT_COAP_TYPE_ACKNOWLEDGMENT, OT_COAP_CODE_SERVICE_UNAVAILABLE);
-            otCoapSendResponse(instance, response, aMessageInfo);
-        }
+        thread_coap_send_response(aMessage, aMessageInfo, OT_COAP_CODE_SERVICE_UNAVAILABLE, NULL, 0);
         return;
     }
 
     /* Send success response: copy Message ID + Token từ request để client nhận diện response */
-    otMessage *response = otCoapNewMessage(instance, NULL);
-    if (response) {
-        otCoapMessageInitResponse(response, aMessage, OT_COAP_TYPE_ACKNOWLEDGMENT, OT_COAP_CODE_CONTENT);
-        otCoapSendResponse(instance, response, aMessageInfo);
-        ESP_LOGI(TAG, "Sent 2.05 Content response");
-        /* Bật flag: đang trong chu kỳ stop → wait → start; tắt khi task restart xong */
-        set_stop_cycle_in_progress();
-    }
+    thread_coap_send_response(aMessage, aMessageInfo, OT_COAP_CODE_CONTENT, NULL, 0);
+    ESP_LOGI(TAG, "Sent 2.05 Content response");
+    /* Bật flag: đang trong chu kỳ stop → wait → start; tắt khi task restart xong */
+    set_stop_cycle_in_progress();
 }
 
-esp_err_t network_stop_handler_register(void)
+esp_err_t thread_network_stop_register(void)
 {
-    otInstance *instance = esp_openthread_get_instance();
-    if (!instance) {
-        ESP_LOGE(TAG, "OpenThread instance NULL");
-        return ESP_ERR_INVALID_STATE;
-    }
-
     if (s_resource_registered) {
         ESP_LOGW(TAG, "Resource already registered");
         return ESP_OK;
     }
 
-    /* Start CoAP server (dùng chung với các component khác) */
-    esp_err_t err = thread_coap_server_start();
+    /* Register resource: full URI path only (CoAP exact match, no prefix) */
+    static otCoapResource s_network_resource;
+    esp_err_t err = thread_coap_register_resource(&s_network_resource, NETWORK_STOP_URI_PATH_FULL, 
+                                                   network_stop_handler, NULL);
     if (err != ESP_OK) {
-        ESP_LOGE(TAG, "thread_coap_server_start failed: %s", esp_err_to_name(err));
+        ESP_LOGE(TAG, "thread_coap_add_resource failed: %s", esp_err_to_name(err));
         return err;
     }
 
-    if (!esp_openthread_lock_acquire(pdMS_TO_TICKS(500))) {
-        ESP_LOGE(TAG, "Failed to acquire OpenThread lock");
-        return ESP_ERR_TIMEOUT;
-    }
-
-    /* Register resource: full URI path only (CoAP exact match, no prefix) */
-    static otCoapResource s_network_resource;
-    memset(&s_network_resource, 0, sizeof(s_network_resource));
-    s_network_resource.mUriPath = NETWORK_STOP_URI_PATH_FULL;
-    s_network_resource.mHandler = network_stop_handler;
-    s_network_resource.mContext = NULL;
-
-    otCoapAddResource(instance, &s_network_resource);
     s_resource_registered = true;
-
-    esp_openthread_lock_release();
-
-    ESP_LOGI(TAG, "CoAP resource '%s' registered (full URI match)", NETWORK_STOP_URI_PATH_FULL);
     return ESP_OK;
 }

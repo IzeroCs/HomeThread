@@ -86,10 +86,10 @@ main/
 Để **tái sử dụng** entity model ở nhiều project (ThreadEndPoint, project đèn khác, gateway, v.v.) nên đóng gói **core** thành **ESP-IDF component** (thư viện). Cách làm chuẩn trong ESP-IDF:
 
 - Tạo thư mục **component** trong repo (cùng cấp với `main/`):
-  - `components/entity_model/` chứa toàn bộ core (type registry, entity list, describe/get/set).
+  - `components/entity/entity_model/` chứa toàn bộ core (type registry, entity list, describe/get/set).
   - Build system ESP-IDF tự nhận thư mục `components/` trong project; bất kỳ target nào có `PRIV_REQUIRES entity_model` hoặc `REQUIRES entity_model` sẽ link thư viện này.
 
-**Cấu trúc đề xuất khi làm dạng thư viện:**
+**Cấu trúc thực tế hiện tại:**
 
 ```
 ThreadEndPoint/
@@ -99,20 +99,31 @@ ThreadEndPoint/
 │   ├── entity_type_on_off_light.c   # (có thể để trong main hoặc tách thành component)
 │   └── ...
 ├── components/
-│   └── entity_model/
-│       ├── CMakeLists.txt
-│       ├── Kconfig              # (optional) ENTITY_MODEL_MAX_ENTITIES, MAX_TYPES
-│       ├── include/
-│       │   └── entity_model.h
-│       └── entity_model.c
+│   ├── entity/
+│   │   ├── entity_model/
+│   │   │   ├── CMakeLists.txt
+│   │   │   ├── Kconfig              # (optional) ENTITY_MODEL_MAX_ENTITIES, MAX_TYPES
+│   │   │   ├── include/
+│   │   │   │   └── entity_model.h
+│   │   │   └── entity_model.c
+│   │   └── entity_coap_server/
+│   │       └── ...
+│   └── thread/
+│       ├── thread_joiner.c
+│       ├── thread_endpoint.c
+│       ├── thread_network_stop.c
+│       ├── coap/              # Shared CoAP utilities
+│       ├── device_registry/   # Device registration client
+│       ├── status_led/
+│       └── boot_btn/
 └── CMakeLists.txt
 ```
 
-- **components/entity_model/CMakeLists.txt**:
+- **components/entity/entity_model/CMakeLists.txt**:
   - `idf_component_register(SRCS "entity_model.c" INCLUDE_DIRS "include" REQUIRES ...)`
   - Không cần `driver`, `lwip` (core không đụng GPIO/UDP). Chỉ cần dependencies tối thiểu (freertos nếu dùng mutex).
 
-- **components/entity_model/include/entity_model.h**:
+- **components/entity/entity_model/include/entity_model.h**:
   - API public: `entity_model_init`, `entity_register_type`, `entity_add`, `entity_describe`, `entity_get`, `entity_set`.
   - Include path: app dùng `#include "entity_model.h"` (vì INCLUDE_DIRS "include").
 
@@ -139,19 +150,19 @@ ThreadEndPoint/
 
 **Dùng entity model ở project khác (repo khác):**
 
-- Copy cả thư mục `components/entity_model` sang project kia, hoặc
+- Copy cả thư mục `components/entity/entity_model` sang project kia, hoặc
 - Đặt component trong repo riêng, trong project app khai báo:
-  - `EXTRA_COMPONENT_DIRS "path/to/repo_entity_model"` (repo có cấu trúc `.../entity_model/` chứa component entity_model), hoặc
+  - `EXTRA_COMPONENT_DIRS "path/to/repo_entity"` (repo có cấu trúc `.../entity/entity_model/` chứa component entity_model), hoặc
   - Dùng [Managed components](https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-guides/build-system.html#managed-components) (idf_component_register với URL) nếu đẩy component lên GitHub.
 
 **Examples ngay trong repo — có thể, không cần build “ngoài”:**
 
 - **Cách A – Một project, main là example:**
-  Giữ nguyên cấu trúc hiện tại: root repo là **một** project ESP-IDF (có `main/` và `components/entity_model/`). Phần `main/` chính là “example” dùng thư viện. Build như bình thường tại root: `idf.py build`. Không cần thư mục hay project riêng — example nằm trong chính project.
+  Giữ nguyên cấu trúc hiện tại: root repo là **một** project ESP-IDF (có `main/` và `components/`). Phần `main/` chính là “example” dùng thư viện. Build như bình thường tại root: `idf.py build`. Không cần thư mục hay project riêng — example nằm trong chính project.
 
 - **Cách B – Nhiều examples trong repo (library-style):**
   Biến repo thành dạng “thư viện kèm examples”: root **không** phải project (xóa hoặc không dùng `main/` và `CMakeLists.txt` tại root), chỉ có:
-  - `components/entity_model/`
+  - `components/entity/entity_model/`
   - `examples/thread_endpoint/`  ← project 1 (có `main/`, CMakeLists.txt, set `EXTRA_COMPONENT_DIRS ".."` hoặc `"../.."` để trỏ tới chỗ chứa `components/`)
   - `examples/minimal_entity/`   ← project 2 (chỉ entity_model + 1 LED, không Thread)
   Mỗi example là một project độc lập. Build **vẫn trong repo**, từ thư mục example:
@@ -162,7 +173,7 @@ ThreadEndPoint/
 
 **Tóm tắt:**
 
-- **Core** → làm **một component** `entity_model` trong `components/entity_model/` (CMakeLists + include + Kconfig nếu cần).
+- **Core** → làm **một component** `entity_model` trong `components/entity/entity_model/` (CMakeLists + include + Kconfig nếu cần).
 - **App** → `PRIV_REQUIRES entity_model` và gọi API; entity types có thể nằm trong main (Cách 1) hoặc từng type là component riêng (Cách 2).
 - Dùng lại ở project khác: copy component hoặc EXTRA_COMPONENT_DIRS / managed components.
 
@@ -228,7 +239,7 @@ Khi device join Thread network, nó tự động **register entity_model** lên 
 
 ### 5.2 Component: device_registry
 
-**Location**: `components/device_registry/`
+**Location**: `components/thread/device_registry/`
 
 **API**:
 - `device_registry_init()` - Start CoAP client
@@ -347,11 +358,11 @@ Hai hướng format:
 
 **Nếu làm dạng thư viện (component)** – làm theo thứ tự sau:
 
-1. **Tạo component entity_model**: thư mục `components/entity_model/`, CMakeLists.txt, Kconfig (optional), `include/entity_model.h`, `entity_model.c` — định nghĩa struct, API, registry + entity list.
+1. **Tạo component entity_model**: thư mục `components/entity/entity_model/`, CMakeLists.txt, Kconfig (optional), `include/entity_model.h`, `entity_model.c` — định nghĩa struct, API, registry + entity list.
 2. **main/CMakeLists.txt**: thêm `PRIV_REQUIRES entity_model` (không còn SRCS cho entity_model).
 3. **entity_type_on_off_light**: implement trong `main/entity_type_on_off_light.c` (hoặc tạo component `entity_type_on_off_light` nếu muốn type cũng là thư viện); đăng ký type và add entity `light.0`.
 4. **led_udp_server.c**: refactor — parse describe/get/set (text), gọi entity_*(), format và gửi response; (tùy chọn) giữ fallback on/off.
-5. **device_registry component**: tạo `components/device_registry/` với CoAP client wrapper để gửi POST request lên Leader.
+5. **device_registry component**: tạo `components/thread/device_registry/` với CoAP client wrapper để gửi POST request lên Leader.
 6. **main.c**: `entity_model_init()`, `entity_type_on_off_light_register()`, `led_udp_server_start()`, `device_registry_init()`, `device_registry_register()`.
 7. **Border Router**: implement CoAP server để nhận và xử lý registration (xem `BORDER_ROUTER_COAP_SERVER.md`).
 
@@ -384,20 +395,26 @@ Sau khi chạy ổn: mở rộng type/entity khác theo nhu cầu (sensor, dimme
 
 ## 12. Components đã tạo
 
-- ✅ `components/entity_model/` - Core entity model
-- ✅ `components/device_registry/` - CoAP client để register device
-- ✅ `components/thread/joiner/` - Thread joiner với callback
-- ✅ `components/status_led/` - Status LED indicator
-- ✅ `components/boot_btn/` - Boot button handler
-- ✅ `components/thread/endpoint/` - Thread endpoint + CoAP resource `/network/stop` (network_stop_handler: chỉ Leader xử lý, stop → đợi 240s → restart)
+**Thread Components** (`components/thread/`):
+- ✅ `components/thread/thread_joiner.c` - Thread joiner với callback
+- ✅ `components/thread/thread_endpoint.c` - Thread endpoint framework (OpenThread init, LED, boot button, joiner, device registry)
+- ✅ `components/thread/thread_network_stop.c` - CoAP resource `/network/stop` handler (chỉ Leader xử lý, stop → đợi 120s → restart)
+- ✅ `components/thread/coap/` - Shared CoAP server utilities (thread_coap)
+- ✅ `components/thread/device_registry/` - CoAP client để register device lên Border Router
+- ✅ `components/thread/status_led/` - Status LED indicator
+- ✅ `components/thread/boot_btn/` - Boot button handler
+
+**Entity Components** (`components/entity/`):
+- ✅ `components/entity/entity_model/` - Core entity model (type registry, entity list, describe/get/set)
+- ✅ `components/entity/entity_coap_server/` - CoAP server để điều khiển entities qua CoAP
 
 ## 13. Example: light_on_off
 
 - **Đường dẫn**: `examples/light_on_off/`
-- **Chức năng**: Thread Endpoint FTD + Joiner, Entity Model (on_off_light), entity_coap_server, device_registry, network_stop_handler (khi `enable_network_stop_handler = true`).
+- **Chức năng**: Thread Endpoint FTD + Joiner, Entity Model (on_off_light), entity_coap_server, device_registry, thread_network_stop (khi `enable_network_stop_handler = true`).
 - **Không dùng OpenThread CLI**: Example đã gỡ toàn bộ CLI (esp_ot_cli_extension, esp_openthread_launch_mainloop, CONFIG_OPENTHREAD_CLI). Chỉ chạy app (entity + CoAP server), không có lệnh `ot` trên console.
 
 ## 14. Tài liệu liên quan
 
 - `BORDER_ROUTER_COAP_SERVER.md` - Hướng dẫn implement CoAP server trên Border Router
-- `LEADER_STOP_COMMAND_COAP.md` - CoAP GET/POST `/network/stop` cho Leader, triển khai trong component thread/endpoint (network_stop_handler)
+- `LEADER_STOP_COMMAND_COAP.md` - CoAP GET `/network/stop` cho Leader, triển khai trong `components/thread/thread_network_stop.c`

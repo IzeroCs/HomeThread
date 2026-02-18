@@ -26,7 +26,7 @@ typedef struct {
     boot_btn_long_press_cb_t on_long_press; /**< Goi khi long press (co the NULL). */
     void *ctx;                            /**< Context truyen vao on_long_press. */
     uint32_t task_stack_size;             /**< Stack size cho task (0 = dung default 4096). */
-    UBaseType_t task_priority;           /**< Priority (0 = dung default 4). */
+    UBaseType_t task_priority;            /**< Priority (0 = dung default 4). */
 } boot_btn_config_t;
 
 /**

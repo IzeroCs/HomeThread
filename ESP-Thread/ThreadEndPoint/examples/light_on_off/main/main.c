@@ -8,7 +8,7 @@
 #include "entity_model.h"
 #include "on_off_light.h"
 #include "entity_coap_server.h"
-#include "thread_endpoint_core.h"
+#include "thread_endpoint.h"
 
 static const char *TAG = "light_on_off";
 

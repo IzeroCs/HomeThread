@@ -23,7 +23,7 @@ static const char *TAG = "leader_control";
 #define COAP_RESPONSE_TIMEOUT_MS 5000
 #define DEFAULT_MAX_RETRIES 3
 #define LEADER_RLOC_CHECK_INTERVAL_MS 5000  // Check every 5 seconds
-#define LEADER_STOP_RETRY_INTERVAL_MS 120000  // Retry stop command after 20 seconds if Leader still exists
+#define LEADER_STOP_RETRY_INTERVAL_MS 120000  // Retry stop command after 120 seconds if Leader still exists
 
 // CoAP response handler context
 typedef struct {

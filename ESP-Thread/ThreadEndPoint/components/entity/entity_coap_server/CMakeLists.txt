@@ -4,5 +4,5 @@ idf_component_register(
     REQUIRES
         openthread
         entity_model
-        thread_coap
+        coap
 )

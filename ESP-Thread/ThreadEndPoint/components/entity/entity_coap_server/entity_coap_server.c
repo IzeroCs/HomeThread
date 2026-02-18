@@ -110,11 +110,6 @@ static void entities_handler(void *aContext, otMessage *aMessage, const otMessag
     char attr[32];
     bool has_entity_id = parse_entity_path(aMessage, entity_id, sizeof(entity_id), attr, sizeof(attr));
     
-    otMessage *response = otCoapNewMessage(instance, NULL);
-    if (!response) {
-        return;
-    }
-    
     /* Check if this is GET /entities (only "entities" path, no entity_id) */
     otCoapOptionIterator iterator;
     otCoapOptionIteratorInit(&iterator, aMessage);
@@ -132,15 +127,9 @@ static void entities_handler(void *aContext, otMessage *aMessage, const otMessag
         int desc_len = entity_describe(desc_buf, sizeof(desc_buf));
         
         otCoapCode response_code = (desc_len >= 0) ? OT_COAP_CODE_CONTENT : OT_COAP_CODE_INTERNAL_ERROR;
-        otCoapMessageInit(response, OT_COAP_TYPE_ACKNOWLEDGMENT, response_code);
-        
-        if (desc_len >= 0) {
-            otCoapMessageAppendContentFormatOption(response, OT_COAP_OPTION_CONTENT_FORMAT_TEXT_PLAIN);
-            otCoapMessageSetPayloadMarker(response);
-            otMessageAppend(response, desc_buf, desc_len);
-        }
-        
-        otCoapSendResponse(instance, response, aMessageInfo);
+        thread_coap_send_response(aMessage, aMessageInfo, response_code, 
+                                  (desc_len >= 0) ? desc_buf : NULL, 
+                                  (desc_len >= 0) ? (size_t)desc_len : 0);
         ESP_LOGI(TAG, "GET /entities -> %d bytes", desc_len);
         return;
     }
@@ -154,25 +143,24 @@ static void entities_handler(void *aContext, otMessage *aMessage, const otMessag
         int ret = entity_get(entity_id, attr_name, value_buf, sizeof(value_buf));
         
         otCoapCode response_code;
+        char payload[128];
+        size_t payload_len = 0;
+        
         if (ret == 0) {
             response_code = OT_COAP_CODE_CONTENT;
-            otCoapMessageInit(response, OT_COAP_TYPE_ACKNOWLEDGMENT, response_code);
-            otCoapMessageAppendContentFormatOption(response, OT_COAP_OPTION_CONTENT_FORMAT_TEXT_PLAIN);
-            otCoapMessageSetPayloadMarker(response);
             /* Format: entity_id attr value */
-            char payload[128];
-            int payload_len = snprintf(payload, sizeof(payload), "%s %s %s", entity_id, attr_name, value_buf);
-            if (payload_len > 0 && (size_t)payload_len < sizeof(payload)) {
-                otMessageAppend(response, payload, payload_len);
+            int len = snprintf(payload, sizeof(payload), "%s %s %s", entity_id, attr_name, value_buf);
+            if (len > 0 && (size_t)len < sizeof(payload)) {
+                payload_len = (size_t)len;
             }
             ESP_LOGI(TAG, "GET /entities/%s/%s -> %s", entity_id, attr_name, value_buf);
         } else {
             response_code = OT_COAP_CODE_NOT_FOUND;
-            otCoapMessageInit(response, OT_COAP_TYPE_ACKNOWLEDGMENT, response_code);
             ESP_LOGW(TAG, "GET /entities/%s/%s -> not found", entity_id, attr_name);
         }
         
-        otCoapSendResponse(instance, response, aMessageInfo);
+        thread_coap_send_response(aMessage, aMessageInfo, response_code, 
+                                 (payload_len > 0) ? payload : NULL, payload_len);
         return;
     }
     
@@ -180,8 +168,7 @@ static void entities_handler(void *aContext, otMessage *aMessage, const otMessag
     if ((request_code == OT_COAP_CODE_PUT || request_code == OT_COAP_CODE_POST) && has_entity_id) {
         if (attr[0] == '\0') {
             /* Attr required for PUT */
-            otCoapMessageInit(response, OT_COAP_TYPE_ACKNOWLEDGMENT, OT_COAP_CODE_BAD_REQUEST);
-            otCoapSendResponse(instance, response, aMessageInfo);
+            thread_coap_send_response(aMessage, aMessageInfo, OT_COAP_CODE_BAD_REQUEST, NULL, 0);
             return;
         }
         
@@ -216,54 +203,35 @@ static void entities_handler(void *aContext, otMessage *aMessage, const otMessag
             ESP_LOGW(TAG, "PUT /entities/%s/%s = %s -> failed", entity_id, attr, value_buf);
         }
         
-        otCoapMessageInit(response, OT_COAP_TYPE_ACKNOWLEDGMENT, response_code);
-        otCoapSendResponse(instance, response, aMessageInfo);
+        thread_coap_send_response(aMessage, aMessageInfo, response_code, NULL, 0);
         return;
     }
     
     /* Unsupported method */
-    otCoapMessageInit(response, OT_COAP_TYPE_ACKNOWLEDGMENT, OT_COAP_CODE_METHOD_NOT_ALLOWED);
-    otCoapSendResponse(instance, response, aMessageInfo);
+    thread_coap_send_response(aMessage, aMessageInfo, OT_COAP_CODE_METHOD_NOT_ALLOWED, NULL, 0);
 }
 
 esp_err_t entity_coap_server_start(void)
 {
-    otInstance *instance = esp_openthread_get_instance();
-    if (!instance) {
-        ESP_LOGE(TAG, "OpenThread instance NULL");
-        return ESP_ERR_INVALID_STATE;
-    }
-    
     if (s_resource_registered) {
         ESP_LOGW(TAG, "Entity CoAP resource already registered");
         return ESP_OK;
     }
     
-    /* Start CoAP server (dùng chung với các component khác) */
-    esp_err_t err = thread_coap_server_start();
+    /* Register resource: OpenThread CoAP match exact full path */
+    /* Chỉ đăng ký resource "entities" để match /entities (GET all entities) */
+    /* Các path /entities/{id} và /entities/{id}/{attr} sẽ KHÔNG match vì OpenThread không hỗ trợ prefix/wildcard */
+    /* Handler hiện tại có parse path nhưng sẽ không được gọi cho các path này */
+    /* TODO: Cần đăng ký resource động khi entity được thêm vào (ví dụ: "entities/light.0", "entities/light.0/state") */
+    static otCoapResource s_entities_resource;
+    esp_err_t err = thread_coap_register_resource(&s_entities_resource, "entities", entities_handler, NULL);
     if (err != ESP_OK) {
-        ESP_LOGE(TAG, "thread_coap_server_start failed: %s", esp_err_to_name(err));
+        ESP_LOGE(TAG, "thread_coap_add_resource failed: %s", esp_err_to_name(err));
         return err;
     }
     
-    if (!esp_openthread_lock_acquire(pdMS_TO_TICKS(500))) {
-        ESP_LOGE(TAG, "Failed to acquire OpenThread lock");
-        return ESP_ERR_TIMEOUT;
-    }
-    
-    /* Register resource: /entities (handles all /entities paths) */
-    static otCoapResource s_entities_resource;
-    memset(&s_entities_resource, 0, sizeof(s_entities_resource));
-    s_entities_resource.mUriPath = "entities";
-    s_entities_resource.mHandler = entities_handler;
-    s_entities_resource.mContext = NULL;
-    
-    otCoapAddResource(instance, &s_entities_resource);
-    
-    esp_openthread_lock_release();
-    
     s_resource_registered = true;
-    ESP_LOGI(TAG, "Entity CoAP resource registered: GET /entities, GET /entities/{id}[/{attr}], PUT /entities/{id}/{attr}");
+    ESP_LOGW(TAG, "WARNING: OpenThread CoAP match exact full path only. Paths like /entities/{id} will return 4.04 Not Found");
     
     return ESP_OK;
 }

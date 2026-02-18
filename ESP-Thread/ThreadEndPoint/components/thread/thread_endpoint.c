@@ -1,5 +1,5 @@
 /*
- * Thread Endpoint Core - Implementation.
+ * Thread Endpoint - Implementation.
  */
 #include <inttypes.h>
 #include <stdio.h>
@@ -21,12 +21,12 @@
 #include "openthread/link.h"
 #include "openthread/thread.h"
 #include "openthread/thread_ftd.h"
-#include "thread_endpoint_core.h"
+#include "thread_endpoint.h"
 #include "thread_joiner.h"
 #include "boot_btn.h"
 #include "status_led.h"
 #include "device_registry.h"
-#include "network_stop_handler.h"
+#include "thread_network_stop.h"
 
 static const char *TAG = "thread_endpoint";
 
@@ -161,7 +161,7 @@ static void on_joined_wrapper(void *ctx)
 
     /* Register CoAP resource /network/stop (nếu bật trong config) */
     if (s_config.enable_network_stop_handler) {
-        esp_err_t err = network_stop_handler_register();
+        esp_err_t err = thread_network_stop_register();
         if (err != ESP_OK) {
             ESP_LOGW(TAG, "Failed to register network stop handler: %s", esp_err_to_name(err));
         }
@@ -277,7 +277,7 @@ esp_err_t thread_endpoint_start(const thread_endpoint_config_t *config)
         return ESP_ERR_NO_MEM;
     }
 
-    ESP_LOGI(TAG, "Thread Endpoint Core started");
+    ESP_LOGI(TAG, "Thread Endpoint started");
     ESP_LOGI(TAG, "PSKd=\"%s\" - Commissioner: joiner add * %s",
              s_config.pskd, s_config.pskd);
     ESP_LOGI(TAG, "Hold BOOT button (GPIO %d) ~%lu s for factory reset",

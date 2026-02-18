@@ -20,6 +20,13 @@ Backend + Frontend điều khiển **OpenThread CLI qua UART** (ESP32-H2 ot-br).
 
 Component dùng chung: **Modal**, **TopNav** nằm trong `frontend/src/components/common/`.
 
+**TopNav symbol màu sắc**: Symbol trạng thái trên TopNav đổi màu theo thread state:
+- 🟢 **Xanh lá** — leader
+- 🟣 **Tím** — router
+- 🔵 **Xanh dương** — child
+- 🟠 **Cam** — disabled/detached hoặc chưa bật "tự chạy Thread"
+- ⚪ **Xám** — chưa kết nối serial
+
 ## Cấu trúc project
 
 ```

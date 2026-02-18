@@ -2,7 +2,16 @@
 cmake_minimum_required(VERSION 3.16)
 
 # Component joiner, endpoint nằm trong components/thread/
-set(EXTRA_COMPONENT_DIRS "${CMAKE_CURRENT_SOURCE_DIR}/components/thread")
+# Entity components nằm trong components/entity/
+# Component coap nằm trong components/thread/coap/
+set(EXTRA_COMPONENT_DIRS 
+    "${CMAKE_CURRENT_SOURCE_DIR}/components/thread"
+    "${CMAKE_CURRENT_SOURCE_DIR}/components/thread/coap"
+    "${CMAKE_CURRENT_SOURCE_DIR}/components/thread/device_registry"
+    "${CMAKE_CURRENT_SOURCE_DIR}/components/thread/status_led"
+    "${CMAKE_CURRENT_SOURCE_DIR}/components/thread/boot_btn"
+    "${CMAKE_CURRENT_SOURCE_DIR}/components/entity"
+)
 include($ENV{IDF_PATH}/tools/cmake/project.cmake)
 idf_build_set_property(MINIMAL_BUILD ON)
 project(ThreadEndPoint)
