@@ -5,6 +5,10 @@
  *   GET /entities/{entity_id} → get entity info (default attr)
  *   GET /entities/{entity_id}/{attr} → get attribute value
  *   PUT /entities/{entity_id}/{attr} → set attribute value
+ * 
+ * TODO: Migrate to struct-based approach (see MIGRATION_TO_STRUCT_BASED.md)
+ *       - Use device_model_t and entity structs
+ *       - Replace entity_describe/get/set with struct-based APIs
  */
 #include <string.h>
 #include <stdbool.h>
@@ -19,7 +23,6 @@
 #include "openthread/message.h"
 #include "openthread/thread.h"
 #include "entity_coap_server.h"
-#include "entity_model.h"
 #include "thread_coap.h"
 
 static const char *TAG = "entity_coap";
@@ -123,44 +126,27 @@ static void entities_handler(void *aContext, otMessage *aMessage, const otMessag
     
     /* GET /entities → describe all entities (only 1 path segment: "entities") */
     if (request_code == OT_COAP_CODE_GET && path_segment_count == 1) {
-        char desc_buf[512];
-        int desc_len = entity_describe(desc_buf, sizeof(desc_buf));
-        
-        otCoapCode response_code = (desc_len >= 0) ? OT_COAP_CODE_CONTENT : OT_COAP_CODE_INTERNAL_ERROR;
-        thread_coap_send_response(aMessage, aMessageInfo, response_code, 
-                                  (desc_len >= 0) ? desc_buf : NULL, 
-                                  (desc_len >= 0) ? (size_t)desc_len : 0);
-        ESP_LOGI(TAG, "GET /entities -> %d bytes", desc_len);
+        /* TODO: Migrate to struct-based approach
+         *   - Get device_model_t from entity model
+         *   - Serialize to JSON/CBOR
+         *   - Send response
+         */
+        ESP_LOGW(TAG, "GET /entities - Not implemented yet (migration pending)");
+        thread_coap_send_response(aMessage, aMessageInfo, OT_COAP_CODE_NOT_IMPLEMENTED, NULL, 0);
         return;
     }
     
     /* GET /entities/{entity_id}[/{attr}] → get entity/attribute */
     if (request_code == OT_COAP_CODE_GET && has_entity_id) {
-        /* Default attr to "state" if not specified */
+        /* TODO: Migrate to struct-based approach
+         *   - Find entity by ID from device_model_t
+         *   - Get attribute value from entity struct
+         *   - Serialize to JSON/CBOR
+         *   - Send response
+         */
         const char *attr_name = (attr[0] != '\0') ? attr : "state";
-        
-        char value_buf[64];
-        int ret = entity_get(entity_id, attr_name, value_buf, sizeof(value_buf));
-        
-        otCoapCode response_code;
-        char payload[128];
-        size_t payload_len = 0;
-        
-        if (ret == 0) {
-            response_code = OT_COAP_CODE_CONTENT;
-            /* Format: entity_id attr value */
-            int len = snprintf(payload, sizeof(payload), "%s %s %s", entity_id, attr_name, value_buf);
-            if (len > 0 && (size_t)len < sizeof(payload)) {
-                payload_len = (size_t)len;
-            }
-            ESP_LOGI(TAG, "GET /entities/%s/%s -> %s", entity_id, attr_name, value_buf);
-        } else {
-            response_code = OT_COAP_CODE_NOT_FOUND;
-            ESP_LOGW(TAG, "GET /entities/%s/%s -> not found", entity_id, attr_name);
-        }
-        
-        thread_coap_send_response(aMessage, aMessageInfo, response_code, 
-                                 (payload_len > 0) ? payload : NULL, payload_len);
+        ESP_LOGW(TAG, "GET /entities/%s/%s - Not implemented yet (migration pending)", entity_id, attr_name);
+        thread_coap_send_response(aMessage, aMessageInfo, OT_COAP_CODE_NOT_IMPLEMENTED, NULL, 0);
         return;
     }
     
@@ -192,18 +178,14 @@ static void entities_handler(void *aContext, otMessage *aMessage, const otMessag
             value_buf[0] = '\0';
         }
         
-        int ret = entity_set(entity_id, attr, value_buf);
-        
-        otCoapCode response_code;
-        if (ret == 0) {
-            response_code = OT_COAP_CODE_CHANGED;
-            ESP_LOGI(TAG, "PUT /entities/%s/%s = %s -> ok", entity_id, attr, value_buf);
-        } else {
-            response_code = OT_COAP_CODE_BAD_REQUEST;
-            ESP_LOGW(TAG, "PUT /entities/%s/%s = %s -> failed", entity_id, attr, value_buf);
-        }
-        
-        thread_coap_send_response(aMessage, aMessageInfo, response_code, NULL, 0);
+        /* TODO: Migrate to struct-based approach
+         *   - Find entity by ID from device_model_t
+         *   - Parse value and update entity struct field
+         *   - Call driver callback if needed
+         *   - Send response
+         */
+        ESP_LOGW(TAG, "PUT /entities/%s/%s = %s - Not implemented yet (migration pending)", entity_id, attr, value_buf);
+        thread_coap_send_response(aMessage, aMessageInfo, OT_COAP_CODE_NOT_IMPLEMENTED, NULL, 0);
         return;
     }
     

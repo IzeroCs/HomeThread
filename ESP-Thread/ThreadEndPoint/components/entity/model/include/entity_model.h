@@ -1,14 +1,43 @@
 /*
- * Entity Model - Core API (ESPHome-like entity/type registry).
- * Describe / get / set by entity_id and attribute.
+ * Entity Model - Core API and Base Structures
+ * Base model definitions shared by all entity types.
  */
 #pragma once
 
 #include <stddef.h>
+#include <stdint.h>
+#include <stdbool.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+/**
+ * Entity Type Enumeration
+ * All supported entity types in the system.
+ */
+typedef enum {
+    ENTITY_TYPE_LIGHT = 0,
+    ENTITY_TYPE_SWITCH,
+    ENTITY_TYPE_FAN,
+    ENTITY_TYPE_SENSOR,
+    ENTITY_TYPE_CLIMATE,       // Air conditioner/heater
+    ENTITY_TYPE_BINARY_SENSOR
+} entity_type_t;
+
+/**
+ * Entity Base Structure
+ * Common attributes shared by all entity types.
+ * All entity types inherit from this base structure.
+ */
+typedef struct {
+    char entity_id[16];        // Unique ID within device: "light_1" (alphanumeric + underscore)
+    char name[32];             // Human-readable: "Living Room Light"
+    entity_type_t type;        // Entity type enum
+    char device_class[16];     // Sub-type: "temperature", "motion", "dimmable"
+    bool available;            // Online/offline status
+    uint32_t last_update;      // Last update timestamp (Unix time, seconds since epoch)
+} entity_base_t;
 
 /**
  * Callback: read attribute value for an entity.

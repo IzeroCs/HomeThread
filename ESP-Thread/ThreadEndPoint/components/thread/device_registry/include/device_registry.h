@@ -1,6 +1,8 @@
 /*
- * Device Registry - CoAP client wrapper: gui entity_model len Leader qua CoAP POST.
+ * Device Registry - CoAP client wrapper: gui device_model len Leader qua CoAP POST.
  * Dung OpenThread CoAP API (otCoap) de register device khi join hoac thay doi role.
+ * 
+ * TODO: Migrate to struct-based approach (see MIGRATION_TO_STRUCT_BASED.md)
  */
 #pragma once
 
@@ -40,8 +42,13 @@ bool device_registry_get_leader_rloc(otIp6Address *leader_rloc);
 esp_err_t device_registry_init(void);
 
 /**
- * Register device len Leader: gui CoAP POST /devices/register voi entity_model.
- * Payload: JSON hoac text format chua rloc16, ml_eid, parent, entity_model.
+ * Register device len Leader: gui CoAP POST /devices/register voi device_model.
+ * 
+ * TODO: Update to struct-based approach
+ *   - Use device_model_t struct
+ *   - Serialize to CBOR format
+ *   - Payload: CBOR binary (application/cbor)
+ * 
  * @param callback callback khi nhan response (co the NULL).
  * @param ctx context truyen vao callback.
  * @return ESP_OK neu gui request thanh cong, ESP_ERR_INVALID_STATE neu chua init hoac chua join.

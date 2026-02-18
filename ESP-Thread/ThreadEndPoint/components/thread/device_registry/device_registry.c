@@ -1,6 +1,10 @@
 /*
  * Device Registry - CoAP client wrapper implementation.
  * Dung OpenThread CoAP API de gui POST request len Leader.
+ * 
+ * TODO: Migrate to struct-based approach (see MIGRATION_TO_STRUCT_BASED.md)
+ *       - Use device_model_t struct from entity/model/include/device_model.h
+ *       - Serialize device_model_t → CBOR
  */
 #include <string.h>
 #include "esp_err.h"
@@ -15,7 +19,6 @@
 #include "openthread/thread.h"
 #include "openthread/thread_ftd.h"
 #include "device_registry.h"
-#include "entity_model.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 
@@ -181,6 +184,26 @@ esp_err_t device_registry_init(void)
     return ESP_OK;
 }
 
+/**
+ * Register device lên Leader: gửi CoAP POST /devices/register với device model.
+ * 
+ * TODO: Migrate to struct-based approach
+ *   1. Include headers:
+ *      #include "entity_model.h"
+ *      #include "device_model.h"
+ *      #include "entity_serialization.h"
+ *   
+ *   2. Create device_model_t struct:
+ *      device_model_t device = {0};
+ *      - Fill device.info from device metadata
+ *      - Fill entities from entity model (entity_get_by_index, etc.)
+ *      - Fill network info (rloc16, ml_eid, role)
+ *   
+ *   3. Serialize device_model_t → CBOR:
+ *      serialize_device_cbor(&device, buffer, buffer_size)
+ *   
+ *   4. Send CoAP POST with CBOR payload
+ */
 esp_err_t device_registry_register(device_registry_callback_fn callback, void *ctx)
 {
     otInstance *instance = esp_openthread_get_instance();
@@ -225,110 +248,20 @@ esp_err_t device_registry_register(device_registry_callback_fn callback, void *c
         }
     }
 
-    /* Lay entity_model description */
-    char entity_desc[512];
-    int desc_len = entity_describe(entity_desc, sizeof(entity_desc));
-    if (desc_len < 0) {
-        esp_openthread_lock_release();
-        ESP_LOGE(TAG, "entity_describe failed");
-        return ESP_FAIL;
-    }
-
-    /* Format payload: text format (co the chuyen sang JSON sau) */
-    char payload[768];
-    char ml_eid_str[40];
-    if (ml_eid) {
-        otIp6AddressToString(ml_eid, ml_eid_str, sizeof(ml_eid_str));
-    } else {
-        strcpy(ml_eid_str, "unknown");
-    }
-
-    int payload_len = snprintf(payload, sizeof(payload),
-                               "rloc16=0x%04x\nml_eid=%s\nparent=0x%04x\n%s",
-                               rloc16, ml_eid_str, parent_rloc16, entity_desc);
-    if (payload_len < 0 || (size_t)payload_len >= sizeof(payload)) {
-        esp_openthread_lock_release();
-        ESP_LOGE(TAG, "Payload buffer too small");
-        return ESP_FAIL;
-    }
-
-    /* Tao CoAP POST message */
-    otMessage *message = otCoapNewMessage(instance, NULL);
-    if (!message) {
-        esp_openthread_lock_release();
-        ESP_LOGE(TAG, "otCoapNewMessage failed");
-        return ESP_ERR_NO_MEM;
-    }
-
-    otCoapMessageInit(message, OT_COAP_TYPE_CONFIRMABLE, OT_COAP_CODE_POST);
-
-    /* Add URI path: /devices/register */
-    otError err = otCoapMessageAppendUriPathOptions(message, REGISTER_URI_PATH);
-    if (err == OT_ERROR_NONE) {
-        err = otCoapMessageAppendUriPathOptions(message, REGISTER_URI_PATH_REGISTER);
-    }
-    if (err != OT_ERROR_NONE) {
-        otMessageFree(message);
-        esp_openthread_lock_release();
-        ESP_LOGE(TAG, "Failed to append URI path: %s", otThreadErrorToString(err));
-        return ESP_FAIL;
-    }
-
-    /* Add Content-Format option (text/plain) */
-    err = otCoapMessageAppendContentFormatOption(message, OT_COAP_OPTION_CONTENT_FORMAT_TEXT_PLAIN);
-    if (err != OT_ERROR_NONE) {
-        otMessageFree(message);
-        esp_openthread_lock_release();
-        ESP_LOGE(TAG, "Failed to append Content-Format: %s", otThreadErrorToString(err));
-        return ESP_FAIL;
-    }
-
-    /* Set payload marker va append payload */
-    err = otCoapMessageSetPayloadMarker(message);
-    if (err == OT_ERROR_NONE) {
-        err = otMessageAppend(message, payload, payload_len);
-    }
-    if (err != OT_ERROR_NONE) {
-        otMessageFree(message);
-        esp_openthread_lock_release();
-        ESP_LOGE(TAG, "Failed to append payload: %s", otThreadErrorToString(err));
-        return ESP_FAIL;
-    }
-
-    /* Update Leader RLOC nếu chưa có hoặc cần refresh */
-    if (!s_leader_rloc_valid) {
-        device_registry_update_leader_rloc();
-    }
+    /* TODO: Serialize device_model_t to CBOR */
+    /* Old approach removed - was calling entity_serialize_cbor() */
+    /* 
+     * New approach:
+     *   1. Create device_model_t struct
+     *   2. Fill device.info
+     *   3. Fill entities array from entity model
+     *   4. Fill network info
+     *   5. Serialize to CBOR using serialize_device_cbor()
+     */
     
-    if (!s_leader_rloc_valid) {
-        otMessageFree(message);
-        esp_openthread_lock_release();
-        ESP_LOGE(TAG, "Leader RLOC not available");
-        return ESP_FAIL;
-    }
+    ESP_LOGW(TAG, "device_registry_register() - Not implemented yet (migration pending)");
+    ESP_LOGI(TAG, "Would register: rloc16=0x%04x, parent=0x%04x", rloc16, parent_rloc16);
     
-    /* Tạo destination address từ Leader RLOC đã lưu */
-    otMessageInfo message_info;
-    memset(&message_info, 0, sizeof(message_info));
-    message_info.mPeerPort = COAP_DEFAULT_PORT;
-    message_info.mPeerAddr = s_leader_rloc;
-
-    /* Save callback */
-    s_callback = callback;
-    s_callback_ctx = ctx;
-
-    /* Gui CoAP request */
-    err = otCoapSendRequest(instance, message, &message_info, coap_response_handler, NULL);
     esp_openthread_lock_release();
-
-    if (err != OT_ERROR_NONE) {
-        ESP_LOGE(TAG, "otCoapSendRequest failed: %s", otThreadErrorToString(err));
-        s_callback = NULL;
-        s_callback_ctx = NULL;
-        return ESP_FAIL;
-    }
-
-    ESP_LOGI(TAG, "Device registration request sent: rloc16=0x%04x, parent=0x%04x", 
-             rloc16, parent_rloc16);
-    return ESP_OK;
+    return ESP_ERR_NOT_SUPPORTED;
 }

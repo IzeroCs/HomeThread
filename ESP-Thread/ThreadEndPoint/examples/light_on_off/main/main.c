@@ -2,10 +2,11 @@
  * Example light_on_off: Thread Endpoint với Entity Model và CoAP.
  *
  * Sử dụng thread/endpoint, entity_coap_server, network_stop handler.
+ * 
+ * TODO: Migrate to struct-based approach (see MIGRATION_TO_STRUCT_BASED.md)
  */
 #include "esp_err.h"
 #include "esp_log.h"
-#include "entity_model.h"
 #include "on_off_light.h"
 #include "entity_coap_server.h"
 #include "thread_endpoint.h"
@@ -29,8 +30,19 @@ static void on_joined(void *ctx)
 
     ESP_LOGI(TAG, "Joined Thread -> init entity + CoAP server");
 
-    entity_model_init();
-
+    /* TODO: Migrate to struct-based approach */
+    /* 
+     * Old approach removed:
+     *   entity_model_init();
+     *   on_off_light_register_type();
+     *   on_off_light_add(&light_cfg);
+     * 
+     * New approach (after migration):
+     *   1. entity_model_init();
+     *   2. on_off_light_register_type();  // Register type ID
+     *   3. on_off_light_add(&light_cfg);  // Create entity_light_t and add
+     */
+    
     esp_err_t err = on_off_light_register_type();
     if (err != ESP_OK) {
         ESP_LOGE(TAG, "on_off_light_register_type: %s", esp_err_to_name(err));
@@ -50,6 +62,7 @@ static void on_joined(void *ctx)
         return;
     }
 
+    /* TODO: entity_coap_server_start() may need updates after migration */
     err = entity_coap_server_start();
     if (err != ESP_OK) {
         ESP_LOGE(TAG, "entity_coap_server_start: %s", esp_err_to_name(err));

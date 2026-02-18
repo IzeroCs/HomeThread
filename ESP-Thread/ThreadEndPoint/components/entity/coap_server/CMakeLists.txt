@@ -3,6 +3,6 @@ idf_component_register(
     INCLUDE_DIRS "include"
     REQUIRES
         openthread
-        entity_model
+        model
         coap
 )

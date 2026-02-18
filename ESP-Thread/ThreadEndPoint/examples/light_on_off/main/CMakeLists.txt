@@ -3,7 +3,7 @@ idf_component_register(
     INCLUDE_DIRS "."
     PRIV_REQUIRES
         driver
-        entity_model
-        entity_coap_server
+        model
+        coap_server
         thread
 )

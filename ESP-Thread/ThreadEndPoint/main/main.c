@@ -1,22 +1,25 @@
 /*
  * ThreadEndPoint - Test entity_model component tại root project.
+ * 
+ * TODO: Migrate to struct-based approach (see MIGRATION_TO_STRUCT_BASED.md)
  */
 #include <stdio.h>
 #include "esp_log.h"
-#include "entity_model.h"
 
 static const char *TAG = "main";
 
 void app_main(void)
 {
-    entity_model_init();
-    ESP_LOGI(TAG, "entity_model_init ok");
-
-    char buf[128];
-    int n = entity_describe(buf, sizeof(buf));
-    if (n >= 0) {
-        ESP_LOGI(TAG, "describe (%d bytes):\n%.*s", n, n, buf);
-    } else {
-        ESP_LOGI(TAG, "describe empty (chua co entity)");
-    }
+    /* TODO: Migrate to struct-based approach
+     * Old approach removed:
+     *   entity_model_init();
+     *   entity_describe(buf, sizeof(buf));
+     * 
+     * New approach (after migration):
+     *   1. entity_model_init();
+     *   2. Get device_model_t
+     *   3. Serialize to JSON/CBOR for display
+     */
+    ESP_LOGW(TAG, "main.c test - Not implemented yet (migration pending)");
+    ESP_LOGI(TAG, "Waiting for struct-based migration...");
 }

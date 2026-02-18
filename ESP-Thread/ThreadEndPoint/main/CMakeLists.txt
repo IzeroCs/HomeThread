@@ -1,5 +1,5 @@
 idf_component_register(
     SRCS "main.c"
     INCLUDE_DIRS "."
-    PRIV_REQUIRES freertos entity_model
+    PRIV_REQUIRES freertos model
 )
