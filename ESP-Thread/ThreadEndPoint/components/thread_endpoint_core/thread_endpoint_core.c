@@ -136,10 +136,12 @@ static void on_joined_wrapper(void *ctx)
     /* Update Leader RLOC sau khi join */
     device_registry_update_leader_rloc();
 
-    /* Register CoAP resource /network/stop */
-    esp_err_t err = network_stop_handler_register();
-    if (err != ESP_OK) {
-        ESP_LOGW(TAG, "Failed to register network stop handler: %s", esp_err_to_name(err));
+    /* Register CoAP resource /network/stop (nếu bật trong config) */
+    if (s_config.enable_network_stop_handler) {
+        esp_err_t err = network_stop_handler_register();
+        if (err != ESP_OK) {
+            ESP_LOGW(TAG, "Failed to register network stop handler: %s", esp_err_to_name(err));
+        }
     }
 
     /* Call user callback */
@@ -174,6 +176,9 @@ esp_err_t thread_endpoint_start(const thread_endpoint_config_t *config)
     }
     if (s_config.prefer_not_leader == false && config == NULL) {
         s_config.prefer_not_leader = true;  /* Default: prefer not leader */
+    }
+    if (config == NULL) {
+        s_config.enable_network_stop_handler = true;  /* Default: bật /network/stop handler */
     }
 
     /* Init ESP-IDF components */

@@ -31,9 +31,12 @@
 
 #include "led_status.h"
 #include "device_registry_server.h"
-#include "leader_control_client.h"
+/* Tạm tắt network stop để test CoAP thuần trong main */
+/* #include "leader_control_client.h" */
 
 #include "openthread/thread.h"
+#include "openthread/coap.h"
+#include "openthread/message.h"
 #include "openthread/thread_ftd.h"
 #include "openthread/dataset.h"
 #include "openthread/dataset_ftd.h"
@@ -45,6 +48,42 @@
 #endif // CONFIG_OPENTHREAD_CLI_ESP_EXTENSION
 
 #define TAG "ot_esp_ftd"
+
+/* ---------- CoAP thuần trong main (để test) ---------- */
+static void coap_ping_handler(void *aContext, otMessage *aMessage, const otMessageInfo *aMessageInfo)
+{
+    (void)aContext;
+    otInstance *instance = esp_openthread_get_instance();
+    if (!instance) return;
+
+    otCoapCode code = otCoapMessageGetCode(aMessage);
+    otCoapType type = otCoapMessageGetType(aMessage);
+    ESP_LOGI(TAG, ">>> CoAP /ping <<< Type=%d Code=%d.%02d", type, (int)(code >> 5), (int)(code & 0x1f));
+
+    otMessage *response = otCoapNewMessage(instance, NULL);
+    if (!response) return;
+    otCoapMessageInit(response, OT_COAP_TYPE_ACKNOWLEDGMENT, OT_COAP_CODE_CONTENT);
+    const char *payload = "pong";
+    (void)otMessageAppend(response, payload, (uint16_t)strlen(payload));
+    (void)otCoapSendResponse(instance, response, aMessageInfo);
+    ESP_LOGI(TAG, "CoAP /ping -> 2.05 pong");
+}
+
+static void main_coap_test_init(void)
+{
+    otInstance *instance = esp_openthread_get_instance();
+    if (!instance || !esp_openthread_lock_acquire(pdMS_TO_TICKS(1000))) return;
+
+    static otCoapResource s_ping_resource;
+    memset(&s_ping_resource, 0, sizeof(s_ping_resource));
+    s_ping_resource.mUriPath = "ping";
+    s_ping_resource.mHandler = coap_ping_handler;
+    s_ping_resource.mContext = NULL;
+    otCoapAddResource(instance, &s_ping_resource);
+
+    esp_openthread_lock_release();
+    ESP_LOGI(TAG, "CoAP test resource /ping registered (trong main)");
+}
 
 void app_main(void)
 {
@@ -116,8 +155,11 @@ void app_main(void)
     /* Start device registry CoAP server */
     ESP_ERROR_CHECK(device_registry_server_init());
 
-    /* Initialize Leader Control Client */
-    ESP_ERROR_CHECK(leader_control_client_init());
+    /* CoAP thuần trong main: đăng ký /ping để test */
+    main_coap_test_init();
+
+    /* Tạm tắt network stop */
+    /* ESP_ERROR_CHECK(leader_control_client_init()); */
 
 #if CONFIG_OPENTHREAD_CLI_ESP_EXTENSION
     esp_cli_custom_command_init();
@@ -162,9 +204,7 @@ void app_main(void)
         esp_openthread_lock_release();
         ESP_LOGI(TAG, "Thread network auto-started");
 
-        // Đợi một chút để network ổn định, sau đó log Leader RLOC16
-        vTaskDelay(pdMS_TO_TICKS(3000));
-        leader_control_log_leader_rloc16();
+        /* Tạm tắt: leader_control_log_leader_rloc16(); */
     }
 #else
     // Không auto start - user phải start thủ công qua CLI

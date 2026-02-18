@@ -1,34 +1,38 @@
-/*
- * Example light_on_off: Thread Endpoint với Entity Model và CoAP.
- *
- * TẠM THỜI: dùng CoAP client thuần (GET /ping mỗi 1s), tắt entity_coap_server và network_stop để test.
- */
-#include <string.h>
-#include "esp_err.h"
-#include "esp_log.h"
+# CoAP Client thuần trong main (snippet tham khảo)
+
+Tài liệu này ghi lại phần **code CoAP client thuần** (chỉ dùng OpenThread API, không dùng component `device_registry`) từng được viết trong `examples/light_on_off/main/main.c` để test gửi request lên Leader. Code đã được gỡ ra khỏi main; snippet dưới đây dùng để tham khảo hoặc paste lại khi cần test CoAP client.
+
+---
+
+## Mục đích
+
+- Gửi **GET /ping** đến Leader RLOC lặp lại mỗi **1 giây**.
+- Dùng **NON-CONFIRMABLE** để tránh lỗi "no bufs" (CON giữ buffer đến khi có ACK).
+- Lấy đích gửi bằng **`otThreadGetLeaderRloc()`** (không hardcode RLOC16).
+- Có **response handler** để log kết quả.
+
+---
+
+## Includes cần thêm trong main.c
+
+```c
 #include "esp_openthread.h"
 #include "esp_openthread_lock.h"
-#include "freertos/FreeRTOS.h"
-#include "freertos/task.h"
 #include "openthread/coap.h"
 #include "openthread/error.h"
 #include "openthread/instance.h"
 #include "openthread/ip6.h"
 #include "openthread/message.h"
 #include "openthread/thread.h"
-#include "entity_model.h"
-#include "on_off_light.h"
-#include "thread_endpoint_core.h"
+```
 
-static const char *TAG = "light_on_off";
+---
 
-#define LIGHT_GPIO       2   /* Den on/off noi ngoai; RGB status dung GPIO 8 */
+## Response handler
+
+```c
 #define COAP_DEFAULT_PORT 5683
 
-/* Flag để tránh init nhiều lần khi on_joined() được gọi lại */
-static bool s_app_initialized = false;
-
-/* --- CoAP client thuần: GET /ping đến Leader mỗi 1s --- */
 static void coap_response_handler(void *aContext, otMessage *aMessage,
                                   const otMessageInfo *aMessageInfo, otError aError)
 {
@@ -51,7 +55,13 @@ static void coap_response_handler(void *aContext, otMessage *aMessage,
         ESP_LOGW(TAG, "CoAP ping response code: %d.%02d", (int)(code >> 5), (int)(code & 0x1f));
     }
 }
+```
 
+---
+
+## Hàm gửi GET /ping (gọi mỗi 1 giây từ task)
+
+```c
 static void send_coap_ping_to_leader(void)
 {
     otInstance *instance = esp_openthread_get_instance();
@@ -64,6 +74,7 @@ static void send_coap_ping_to_leader(void)
         return;
     }
 
+    /* Lấy Leader RLOC (IPv6) */
     otIp6Address leader_rloc;
     otError ot_err = otThreadGetLeaderRloc(instance, &leader_rloc);
     if (ot_err != OT_ERROR_NONE) {
@@ -72,11 +83,6 @@ static void send_coap_ping_to_leader(void)
         return;
     }
 
-    char leader_addr_str[40];
-    otIp6AddressToString(&leader_rloc, leader_addr_str, sizeof(leader_addr_str));
-    uint16_t leader_rloc16 = (leader_rloc.mFields.m8[14] << 8) | leader_rloc.mFields.m8[15];
-    ESP_LOGI(TAG, "Leader RLOC: 0x%04x = %s", (unsigned)leader_rloc16, leader_addr_str);
-
     otMessage *message = otCoapNewMessage(instance, NULL);
     if (!message) {
         esp_openthread_lock_release();
@@ -84,6 +90,7 @@ static void send_coap_ping_to_leader(void)
         return;
     }
 
+    /* GET, NON-CONFIRMABLE để tránh "no bufs" */
     otCoapMessageInit(message, OT_COAP_TYPE_NON_CONFIRMABLE, OT_COAP_CODE_GET);
     ot_err = otCoapMessageAppendUriPathOptions(message, "ping");
     if (ot_err != OT_ERROR_NONE) {
@@ -93,7 +100,6 @@ static void send_coap_ping_to_leader(void)
         return;
     }
 
-    ESP_LOGI(TAG, "LEader %d", leader_rloc16);
     otMessageInfo message_info;
     memset(&message_info, 0, sizeof(message_info));
     message_info.mPeerAddr = leader_rloc;
@@ -106,78 +112,58 @@ static void send_coap_ping_to_leader(void)
         ESP_LOGW(TAG, "CoAP send failed: %s", otThreadErrorToString(ot_err));
     }
 }
+```
 
+---
+
+## Task gửi ping mỗi 1 giây (chạy sau khi đã join)
+
+```c
 static void coap_ping_task(void *pvParameters)
 {
     (void)pvParameters;
+
+    /* Đợi một chút cho network ổn định */
     vTaskDelay(pdMS_TO_TICKS(2000));
 
     while (1) {
         send_coap_ping_to_leader();
-        vTaskDelay(pdMS_TO_TICKS(1000));
+        vTaskDelay(pdMS_TO_TICKS(1000));  /* 1 giây */
     }
 }
+```
 
-/* --- Callback khi đã join Thread network --- */
+---
+
+## Gọi trong on_joined (chỉ để test CoAP client)
+
+Trong `on_joined()`, thay vì (hoặc tạm bỏ) `entity_coap_server_start()`, có thể tạo task ping:
+
+```c
 static void on_joined(void *ctx)
 {
     (void)ctx;
 
     if (s_app_initialized) {
-        ESP_LOGD(TAG, "Already initialized, skipping");
         return;
     }
 
-    ESP_LOGI(TAG, "Joined Thread -> init entity + CoAP client thuần (ping 1s)");
+    /* ... entity_model_init(), on_off_light_register_type(), on_off_light_add() ... */
 
-    entity_model_init();
-
-    esp_err_t err = on_off_light_register_type();
-    if (err != ESP_OK) {
-        ESP_LOGE(TAG, "on_off_light_register_type: %s", esp_err_to_name(err));
-        return;
-    }
-
-    on_off_light_config_t light_cfg = {
-        .gpio = LIGHT_GPIO,
-        .initial_state = false,
-        .invert_logic = false,
-        .entity_id = "light.0",
-        .name = "Main LED"
-    };
-    err = on_off_light_add(&light_cfg);
-    if (err != ESP_OK) {
-        ESP_LOGE(TAG, "on_off_light_add: %s", esp_err_to_name(err));
-        return;
-    }
-
-    /* Start CoAP stack (client cần CoAP đã start mới gửi được; không dùng entity_coap_server) */
-    otInstance *instance = esp_openthread_get_instance();
-    if (instance && esp_openthread_lock_acquire(pdMS_TO_TICKS(500))) {
-        otError ot_err = otCoapStart(instance, COAP_DEFAULT_PORT);
-        esp_openthread_lock_release();
-        if (ot_err != OT_ERROR_NONE && ot_err != OT_ERROR_ALREADY) {
-            ESP_LOGE(TAG, "otCoapStart failed: %s", otThreadErrorToString(ot_err));
-            return;
-        }
-    }
-
+    /* Test CoAP client: gửi GET /ping đến Leader mỗi 1s */
     xTaskCreate(coap_ping_task, "coap_ping", 4096, NULL, 5, NULL);
 
     s_app_initialized = true;
-    ESP_LOGI(TAG, "Application initialized (CoAP ping task running)");
 }
+```
 
-void app_main(void)
-{
-    thread_endpoint_config_t config = {
-        .pskd = NULL,
-        .prefer_not_leader = true,
-        .router_selection_jitter = 1,
-        .enable_network_stop_handler = false,  /* Tắt /network/stop để test CoAP client */
-        .on_joined = on_joined,
-        .ctx = NULL,
-    };
+---
 
-    ESP_ERROR_CHECK(thread_endpoint_start(&config));
-}
+## Lưu ý
+
+1. **NON-CONFIRMABLE**: Dùng `OT_COAP_TYPE_NON_CONFIRMABLE` để không giữ buffer chờ ACK; gửi liên tục CON dễ gây "no bufs".
+2. **Leader RLOC**: Luôn lấy bằng `otThreadGetLeaderRloc(instance, &addr)` thay vì hardcode RLOC16 (Leader có thể đổi).
+3. **Port**: Cùng port CoAP mặc định `5683` (COAP_DEFAULT_PORT).
+4. **Handler**: Response có thể đến bất đồng bộ; CON request thì cần handler để nhận ACK/response, NON vẫn có thể nhận response tùy server.
+
+Code hiện tại trong main đã chuyển sang dùng `entity_coap_server`; file này chỉ để lưu lại snippet CoAP client thuần khi cần test hoặc tham chiếu.

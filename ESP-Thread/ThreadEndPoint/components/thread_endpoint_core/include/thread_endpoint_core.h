@@ -39,6 +39,7 @@ typedef struct {
     const char *pskd;                    ///< PSKd cho Thread joiner (NULL = dùng CONFIG_THREAD_JOINER_PSKD_DEFAULT)
     bool prefer_not_leader;              ///< Set Leader Weight -16 để tránh trở thành Leader (default: true)
     uint8_t router_selection_jitter;     ///< Router selection jitter (seconds, 0 = default 120s)
+    bool enable_network_stop_handler;    ///< Register CoAP /network/stop handler (default: true)
     thread_endpoint_on_joined_fn on_joined; ///< Callback khi join thành công
     void *ctx;                            ///< User context cho callbacks
 } thread_endpoint_config_t;
