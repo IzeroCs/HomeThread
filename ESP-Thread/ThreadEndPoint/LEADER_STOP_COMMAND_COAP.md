@@ -239,11 +239,14 @@ Border Router sẽ tự động gửi khi:
 - Leader RLOC16 thay đổi
 - Lần gửi trước không thành công
 
-### Test từ CLI (nếu cần)
+### Test từ CLI (nếu Endpoint có bật OpenThread CLI)
 ```bash
-# Gửi CoAP POST đến Leader
+# Gửi CoAP GET đến Leader (triển khai hiện tại dùng GET)
+ot coap get fdde:ad00:beef:0:0:ff:fe00:d400 5683 /network/stop
+# Hoặc POST (nếu Border Router / client gửi POST):
 ot coap post fdde:ad00:beef:0:0:ff:fe00:d400 5683 /network/stop "action=stop"
 ```
+Lưu ý: Handler trong `network_stop_handler.c` hiện chỉ xử lý GET; nếu cần POST thì cần mở rộng handler.
 
 ---
 
@@ -321,10 +324,36 @@ Code hiện tại trong `leader_rloc_check_task` đã check mỗi 5 giây và s�
 
 ## Implementation Checklist cho Endpoint
 
-- [ ] Enable CoAP API (`OPENTHREAD_CONFIG_COAP_API_ENABLE`)
-- [ ] Start CoAP server (`otCoapStart()`)
-- [ ] Register resource `/network` với handler
-- [ ] Parse URI path segments: `["network", "stop"]`
-- [ ] Parse payload: `"action=stop"`
-- [ ] Stop Thread network (`otThreadSetEnabled(false)`)
-- [ ] Send response: `2.05 Content` (success) hoặc `4.xx`/`5.xx` (error)
+- [x] Enable CoAP API (`OPENTHREAD_CONFIG_COAP_API_ENABLE`)
+- [x] Start CoAP server (`otCoapStart()`)
+- [x] Register resource `/network` với handler
+- [x] Parse URI path segments: `["network", "stop"]`
+- [x] Parse payload: `"action=stop"` (triển khai hiện tại dùng GET, không payload)
+- [x] Stop Thread network (`otThreadSetEnabled(false)`)
+- [x] Send response: `2.05 Content` (success) hoặc `4.03 Forbidden`/`5.03 Service Unavailable` (error)
+
+---
+
+## Triển khai thực tế (thread_endpoint_core)
+
+Handler đã được implement trong component **thread_endpoint_core**, file `components/thread_endpoint_core/network_stop_handler.c`.
+
+### Cách bật
+
+- Trong `thread_endpoint_config_t` đặt `enable_network_stop_handler = true`. Khi đó `thread_endpoint_start()` sẽ gọi `network_stop_handler_register()`.
+
+### Hành vi
+
+1. **CoAP resource**: Đăng ký resource URI path `"network/stop"` (hai segment: `network`, `stop`). **Hiện tại handler chỉ nhận GET** (không POST), không yêu cầu payload.
+2. **Kiểm tra Leader**: Chỉ xử lý lệnh stop khi `otThreadGetDeviceRole() == OT_DEVICE_ROLE_LEADER`. Nếu không phải Leader → trả `4.03 Forbidden` và bỏ qua.
+3. **Stop → Chờ → Restart**: Khi là Leader và nhận đúng request:
+   - Gửi ngay response `2.05 Content`.
+   - Tạo task `network_stop_restart_task`:
+     - Gọi `otThreadSetEnabled(false)` và `otIp6SetEnabled(false)`.
+     - Cập nhật status LED (detached).
+     - **Đợi 240 giây** (`NETWORK_STOP_WAIT_SECONDS`).
+     - Gọi `otIp6SetEnabled(true)` và `otThreadSetEnabled(true)` để restart Thread (Border Router có thời gian trở thành Leader mới).
+
+### API
+
+- `network_stop_handler_register()`: Đăng ký resource với CoAP server (và start CoAP server nếu chưa). Gọi từ `thread_endpoint_core` khi `enable_network_stop_handler == true`.

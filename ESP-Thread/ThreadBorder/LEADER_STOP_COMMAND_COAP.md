@@ -2,27 +2,25 @@
 
 ## Tổng quan
 
-Border Router gửi CoAP POST request đến Leader hiện tại để yêu cầu Leader offline, từ đó Border Router có thể trở thành Leader mới.
+Border Router gửi CoAP **GET** request đến Leader hiện tại để yêu cầu Leader offline, từ đó Border Router có thể trở thành Leader mới.
 
 ---
 
-## CoAP Request Format
+## CoAP Request Format (hiện tại)
 
 ### Method & Type
-- **Method**: `POST`
+- **Method**: `GET`
 - **Type**: `CONFIRMABLE` (cần ACK response)
-- **Code**: `0.02` (POST)
+- **Code**: `0.01` (GET)
 
-### URI Path
-- **Path**: `/network/stop`
-- **Segments**:
-  - Segment 1: `"network"`
-  - Segment 2: `"stop"`
+### URI Path (quan trọng: chỉ một segment)
+- **Path**: `/network` (một segment duy nhất)
+- **Segment**: `"network"`
+
+**Lý do không dùng `/network/stop`:** OpenThread CoAP match resource theo **full path string** (xem phần "OpenThread CoAP: Match theo full path" bên dưới). Resource đăng ký với `mUriPath = "network"` chỉ match request có path đúng `"network"`. Request có hai segment `"network"` + `"stop"` tạo path `"network/stop"` → không match resource `"network"`. Vì vậy Border Router gửi GET với **chỉ một** Uri-Path option `"network"`.
 
 ### Payload
-- **Format**: Text/Plain
-- **Content**: `"action=stop"`
-- **Length**: 11 bytes
+- **GET không có payload.** (Không gửi body.)
 
 ### Port
 - **Port**: `5683` (OT_DEFAULT_COAP_PORT)
@@ -48,7 +46,20 @@ Border Router gửi CoAP POST request đến Leader hiện tại để yêu cầ
 
 ---
 
-## Handler Implementation Example
+## OpenThread CoAP: Match theo full path
+
+Trong OpenThread (`coap.cpp`), request được match với resource như sau:
+
+- `ReadUriPathOptions(uriPath)` đọc **toàn bộ** Uri-Path options của request vào một chuỗi (các segment nối với `/`).
+- So khớp: `StringMatch(resource.mUriPath, uriPath)` — **exact full path**.
+- Resource `mUriPath = "network"` chỉ match request có path đúng `"network"`.
+- Request có hai segment `"network"` + `"stop"` → path = `"network/stop"` → **không** match `"network"`.
+
+**Kết luận:** Để handler được gọi, client phải gửi GET với **một** segment `"network"`. Endpoint đăng ký resource `"network"` và trong handler có thể chấp nhận path chỉ có "network" là lệnh stop.
+
+---
+
+## Handler Implementation Example (GET, path /network)
 
 ### C Code (OpenThread)
 
@@ -62,76 +73,34 @@ static void network_stop_handler(void *aContext, otMessage *aMessage,
     (void)aContext;
 
     otInstance *instance = esp_openthread_get_instance();
+    if (!instance) return;
 
-    // Check method
+    // Check method: GET (0.01)
     otCoapCode code = otCoapMessageGetCode(aMessage);
-    if ((code >> 5) != 0 || (code & 0x1f) != 2) {  // Not POST
+    if ((code >> 5) != 0 || (code & 0x1f) != 1) {  // Not GET
         return;
     }
 
-    // Parse URI path
-    otCoapOptionIterator iterator;
-    otCoapOptionIteratorInit(&iterator, aMessage);
-    char segments[2][64] = {{0}};
-    int seg_count = 0;
+    // Resource "network" đã match (path = "network"). GET không có payload.
 
-    const otCoapOption *option;
-    while ((option = otCoapOptionIteratorGetNextOption(&iterator)) != NULL && seg_count < 2) {
-        if (option->mNumber == OT_COAP_OPTION_URI_PATH) {
-            uint16_t seg_len = option->mLength;
-            if (seg_len >= sizeof(segments[0])) seg_len = sizeof(segments[0]) - 1;
-            uint16_t offset = iterator.mNextOptionOffset - seg_len;
-            otMessageRead(aMessage, offset, segments[seg_count], seg_len);
-            segments[seg_count][seg_len] = '\0';
-            seg_count++;
-        }
-    }
+    // (Tùy chọn: check role = Leader trước khi xử lý)
 
-    // Check URI path: /network/stop
-    if (seg_count != 2 ||
-        strcmp(segments[0], "network") != 0 ||
-        strcmp(segments[1], "stop") != 0) {
-        return;  // Not our endpoint
-    }
+    ESP_LOGI(TAG, "Received stop command from Border Router");
 
-    // Read payload
-    uint16_t offset = otMessageGetOffset(aMessage);
-    uint16_t payload_len = otMessageGetLength(aMessage) - offset;
-    char payload[64] = {0};
-
-    if (payload_len > 0 && payload_len < sizeof(payload)) {
-        otMessageRead(aMessage, offset, payload, payload_len);
-        payload[payload_len] = '\0';
-    }
-
-    // Check payload: action=stop
-    if (strcmp(payload, "action=stop") != 0) {
-        ESP_LOGW(TAG, "Invalid payload: %s", payload);
-        // Still process, but log warning
-    }
-
-    ESP_LOGI(TAG, "Received stop command from Border Router (RLOC16: 0x%04x)",
-             aMessageInfo->mPeerAddr.mFields.m16[7]);
-
-    // Stop Thread network
-    if (instance && esp_openthread_lock_acquire(pdMS_TO_TICKS(1000))) {
+    if (esp_openthread_lock_acquire(pdMS_TO_TICKS(1000))) {
         otThreadSetEnabled(instance, false);
         otIp6SetEnabled(instance, false);
         esp_openthread_lock_release();
-
         ESP_LOGI(TAG, "Thread network stopped as requested");
     }
 
-    // Send success response
     otMessage *response = otCoapNewMessage(instance, NULL);
     if (response) {
-        otCoapMessageInit(response, OT_COAP_TYPE_ACKNOWLEDGMENT, OT_COAP_CODE_2_05_CONTENT);
+        otCoapMessageInit(response, OT_COAP_TYPE_ACKNOWLEDGMENT, OT_COAP_CODE_CONTENT);
         otCoapSendResponse(instance, response, aMessageInfo);
-        ESP_LOGI(TAG, "Sent 2.05 Content response");
     }
 }
 
-// Register handler
 void register_network_stop_handler(otInstance *instance)
 {
     static otCoapResource s_resource;
@@ -139,9 +108,7 @@ void register_network_stop_handler(otInstance *instance)
     s_resource.mUriPath = "network";
     s_resource.mHandler = network_stop_handler;
     s_resource.mContext = NULL;
-
     otCoapAddResource(instance, &s_resource);
-    ESP_LOGI(TAG, "CoAP resource '/network' registered");
 }
 ```
 
@@ -152,12 +119,12 @@ void register_network_stop_handler(otInstance *instance)
 ```
 Border Router (Router/Child)          Leader (Current)
      |                                      |
-     |  POST /network/stop                  |
+     |  GET /network                        |
      |  Type: CONFIRMABLE                    |
-     |  Payload: "action=stop"               |
+     |  (no payload)                        |
      |------------------------------------->|
      |                                      |
-     |                                      | Parse request
+     |                                      | Match resource "network"
      |                                      | Stop Thread network
      |                                      |
      |  2.05 Content                        |
@@ -170,21 +137,19 @@ Border Router (Router/Child)          Leader (Current)
 
 ## Request Details
 
-### CoAP Message Structure
+### CoAP Message Structure (GET /network)
 ```
 ┌─────────────────────────────────────┐
 │ CoAP Header                         │
 │ - Type: CON (0)                     │
-│ - Code: POST (0.02)                 │
+│ - Code: GET (0.01)                  │
 │ - Message ID: <auto>                │
 ├─────────────────────────────────────┤
 │ Options                             │
 │ - URI-Path: "network"               │
-│ - URI-Path: "stop"                  │
-│ - Content-Format: text/plain (0)    │
+│ (chỉ một segment)                   │
 ├─────────────────────────────────────┤
-│ Payload                             │
-│ "action=stop"                        │
+│ (no payload)                        │
 └─────────────────────────────────────┘
 ```
 
@@ -241,8 +206,8 @@ Border Router sẽ tự động gửi khi:
 
 ### Test từ CLI (nếu cần)
 ```bash
-# Gửi CoAP POST đến Leader
-ot coap post fdde:ad00:beef:0:0:ff:fe00:d400 5683 /network/stop "action=stop"
+# Gửi CoAP GET đến Leader (path /network, một segment)
+ot coap get fdde:ad00:beef:0:0:ff:fe00:d400 5683 /network
 ```
 
 ---
@@ -311,11 +276,13 @@ Code hiện tại trong `leader_rloc_check_task` đã check mỗi 5 giây và s�
 ## Notes
 
 1. **Port**: Luôn dùng port `5683` (OT_DEFAULT_COAP_PORT)
-2. **Type**: Request phải là `CONFIRMABLE` để đảm bảo nhận được response
-3. **Timeout**: Border Router đợi response trong 5 giây (COAP_RESPONSE_TIMEOUT_MS)
-4. **Retry**: Border Router sẽ tự động retry nếu không nhận được response
-5. **Leader Address**: Border Router tự động lấy Leader RLOC16 và construct address
-6. **Leader Election Timing**: Sau khi Leader cũ offline, cần đợi **1-2.5 phút** để Leader mới được bầu
+2. **Method**: GET (0.01); không payload
+3. **Path**: Chỉ một segment `"network"` (OpenThread match full path, nên không dùng `/network/stop`)
+4. **Type**: Request phải là `CONFIRMABLE` để đảm bảo nhận được response
+5. **Timeout**: Border Router đợi response trong 5 giây (COAP_RESPONSE_TIMEOUT_MS)
+6. **Retry**: Border Router sẽ tự động retry nếu không nhận được response
+7. **Leader Address**: Border Router tự động lấy Leader RLOC16 và construct address
+8. **Leader Election Timing**: Sau khi Leader cũ offline, cần đợi **1-2.5 phút** để Leader mới được bầu
 
 ---
 
@@ -323,8 +290,15 @@ Code hiện tại trong `leader_rloc_check_task` đã check mỗi 5 giây và s�
 
 - [ ] Enable CoAP API (`OPENTHREAD_CONFIG_COAP_API_ENABLE`)
 - [ ] Start CoAP server (`otCoapStart()`)
-- [ ] Register resource `/network` với handler
-- [ ] Parse URI path segments: `["network", "stop"]`
-- [ ] Parse payload: `"action=stop"`
+- [ ] Register resource `mUriPath = "network"` (một segment) với handler
+- [ ] Trong handler: check method = GET (0.01); GET không có payload
+- [ ] (Tùy chọn) Check device role = Leader trước khi stop
 - [ ] Stop Thread network (`otThreadSetEnabled(false)`)
-- [ ] Send response: `2.05 Content` (success) hoặc `4.xx`/`5.xx` (error)
+- [ ] Send response: `2.05 Content` (success) hoặc `4.03`/`5.03` (error)
+
+---
+
+## Lịch sử thay đổi
+
+- **POST → GET:** Lệnh stop chuyển từ POST sang GET; GET không payload, endpoint chỉ cần check method GET và path "network".
+- **Path một segment:** Do OpenThread match resource theo full path, client gửi chỉ `/network` (một Uri-Path option) để match resource "network"; không gửi `/network/stop` (hai segment) vì khi đó path = "network/stop" không match resource "network".

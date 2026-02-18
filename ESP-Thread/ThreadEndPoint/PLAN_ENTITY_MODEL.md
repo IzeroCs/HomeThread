@@ -389,7 +389,15 @@ Sau khi chạy ổn: mở rộng type/entity khác theo nhu cầu (sensor, dimme
 - ✅ `components/thread_joiner/` - Thread joiner với callback
 - ✅ `components/status_led/` - Status LED indicator
 - ✅ `components/boot_btn/` - Boot button handler
+- ✅ `components/thread_endpoint_core/` - Thread endpoint + CoAP resource `/network/stop` (network_stop_handler: chỉ Leader xử lý, stop → đợi 240s → restart)
 
-## 13. Tài liệu liên quan
+## 13. Example: light_on_off
+
+- **Đường dẫn**: `examples/light_on_off/`
+- **Chức năng**: Thread Endpoint FTD + Joiner, Entity Model (on_off_light), entity_coap_server, device_registry, network_stop_handler (khi `enable_network_stop_handler = true`).
+- **Không dùng OpenThread CLI**: Example đã gỡ toàn bộ CLI (esp_ot_cli_extension, esp_openthread_launch_mainloop, CONFIG_OPENTHREAD_CLI). Chỉ chạy app (entity + CoAP server), không có lệnh `ot` trên console.
+
+## 14. Tài liệu liên quan
 
 - `BORDER_ROUTER_COAP_SERVER.md` - Hướng dẫn implement CoAP server trên Border Router
+- `LEADER_STOP_COMMAND_COAP.md` - CoAP GET/POST `/network/stop` cho Leader, triển khai trong thread_endpoint_core (network_stop_handler)

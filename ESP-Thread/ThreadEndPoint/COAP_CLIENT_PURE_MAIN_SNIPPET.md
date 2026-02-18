@@ -2,6 +2,8 @@
 
 Tài liệu này ghi lại phần **code CoAP client thuần** (chỉ dùng OpenThread API, không dùng component `device_registry`) từng được viết trong `examples/light_on_off/main/main.c` để test gửi request lên Leader. Code đã được gỡ ra khỏi main; snippet dưới đây dùng để tham khảo hoặc paste lại khi cần test CoAP client.
 
+Example `light_on_off` hiện **không dùng OpenThread CLI** (đã gỡ esp_ot_cli_extension và ot CLI task); chỉ chạy entity model + entity_coap_server.
+
 ---
 
 ## Mục đích

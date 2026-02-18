@@ -164,3 +164,25 @@
 ### Frontend – Form thống nhất
 - **`_form.scss`**: `.form-page` (max-width 640px), `.form-card`, `.form-page-title`, `.form-page-description`, `.form-page-alert` (warn/success/error), `.form-page-form` (gap 24px); khoảng cách description–form (margin-bottom description 28px)
 - **Commissioner, SerialConfigForm, OpenThreadConfigForm**: dùng chung class form-page/form-card/…; mỗi component chỉ giữ style đặc thù (nút Test Connect, checkbox OT, v.v.)
+
+### Bổ sung gần đây
+
+#### Frontend – UI & cấu trúc
+- **Modal toàn cục** (`frontend/src/components/common/Modal.tsx`): component dùng chung — overlay, title, nút đóng, Escape/click overlay đóng; dùng cho xem chi tiết dòng bảng.
+- **Dashboard – click dòng bảng**: Click một dòng trong Router Table hoặc Child Table → mở Modal hiển thị **đầy đủ** thông tin dòng (tất cả cột, kể cả cột ẩn). Tiêu đề modal dùng giá trị **RLOC16** của dòng.
+- **Dashboard**: Bỏ "Tổng router/child" trong box header; đưa số lượng vào nhãn bảng: **Router Table (n)**, **Child Table (n)**.
+- **TopNav & Modal** chuyển vào thư mục `frontend/src/components/common/` (Modal.tsx/scss, TopNav.tsx/scss).
+
+#### Commissioner
+- **Timeout 500s**: Thêm tuỳ chọn 500 giây cho thời gian hết hạn joiner; backend `allowedTimeouts` gồm `[30, 60, 120, 180, 500]`.
+
+#### Backend – Serial & CLI
+- **Reset khi mở serial**: Ngay sau khi mở port, backend gửi **`ot reset`** rồi chờ 5s trước khi gửi `version`/`state` — xử lý trường hợp ESP/border-router chạy trước, tránh phải nhấn reset cứng.
+- **Fallback prefix "ot"**: Nếu thiết bị trả "Unrecognized command" với prefix trong config (vd. "t"), backend thử lại với prefix **"ot"**; nếu thành công thì dùng "ot" cho cả phiên.
+- **CLI timeout**: Mặc định tăng lên **15000 ms** (có thể override bằng `CLI_TIMEOUT_MS` trong .env).
+- **AUTO_FETCH_DATA** (config trong code, `WebSocketServer.ts`): Hằng `AUTO_FETCH_DATA = true/false` — khi **false** thì không gửi polling (Status, Router/Child table, Commissioner list); khi **true** thì gửi bình thường. **Không** dùng SQL hay .env.
+- **Keepalive khi AUTO_FETCH_DATA = false**: Vẫn gửi lệnh **`state`** mỗi **15 giây** để giữ serial/thiết bị hoạt động, tránh thiết bị đứng ở "Returned from app_main()" sau khi flash qua USB/JTAG rồi cắm UART vào Dashboard.
+
+#### Frontend – Truy cập LAN
+- **Vite**: `server.host: true` — dev server lắng nghe trên `0.0.0.0`, truy cập từ máy khác bằng `http://<IP-máy>:5173`.
+- **WebSocket/API**: `WS_URL` dùng `window.location.origin` khi không set `VITE_WS_URL` — khi mở từ LAN, request đi qua cùng host (proxy Vite chuyển tiếp tới backend).
