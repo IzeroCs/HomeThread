@@ -44,7 +44,8 @@ static uint16_t extract_rloc16_from_ip6(const otIp6Address *addr)
 }
 
 /* Helper: Get Leader RLOC16 với nhiều fallback methods */
-static otError get_leader_rloc16(otInstance *instance, uint16_t *rloc16)
+/* TODO: May be used after migration */
+__attribute__((unused)) static otError get_leader_rloc16(otInstance *instance, uint16_t *rloc16)
 {
     if (!instance || !rloc16) {
         return OT_ERROR_INVALID_ARGS;
@@ -81,7 +82,8 @@ static otError get_leader_rloc16(otInstance *instance, uint16_t *rloc16)
 }
 
 /* CoAP response handler */
-static void coap_response_handler(void *aContext, otMessage *aMessage, const otMessageInfo *aMessageInfo, otError aError)
+/* TODO: Will be used after migration when CoAP POST is implemented */
+__attribute__((unused)) static void coap_response_handler(void *aContext, otMessage *aMessage, const otMessageInfo *aMessageInfo, otError aError)
 {
     (void)aContext;
     (void)aMessageInfo;
@@ -231,7 +233,6 @@ esp_err_t device_registry_register(device_registry_callback_fn callback, void *c
 
     /* Lay thong tin device */
     uint16_t rloc16 = 0;
-    const otIp6Address *ml_eid = NULL;
     uint16_t parent_rloc16 = 0;
 
     if (!esp_openthread_lock_acquire(pdMS_TO_TICKS(500))) {
@@ -239,7 +240,8 @@ esp_err_t device_registry_register(device_registry_callback_fn callback, void *c
     }
 
     rloc16 = otThreadGetRloc16(instance);
-    ml_eid = otThreadGetMeshLocalEid(instance);
+    /* TODO: ml_eid will be used after migration */
+    /* const otIp6Address *ml_eid = otThreadGetMeshLocalEid(instance); */
     
     if (role == OT_DEVICE_ROLE_CHILD) {
         otRouterInfo parent_info;
@@ -255,7 +257,7 @@ esp_err_t device_registry_register(device_registry_callback_fn callback, void *c
      *   1. Create device_model_t struct
      *   2. Fill device.info
      *   3. Fill entities array from entity model
-     *   4. Fill network info
+     *   4. Fill network info (rloc16, ml_eid, role)
      *   5. Serialize to CBOR using serialize_device_cbor()
      */
     

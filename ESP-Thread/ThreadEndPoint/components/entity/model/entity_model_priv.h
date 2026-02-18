@@ -6,15 +6,17 @@
 #include "entity_model.h"
 #include "sdkconfig.h"
 
-typedef struct entity_type {
+/* Internal type registry entry (callback-based approach) */
+typedef struct entity_type_registry {
     const char *type_id;
     entity_get_attr_fn get_cb;
     entity_set_attr_fn set_cb;
-} entity_type_t;
+} entity_type_registry_t;
 
-typedef struct entity {
+/* Internal entity entry (callback-based approach) */
+typedef struct entity_entry {
     const char *entity_id;
     const char *name;
-    const entity_type_t *type;
+    const entity_type_registry_t *type;
     void *instance_data;
-} entity_t;
+} entity_entry_t;

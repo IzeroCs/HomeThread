@@ -8,10 +8,10 @@
 #include "entity_model_priv.h"
 
 static size_t s_num_types;
-static entity_type_t s_types[CONFIG_ENTITY_MODEL_MAX_TYPES];
+static entity_type_registry_t s_types[CONFIG_ENTITY_MODEL_MAX_TYPES];
 
 static size_t s_num_entities;
-static entity_t s_entities[CONFIG_ENTITY_MODEL_MAX_ENTITIES];
+static entity_entry_t s_entities[CONFIG_ENTITY_MODEL_MAX_ENTITIES];
 
 void entity_model_init(void)
 {
@@ -40,7 +40,7 @@ int entity_register_type(const char *type_id,
     return 0;
 }
 
-static const entity_type_t *find_type(const char *type_id)
+static const entity_type_registry_t *find_type(const char *type_id)
 {
     for (size_t i = 0; i < s_num_types; i++) {
         if (strcmp(s_types[i].type_id, type_id) == 0) {
@@ -56,7 +56,7 @@ int entity_add(const char *entity_id, const char *type_id,
     if (entity_id == NULL || type_id == NULL || s_num_entities >= CONFIG_ENTITY_MODEL_MAX_ENTITIES) {
         return -1;
     }
-    const entity_type_t *t = find_type(type_id);
+    const entity_type_registry_t *t = find_type(type_id);
     if (t == NULL) {
         return -1;
     }
@@ -73,7 +73,7 @@ int entity_add(const char *entity_id, const char *type_id,
     return 0;
 }
 
-static const entity_t *find_entity(const char *entity_id)
+static const entity_entry_t *find_entity(const char *entity_id)
 {
     for (size_t i = 0; i < s_num_entities; i++) {
         if (strcmp(s_entities[i].entity_id, entity_id) == 0) {
@@ -90,7 +90,7 @@ int entity_describe(char *buf, size_t buf_len)
     }
     size_t written = 0;
     for (size_t i = 0; i < s_num_entities && written < buf_len; i++) {
-        const entity_t *e = &s_entities[i];
+        const entity_entry_t *e = &s_entities[i];
         int n = snprintf(buf + written, buf_len - written,
                          "entity_id=%s type=%s name=%s\n",
                          e->entity_id, e->type->type_id, e->name);
@@ -108,7 +108,7 @@ int entity_get(const char *entity_id, const char *attr,
     if (entity_id == NULL || attr == NULL || value_buf == NULL || value_buf_len == 0) {
         return -1;
     }
-    const entity_t *e = find_entity(entity_id);
+    const entity_entry_t *e = find_entity(entity_id);
     if (e == NULL || e->type->get_cb == NULL) {
         return -1;
     }
@@ -120,7 +120,7 @@ int entity_set(const char *entity_id, const char *attr, const char *value)
     if (entity_id == NULL || attr == NULL || value == NULL) {
         return -1;
     }
-    const entity_t *e = find_entity(entity_id);
+    const entity_entry_t *e = find_entity(entity_id);
     if (e == NULL || e->type->set_cb == NULL) {
         return -1;
     }
