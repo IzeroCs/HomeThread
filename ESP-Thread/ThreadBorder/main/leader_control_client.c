@@ -178,7 +178,7 @@ esp_err_t leader_control_log_leader_rloc16(void)
  * Returns ESP_OK if sent successfully, ESP_FAIL otherwise
  * Sets *success to true if Leader acknowledged, false otherwise
  */
-static esp_err_t send_coap_stop_command_once(otInstance *instance, uint16_t leader_rloc16, bool *success)
+static esp_err_t send_coap_stop_command_once(otInstance *instance, uint16_t leader_rloc16s, bool *success)
 {
     *success = false;
 
@@ -186,9 +186,23 @@ static esp_err_t send_coap_stop_command_once(otInstance *instance, uint16_t lead
         return ESP_ERR_INVALID_STATE;
     }
 
-    // Construct Leader RLOC address
-    otIp6Address leader_address;
-    construct_leader_rloc_address(instance, leader_rloc16, &leader_address);
+    // // Construct Leader RLOC address
+    // otIp6Address leader_address;
+    // construct_leader_rloc_address(instance, leader_rloc16, &leader_address);
+
+
+    otIp6Address leader_rloc;
+    otError ot_err = otThreadGetLeaderRloc(instance, &leader_rloc);
+    if (ot_err != OT_ERROR_NONE) {
+        esp_openthread_lock_release();
+        ESP_LOGW(TAG, "CoAP: get Leader RLOC failed: %s", otThreadErrorToString(ot_err));
+        return ESP_FAIL;
+    }
+
+    char leader_addr_str[40];
+    otIp6AddressToString(&leader_rloc, leader_addr_str, sizeof(leader_addr_str));
+    uint16_t leader_rloc16 = (leader_rloc.mFields.m8[14] << 8) | leader_rloc.mFields.m8[15];
+    ESP_LOGI(TAG, "Leader RLOC: 0x%04x = %s", (unsigned)leader_rloc16, leader_addr_str);
 
     // Reset response context
     memset(&s_response_ctx, 0, sizeof(s_response_ctx));
@@ -200,8 +214,8 @@ static esp_err_t send_coap_stop_command_once(otInstance *instance, uint16_t lead
         return ESP_ERR_NO_MEM;
     }
 
-    // Initialize CoAP message as POST request
-    otCoapMessageInit(message, OT_COAP_TYPE_CONFIRMABLE, OT_COAP_CODE_POST);
+    // Initialize CoAP message as GET request
+    otCoapMessageInit(message, OT_COAP_TYPE_CONFIRMABLE, OT_COAP_CODE_GET);
 
     // Set URI path: /network/stop
     otError err = otCoapMessageAppendUriPathOptions(message, "network");
@@ -218,27 +232,11 @@ static esp_err_t send_coap_stop_command_once(otInstance *instance, uint16_t lead
         return ESP_FAIL;
     }
 
-    // Set payload: action=stop
-    const char *payload = "action=stop";
-    err = otMessageAppend(message, payload, strlen(payload));
-    if (err != OT_ERROR_NONE) {
-        ESP_LOGE(TAG, "Failed to append payload: %d", err);
-        otMessageFree(message);
-        return ESP_FAIL;
-    }
-
-    // Set Content-Format: text/plain
-    err = otCoapMessageSetPayloadMarker(message);
-    if (err != OT_ERROR_NONE) {
-        ESP_LOGE(TAG, "Failed to set payload marker: %d", err);
-        otMessageFree(message);
-        return ESP_FAIL;
-    }
-
     // Prepare message info
     otMessageInfo message_info;
     memset(&message_info, 0, sizeof(message_info));
-    memcpy(&message_info.mPeerAddr, &leader_address, sizeof(otIp6Address));
+    // memcpy(&message_info.mPeerAddr, &leader_address, sizeof(otIp6Address));
+    message_info.mPeerAddr = leader_rloc;
     message_info.mPeerPort = OT_DEFAULT_COAP_PORT;
 
     // Send CoAP request
@@ -249,7 +247,7 @@ static esp_err_t send_coap_stop_command_once(otInstance *instance, uint16_t lead
         return ESP_FAIL;
     }
 
-    ESP_LOGI(TAG, "CoAP POST /network/stop sent to Leader (RLOC16: 0x%04x), waiting for response...", leader_rloc16);
+    ESP_LOGI(TAG, "CoAP GET /network/stop sent to Leader (RLOC16: 0x%04x), waiting for response...", leader_rloc16);
 
     // Wait for response (with timeout)
     int timeout_ms = COAP_RESPONSE_TIMEOUT_MS;
@@ -316,28 +314,28 @@ static void leader_rloc_check_task(void *arg)
                     // 1. First time (last_leader_rloc16 == 0xffff)
                     // 2. Leader RLOC16 changed
                     // 3. Last send was not successful
-                    bool should_send = (last_leader_rloc16 == 0xffff) || 
-                                       (leader_rloc16 != last_leader_rloc16) || 
+                    bool should_send = (last_leader_rloc16 == 0xffff) ||
+                                       (leader_rloc16 != last_leader_rloc16) ||
                                        (!last_send_success);
 
                     if (should_send) {
                         esp_openthread_lock_release();
-                        
+
                         ESP_LOGI(TAG, "Sending CoAP stop command to Leader (RLOC16: 0x%04x)...", leader_rloc16);
                         bool success = false;
                         esp_err_t send_err = send_coap_stop_command_once(instance, leader_rloc16, &success);
-                        
+
                         if (send_err == ESP_OK && success) {
                             ESP_LOGI(TAG, "✓ CoAP stop command acknowledged by Leader");
                             last_send_success = true;
                         } else {
-                            ESP_LOGW(TAG, "✗ CoAP stop command failed or not acknowledged (err: %d, success: %d)", 
+                            ESP_LOGW(TAG, "✗ CoAP stop command failed or not acknowledged (err: %d, success: %d)",
                                      send_err, success);
                             last_send_success = false;
                         }
-                        
+
                         last_leader_rloc16 = leader_rloc16;
-                        
+
                         // Re-acquire lock for next iteration
                         if (!esp_openthread_lock_acquire(pdMS_TO_TICKS(1000))) {
                             ESP_LOGW(TAG, "Failed to re-acquire lock");

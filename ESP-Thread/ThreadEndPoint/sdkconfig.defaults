@@ -8,6 +8,9 @@ CONFIG_OPENTHREAD_HEADER_CUSTOM=y
 CONFIG_OPENTHREAD_CUSTOM_HEADER_PATH=""
 CONFIG_OPENTHREAD_CUSTOM_HEADER_FILE_NAME="openthread_custom_config.h"
 
+    # OpenThread CLI extension (heapdiag, ip, loglevel, ota, tcp/udp, wifi, ...)
+CONFIG_OPENTHREAD_CLI_ESP_EXTENSION=y
+
 # mbedTLS: ECJPAKE + DTLS can cho Thread commissioning (Joiner handshake)
 CONFIG_MBEDTLS_ECJPAKE_C=y
 CONFIG_MBEDTLS_KEY_EXCHANGE_ECJPAKE=y

@@ -1,124 +1,23 @@
 /*
  * Example light_on_off: Thread Endpoint với Entity Model và CoAP.
  *
- * TẠM THỜI: dùng CoAP client thuần (GET /ping mỗi 1s), tắt entity_coap_server và network_stop để test.
+ * Sử dụng thread_endpoint_core, entity_coap_server, network_stop handler.
  */
-#include <string.h>
 #include "esp_err.h"
 #include "esp_log.h"
-#include "esp_openthread.h"
-#include "esp_openthread_lock.h"
-#include "freertos/FreeRTOS.h"
-#include "freertos/task.h"
-#include "openthread/coap.h"
-#include "openthread/error.h"
-#include "openthread/instance.h"
-#include "openthread/ip6.h"
-#include "openthread/message.h"
-#include "openthread/thread.h"
 #include "entity_model.h"
 #include "on_off_light.h"
+#include "entity_coap_server.h"
 #include "thread_endpoint_core.h"
 
 static const char *TAG = "light_on_off";
 
-#define LIGHT_GPIO       2   /* Den on/off noi ngoai; RGB status dung GPIO 8 */
-#define COAP_DEFAULT_PORT 5683
+#define LIGHT_GPIO  2   /* Den on/off noi ngoai; RGB status dung GPIO 8 */
 
 /* Flag để tránh init nhiều lần khi on_joined() được gọi lại */
 static bool s_app_initialized = false;
 
-/* --- CoAP client thuần: GET /ping đến Leader mỗi 1s --- */
-static void coap_response_handler(void *aContext, otMessage *aMessage,
-                                  const otMessageInfo *aMessageInfo, otError aError)
-{
-    (void)aContext;
-    (void)aMessageInfo;
-
-    if (aError != OT_ERROR_NONE) {
-        ESP_LOGW(TAG, "CoAP response error: %s", otThreadErrorToString(aError));
-        return;
-    }
-    if (aMessage == NULL) {
-        ESP_LOGW(TAG, "CoAP response: no message");
-        return;
-    }
-
-    otCoapCode code = otCoapMessageGetCode(aMessage);
-    if (code == OT_COAP_CODE_CONTENT) {
-        ESP_LOGI(TAG, "CoAP ping OK (2.05 Content)");
-    } else {
-        ESP_LOGW(TAG, "CoAP ping response code: %d.%02d", (int)(code >> 5), (int)(code & 0x1f));
-    }
-}
-
-static void send_coap_ping_to_leader(void)
-{
-    otInstance *instance = esp_openthread_get_instance();
-    if (!instance) {
-        return;
-    }
-
-    if (!esp_openthread_lock_acquire(pdMS_TO_TICKS(500))) {
-        ESP_LOGW(TAG, "CoAP: no lock");
-        return;
-    }
-
-    otIp6Address leader_rloc;
-    otError ot_err = otThreadGetLeaderRloc(instance, &leader_rloc);
-    if (ot_err != OT_ERROR_NONE) {
-        esp_openthread_lock_release();
-        ESP_LOGW(TAG, "CoAP: get Leader RLOC failed: %s", otThreadErrorToString(ot_err));
-        return;
-    }
-
-    char leader_addr_str[40];
-    otIp6AddressToString(&leader_rloc, leader_addr_str, sizeof(leader_addr_str));
-    uint16_t leader_rloc16 = (leader_rloc.mFields.m8[14] << 8) | leader_rloc.mFields.m8[15];
-    ESP_LOGI(TAG, "Leader RLOC: 0x%04x = %s", (unsigned)leader_rloc16, leader_addr_str);
-
-    otMessage *message = otCoapNewMessage(instance, NULL);
-    if (!message) {
-        esp_openthread_lock_release();
-        ESP_LOGW(TAG, "CoAP: no message buffer");
-        return;
-    }
-
-    otCoapMessageInit(message, OT_COAP_TYPE_NON_CONFIRMABLE, OT_COAP_CODE_GET);
-    ot_err = otCoapMessageAppendUriPathOptions(message, "ping");
-    if (ot_err != OT_ERROR_NONE) {
-        otMessageFree(message);
-        esp_openthread_lock_release();
-        ESP_LOGW(TAG, "CoAP: append URI failed: %s", otThreadErrorToString(ot_err));
-        return;
-    }
-
-    ESP_LOGI(TAG, "LEader %d", leader_rloc16);
-    otMessageInfo message_info;
-    memset(&message_info, 0, sizeof(message_info));
-    message_info.mPeerAddr = leader_rloc;
-    message_info.mPeerPort = COAP_DEFAULT_PORT;
-
-    ot_err = otCoapSendRequest(instance, message, &message_info, coap_response_handler, NULL);
-    esp_openthread_lock_release();
-
-    if (ot_err != OT_ERROR_NONE) {
-        ESP_LOGW(TAG, "CoAP send failed: %s", otThreadErrorToString(ot_err));
-    }
-}
-
-static void coap_ping_task(void *pvParameters)
-{
-    (void)pvParameters;
-    vTaskDelay(pdMS_TO_TICKS(2000));
-
-    while (1) {
-        send_coap_ping_to_leader();
-        vTaskDelay(pdMS_TO_TICKS(1000));
-    }
-}
-
-/* --- Callback khi đã join Thread network --- */
+/* Callback khi đã join Thread network */
 static void on_joined(void *ctx)
 {
     (void)ctx;
@@ -128,7 +27,7 @@ static void on_joined(void *ctx)
         return;
     }
 
-    ESP_LOGI(TAG, "Joined Thread -> init entity + CoAP client thuần (ping 1s)");
+    ESP_LOGI(TAG, "Joined Thread -> init entity + CoAP server");
 
     entity_model_init();
 
@@ -151,21 +50,14 @@ static void on_joined(void *ctx)
         return;
     }
 
-    /* Start CoAP stack (client cần CoAP đã start mới gửi được; không dùng entity_coap_server) */
-    otInstance *instance = esp_openthread_get_instance();
-    if (instance && esp_openthread_lock_acquire(pdMS_TO_TICKS(500))) {
-        otError ot_err = otCoapStart(instance, COAP_DEFAULT_PORT);
-        esp_openthread_lock_release();
-        if (ot_err != OT_ERROR_NONE && ot_err != OT_ERROR_ALREADY) {
-            ESP_LOGE(TAG, "otCoapStart failed: %s", otThreadErrorToString(ot_err));
-            return;
-        }
-    }
-
-    xTaskCreate(coap_ping_task, "coap_ping", 4096, NULL, 5, NULL);
+    // err = entity_coap_server_start();
+    // if (err != ESP_OK) {
+    //     ESP_LOGE(TAG, "entity_coap_server_start: %s", esp_err_to_name(err));
+    //     return;
+    // }
 
     s_app_initialized = true;
-    ESP_LOGI(TAG, "Application initialized (CoAP ping task running)");
+    ESP_LOGI(TAG, "Application initialized successfully");
 }
 
 void app_main(void)
@@ -174,7 +66,7 @@ void app_main(void)
         .pskd = NULL,
         .prefer_not_leader = true,
         .router_selection_jitter = 1,
-        .enable_network_stop_handler = false,  /* Tắt /network/stop để test CoAP client */
+        .enable_network_stop_handler = true,
         .on_joined = on_joined,
         .ctx = NULL,
     };

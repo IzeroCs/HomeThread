@@ -11,8 +11,9 @@
   "clangd.arguments": [
     "--background-index",
     "--query-driver=**",
-    "--compile-commands-dir=/home/izerocs/Documents/GitHub/HomeThread/ESP-Thread/ThreadEndPoint/build"
+    "--compile-commands-dir=/home/izerocs/Documents/GitHub/HomeThread/ESP-Thread/ThreadEndPoint/examples/light_on_off/build"
 ],
 "idf.port": "/dev/ttyACM1",
-"idf.flashType": "UART"
+"idf.flashType": "UART",
+"idf.pythonInstallPath": "/usr/bin/python3"
 }

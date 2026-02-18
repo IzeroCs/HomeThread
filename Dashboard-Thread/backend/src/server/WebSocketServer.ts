@@ -11,6 +11,9 @@ import { CLIWrapper, type CLIResponse } from "../services/CliWrapper";
 
 const RECONNECT_INTERVAL_MS = 3000;
 
+/** Bật/tắt gửi lệnh serial lấy dữ liệu: Status, Router table, Child table, Commissioner list. Đổi thành false để tắt. */
+const AUTO_FETCH_DATA = false;
+
 export class WebSocketServer {
   private io: Server;
   private serialConfigService: SerialConfigService;
@@ -50,6 +53,10 @@ export class WebSocketServer {
   private lastJoinerTable: { headers?: string[]; rows?: string[][]; error?: string } | null = null;
   private joinerTableIntervalId: ReturnType<typeof setInterval> | null = null;
   private static readonly JOINER_TABLE_POLL_MS = 6000;
+
+  /** Khi AUTO_FETCH_DATA = false: vẫn gửi lệnh nhẹ định kỳ để giữ serial/thiết bị hoạt động (tránh đứng ở "Returned from app_main()") */
+  private serialKeepaliveIntervalId: ReturnType<typeof setInterval> | null = null;
+  private static readonly SERIAL_KEEPALIVE_MS = 15000;
 
   /** Hàng đợi lệnh CLI: chỉ một lệnh chạy tại một thời điểm, tránh xung đột với getThreadState/getOtConfig/router table/child table từ nhiều nơi. */
   private cliQueue: Promise<void> = Promise.resolve();
@@ -283,6 +290,41 @@ export class WebSocketServer {
     }
     this.lastJoinerTable = null;
     this.io.emit("commissioner:joinerTable", { error: "Serial not connected. Connect serial first." });
+  }
+
+  /** Gửi lệnh "state" định kỳ để giữ serial/thiết bị hoạt động khi không bật full polling */
+  private runSerialKeepalive(): void {
+    if (!this.cliWrapper || !this.serialPort?.getStatus().isConnected) return;
+    this.executeCommandQueued("state").catch(() => {});
+  }
+
+  private startSerialKeepalive(): void {
+    if (this.serialKeepaliveIntervalId != null) return;
+    if (!this.serialPort?.getStatus().isConnected) return;
+    this.serialKeepaliveIntervalId = setInterval(() => {
+      this.runSerialKeepalive();
+    }, WebSocketServer.SERIAL_KEEPALIVE_MS);
+    this.runSerialKeepalive();
+  }
+
+  private stopSerialKeepalive(): void {
+    if (this.serialKeepaliveIntervalId != null) {
+      clearInterval(this.serialKeepaliveIntervalId);
+      this.serialKeepaliveIntervalId = null;
+    }
+  }
+
+  /** Bật polling (Status, OT config, Router/Child table, Joiner table) nếu config AUTO_FETCH_DATA bật; nếu tắt thì chỉ chạy keepalive nhẹ để thiết bị không đứng. */
+  private startPollingIfEnabled(): void {
+    if (!this.serialPort?.getStatus().isConnected) return;
+    if (AUTO_FETCH_DATA) {
+      this.startThreadStatePolling();
+      this.startOtConfigPolling();
+      this.startDashboardTablePolling();
+      this.startJoinerTablePolling();
+    } else {
+      this.startSerialKeepalive();
+    }
   }
 
   private setupEventHandlers(): void {
@@ -561,6 +603,7 @@ export class WebSocketServer {
     this.stopOtConfigPolling();
     this.stopDashboardTablePolling();
     this.stopJoinerTablePolling();
+    this.stopSerialKeepalive();
     this.serialDataUnsubscribe = null;
     this.serialPort = null;
     this.cliWrapper = null;
@@ -652,10 +695,7 @@ export class WebSocketServer {
       this.io.emit("serial:connected", { success: true, status: this.serialPort!.getStatus() });
       this.io.emit("serial:status", this.serialPort!.getStatus());
       console.log("[Serial] Connected (OpenThread):", config.serialPort);
-      this.startThreadStatePolling();
-      this.startOtConfigPolling();
-      this.startDashboardTablePolling();
-      this.startJoinerTablePolling();
+      this.startPollingIfEnabled();
       await this.maybeStartThreadFromPreference();
     } catch (error) {
       console.error("[Serial] Connection failed:", error);
@@ -686,10 +726,7 @@ export class WebSocketServer {
         status: this.serialPort!.getStatus(),
       });
       this.io.emit("serial:status", this.serialPort!.getStatus());
-      this.startThreadStatePolling();
-      this.startOtConfigPolling();
-      this.startDashboardTablePolling();
-      this.startJoinerTablePolling();
+      this.startPollingIfEnabled();
       await this.maybeStartThreadFromPreference();
     } catch (error) {
       socket.emit("serial:error", {
@@ -708,6 +745,7 @@ export class WebSocketServer {
       this.stopOtConfigPolling();
       this.stopDashboardTablePolling();
       this.stopJoinerTablePolling();
+      this.stopSerialKeepalive();
       if (this.serialPort) {
         await this.serialPort.close();
         this.serialPort = null;

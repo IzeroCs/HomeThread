@@ -1,16 +1,19 @@
-# OpenThread: Full Thread Device (FTD) + Joiner - co the thang cap len Router
+# Example light_on_off: Full Thread Device (FTD) + Joiner
+# Partition: factory 1.5MB
+CONFIG_PARTITION_TABLE_CUSTOM=y
+CONFIG_PARTITION_TABLE_CUSTOM_FILENAME="partitions.csv"
+
 CONFIG_OPENTHREAD_ENABLED=y
 CONFIG_OPENTHREAD_FTD=y
 CONFIG_OPENTHREAD_JOINER=y
 
-# Custom OpenThread: Child timeout / Child supervision (file o thu muc goc project)
+# Custom OpenThread config (file o thu muc goc project)
 CONFIG_OPENTHREAD_HEADER_CUSTOM=y
 CONFIG_OPENTHREAD_CUSTOM_HEADER_PATH="../.."
 CONFIG_OPENTHREAD_CUSTOM_HEADER_FILE_NAME="openthread_custom_config.h"
 
-# mbedTLS: ECJPAKE + DTLS cần cho Thread commissioning (Joiner handshake)
+# mbedTLS: ECJPAKE + DTLS cho Thread commissioning (Joiner handshake)
 CONFIG_MBEDTLS_ECJPAKE_C=y
 CONFIG_MBEDTLS_KEY_EXCHANGE_ECJPAKE=y
 CONFIG_MBEDTLS_SSL_PROTO_DTLS=y
-# Server + Client để có mbedtls_ssl_set_client_transport_id (DTLS HelloVerify)
 CONFIG_MBEDTLS_TLS_SERVER_AND_CLIENT=y

@@ -27,7 +27,7 @@ const migrations: Migration[] = [
 
       // Tạo index
       db.exec(`
-        CREATE INDEX IF NOT EXISTS idx_serial_config_created_at 
+        CREATE INDEX IF NOT EXISTS idx_serial_config_created_at
         ON serial_config(created_at)
       `);
     },

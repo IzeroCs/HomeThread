@@ -69,21 +69,22 @@ static void network_stop_restart_task(void *pvParameters)
     vTaskDelete(NULL);
 }
 
-/* CoAP handler cho POST /network/stop */
+/* CoAP handler cho GET /network/stop */
 static void network_stop_handler(void *aContext, otMessage *aMessage,
                                  const otMessageInfo *aMessageInfo)
 {
     (void)aContext;
-    ESP_LOGI(TAG, "network_stop_handler: handler");
+
+    ESP_LOGI(TAG, "Network stop handler");
     otInstance *instance = esp_openthread_get_instance();
     if (!instance) {
         return;
     }
 
-    /* Check method: phải là POST */
+    /* Check method: phải là GET */
     otCoapCode code = otCoapMessageGetCode(aMessage);
-    if ((code >> 5) != 0 || (code & 0x1f) != 2) {  /* Not POST */
-        ESP_LOGW(TAG, "network_stop_handler: Not a POST request");
+    if ((code >> 5) != 0 || (code & 0x1f) != 1) {  /* Not GET */
+        ESP_LOGW(TAG, "network_stop_handler: Not a GET request");
         return;
     }
 
@@ -113,21 +114,7 @@ static void network_stop_handler(void *aContext, otMessage *aMessage,
         return;  /* Not our endpoint */
     }
 
-    /* Read payload */
-    uint16_t offset = otMessageGetOffset(aMessage);
-    uint16_t payload_len = otMessageGetLength(aMessage) - offset;
-    char payload[64] = {0};
-
-    if (payload_len > 0 && payload_len < sizeof(payload)) {
-        otMessageRead(aMessage, offset, payload, payload_len);
-        payload[payload_len] = '\0';
-    }
-
-    /* Check payload: action=stop */
-    if (strcmp(payload, "action=stop") != 0) {
-        ESP_LOGW(TAG, "network_stop_handler: Invalid payload: %s", payload);
-        /* Still process, but log warning */
-    }
+    /* GET thường không có payload; bỏ kiểm tra payload */
 
     /* Check device role: phải là Leader */
     otDeviceRole role;
@@ -205,7 +192,7 @@ esp_err_t network_stop_handler_register(void)
     /* Register resource: /network */
     static otCoapResource s_network_resource;
     memset(&s_network_resource, 0, sizeof(s_network_resource));
-    s_network_resource.mUriPath = "network";
+    s_network_resource.mUriPath = "network/stop";
     s_network_resource.mHandler = network_stop_handler;
     s_network_resource.mContext = NULL;
 

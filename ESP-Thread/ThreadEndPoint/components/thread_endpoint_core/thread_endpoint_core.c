@@ -115,7 +115,7 @@ static void on_joined_wrapper(void *ctx)
 
     /* Set Leader Weight = -16 để tránh trở thành Leader */
     if (instance && esp_openthread_lock_acquire(pdMS_TO_TICKS(500))) {
-        otThreadSetLocalLeaderWeight(instance, -16);
+        otThreadSetLocalLeaderWeight(instance, 0);
         esp_openthread_lock_release();
         ESP_LOGI(TAG, "Leader Weight set to -16");
     }
@@ -134,7 +134,7 @@ static void on_joined_wrapper(void *ctx)
     update_attached_led_role();
 
     /* Update Leader RLOC sau khi join */
-    device_registry_update_leader_rloc();
+    // device_registry_update_leader_rloc();
 
     /* Register CoAP resource /network/stop (nếu bật trong config) */
     if (s_config.enable_network_stop_handler) {
@@ -149,7 +149,7 @@ static void on_joined_wrapper(void *ctx)
         s_config.on_joined(s_config.ctx);
     }
 
-    /* Auto register device lên Border Router - TẮT ở main */
+    /* Auto register device lên Border Router - TẮT tạm */
     /* esp_err_t err = device_registry_init();
     if (err == ESP_OK && s_registry_task_handle) {
         xTaskNotifyGive(s_registry_task_handle);
