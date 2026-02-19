@@ -39,8 +39,9 @@ Project cấu hình **Basic Thread Border Router** chạy trên **ESP32-S3** (Ho
 - Code đã sẵn sàng trong `br_rcp_ctrl.c`, tự động reset RCP khi boot.
 
 **USB CDC (cho custom frames):**
-- USB port trên ESP32-S3 DevKit có thể dùng cho custom frames (không dùng cho console).
-- Cần tự code để handle USB CDC cho custom frames.
+- USB port trên ESP32-S3 DevKit dùng cho custom frames (không dùng cho console).
+- Giao tiếp với Node/backend theo cấu trúc khung: SOF 0xAA, Frame ID, CMD, LEN, DATA, CRC8, EOF 0x55 (xem [TODO.md](TODO.md) và [docs/usb_cdc_frame_structure.md](docs/usb_cdc_frame_structure.md)).
+- Chưa implement: xem mục **USB CDC Frame** trong [TODO.md](TODO.md).
 
 ## Yêu cầu
 
@@ -63,7 +64,7 @@ Flash RCP vào board H2 riêng. Hiện tại BR không tự động flash RCP (x
 ### 2. Build Border Router (ESP32-S3)
 
 ```bash
-cd /path/to/Thread-HostHost
+cd /path/to/Thread-Host
 . $IDF_PATH/export.sh
 idf.py set-target esp32s3
 idf.py build
@@ -93,7 +94,7 @@ idf.py -p /dev/ttyUSB0 -b 460800 flash monitor
 ## Cấu trúc project
 
 ```
-Thread-HostHost/
+Thread-Host/
 ├── main/
 │   ├── br_main.c                    # Entry point (app_main)
 │   ├── br_launch.c                  # Launch OpenThread BR
@@ -101,10 +102,11 @@ Thread-HostHost/
 │   ├── br_rcp_ctrl.c                # Control RESET/BOOT pins của RCP
 │   ├── br_custom_config.h           # OpenThread custom config (CoAP API enabled)
 │   ├── hardware/
-│   │   └── led_status/
-│   │       └── led_status.c         # LED status indicator (WS2812)
+│   │   └── led_status.c             # LED status indicator (WS2812)
 │   ├── coap_controller/
-│   │   └── leader_control_client.c  # CoAP client để gửi lệnh stop đến Leader
+│   │   ├── leader_control_client.c      # CoAP client để gửi lệnh stop đến Leader
+│   │   ├── device_registry_server.c    # CoAP server để nhận device registration
+│   │   └── device_registry_handler.c   # Handler chung cho register/update/ping
 │   ├── include/
 │   │   ├── br_config.h              # UART config, pin definitions
 │   │   ├── br_launch.h
@@ -117,9 +119,12 @@ Thread-HostHost/
 │   ├── hardware/
 │   │   └── led_status.h             # LED status header
 │   └── coap_controller/
-│       └── leader_control_client.h   # Leader control client header
+│       ├── leader_control_client.h      # Leader control client header
+│       ├── device_registry_server.h     # Device registry server header
+│       └── device_registry_handler.h   # Device registry handler header
 ├── components/
 │   └── cmd_system/                  # System console commands (version, restart, free, heap...)
+├── docs/                            # Tài liệu (CoAP, USB CDC frame, device registry)
 ├── partitions.csv                   # Partition table
 ├── sdkconfig.defaults              # Default config
 ├── CMakeLists.txt                  # Root CMake
@@ -166,14 +171,28 @@ Thread-HostHost/
   - Child: xanh dương tĩnh
   - GPIO mặc định: 48 (onboard LED) hoặc 5 (external LED), có thể config qua menuconfig
 - ✅ **Leader Control Client (CoAP)** - Tự động gửi lệnh stop đến Leader khi cần
-  - Theo dõi Leader RLOC16
-  - Gửi lệnh "stop" qua CoAP để yêu cầu Leader offline
-  - Retry mechanism nếu Leader vẫn còn sau khi gửi lệnh
-- ❌ Auto-flash RCP khi boot (xem [TODO.md](TODO.md))
+  - Gửi **GET `/network`** (một segment, CONFIRMABLE, port 5683) đến Leader RLOC; không payload
+  - Gửi khi: first time, Leader RLOC16 thay đổi, retry on failure, hoặc retry timeout (sau 2 phút nếu Leader vẫn còn)
+  - Task chạy suốt vòng đời, check mỗi 5 giây; timeout response 5 giây
+  - Chi tiết format, flow, leader election timing: xem [docs/leader_stop_command_coap.md](docs/leader_stop_command_coap.md)
+- ✅ **Device Registry Server (CoAP)** - Nhận đăng ký từ child devices
+  - CoAP server với 3 resources: `/device/register`, `/device/update`, `/device/ping`
+  - Handler chung dùng logic từ `device_registry_handler` cho cả 3 resource
+  - Queue-based processing: enqueue CoAP data từ child devices, process và output qua UART
+  - Hỗ trợ tối đa 10 items trong queue, payload tối đa 768 bytes
+- ❌ **Auto-flash RCP khi boot** — xem [TODO.md](TODO.md)
 - ❌ RCP update/firmware management (đã loại bỏ)
-- ⏳ Custom frames qua USB CDC (cần tự code)
+- ⏳ **USB CDC Frame** — Custom frames qua USB (cấu trúc khung, CMD Push/Pull, CRC8); xem [TODO.md](TODO.md) và [docs/usb_cdc_frame_structure.md](docs/usb_cdc_frame_structure.md)
 
 ## Tài liệu tham khảo
+
+### Tài liệu trong project (docs/)
+
+- **[docs/leader_stop_command_coap.md](docs/leader_stop_command_coap.md)** — CoAP Stop Command / Leader Control (GET `/network`, response trước khi stop, retry logic).
+- **[docs/usb_cdc_frame_structure.md](docs/usb_cdc_frame_structure.md)** — Cấu trúc khung USB CDC (SOF, Frame ID, CMD, LEN, DATA, CRC8, EOF); bảng CMD.
+- **[docs/border_router_coap_server.md](docs/border_router_coap_server.md)** — CoAP server BR (device registry, resources, BR phải là Leader).
+
+### Tài liệu chính thức
 
 - [ESP Thread Border Router — Build and Run](https://docs.espressif.com/projects/esp-thread-br/en/latest/dev-guide/build_and_run.html)  
 - [OpenThread Border Router](https://openthread.io/guides/border-router)

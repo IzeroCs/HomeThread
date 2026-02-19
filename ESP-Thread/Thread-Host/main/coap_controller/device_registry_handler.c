@@ -1,8 +1,8 @@
 /*
- * Device Register Handler - CoAP handler cho /device/register
+ * Device Registry Handler - CoAP handler cho device registry (register/update/ping)
  */
 
-#include "device_register_handler.h"
+#include "coap_controller/device_registry_handler.h"
 #include "esp_log.h"
 #include "esp_openthread.h"
 #include "openthread/coap.h"
@@ -13,7 +13,7 @@
 #include <string.h>
 #include <stdlib.h>
 
-static const char *TAG = "device_register";
+static const char *TAG = "device_registry";
 
 #define COAP_DATA_QUEUE_SIZE 10
 #define COAP_PAYLOAD_MAX_LENGTH 768
@@ -31,7 +31,7 @@ static QueueHandle_t s_coap_data_queue = NULL;
 /**
  * Initialize CoAP data queue
  */
-esp_err_t device_register_handler_init(void)
+esp_err_t device_registry_handler_init(void)
 {
     if (s_coap_data_queue == NULL) {
         s_coap_data_queue = xQueueCreate(COAP_DATA_QUEUE_SIZE, sizeof(coap_data_item_t));
@@ -51,7 +51,7 @@ esp_err_t device_register_handler_init(void)
  * @param rloc16 RLOC16 của child device gửi request
  * @return ESP_OK nếu thành công
  */
-esp_err_t device_register_enqueue_coap_data(const char *payload, uint16_t payload_len, uint16_t rloc16)
+esp_err_t device_registry_enqueue_coap_data(const char *payload, uint16_t payload_len, uint16_t rloc16)
 {
     if (!payload || !s_coap_data_queue) {
         ESP_LOGE(TAG, "Invalid parameters or queue not initialized");
@@ -90,7 +90,7 @@ static void output_coap_data_to_backend(const coap_data_item_t *data_item)
         return;
     }
 
-    ESP_LOGI(TAG, "Outputting CoAP data to backend - rloc16: 0x%04x, payload_len: %d",
+    ESP_LOGI(TAG, "Outputting CoAP data to backend - rloc16: 0x%04x, payload_len: %d", 
              data_item->rloc16, data_item->payload_len);
     ESP_LOGI(TAG, "Payload: %.*s", data_item->payload_len, data_item->payload);
 
@@ -102,7 +102,7 @@ static void output_coap_data_to_backend(const coap_data_item_t *data_item)
 /**
  * Dequeue và output tất cả CoAP data trong queue, sau đó clear queue
  */
-static void process_and_clear_coap_data_queue(void)
+void device_registry_process_and_clear_queue(void)
 {
     if (!s_coap_data_queue) {
         return;
@@ -122,7 +122,7 @@ static void process_and_clear_coap_data_queue(void)
     }
 }
 
-void device_register_handler(void *aContext, otMessage *aMessage,
+void device_registry_handler(void *aContext, otMessage *aMessage,
                             const otMessageInfo *aMessageInfo)
 {
     (void)aContext;
@@ -141,24 +141,24 @@ void device_register_handler(void *aContext, otMessage *aMessage,
     // Read CoAP payload
     uint16_t offset = otMessageGetOffset(aMessage);
     uint16_t payload_len = otMessageGetLength(aMessage) - offset;
-
+    
     if (payload_len > 0) {
         char payload[COAP_PAYLOAD_MAX_LENGTH];
         if (payload_len >= sizeof(payload)) {
             payload_len = sizeof(payload) - 1;
         }
-
+        
         otMessageRead(aMessage, offset, payload, payload_len);
         payload[payload_len] = '\0';
 
         ESP_LOGI(TAG, "Received CoAP data from rloc16: 0x%04x, payload_len: %d", rloc16, payload_len);
 
         // Enqueue CoAP data vào queue
-        device_register_enqueue_coap_data(payload, payload_len, rloc16);
+        device_registry_enqueue_coap_data(payload, payload_len, rloc16);
     }
 
     // Process và clear queue - output tất cả data đã tích lũy qua UART
-    process_and_clear_coap_data_queue();
+    device_registry_process_and_clear_queue();
 
     // TODO: Send CoAP response
 }
