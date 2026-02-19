@@ -13,6 +13,8 @@
 
 #include "br_launch.h"
 #include "br_rcp_ctrl.h"
+#include "led_status.h"
+#include "coap_controller/leader_control_client.h"
 
 void app_main(void)
 {
@@ -46,4 +48,12 @@ void app_main(void)
     vTaskDelay(pdMS_TO_TICKS(500));
 
     launch_openthread_border_router(&openthread_config);
+
+    // Initialize LED status indicator (WS2812)
+    // Disabled: đỏ nhấp nháy | Detached: xanh dương nhấp nháy
+    // Leader: xanh lá tĩnh | Router: tím tĩnh | Child: xanh dương tĩnh
+    ESP_ERROR_CHECK(led_status_start(NULL));
+
+    // Initialize Leader Control Client (CoAP client để gửi lệnh stop đến Leader)
+    ESP_ERROR_CHECK(leader_control_client_init());
 }

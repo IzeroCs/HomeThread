@@ -95,24 +95,35 @@ idf.py -p /dev/ttyUSB0 -b 460800 flash monitor
 ```
 Thread-HostHost/
 ├── main/
-│   ├── br_main.c          # Entry point (app_main)
-│   ├── br_launch.c        # Launch OpenThread BR
-│   ├── br_console.c       # CLI console (OpenThread + system commands)
-│   ├── br_rcp_ctrl.c       # Control RESET/BOOT pins của RCP
+│   ├── br_main.c                    # Entry point (app_main)
+│   ├── br_launch.c                  # Launch OpenThread BR
+│   ├── br_console.c                 # CLI console (OpenThread + system commands)
+│   ├── br_rcp_ctrl.c                # Control RESET/BOOT pins của RCP
+│   ├── br_custom_config.h           # OpenThread custom config (CoAP API enabled)
+│   ├── hardware/
+│   │   └── led_status/
+│   │       └── led_status.c         # LED status indicator (WS2812)
+│   ├── coap_controller/
+│   │   └── leader_control_client.c  # CoAP client để gửi lệnh stop đến Leader
 │   ├── include/
-│   │   ├── br_config.h    # UART config, pin definitions
+│   │   ├── br_config.h              # UART config, pin definitions
 │   │   ├── br_launch.h
 │   │   ├── br_console.h
 │   │   └── br_rcp_ctrl.h
 │   ├── CMakeLists.txt
-│   ├── Kconfig.projbuild  # Menuconfig options
-│   └── idf_component.yml  # Component dependencies
+│   ├── Kconfig.projbuild            # Menuconfig options
+│   └── idf_component.yml            # Component dependencies
+├── include/
+│   ├── hardware/
+│   │   └── led_status.h             # LED status header
+│   └── coap_controller/
+│       └── leader_control_client.h   # Leader control client header
 ├── components/
-│   └── cmd_system/        # System console commands (version, restart, free, heap...)
-├── partitions.csv         # Partition table
-├── sdkconfig.defaults    # Default config
-├── CMakeLists.txt        # Root CMake
-├── TODO.md               # Tính năng sẽ làm sau
+│   └── cmd_system/                  # System console commands (version, restart, free, heap...)
+├── partitions.csv                   # Partition table
+├── sdkconfig.defaults              # Default config
+├── CMakeLists.txt                  # Root CMake
+├── TODO.md                         # Tính năng sẽ làm sau
 └── README.md
 ```
 
@@ -129,11 +140,13 @@ Thread-HostHost/
   - Commissioner: Enabled
 - **UART Host–RCP**: GPIO4 (RX), GPIO5 (TX) trên ESP32-S3 (UART1)  
 - **RCP Control pins**: GPIO7 (RESET), GPIO8 (BOOT) trên ESP32-S3 (tùy chọn, để auto-flash RCP)
+- **LED Status**: GPIO48 (onboard WS2812) hoặc GPIO5 (external WS2812), config qua menuconfig
 - **Console/Log**: **UART0** (GPIO43/44 trên ESP32-S3 DevKit, hoặc GPIO17/18 tùy board)
 - **Custom frames**: **USB CDC** (dành cho code custom sau này, không dùng cho console)
 - **Flash baud rate**: 921600 (có thể giảm xuống nếu gặp lỗi kết nối)
 - **Partition**: custom (ota, nvs, web_storage) theo `partitions.csv`  
 - **RCP**: ESP32-H2, firmware từ `$IDF_PATH/examples/openthread/ot_rcp`
+- **CoAP**: Enabled (API và Ping Sender) qua `br_custom_config.h`
 
 ## Tính năng
 
@@ -145,6 +158,17 @@ Thread-HostHost/
 - ✅ Commissioner enabled (cho internal commissioning)
 - ✅ Log level tối ưu (OPENTHREAD log level = INFO để giảm noise)
 - ✅ Flash baud rate 921600 (tăng tốc độ upload)
+- ✅ **LED Status Indicator (WS2812)** - Hiển thị trạng thái Thread qua RGB LED
+  - Disabled: đỏ nhấp nháy
+  - Detached: xanh dương nhấp nháy
+  - Leader: xanh lá tĩnh
+  - Router: tím tĩnh
+  - Child: xanh dương tĩnh
+  - GPIO mặc định: 48 (onboard LED) hoặc 5 (external LED), có thể config qua menuconfig
+- ✅ **Leader Control Client (CoAP)** - Tự động gửi lệnh stop đến Leader khi cần
+  - Theo dõi Leader RLOC16
+  - Gửi lệnh "stop" qua CoAP để yêu cầu Leader offline
+  - Retry mechanism nếu Leader vẫn còn sau khi gửi lệnh
 - ❌ Auto-flash RCP khi boot (xem [TODO.md](TODO.md))
 - ❌ RCP update/firmware management (đã loại bỏ)
 - ⏳ Custom frames qua USB CDC (cần tự code)

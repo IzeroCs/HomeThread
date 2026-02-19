@@ -1,3 +1,19 @@
 menu "ESP Thread Border Router"
 
+config LED_STATUS_ENABLE
+    bool "Bật LED trạng thái RGB WS2812 (disabled=đỏ nhấp nháy, detached=xanh dương nhấp nháy, leader=xanh lá tĩnh, router=tím tĩnh, child=xanh dương tĩnh)"
+    default y
+    help
+        LED WS2812/WS2812B addressable RGB LED trên ESP32-S3.
+        ESP32-S3 DevKitC-1: GPIO 48 (onboard LED) hoặc GPIO 5 (external LED).
+
+config LED_STATUS_GPIO
+    int "GPIO cho LED RGB data (WS2812)"
+    depends on LED_STATUS_ENABLE
+    default 48
+    range 0 48
+    help
+        GPIO pin cho data line của WS2812/WS2812B LED.
+        ESP32-S3 DevKitC-1: GPIO 48 cho onboard LED, GPIO 5 cho external LED.
+
 endmenu
