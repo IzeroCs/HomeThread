@@ -1,10 +1,23 @@
-# TODO – Điều khiển OpenThread CLI qua UART (ESP32-H2 ot-br)
+# TODO – Điều khiển OpenThread qua UART (ESP32-H2, frame protocol)
 
 ## Stack & cấu trúc (đã chọn)
 
-- **Backend**: Node.js + TypeScript (Express, SerialPort). Monorepo: `backend/`.
+- **Backend**: Node.js + TypeScript (SerialPort, Socket.IO). Monorepo: `backend/`.
 - **Frontend**: TypeScript + React + Vite. Monorepo: `frontend/`.
 - **Chung 1 project**: npm workspaces tại root; `npm run dev` chạy đồng thời BE + FE.
+
+## Frame protocol & kiến trúc (đã làm)
+
+- [x] **Bỏ CLI**: Đã xóa hoàn toàn CLI (CLIWrapper, cli:command, commandPrefix bắt buộc). Giao tiếp chỉ còn frame USB CDC.
+- [x] **Thư mục `communicate/`**: SerialPort, SerialConfigService, frame (constants, crc8, frameBuilder, frameParser), CommunicateManager.
+- [x] **Serial raw mode**: `useFrameProtocol: true`, `onRawData(chunk)`, `writeRaw(buffer)`.
+- [x] **Frame protocol**: Parse/gửi frame (SOF, Frame ID, CMD, LEN, DATA, CRC8, EOF); CMD_ACK/CMD_NACK → cập nhật cache; gửi Pull (CMD_PING, CMD_* config), polling OT config + keepalive.
+- [x] **CommunicateManager**: Nắm toàn bộ dữ liệu (lastThreadState, lastOtConfig, …) và khởi tạo giao tiếp (connect, disconnect, fetchOtConfig, sendPullRequest). Main truyền `onBroadcast => io.emit` để manager push event.
+- [x] **WebSocketServer**: Chỉ emit tới frontend; lấy dữ liệu qua `communicate.getStatus()`, `communicate.getLastOtConfig()`, …; không còn serial/frame logic.
+- [x] **Main (`index.ts`)**: Tạo io, CommunicateManager (với onBroadcast), WebSocketServer(io, …, communicateManager); gọi `communicateManager.connectIfConfigured()` khi listen.
+- [ ] **CMD_DATA (CBOR)**: Parse CBOR từ CMD_DATA để cập nhật thread state / router-child-joiner table (khi firmware gửi).
+- [ ] **Set config / commissioner qua frame**: Khi firmware hỗ trợ CMD tương ứng.
+- Chi tiết: [docs/migration_to_frame_protocol.md](docs/migration_to_frame_protocol.md).
 
 ## Backend
 

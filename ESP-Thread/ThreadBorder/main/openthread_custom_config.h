@@ -1,18 +1,10 @@
 /*
  * OpenThread Custom Configuration
- * Enable CoAP API, Ping Sender API, và Leader Weight
+ * CoAP API, Ping Sender API, Leader Weight bật mặc định.
  */
 
 #pragma once
 
-#ifndef OPENTHREAD_CONFIG_COAP_API_ENABLE
 #define OPENTHREAD_CONFIG_COAP_API_ENABLE 1
-#endif
-
-#ifndef OPENTHREAD_CONFIG_PING_SENDER_ENABLE
 #define OPENTHREAD_CONFIG_PING_SENDER_ENABLE 1
-#endif
-
-#ifndef OPENTHREAD_CONFIG_MLE_DEVICE_PROPERTY_LEADER_WEIGHT_ENABLE
 #define OPENTHREAD_CONFIG_MLE_DEVICE_PROPERTY_LEADER_WEIGHT_ENABLE 1
-#endif

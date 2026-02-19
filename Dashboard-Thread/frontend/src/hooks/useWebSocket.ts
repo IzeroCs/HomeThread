@@ -7,7 +7,6 @@ import { io, Socket } from "socket.io-client";
 import type {
   SerialConfigFromBackend,
   SerialStatus,
-  CliResponse,
   OtConfig,
   OtThreadState,
   OtTableData,
@@ -31,16 +30,15 @@ export interface UseWebSocketReturn {
   saveConfig: (data: {
     serialPort: string;
     baudRate: number;
-    commandPrefix: string;
+    commandPrefix?: string;
   }) => void;
   connectSerial: () => void;
   disconnectSerial: () => void;
   testSerialConnect: (data: {
     serialPort: string;
     baudRate: number;
-    commandPrefix: string;
+    commandPrefix?: string;
   }) => Promise<{ success: boolean; error?: string }>;
-  sendCliCommand: (command: string, id?: string) => void;
   otConfig: OtConfig | null;
   getOtConfig: () => void;
   setOtConfig: (data: { panid?: string; channel?: number; networkName?: string }) => Promise<{ success: boolean; error?: string }>;
@@ -60,7 +58,6 @@ export interface UseWebSocketReturn {
   getJoinerTable: () => void;
   commissionerConnect: (eui64: string, psk: string, timeoutSeconds?: number) => Promise<{ success: boolean; error?: string }>;
   onSerialData: (callback: (data: string) => void) => () => void;
-  onCliResponse: (callback: (data: CliResponse) => void) => () => void;
 }
 
 export function useWebSocket(): UseWebSocketReturn {
@@ -241,10 +238,6 @@ export function useWebSocket(): UseWebSocketReturn {
     []
   );
 
-  const sendCliCommand = useCallback((command: string, id?: string) => {
-    socketRef.current?.emit("cli:command", { command, id });
-  }, []);
-
   const getOtConfig = useCallback(() => {
     setOtConfigState(null);
     socketRef.current?.emit("ot:getConfig");
@@ -337,16 +330,6 @@ export function useWebSocket(): UseWebSocketReturn {
     };
   }, []);
 
-  const onCliResponse = useCallback((callback: (data: CliResponse) => void) => {
-    if (!socketRef.current) {
-      return () => {};
-    }
-    socketRef.current.on("cli:response", callback);
-    return () => {
-      socketRef.current?.off("cli:response", callback);
-    };
-  }, []);
-
   useEffect(() => {
     connect();
     return () => {
@@ -377,7 +360,6 @@ export function useWebSocket(): UseWebSocketReturn {
     connectSerial,
     disconnectSerial,
     testSerialConnect,
-    sendCliCommand,
     otConfig,
     getOtConfig,
     setOtConfig,
@@ -396,6 +378,5 @@ export function useWebSocket(): UseWebSocketReturn {
     getJoinerTable,
     commissionerConnect,
     onSerialData,
-    onCliResponse,
   };
 }

@@ -90,6 +90,7 @@ static void on_uart_rx(uint8_t *data, size_t len, void *ctx)
         uint8_t frame_id = s_rx_buf[1];
         uint8_t cmd = s_rx_buf[2];
         const uint8_t *payload = data_len > 0 ? (s_rx_buf + FRAME_HEADER_LEN) : NULL;
+        ESP_LOGI(TAG, "frame RX: id=%u cmd=0x%02x len=%u", (unsigned)frame_id, (unsigned)cmd, (unsigned)data_len);
         if (s_rx_cb) {
             s_rx_cb(frame_id, cmd, payload, data_len, s_rx_ctx);
         }
@@ -118,6 +119,7 @@ esp_err_t communicate_send_frame(uint8_t frame_id, uint8_t cmd, const uint8_t *d
     if (len > COMMUNICATE_FRAME_MAX_DATA_LEN) {
         return ESP_ERR_INVALID_SIZE;
     }
+    ESP_LOGI(TAG, "frame TX: id=%u cmd=0x%02x len=%u", (unsigned)frame_id, (unsigned)cmd, (unsigned)len);
     uint8_t header[FRAME_HEADER_LEN];
     header[0] = SOF;
     header[1] = frame_id;

@@ -1,36 +1,48 @@
 /**
- * Backend: WebSocket server cho OpenThread CLI qua UART (ESP32-H2 ot-br).
+ * Backend: WebSocket server cho OpenThread qua UART (ESP32-H2, frame protocol).
+ * Khởi tạo giao tiếp (CommunicateManager) ở đây; WebSocketServer chỉ emit dữ liệu tới frontend.
  */
 
 import "dotenv/config";
 import { createServer } from "http";
+import { Server } from "socket.io";
 import { getDatabase, closeDatabase } from "./database/Database";
 import { runMigrations } from "./database/migrations";
-import { SerialConfigService } from "./services/SerialConfigService";
+import { SerialConfigService, CommunicateManager } from "./communicate";
 import { AppSettingsService } from "./services/AppSettingsService";
 import { WebSocketServer } from "./server/WebSocketServer";
 
 const PORT = process.env.PORT ?? 3000;
 
-// Khởi tạo database và chạy migrations
 getDatabase();
 runMigrations();
 
-// Khởi tạo services
 const serialConfigService = new SerialConfigService();
 const appSettingsService = new AppSettingsService();
 
-// Khởi tạo HTTP server và WebSocket
 const httpServer = createServer();
-
-// Tối ưu memory cho HTTP server
 httpServer.maxConnections = 50;
 httpServer.timeout = 60000;
 httpServer.keepAliveTimeout = 5000;
 
-const wsServer = new WebSocketServer(httpServer, serialConfigService, appSettingsService);
+const io = new Server(httpServer, {
+  cors: { origin: "*", methods: ["GET", "POST"], credentials: true },
+  pingTimeout: 20000,
+  pingInterval: 10000,
+  maxHttpBufferSize: 100e3,
+  allowEIO3: false,
+  transports: ["websocket", "polling"],
+  allowRequest: (_req, callback) => callback(null, true),
+});
 
-// Khởi động server
+const communicateManager = new CommunicateManager(
+  serialConfigService,
+  appSettingsService,
+  (event, data) => io.emit(event, data)
+);
+
+const wsServer = new WebSocketServer(io, serialConfigService, appSettingsService, communicateManager);
+
 httpServer.listen(PORT, () => {
   console.log("=".repeat(50));
   console.log("[Server] Backend WebSocket server initialized");
@@ -43,7 +55,7 @@ httpServer.listen(PORT, () => {
     console.log(`[Server]   Serial Port: ${config.serialPort}`);
     console.log(`[Server]   Baud Rate: ${config.baudRate}`);
     console.log(`[Server]   Command Prefix: ${config.commandPrefix}`);
-    wsServer.connectSerialIfConfigured().catch((err) => {
+    communicateManager.connectIfConfigured().catch((err) => {
       console.error("[Server] Serial auto-connect failed:", err);
     });
   } else {
@@ -53,21 +65,16 @@ httpServer.listen(PORT, () => {
   console.log("=".repeat(50));
 });
 
-// Graceful shutdown
 process.on("SIGINT", async () => {
   console.log("\n[Server] Shutting down...");
   await wsServer.close();
   closeDatabase();
-  httpServer.close(() => {
-    process.exit(0);
-  });
+  httpServer.close(() => process.exit(0));
 });
 
 process.on("SIGTERM", async () => {
   console.log("\n[Server] Shutting down...");
   await wsServer.close();
   closeDatabase();
-  httpServer.close(() => {
-    process.exit(0);
-  });
+  httpServer.close(() => process.exit(0));
 });

@@ -35,7 +35,8 @@ Dashboard-Thread/
 ├── backend/              # Node.js + TypeScript (WebSocket, Serial/UART)
 │   ├── src/
 │   │   ├── server/       # WebSocketServer
-│   │   └── services/     # SerialPort, CLIWrapper, SerialConfig, AppSettings
+│   │   ├── communicate/  # SerialPort, SerialConfig (giao tiếp phần cứng)
+│   │   └── services/     # AppSettings, Database
 │   └── package.json
 ├── frontend/
 │   ├── src/

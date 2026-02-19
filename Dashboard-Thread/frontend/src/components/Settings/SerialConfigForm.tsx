@@ -22,9 +22,6 @@ function validateForm(formData: SerialConfig): Partial<Record<keyof SerialConfig
   if (formData.baudRate < 9600 || formData.baudRate > 2000000) {
     newErrors.baudRate = "Baud rate must be between 9600 and 2000000";
   }
-  if (!formData.commandPrefix.trim()) {
-    newErrors.commandPrefix = "Command prefix is required";
-  }
   return newErrors;
 }
 
@@ -93,7 +90,6 @@ export default function SerialConfigForm({ initialConfig, onSave, onTestConnect 
         : Object.keys(errors).length > 0
           ? errors.serialPort ||
             errors.baudRate ||
-            errors.commandPrefix ||
             "Please check the fields below."
           : null;
   const alertType =
@@ -159,24 +155,6 @@ export default function SerialConfigForm({ initialConfig, onSave, onTestConnect 
             )}
             <small className="form-hint">
               Common values: 9600, 115200, 460800
-            </small>
-          </div>
-
-          <div className="form-group">
-            <label htmlFor="commandPrefix">Command Prefix</label>
-            <input
-              type="text"
-              id="commandPrefix"
-              value={formData.commandPrefix}
-              onChange={(e) => handleFieldChange("commandPrefix", e.target.value)}
-              placeholder="ot"
-              className={errors.commandPrefix ? "error" : ""}
-            />
-            {errors.commandPrefix && (
-              <span className="error-message">{errors.commandPrefix}</span>
-            )}
-            <small className="form-hint">
-              Prefix added before CLI commands (e.g., "ot" for "ot state")
             </small>
           </div>
 

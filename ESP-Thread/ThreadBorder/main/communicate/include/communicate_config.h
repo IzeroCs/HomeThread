@@ -22,8 +22,9 @@
 /* Cấu hình UART dùng cho frame (chỉ khi FRAME_PORT_IS_UART = 1). */
 #define COMMUNICATE_UART_NUM            UART_NUM_0
 #define COMMUNICATE_UART_BAUD           115200
-#define COMMUNICATE_UART_TX_GPIO        6   /* Thay theo schematic board ESP32-H2 */
-#define COMMUNICATE_UART_RX_GPIO        7
+/* -1 = UART_PIN_NO_CHANGE, dùng GPIO mặc định của UART0 (SoC). */
+#define COMMUNICATE_UART_TX_GPIO        UART_PIN_NO_CHANGE
+#define COMMUNICATE_UART_RX_GPIO        UART_PIN_NO_CHANGE
 
 #define COMMUNICATE_UART_RX_BUF_SIZE    (1024)
 #define COMMUNICATE_UART_TX_BUF_SIZE    (512)

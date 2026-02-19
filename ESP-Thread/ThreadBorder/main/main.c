@@ -44,10 +44,6 @@
 #include "freertos/task.h"
 #include "freertos/semphr.h"
 
-#if CONFIG_OPENTHREAD_CLI_ESP_EXTENSION
-#include "esp_ot_cli_extension.h"
-#endif // CONFIG_OPENTHREAD_CLI_ESP_EXTENSION
-
 #define TAG "ot_esp_ftd"
 
 /** Frame ID dùng cho boot ping (ESP→backend báo đã boot xong). */
@@ -109,10 +105,6 @@ void app_main(void)
     ESP_ERROR_CHECK(esp_event_loop_create_default());
     ESP_ERROR_CHECK(esp_netif_init());
     ESP_ERROR_CHECK(esp_vfs_eventfd_register(&eventfd_config));
-
-#if CONFIG_OPENTHREAD_CLI
-    ot_console_start();
-#endif
 
 #if CONFIG_ESP_COEX_EXTERNAL_COEXIST_ENABLE
     ot_external_coexist_init();
@@ -190,10 +182,6 @@ void app_main(void)
     if (s_boot_ack_sem) {
         xTaskCreate(boot_ping_task, "boot_ping", 2048, NULL, 5, NULL);
     }
-
-#if CONFIG_OPENTHREAD_CLI_ESP_EXTENSION
-    esp_cli_custom_command_init();
-#endif
 
 #if CONFIG_OPENTHREAD_NETWORK_AUTO_START
     // Tự động form/start network khi boot
