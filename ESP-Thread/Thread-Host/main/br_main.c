@@ -7,13 +7,18 @@
 #include "br_config.h"
 #include "esp_vfs_eventfd.h"
 #include "nvs_flash.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
+#include "esp_log.h"
 
 #include "br_launch.h"
 #include "br_rcp_ctrl.h"
 
 void app_main(void)
 {
-    esp_vfs_eventfd_config_t eventfd_config = {
+  esp_log_level_set("OPENTHREAD", ESP_LOG_INFO);
+
+  esp_vfs_eventfd_config_t eventfd_config = {
         .max_fds = 3,
     };
 
@@ -37,6 +42,8 @@ void app_main(void)
     // Initialize RCP control pins (RESET/BOOT) and reset RCP to ensure clean state
     ESP_ERROR_CHECK(br_rcp_ctrl_init());
     br_rcp_reset();
+    // Wait for RCP to boot and be ready (ESP32-H2 needs ~500ms to boot)
+    vTaskDelay(pdMS_TO_TICKS(500));
 
     launch_openthread_border_router(&openthread_config);
 }

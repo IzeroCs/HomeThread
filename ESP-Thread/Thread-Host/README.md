@@ -17,18 +17,30 @@ Project cấu hình **Basic Thread Border Router** chạy trên **ESP32-S3** (Ho
 
 ### Nối dây (standalone)
 
-**UART communication:**
+**UART communication (RCP):**
 - **ESP32-S3** (Host) — **ESP32-H2** (RCP):
   - GND ↔ GND  
   - **GPIO5 (S3 TX)** → **RX (H2)**  
   - **GPIO4 (S3 RX)** ← **TX (H2)**  
 - Cấu hình khuyến nghị cho S3: dùng **GPIO4 (RX)** và **GPIO5 (TX)** (tránh GPIO17/18 vì dòng driver khác, dễ lỗi timeout).
 
+**UART console/log (tùy chọn, để debug):**
+- **ESP32-S3** (Host) — **PC/Serial adapter**:
+  - **GPIO43 (S3 TX)** → **RX (PC)** (UART0 TX)
+  - **GPIO44 (S3 RX)** ← **TX (PC)** (UART0 RX)
+  - Hoặc GPIO17/18 tùy board
+- Console/log mặc định qua UART0, có thể kết nối với serial adapter để xem log.
+
 **RESET và BOOT control (tùy chọn, để auto-flash RCP):**
 - **ESP32-S3** (Host) — **ESP32-H2** (RCP):
   - **GPIO7 (S3)** → **RST (H2)** — Reset pin
   - **GPIO8 (S3)** → **GPIO9/BOOT (H2)** — Boot mode pin
 - ESP32-S3 có thể control RESET/BOOT của RCP để đưa vào download mode khi cần flash firmware (xem [TODO.md](TODO.md)).
+- Code đã sẵn sàng trong `br_rcp_ctrl.c`, tự động reset RCP khi boot.
+
+**USB CDC (cho custom frames):**
+- USB port trên ESP32-S3 DevKit có thể dùng cho custom frames (không dùng cho console).
+- Cần tự code để handle USB CDC cho custom frames.
 
 ## Yêu cầu
 
@@ -57,7 +69,12 @@ idf.py set-target esp32s3
 idf.py build
 ```
 
-- **sdkconfig.defaults** đã cấu hình: target ESP32-S3, OpenThread BR, RCP qua UART, **không WiFi**, UART 460800, pin **GPIO4 (RX)** / **GPIO5 (TX)** cho Host–RCP.
+- **sdkconfig.defaults** đã cấu hình:
+  - Target ESP32-S3, OpenThread BR, RCP qua UART, **không WiFi**
+  - UART 460800, pin **GPIO4 (RX)** / **GPIO5 (TX)** cho Host–RCP
+  - Console/Log qua **UART0** (không dùng USB CDC)
+  - Flash baud rate **921600**
+  - RCP control pins: GPIO7 (RESET), GPIO8 (BOOT)
 - Nếu dùng board khác hoặc pin khác: `idf.py menuconfig` → mục **ESP Thread Border Router Example** để đổi pin.
 
 ### 3. Flash và chạy
@@ -66,6 +83,11 @@ Flash BR lên ESP32-S3:
 
 ```bash
 idf.py -p /dev/ttyUSB0 flash monitor
+```
+
+**Lưu ý**: Flash baud rate đã được set thành 921600 trong `sdkconfig.defaults` để tăng tốc độ upload. Nếu gặp lỗi kết nối, có thể giảm xuống 460800 hoặc dùng flag `-b`:
+```bash
+idf.py -p /dev/ttyUSB0 -b 460800 flash monitor
 ```
 
 ## Cấu trúc project
@@ -102,20 +124,30 @@ Thread-HostHost/
 ## Cấu hình đã set (tóm tắt)
 
 - **Target**: ESP32-S3  
-- **OpenThread**: Border Router, RCP qua **UART** (460800), **không WiFi/BLE**  
-- **UART Host–RCP**: GPIO4 (RX), GPIO5 (TX) trên ESP32-S3  
-- **RCP Control pins**: GPIO7 (RESET), GPIO8 (BOOT) trên ESP32-S3 (tùy chọn)  
+- **OpenThread**: Border Router, RCP qua **UART** (460800), **không WiFi/BLE**
+  - Border Agent: Enabled
+  - Commissioner: Enabled
+- **UART Host–RCP**: GPIO4 (RX), GPIO5 (TX) trên ESP32-S3 (UART1)  
+- **RCP Control pins**: GPIO7 (RESET), GPIO8 (BOOT) trên ESP32-S3 (tùy chọn, để auto-flash RCP)
+- **Console/Log**: **UART0** (GPIO43/44 trên ESP32-S3 DevKit, hoặc GPIO17/18 tùy board)
+- **Custom frames**: **USB CDC** (dành cho code custom sau này, không dùng cho console)
+- **Flash baud rate**: 921600 (có thể giảm xuống nếu gặp lỗi kết nối)
 - **Partition**: custom (ota, nvs, web_storage) theo `partitions.csv`  
 - **RCP**: ESP32-H2, firmware từ `$IDF_PATH/examples/openthread/ot_rcp`
-- **Console/Log**: USB CDC (hoặc USB Serial JTAG/UART tùy config)
 
 ## Tính năng
 
 - ✅ Thread Border Router cơ bản (không WiFi/BLE)
-- ✅ CLI console với OpenThread commands + system commands
-- ✅ RCP qua UART (460800 baud)
+- ✅ CLI console với OpenThread commands + system commands (qua UART0)
+- ✅ RCP qua UART (460800 baud, UART1)
+- ✅ RCP control (RESET/BOOT pins) - GPIO7/GPIO8 để control RCP
+- ✅ Border Agent enabled (cho external commissioning)
+- ✅ Commissioner enabled (cho internal commissioning)
+- ✅ Log level tối ưu (OPENTHREAD log level = INFO để giảm noise)
+- ✅ Flash baud rate 921600 (tăng tốc độ upload)
 - ❌ Auto-flash RCP khi boot (xem [TODO.md](TODO.md))
 - ❌ RCP update/firmware management (đã loại bỏ)
+- ⏳ Custom frames qua USB CDC (cần tự code)
 
 ## Tài liệu tham khảo
 
