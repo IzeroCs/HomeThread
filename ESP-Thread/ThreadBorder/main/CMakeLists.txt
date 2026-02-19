@@ -6,5 +6,7 @@ idf_component_register(SRCS "led_status.c"
                              "device_registry/device_register_handler.c"
                              "device_registry/device_update_handler.c"
                              "device_registry/device_ping_handler.c"
+                             "communicate/communicate.c"
+                             "communicate/transport_uart.c"
                        PRIV_REQUIRES esp_coex esp_event nvs_flash openthread driver esp_driver_rmt
-                       INCLUDE_DIRS "." "device_registry/include")
+                       INCLUDE_DIRS "." "device_registry/include" "communicate/include")

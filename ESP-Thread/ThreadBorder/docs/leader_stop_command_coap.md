@@ -178,10 +178,10 @@ Example:
 ┌─────────────────────────────────────┐
 │ CoAP Header                         │
 │ - Type: ACK (2)                     │
-│ - Code: 2.05 Content                │
+│ - Code: 2.05 Content                 │
 │ - Message ID: <same as request>     │
 ├─────────────────────────────────────┤
-│ Payload (optional)                  │
+│ Payload (optional)                   │
 │ Empty or "ok"                        │
 └─────────────────────────────────────┘
 ```

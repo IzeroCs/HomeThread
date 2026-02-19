@@ -33,6 +33,7 @@
 #include "device_registry_server.h"  // Header ở device_registry/include/
 #include "leader_control_client.h"
 #include "state_change_notifier.h"
+#include "communicate.h"
 
 #include "openthread/thread.h"
 #include "openthread/thread_ftd.h"
@@ -41,12 +42,58 @@
 #include "openthread/dataset_ftd.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
+#include "freertos/semphr.h"
 
 #if CONFIG_OPENTHREAD_CLI_ESP_EXTENSION
 #include "esp_ot_cli_extension.h"
 #endif // CONFIG_OPENTHREAD_CLI_ESP_EXTENSION
 
 #define TAG "ot_esp_ftd"
+
+/** Frame ID dùng cho boot ping (ESP→backend báo đã boot xong). */
+#define BOOT_PING_FRAME_ID  0
+/** Timeout chờ ACK boot ping (ms), sau đó gửi lại. */
+#define BOOT_PING_ACK_TIMEOUT_MS  2000
+/** Delay trước khi bắt đầu gửi boot ping (ms). */
+#define BOOT_PING_START_DELAY_MS  500
+
+static SemaphoreHandle_t s_boot_ack_sem = NULL;
+
+/** Callback khi nhận frame từ UART: request từ Node (trả ACK/NACK) hoặc ACK từ backend (response boot ping). */
+static void communicate_rx_cb(uint8_t frame_id, uint8_t cmd, const uint8_t *data, size_t len, void *ctx)
+{
+    (void)data;
+    (void)len;
+    (void)ctx;
+    /* Backend trả CMD_ACK cho boot ping của ta → báo task boot ping. */
+    if (cmd == CMD_ACK && frame_id == BOOT_PING_FRAME_ID && s_boot_ack_sem) {
+        xSemaphoreGive(s_boot_ack_sem);
+        return;
+    }
+    /* Request từ Node: PING → trả ACK; lệnh khác → NACK. */
+    if (cmd == CMD_PING) {
+        communicate_send_frame(frame_id, CMD_ACK, NULL, 0);
+    } else {
+        uint8_t err = 0x01; /* Invalid CMD / chưa implement */
+        communicate_send_frame(frame_id, CMD_NACK, &err, 1);
+    }
+}
+
+/** Task: sau khi boot xong gửi PING tới backend; không nhận ACK thì gửi lại. */
+static void boot_ping_task(void *pv)
+{
+    (void)pv;
+    vTaskDelay(pdMS_TO_TICKS(BOOT_PING_START_DELAY_MS));
+    for (;;) {
+        communicate_send_frame(BOOT_PING_FRAME_ID, CMD_PING, NULL, 0);
+        if (xSemaphoreTake(s_boot_ack_sem, pdMS_TO_TICKS(BOOT_PING_ACK_TIMEOUT_MS)) == pdTRUE) {
+            ESP_LOGI(TAG, "Boot ping ACK received, backend ready");
+            vTaskDelete(NULL);
+            return;
+        }
+        ESP_LOGW(TAG, "Boot ping no ACK, retry...");
+    }
+}
 
 void app_main(void)
 {
@@ -134,6 +181,15 @@ void app_main(void)
 
     /* Initialize State Change Notifier (notify Backend khi có thay đổi) */
     ESP_ERROR_CHECK(state_change_notifier_init());
+
+    /* Initialize Communicate (frame trên UART, log trên CDC) */
+    ESP_ERROR_CHECK(communicate_init(communicate_rx_cb, NULL));
+
+    /* Boot ping: báo backend đã boot xong, gửi PING cho tới khi nhận ACK. */
+    s_boot_ack_sem = xSemaphoreCreateBinary();
+    if (s_boot_ack_sem) {
+        xTaskCreate(boot_ping_task, "boot_ping", 2048, NULL, 5, NULL);
+    }
 
 #if CONFIG_OPENTHREAD_CLI_ESP_EXTENSION
     esp_cli_custom_command_init();

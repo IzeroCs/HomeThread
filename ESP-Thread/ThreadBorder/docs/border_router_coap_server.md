@@ -442,6 +442,6 @@ Hiện tại registry chỉ lưu trong memory. Để xem devices đã register, 
 
 ## Cập nhật liên quan (Leader Control, LED)
 
-- **Leader Control (network stop):** Border Router gửi CoAP **GET** `/network` (một segment) đến Leader để yêu cầu stop; Leader offline sau đó Border Router có thể trở thành Leader mới. Chi tiết format, handler endpoint, timing bầu Leader: xem **`LEADER_STOP_COMMAND_COAP.md`**.
+- **Leader Control (network stop):** Border Router gửi CoAP **GET** `/network` (một segment) đến Leader để yêu cầu stop; Leader offline sau đó Border Router có thể trở thành Leader mới. Chi tiết format, handler endpoint, timing bầu Leader: xem **`leader_stop_command_coap.md`**.
 - **OpenThread CoAP path match:** Resource match theo **full path string**. Resource `mUriPath = "network"` chỉ match request path `"network"`, không match `"network/stop"`. Client gửi GET với một segment `"network"`.
 - **LED status (WS2812):** Disabled = đỏ nhấp nháy; Detached = xanh dương nhấp nháy; Leader = xanh lá tĩnh; Router = tím tĩnh; Child = xanh dương tĩnh (`led_status.c`).
