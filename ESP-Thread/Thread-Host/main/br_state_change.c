@@ -4,25 +4,27 @@
  */
 
 #include "br_state_change.h"
+#include "openthread/device_role.h"
 #include "communicate/communicate_task.h"
 #include "esp_log.h"
 #include "esp_openthread.h"
+#include "esp_openthread_lock.h"
 #include "openthread/instance.h"
 #include "openthread/thread.h"
 #include <string.h>
 
 static const char *TAG = "br_state_change";
 
-/** Map otDeviceRole sang 1 byte cho backend: 0=disabled, 1=detached, 2=child, 3=router, 4=leader. */
+/** Map otDeviceRole sang device_role_t (1 byte) gửi trong CMD_STATE. */
 static uint8_t role_to_byte(otDeviceRole role)
 {
     switch (role) {
-        case OT_DEVICE_ROLE_DISABLED: return 0;
-        case OT_DEVICE_ROLE_DETACHED: return 1;
-        case OT_DEVICE_ROLE_CHILD:    return 2;
-        case OT_DEVICE_ROLE_ROUTER:  return 3;
-        case OT_DEVICE_ROLE_LEADER:  return 4;
-        default:                     return 0;
+        case OT_DEVICE_ROLE_DISABLED: return (uint8_t)DEVICE_ROLE_DISABLED;
+        case OT_DEVICE_ROLE_DETACHED: return (uint8_t)DEVICE_ROLE_DETACHED;
+        case OT_DEVICE_ROLE_CHILD:    return (uint8_t)DEVICE_ROLE_CHILD;
+        case OT_DEVICE_ROLE_ROUTER:   return (uint8_t)DEVICE_ROLE_ROUTER;
+        case OT_DEVICE_ROLE_LEADER:   return (uint8_t)DEVICE_ROLE_LEADER;
+        default:                      return (uint8_t)DEVICE_ROLE_DISABLED;
     }
 }
 

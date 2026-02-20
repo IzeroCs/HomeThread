@@ -23,7 +23,7 @@
 | CMD_NACK | 0x03 | ESP32→Node | Pull response lỗi (1 byte error code) |
 | CMD_RESET | 0x10 | Node→ESP32 | Pull: reset |
 | CMD_FACTORY | 0x11 | Node→ESP32 | Pull: factory reset (DATA = 0xAA) |
-| CMD_STATE | 0x12 | Node↔ESP32 | **Node→ESP32 (Pull):** check kết nối (backend gửi interval; ESP trả ACK). **ESP32→Node (Push):** BR gửi khi state (role) thay đổi; DATA = 1 byte (0=disabled, 1=detached, 2=child, 3=router, 4=leader); backend trả CMD_ACK cùng Frame ID; không ACK trong 1s thì BR gửi lại. |
+| CMD_STATE | 0x12 | Node↔ESP32 | **Node→ESP32 (Pull):** check kết nối (backend gửi interval; ESP trả ACK). **ESP32→Node (Push):** BR gửi khi state (role) thay đổi; DATA = 1 byte `device_role_t` (xem `include/openthread/device_role.h`: DISABLED=0, DETACHED=1, CHILD=2, ROUTER=3, LEADER=4); backend trả CMD_ACK cùng Frame ID; không ACK trong 1s thì BR gửi lại. |
 | CMD_DATASET_ACTIVE | 0x13 | Node→ESP32 | Pull: đọc Active Dataset |
 | CMD_IP_ADDR | 0x14 | Node→ESP32 | Pull: đọc IPv6 leader |
 

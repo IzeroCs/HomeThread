@@ -12,6 +12,6 @@ idf_component_register(
   "communicate/transport_uart.c"
   "communicate/transport_usb.c"
   INCLUDE_DIRS "../include"
-  REQUIRES mdns
+  REQUIRES mdns esp_timer
   PRIV_REQUIRES console cmd_system openthread nvs_flash driver
 )
