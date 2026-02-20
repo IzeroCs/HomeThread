@@ -21,4 +21,4 @@ Kết nối frame (SOF/Frame ID/CMD/LEN/DATA/CRC8/EOF) trên UART hoặc USB CDC
 - `communicate_init(rx_cb, rx_ctx)`: khởi tạo transport (UART hoặc USB CDC), bắt đầu nhận frame; khi có frame hợp lệ gọi `rx_cb(frame_id, cmd, data, len, ctx)`.
 - `communicate_send_frame(frame_id, cmd, data, len)`: gửi một frame (CRC8/SOF/EOF tự thêm).
 
-**communicate_task** (Thread-Host): thay vì gọi `communicate_init()` trực tiếp, main gọi `communicate_task_start()` — init communicate + RX callback (PING→ACK, lệnh khác→NACK) + ping watchdog (backend ping interval; không nhận ping trong 5 lần × 15s → restart ESP). File: `communicate_task.c`, header: `communicate_task.h`.
+Chưa gọi `communicate_init()` trong `main.c`; gọi khi cần bật kênh frame.

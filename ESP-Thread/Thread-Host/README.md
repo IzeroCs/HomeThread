@@ -40,8 +40,8 @@ Project cấu hình **Basic Thread Border Router** chạy trên **ESP32-S3** (Ho
 
 **USB CDC (cho custom frames):**
 - USB port trên ESP32-S3 DevKit dùng cho custom frames (không dùng cho console).
-- Giao tiếp với Node/backend theo cấu trúc khung: SOF 0xAA, Frame ID, CMD, LEN, DATA, CRC8, EOF 0x55 (xem [TODO.md](TODO.md) và [docs/usb_cdc_frame_structure.md](docs/usb_cdc_frame_structure.md)).
-- Chưa implement: xem mục **USB CDC Frame** trong [TODO.md](TODO.md).
+- Giao tiếp với Node/backend theo cấu trúc khung: SOF 0xAA, Frame ID, CMD, LEN, DATA, CRC8, EOF 0x55 (xem [docs/usb_cdc_frame_structure.md](docs/usb_cdc_frame_structure.md)).
+- **Transport USB CDC** đã có: module `communicate` + `transport_usb` (USB Serial/JTAG); frame mặc định chạy trên USB CDC, log trên UART. **Transport UART** (frame trên UART) sẽ phát triển tiếp — xem [TODO.md](TODO.md).
 
 ## Yêu cầu
 
@@ -107,6 +107,11 @@ Thread-Host/
 │   │   ├── leader_control_client.c      # CoAP client để gửi lệnh stop đến Leader
 │   │   ├── device_registry_server.c    # CoAP server để nhận device registration
 │   │   └── device_registry_handler.c   # Handler chung cho register/update/ping
+│   ├── communicate/
+│   │   ├── communicate.c               # Parse/serialize frame, gọi transport
+│   │   ├── communicate_task.c          # RX callback (PING→ACK, khác→NACK) + ping watchdog
+│   │   ├── transport_uart.c            # Transport UART (sẽ phát triển tiếp)
+│   │   └── transport_usb.c             # Transport USB CDC (USB Serial/JTAG)
 │   ├── include/
 │   │   ├── br_config.h              # UART config, pin definitions
 │   │   ├── br_launch.h
@@ -118,6 +123,12 @@ Thread-Host/
 ├── include/
 │   ├── hardware/
 │   │   └── led_status.h             # LED status header
+│   ├── communicate/
+│   │   ├── communicate.h            # Communicate API, CMD defines
+│   │   ├── communicate_config.h     # FRAME_PORT_IS_UART, UART/CDC config
+│   │   ├── communicate_task.h       # communicate_task_start() — RX + ping watchdog
+│   │   ├── transport_uart.h         # Transport UART API
+│   │   └── transport_usb.h          # Transport USB CDC API
 │   └── coap_controller/
 │       ├── leader_control_client.h      # Leader control client header
 │       ├── device_registry_server.h     # Device registry server header
@@ -147,7 +158,7 @@ Thread-Host/
 - **RCP Control pins**: GPIO7 (RESET), GPIO8 (BOOT) trên ESP32-S3 (tùy chọn, để auto-flash RCP)
 - **LED Status**: GPIO48 (onboard WS2812) hoặc GPIO5 (external WS2812), config qua menuconfig
 - **Console/Log**: **UART0** (GPIO43/44 trên ESP32-S3 DevKit, hoặc GPIO17/18 tùy board)
-- **Custom frames**: **USB CDC** (dành cho code custom sau này, không dùng cho console)
+- **Custom frames**: **USB CDC** (mặc định, qua `communicate` + `transport_usb`). Có thể đổi sang UART trong `include/communicate/communicate_config.h` (transport UART sẽ phát triển tiếp).
 - **Flash baud rate**: 921600 (có thể giảm xuống nếu gặp lỗi kết nối)
 - **Partition**: custom (ota, nvs, web_storage) theo `partitions.csv`  
 - **RCP**: ESP32-H2, firmware từ `$IDF_PATH/examples/openthread/ot_rcp`
@@ -180,9 +191,10 @@ Thread-Host/
   - Handler chung dùng logic từ `device_registry_handler` cho cả 3 resource
   - Queue-based processing: enqueue CoAP data từ child devices, process và output qua UART
   - Hỗ trợ tối đa 10 items trong queue, payload tối đa 768 bytes
+- ✅ **Communicate (frame protocol)** — Parse/serialize khung SOF/Frame ID/CMD/LEN/DATA/CRC8/EOF; **transport USB CDC** (transport_usb) đã dùng; **transport UART** (transport_uart) sẽ phát triển tiếp. **communicate_task**: main gọi `communicate_task_start()` — init communicate + RX callback (PING→ACK, lệnh khác→NACK) + ping watchdog (backend ping interval; không nhận ping trong 5 lần × 15s → restart ESP); xem [TODO.md](TODO.md).
 - ❌ **Auto-flash RCP khi boot** — xem [TODO.md](TODO.md)
 - ❌ RCP update/firmware management (đã loại bỏ)
-- ⏳ **USB CDC Frame** — Custom frames qua USB (cấu trúc khung, CMD Push/Pull, CRC8); xem [TODO.md](TODO.md) và [docs/usb_cdc_frame_structure.md](docs/usb_cdc_frame_structure.md)
+- ⏳ **Xử lý CMD (Pull/Push)** — CMD PING, RESET, FACTORY, NETWORK_NAME, … và gọi `communicate_init()` trong main khi cần; xem [TODO.md](TODO.md) và [docs/usb_cdc_frame_structure.md](docs/usb_cdc_frame_structure.md).
 
 ## Tài liệu tham khảo
 

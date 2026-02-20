@@ -5,5 +5,4 @@
 export interface SerialConfig {
   serialPort: string;
   baudRate: number;
-  commandPrefix: string;
 }

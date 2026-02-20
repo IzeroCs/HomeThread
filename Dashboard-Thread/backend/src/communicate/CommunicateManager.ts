@@ -1,46 +1,27 @@
 /**
  * CommunicateManager - Khởi tạo và quản lý giao tiếp phần cứng (Serial + frame protocol).
- * Nắm toàn bộ dữ liệu (lastThreadState, lastOtConfig, ...); nơi khác muốn lấy thì gọi getter.
+ * Điều phối serial + frame; dữ liệu OT/Thread lưu ở OtConfigManager và ThreadDataManager, lấy qua getter.
  * Có thể đăng ký onBroadcast để push event (serial:data, serial:status, ot:config, ...) ra ngoài.
  */
 
 import { SerialConfigService } from "./SerialConfigService";
 import { SerialPortService } from "./SerialPort";
-import { buildFrame, CMD, FrameParser, NACK_MESSAGE, type ParsedFrame } from "./frame";
-import { CMD_NAMES } from "./frame/constants";
+import { CommandManager } from "./CommandManager";
+import { OtConfigManager, type OtConfig } from "./OtConfigManager";
+import { ThreadDataManager, type ThreadState, type TableData } from "./ThreadDataManager";
+import { PollingManager } from "./PollingManager";
+import { FrameParser, type ParsedFrame } from "./frame";
 import { AppSettingsService } from "../services/AppSettingsService";
+import { serialLogger, frameLogger } from "../utils/logger";
+
+export type { OtConfig } from "./OtConfigManager";
+export type { ThreadState, TableData } from "./ThreadDataManager";
 
 const RECONNECT_INTERVAL_MS = 3000;
-/** Nếu đã từng nhận RX mà không còn byte nào trong 20s → coi mất kết nối (ESP reset không emit close). */
-const NO_RX_WATCHDOG_MS = 20000;
-const RX_WATCHDOG_CHECK_MS = 10000;
-const FRAME_RESPONSE_TIMEOUT_MS = 5000;
-
-function isMostlyPrintable(buf: Buffer): boolean {
-  if (buf.length === 0) return true;
-  let printable = 0;
-  for (let i = 0; i < buf.length; i++) {
-    const b = buf[i]!;
-    if (b >= 0x20 && b < 0x7f) printable++;
-    else if (b === 0x0a || b === 0x0d || b === 0x09) printable++;
-  }
-  return printable / buf.length >= 0.8;
-}
+/** Ping 5 lần không có phản hồi (bất kỳ frame từ leader) thì đóng port và reconnect. */
+const PING_WITHOUT_RESPONSE_LIMIT = 5;
 
 export type SerialStatus = { isConnected: boolean; path: string; baudRate: number };
-
-export type OtConfig = {
-  panid?: string;
-  channel?: number;
-  networkName?: string;
-  ipaddr?: string;
-  datasetActive?: string;
-  error?: string;
-};
-
-export type ThreadState = { running: boolean; state?: string } | null;
-
-export type TableData = { headers?: string[]; rows?: string[][]; error?: string } | null;
 
 export type OnBroadcast = (event: string, data?: unknown) => void;
 
@@ -53,44 +34,20 @@ export class CommunicateManager {
   private frameUnsubscribe: (() => void) | null = null;
   private autoReconnectEnabled = true;
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
-  /** Thời điểm nhận byte cuối (raw RX); dùng watchdog phát hiện port “chết” sau ESP reset. */
-  private lastRawRxTime = 0;
-  private rxWatchdogIntervalId: ReturnType<typeof setInterval> | null = null;
+  /** Số lần PING liên tiếp không nhận được bất kỳ frame nào từ leader; đạt 5 thì đóng port và reconnect. */
+  private pingWithoutResponseCount = 0;
 
-  private lastThreadState: ThreadState = null;
-  private threadStateIntervalId: ReturnType<typeof setInterval> | null = null;
-  private static readonly THREAD_STATE_POLL_MS = 4000;
+  private otConfigManager = new OtConfigManager();
+  private threadDataManager = new ThreadDataManager();
 
-  private lastOtConfig: OtConfig | null = null;
-  private otConfigIntervalId: ReturnType<typeof setInterval> | null = null;
-  private static readonly OT_CONFIG_POLL_MS = 6000;
-
-  private lastRouterTable: TableData = null;
-  private lastChildTable: TableData = null;
-  private dashboardTableIntervalId: ReturnType<typeof setInterval> | null = null;
-  private dashboardTableChildTimeoutId: ReturnType<typeof setTimeout> | null = null;
-  private static readonly DASHBOARD_TABLE_POLL_MS = 6000;
-  private static readonly CHILD_TABLE_DELAY_MS = 1500;
-
-  private lastJoinerTable: TableData = null;
-  private joinerTableIntervalId: ReturnType<typeof setInterval> | null = null;
-  private static readonly JOINER_TABLE_POLL_MS = 6000;
-
-  private serialKeepaliveIntervalId: ReturnType<typeof setInterval> | null = null;
-  private static readonly SERIAL_KEEPALIVE_MS = 15000;
+  private pollingManager = new PollingManager();
+  private pingIntervalId: ReturnType<typeof setInterval> | null = null;
+  private static readonly PING_INTERVAL_MS = 15000;
 
   private frameParser = new FrameParser();
-  private nextFrameId = 0;
-  /** Chỉ bật polling (keepalive + OT config) sau khi leader gửi PING và ta đã trả ACK. */
+  private commandManager: CommandManager | null = null;
+  /** Chỉ bật polling (OT config) sau khi leader gửi PING và ta đã trả ACK. */
   private leaderReady = false;
-
-  private pendingFrames = new Map<
-    number,
-    {
-      resolve: (result: { ack: boolean; data?: Buffer; errorCode?: number }) => void;
-      timeoutId: ReturnType<typeof setTimeout>;
-    }
-  >();
 
   constructor(
     serialConfigService: SerialConfigService,
@@ -116,23 +73,23 @@ export class CommunicateManager {
   }
 
   getLastThreadState(): ThreadState {
-    return this.lastThreadState;
+    return this.threadDataManager.getThreadState();
   }
 
   getLastOtConfig(): OtConfig | null {
-    return this.lastOtConfig;
+    return this.otConfigManager.get();
   }
 
   getLastRouterTable(): TableData {
-    return this.lastRouterTable;
+    return this.threadDataManager.getRouterTable();
   }
 
   getLastChildTable(): TableData {
-    return this.lastChildTable;
+    return this.threadDataManager.getChildTable();
   }
 
   getLastJoinerTable(): TableData {
-    return this.lastJoinerTable;
+    return this.threadDataManager.getJoinerTable();
   }
 
   async connect(): Promise<void> {
@@ -196,8 +153,11 @@ export class CommunicateManager {
     if (!this.serialPort?.getStatus().isConnected) {
       return { error: "Serial not connected. Connect serial first." };
     }
-    const payload = await this.fetchOtConfigPayload();
-    this.lastOtConfig = payload;
+    const payload = await this.pollingManager.fetchOtConfigPayload(
+      (cmd, data) => this.sendPullRequestInternal(cmd, data),
+      () => this.otConfigManager.get() ?? {}
+    );
+    this.otConfigManager.set(payload);
     this.broadcast("ot:config", payload);
     return payload;
   }
@@ -207,52 +167,25 @@ export class CommunicateManager {
   }
 
   private stopAllPolling(): void {
-    if (this.threadStateIntervalId != null) {
-      clearInterval(this.threadStateIntervalId);
-      this.threadStateIntervalId = null;
-    }
-    this.lastThreadState = null;
-
-    if (this.otConfigIntervalId != null) {
-      clearInterval(this.otConfigIntervalId);
-      this.otConfigIntervalId = null;
-    }
-    this.lastOtConfig = null;
-
-    if (this.dashboardTableChildTimeoutId != null) {
-      clearTimeout(this.dashboardTableChildTimeoutId);
-      this.dashboardTableChildTimeoutId = null;
-    }
-    if (this.dashboardTableIntervalId != null) {
-      clearInterval(this.dashboardTableIntervalId);
-      this.dashboardTableIntervalId = null;
-    }
-    this.lastRouterTable = null;
-    this.lastChildTable = null;
-
-    if (this.joinerTableIntervalId != null) {
-      clearInterval(this.joinerTableIntervalId);
-      this.joinerTableIntervalId = null;
-    }
-    this.lastJoinerTable = null;
-
-    if (this.serialKeepaliveIntervalId != null) {
-      clearInterval(this.serialKeepaliveIntervalId);
-      this.serialKeepaliveIntervalId = null;
+    this.pollingManager.stopAll();
+    this.threadDataManager.clear();
+    this.otConfigManager.clear();
+    if (this.pingIntervalId != null) {
+      clearInterval(this.pingIntervalId);
+      this.pingIntervalId = null;
     }
   }
 
   private initializeSerialPort(config: {
     serialPort: string;
     baudRate: number;
-    commandPrefix?: string;
   }): void {
     if (this.frameUnsubscribe) {
       this.frameUnsubscribe();
       this.frameUnsubscribe = null;
     }
     if (this.serialPort) {
-      this.serialPort.close().catch((err) => console.error("[Serial]", err));
+      this.serialPort.close().catch((err) => serialLogger.error(String(err?.message ?? err)));
       this.serialPort = null;
     }
     this.clearPendingFrames();
@@ -263,150 +196,64 @@ export class CommunicateManager {
       baudRate: config.baudRate,
     });
 
+    this.commandManager = new CommandManager({
+      writeRaw: (buf) => this.serialPort!.writeRaw(buf),
+      broadcast: (event, data) => this.broadcast(event, data),
+      onAckDataToConfig: (partial) => {
+        this.otConfigManager.update(partial);
+        this.broadcast("ot:config", this.otConfigManager.get());
+      },
+    });
+
     this.serialPort.setOnDisconnect(() => this.onSerialDisconnected());
 
     this.frameUnsubscribe = this.serialPort.onRawData((chunk: Buffer) => {
-      this.lastRawRxTime = Date.now();
       this.broadcast("serial:data", chunk.toString("hex"));
-      this.frameParser.push(chunk, (frame) => this.handleParsedFrame(frame));
+      this.frameParser.push(
+        chunk,
+        (frame: ParsedFrame) => {
+          this.pingWithoutResponseCount = 0;
+          this.commandManager!.handle(frame);
+        },
+        (bytes, reason) => {
+          const text = bytes.toString("utf8").replace(/[\r\n]+/g, " ").trim();
+          serialLogger.info(`RX (lỗi: ${reason}): ${bytes.length} bytes ${text}`);
+        }
+      );
     });
-    this.startRxWatchdog();
-  }
-
-  private startRxWatchdog(): void {
-    this.clearRxWatchdog();
-    this.lastRawRxTime = 0;
-    this.rxWatchdogIntervalId = setInterval(() => {
-      if (!this.serialPort?.getStatus().isConnected) return;
-      if (this.lastRawRxTime === 0) return; // chưa nhận gì, không coi là mất kết nối
-      if (Date.now() - this.lastRawRxTime <= NO_RX_WATCHDOG_MS) return;
-      console.warn("[Serial] No RX for 20s (ESP reset / port chết?) — đóng và thử reconnect.");
-      const port = this.serialPort;
-      port.close().then(() => this.onSerialDisconnected()).catch(() => this.onSerialDisconnected());
-    }, RX_WATCHDOG_CHECK_MS);
-  }
-
-  private clearRxWatchdog(): void {
-    if (this.rxWatchdogIntervalId) {
-      clearInterval(this.rxWatchdogIntervalId);
-      this.rxWatchdogIntervalId = null;
-    }
   }
 
   private clearPendingFrames(): void {
-    for (const [, { timeoutId }] of this.pendingFrames) {
-      clearTimeout(timeoutId);
-    }
-    this.pendingFrames.clear();
+    this.commandManager?.clearPending();
   }
 
-  private logFrame(frame: ParsedFrame, direction: "RX"): void {
-    const cmdName = CMD_NAMES[frame.cmd] ?? `0x${frame.cmd.toString(16)}`;
-    const dataPreview =
-      frame.data.length === 0
-        ? "(empty)"
-        : frame.data.length <= 64 && isMostlyPrintable(frame.data)
-          ? frame.data.toString("utf8").replace(/\0/g, "\\0")
-          : frame.data.toString("hex");
-    console.log(
-      `[Frame] ${direction} frameId=0x${frame.frameId.toString(16).padStart(2, "0")} cmd=0x${frame.cmd.toString(16).padStart(2, "0")} (${cmdName}) len=${frame.data.length} data=${dataPreview}`
-    );
+  /** Bật gửi PING định kỳ (ngay 1 lần + mỗi PING_INTERVAL_MS). */
+  private startPingInterval(): void {
+    if (this.pingIntervalId != null) return;
+    if (!this.serialPort?.getStatus().isConnected) return;
+    this.sendPingToLeader();
+    this.pingIntervalId = setInterval(() => {
+      this.sendPingToLeader();
+    }, CommunicateManager.PING_INTERVAL_MS);
   }
 
-  private handleParsedFrame(frame: ParsedFrame): void {
-    this.logFrame(frame, "RX");
-
-    if (frame.cmd === CMD.PING) {
-      this.replyAckToPing(frame.frameId);
-      // Tạm thời không bật polling để check ping — chỉ trả ACK, không gửi keepalive/pull config.
-      // if (!this.leaderReady) {
-      //   this.leaderReady = true;
-      //   console.log("[Serial] Leader ready (PING received), replied ACK — starting polling.");
-      //   this.startPollingIfEnabled();
-      // }
-      return;
-    }
-    if (frame.cmd === CMD.DATA) {
-      this.handleCmdData(frame);
-      return;
-    }
-    if (frame.cmd === CMD.ACK) {
-      const pending = this.pendingFrames.get(frame.frameId);
-      if (pending) {
-        clearTimeout(pending.timeoutId);
-        this.pendingFrames.delete(frame.frameId);
-        pending.resolve({ ack: true, data: frame.data.length > 0 ? frame.data : undefined });
-      }
-      this.applyAckDataToConfig(frame.data);
-      return;
-    }
-    if (frame.cmd === CMD.NACK) {
-      const pending = this.pendingFrames.get(frame.frameId);
-      if (pending) {
-        clearTimeout(pending.timeoutId);
-        this.pendingFrames.delete(frame.frameId);
-        const errorCode = frame.data.length > 0 ? frame.data[0]! : 0;
-        pending.resolve({ ack: false, errorCode });
-      }
-    }
-  }
-
-  /** Backend vừa kết nối → gửi PING để leader biết "dashboard đã vào", leader sẽ ping lại (hoặc trả ACK). */
+  /** Gửi 1 frame PING. Đã gửi 5 lần không có phản hồi thì đóng port và reconnect. */
   private sendPingToLeader(): void {
-    if (!this.serialPort?.getStatus().isConnected) return;
-    try {
-      const frameId = this.nextFrameId;
-      this.nextFrameId = (this.nextFrameId + 1) & 0xff;
-      const pingFrame = buildFrame(frameId, CMD.PING, undefined);
-      this.serialPort.writeRaw(pingFrame).catch((err) => console.warn("[Serial] Failed to send PING to leader:", err));
-      console.log("[Frame] TX (connect) frameId=0x" + frameId.toString(16).padStart(2, "0") + " cmd=0x04 (PING) len=0 — báo leader ping lại.");
-    } catch (err) {
-      console.warn("[Serial] Failed to build PING for leader:", err);
+    if (!this.serialPort?.getStatus().isConnected || !this.commandManager) return;
+    if (this.pingWithoutResponseCount >= PING_WITHOUT_RESPONSE_LIMIT) {
+      serialLogger.warn("Ping " + PING_WITHOUT_RESPONSE_LIMIT + " lần không có phản hồi — đóng port và reconnect.");
+      const port = this.serialPort;
+      port.close().then(() => this.onSerialDisconnected()).catch(() => this.onSerialDisconnected());
+      return;
     }
-  }
-
-  /** Leader gửi PING khi boot xong; backend trả ACK (cùng Frame ID) để leader biết đã sẵn sàng. */
-  private replyAckToPing(frameId: number): void {
-    if (!this.serialPort?.getStatus().isConnected) return;
     try {
-      const ackFrame = buildFrame(frameId, CMD.ACK, undefined);
-      this.serialPort.writeRaw(ackFrame).catch((err) => console.warn("[Serial] Failed to send ACK to PING:", err));
-      console.log(`[Frame] TX (reply) frameId=0x${frameId.toString(16).padStart(2, "0")} cmd=0x02 (ACK) len=0`);
+      const frameId = this.commandManager.consumeNextFrameId();
+      const pingFrame = this.commandManager.sendPing(frameId);
+      this.serialPort.writeRaw(pingFrame).catch((err) => serialLogger.warn(`Failed to send PING to leader: ${err?.message ?? err}`));
+      frameLogger.log("TX frameId=0x" + frameId.toString(16).padStart(2, "0") + " cmd=0x04 (PING) len=0");
+      this.pingWithoutResponseCount++;
     } catch (err) {
-      console.warn("[Serial] Failed to build ACK for PING:", err);
-    }
-  }
-
-  private handleCmdData(frame: ParsedFrame): void {
-    if (frame.data.length === 0) return;
-    this.broadcast("serial:frame:data", { frameId: frame.frameId, dataHex: frame.data.toString("hex") });
-  }
-
-  private applyAckDataToConfig(data: Buffer): void {
-    if (data.length === 0) return;
-    const prev = this.lastOtConfig ?? {};
-    if (data.length === 1 && data[0]! >= 11 && data[0]! <= 26) {
-      this.lastOtConfig = { ...prev, channel: data[0]! };
-      this.broadcast("ot:config", this.lastOtConfig);
-    } else if (data.length === 2) {
-      const panid = "0x" + data.readUInt16BE(0).toString(16).toUpperCase().padStart(4, "0");
-      this.lastOtConfig = { ...prev, panid };
-      this.broadcast("ot:config", this.lastOtConfig);
-    } else if (data.length >= 1 && data.length <= 16) {
-      const networkName = data.toString("utf8").replace(/\0/g, "");
-      if (networkName) {
-        this.lastOtConfig = { ...prev, networkName };
-        this.broadcast("ot:config", this.lastOtConfig);
-      }
-    } else if (data.length === 16) {
-      const ipaddr = Array.from(data)
-        .map((b) => b.toString(16).padStart(2, "0"))
-        .join(":");
-      this.lastOtConfig = { ...prev, ipaddr };
-      this.broadcast("ot:config", this.lastOtConfig);
-    } else if (data.length > 0) {
-      this.lastOtConfig = { ...prev, datasetActive: data.toString("hex") };
-      this.broadcast("ot:config", this.lastOtConfig);
+      serialLogger.warn(`Failed to build PING for leader: ${err}`);
     }
   }
 
@@ -414,47 +261,17 @@ export class CommunicateManager {
     cmd: number,
     data?: Buffer
   ): Promise<{ ack: boolean; data?: Buffer; errorCode?: number }> {
-    return new Promise((resolve) => {
-      const frameId = this.nextFrameId;
-      this.nextFrameId = (this.nextFrameId + 1) & 0xff;
-
-      const timeoutId = setTimeout(() => {
-        if (this.pendingFrames.delete(frameId)) {
-          resolve({ ack: false, errorCode: 0x03 });
-        }
-      }, FRAME_RESPONSE_TIMEOUT_MS);
-
-      this.pendingFrames.set(frameId, { resolve, timeoutId });
-
-      try {
-        const frame = buildFrame(frameId, cmd, data);
-        const cmdName = CMD_NAMES[cmd] ?? `0x${cmd.toString(16)}`;
-        const dataLen = data?.length ?? 0;
-        console.log(
-          `[Frame] TX frameId=0x${frameId.toString(16).padStart(2, "0")} cmd=0x${cmd.toString(16).padStart(2, "0")} (${cmdName}) len=${dataLen}`
-        );
-        this.serialPort!.writeRaw(frame).catch(() => {
-          if (this.pendingFrames.delete(frameId)) {
-            clearTimeout(timeoutId);
-            resolve({ ack: false, errorCode: 0x03 });
-          }
-        });
-      } catch {
-        if (this.pendingFrames.delete(frameId)) {
-          clearTimeout(timeoutId);
-          resolve({ ack: false, errorCode: 0x01 });
-        }
-      }
-    });
+    return this.commandManager!.sendRequest(cmd, data);
   }
 
   private onSerialDisconnected(): void {
     this.leaderReady = false;
-    this.clearRxWatchdog();
+    this.pingWithoutResponseCount = 0;
     this.stopAllPolling();
     this.frameUnsubscribe = null;
     this.clearPendingFrames();
     this.frameParser.reset();
+    this.commandManager = null;
     this.serialPort = null;
     this.broadcast("serial:status", { isConnected: false, path: "", baudRate: 0 });
     this.scheduleReconnect();
@@ -472,7 +289,7 @@ export class CommunicateManager {
     if (!this.autoReconnectEnabled) return;
     const config = this.serialConfigService.getLatest();
     if (!config) return;
-    console.log(`[Serial] Will retry connection in ${RECONNECT_INTERVAL_MS}ms...`);
+    serialLogger.info(`Will retry connection in ${RECONNECT_INTERVAL_MS}ms...`);
     this.reconnectTimer = setTimeout(() => {
       this.reconnectTimer = null;
       this.connectSerialInternal();
@@ -489,93 +306,34 @@ export class CommunicateManager {
       await this.serialPort!.open();
 
       this.clearReconnectTimer();
-      this.lastRawRxTime = 0;
+      this.pingWithoutResponseCount = 0;
       this.broadcast("serial:connected", { success: true, status: this.serialPort!.getStatus() });
       this.broadcast("serial:status", this.serialPort!.getStatus());
-      console.log("[Serial] Connected:", config.serialPort, "— gửi PING để leader ping lại.");
-      this.sendPingToLeader();
+      serialLogger.info(`Connected: ${config.serialPort}`);
+      this.startPingInterval();
     } catch (error) {
-      console.error("[Serial] Connection failed:", error);
+      serialLogger.error(`Connection failed: ${error}`);
       this.broadcast("serial:status", { isConnected: false, path: config.serialPort, baudRate: config.baudRate });
       this.scheduleReconnect();
     }
   }
 
-  private startPollingIfEnabled(): void {
+  /** Bật poll OT config (gọi từ bên ngoài khi leader ready, ví dụ sau khi nhận PING). */
+  startOtConfigPolling(): void {
     if (!this.serialPort?.getStatus().isConnected) return;
-    this.startSerialKeepalive();
-    this.startOtConfigPolling();
-  }
-
-  private runSerialKeepalive(): void {
-    if (!this.serialPort?.getStatus().isConnected) return;
-    this.sendPullRequestInternal(CMD.PING).catch(() => {});
-  }
-
-  private startSerialKeepalive(): void {
-    if (this.serialKeepaliveIntervalId != null) return;
-    if (!this.serialPort?.getStatus().isConnected) return;
-    this.serialKeepaliveIntervalId = setInterval(() => {
-      this.runSerialKeepalive();
-    }, CommunicateManager.SERIAL_KEEPALIVE_MS);
-    this.runSerialKeepalive();
-  }
-
-  private async fetchOtConfigPayload(): Promise<OtConfig> {
-    if (!this.serialPort?.getStatus().isConnected) {
-      return { error: "Serial not connected. Connect serial first." };
-    }
-    const base = { ...(this.lastOtConfig ?? {}) };
-    const cmds = [
-      CMD.NETWORK_NAME,
-      CMD.PAN_ID,
-      CMD.CHANNEL,
-      CMD.DATASET_ACTIVE,
-      CMD.IP_ADDR,
-    ] as const;
-    for (const cmd of cmds) {
-      const res = await this.sendPullRequestInternal(cmd);
-      if (res.ack && res.data && res.data.length > 0) {
-        if (cmd === CMD.CHANNEL && res.data.length === 1) {
-          base.channel = res.data[0];
-        } else if (cmd === CMD.PAN_ID && res.data.length === 2) {
-          base.panid = "0x" + res.data.readUInt16BE(0).toString(16).toUpperCase().padStart(4, "0");
-        } else if (cmd === CMD.NETWORK_NAME && res.data.length <= 16) {
-          base.networkName = res.data.toString("utf8").replace(/\0/g, "");
-        } else if (cmd === CMD.IP_ADDR && res.data.length === 16) {
-          base.ipaddr = Array.from(res.data)
-            .map((b) => b.toString(16).padStart(2, "0"))
-            .join(":");
-        } else if (cmd === CMD.DATASET_ACTIVE) {
-          base.datasetActive = res.data.toString("hex");
-        }
+    this.pollingManager.startOtConfigPolling(
+      PollingManager.OT_CONFIG_POLL_MS,
+      (cmd, data) => this.sendPullRequestInternal(cmd, data),
+      () => this.otConfigManager.get() ?? {},
+      (payload) => {
+        this.otConfigManager.set(payload);
+        this.broadcast("ot:config", payload);
+      },
+      (err) => {
+        this.otConfigManager.set({ error: err instanceof Error ? err.message : "Unknown error" });
+        this.broadcast("ot:config", this.otConfigManager.get());
       }
-      if (!res.ack && res.errorCode != null) {
-        base.error = NACK_MESSAGE[res.errorCode] ?? `Error 0x${res.errorCode.toString(16)}`;
-      }
-    }
-    return base;
-  }
-
-  private async pollOtConfig(): Promise<void> {
-    if (!this.serialPort?.getStatus().isConnected) return;
-    try {
-      const payload = await this.fetchOtConfigPayload();
-      this.lastOtConfig = payload;
-      this.broadcast("ot:config", payload);
-    } catch (error) {
-      this.lastOtConfig = { error: error instanceof Error ? error.message : "Unknown error" };
-      this.broadcast("ot:config", this.lastOtConfig);
-    }
-  }
-
-  private startOtConfigPolling(): void {
-    if (this.otConfigIntervalId != null) return;
-    if (!this.serialPort?.getStatus().isConnected) return;
-    this.otConfigIntervalId = setInterval(() => {
-      this.pollOtConfig();
-    }, CommunicateManager.OT_CONFIG_POLL_MS);
-    this.pollOtConfig();
+    );
   }
 
   async close(): Promise<void> {

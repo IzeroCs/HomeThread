@@ -22,18 +22,26 @@ export class FrameParser {
 
   /**
    * Đẩy chunk nhận từ serial vào buffer, parse và gọi onFrame cho mỗi frame hoàn chỉnh.
-   * Trả về số byte đã "tiêu thụ" (đến hết frame cuối cùng đã parse).
+   * Khi loại bỏ bytes (không SOF, LEN/EOF/CRC sai) gọi onDiscard(bytes, reason) để log [Serial].
    */
-  push(chunk: Buffer, onFrame: (frame: ParsedFrame) => void): void {
+  push(
+    chunk: Buffer,
+    onFrame: (frame: ParsedFrame) => void,
+    onDiscard?: (bytes: Buffer, reason: string) => void
+  ): void {
     this.buffer = Buffer.concat([this.buffer, chunk]);
 
     while (this.buffer.length >= MIN_FRAME_LEN) {
       const sofIndex = this.buffer.indexOf(SOF);
       if (sofIndex < 0) {
+        if (this.buffer.length > 0 && onDiscard) {
+          onDiscard(this.buffer, "no SOF");
+        }
         this.buffer = Buffer.alloc(0);
         break;
       }
       if (sofIndex > 0) {
+        if (onDiscard) onDiscard(this.buffer.subarray(0, sofIndex), "no SOF");
         this.buffer = this.buffer.subarray(sofIndex);
       }
       // this.buffer[0] === SOF
@@ -41,6 +49,7 @@ export class FrameParser {
       const lenLow = this.buffer[1 + 1 + 1 + 1];
       const dataLen = (lenHigh << 8) | lenLow;
       if (dataLen > MAX_DATA_LEN) {
+        if (onDiscard) onDiscard(this.buffer.subarray(0, 1), "LEN > MAX");
         this.buffer = this.buffer.subarray(1);
         continue;
       }
@@ -50,6 +59,7 @@ export class FrameParser {
       const frameBuf = this.buffer.subarray(0, frameLen);
       const eofByte = frameBuf[frameLen - 1];
       if (eofByte !== EOF) {
+        if (onDiscard) onDiscard(this.buffer.subarray(0, 1), "bad EOF");
         this.buffer = this.buffer.subarray(1);
         continue;
       }
@@ -58,6 +68,7 @@ export class FrameParser {
       const crcReceived = frameBuf[frameLen - 2];
       const crcComputed = crc8Maxim(payload);
       if (crcComputed !== crcReceived) {
+        if (onDiscard) onDiscard(this.buffer.subarray(0, frameLen), "bad CRC");
         this.buffer = this.buffer.subarray(1);
         continue;
       }
@@ -71,6 +82,7 @@ export class FrameParser {
     }
 
     if (this.buffer.length > 0 && this.buffer.indexOf(SOF) < 0) {
+      if (onDiscard) onDiscard(this.buffer, "no SOF");
       this.buffer = Buffer.alloc(0);
     }
   }

@@ -3,6 +3,9 @@
  */
 
 import { getDatabase } from "./Database";
+import { logger } from "../utils/logger";
+
+const migrationLog = logger.child("Migration");
 
 interface Migration {
   name: string;
@@ -57,6 +60,30 @@ const migrations: Migration[] = [
       `);
     },
   },
+  {
+    name: "004_drop_command_prefix",
+    up: (db) => {
+      // Giao tiếp frame, không dùng command prefix nữa — bỏ cột command_prefix
+      db.exec(`
+        CREATE TABLE serial_config_new (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          serial_port TEXT NOT NULL,
+          baud_rate INTEGER NOT NULL,
+          created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+          updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+      `);
+      db.exec(`
+        INSERT INTO serial_config_new (id, serial_port, baud_rate, created_at, updated_at)
+        SELECT id, serial_port, baud_rate, created_at, updated_at FROM serial_config
+      `);
+      db.exec(`DROP TABLE serial_config`);
+      db.exec(`ALTER TABLE serial_config_new RENAME TO serial_config`);
+      db.exec(`
+        CREATE INDEX IF NOT EXISTS idx_serial_config_created_at ON serial_config(created_at)
+      `);
+    },
+  },
 ];
 
 /**
@@ -100,7 +127,7 @@ export function runMigrations(): void {
 
   for (const migration of migrations) {
     if (!hasMigrationRun(db, migration.name)) {
-      console.log(`[Migration] Running: ${migration.name}`);
+      migrationLog.info(`Running: ${migration.name}`);
       migration.up(db);
       markMigrationRun(db, migration.name);
       executedCount++;
@@ -108,8 +135,8 @@ export function runMigrations(): void {
   }
 
   if (executedCount > 0) {
-    console.log(`[Migration] Executed ${executedCount} migration(s)`);
+    migrationLog.info(`Executed ${executedCount} migration(s)`);
   } else {
-    console.log("[Migration] All migrations are up to date");
+    migrationLog.info("All migrations are up to date");
   }
 }

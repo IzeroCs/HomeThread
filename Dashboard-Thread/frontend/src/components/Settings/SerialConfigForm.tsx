@@ -5,7 +5,6 @@ import "./SerialConfigForm.scss";
 const DEFAULT_CONFIG: SerialConfig = {
   serialPort: "/dev/ttyACM0",
   baudRate: 115200,
-  commandPrefix: "ot",
 };
 
 interface SerialConfigFormProps {

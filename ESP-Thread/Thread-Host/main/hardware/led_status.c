@@ -7,7 +7,7 @@
  * ESP32-S3 DevKit thường dùng GPIO 48 cho onboard RGB LED hoặc GPIO 5 cho external WS2812.
  */
 
-#include "led_status.h"
+#include "hardware/led_status.h"
 #include "driver/rmt_encoder.h"
 #include "driver/rmt_tx.h"
 #include "esp_log.h"

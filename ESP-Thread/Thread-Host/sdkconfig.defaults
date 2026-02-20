@@ -79,7 +79,10 @@ CONFIG_ESP_BR_BOARD_DEV_KIT=y
 CONFIG_ESP_CONSOLE_UART_DEFAULT=y
 CONFIG_ESP_CONSOLE_UART_NUM=0
 # CONFIG_ESP_CONSOLE_USB_CDC is not set
-# USB CDC will be used for custom frames, not console
+# CONFIG_ESP_CONSOLE_USB_SERIAL_JTAG is not set
+CONFIG_ESP_CONSOLE_SECONDARY_NONE=y
+# CONFIG_ESP_CONSOLE_SECONDARY_USB_SERIAL_JTAG is not set
+# USB CDC dùng cho frame only; log/console chỉ ra UART (không output ra USB)
 
 #
 # UART Host–RCP (ESP32-S3: GPIO4=RX, GPIO5=TX recommended)

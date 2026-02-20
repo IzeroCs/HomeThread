@@ -3,6 +3,7 @@
  */
 
 import { SerialPort } from "serialport";
+import { serialLogger } from "../utils/logger";
 
 export interface SerialPortConfig {
   path: string;
@@ -45,16 +46,6 @@ export class SerialPortService {
         });
 
         this.port.on("data", (chunk: Buffer) => {
-          const asText = chunk.toString("utf8");
-          const printable = asText.split("").filter((c) => {
-            const code = c.charCodeAt(0);
-            return (code >= 0x20 && code < 0x7f) || code === 0x0a || code === 0x0d || code === 0x09;
-          }).length;
-          if (chunk.length > 0 && printable / chunk.length >= 0.8 && !asText.includes("\uFFFD")) {
-            console.log(`[Serial] RX (${chunk.length} bytes, text):\n${asText}`);
-          // } else {
-          //   console.log(`[Serial] RX (${chunk.length} bytes, hex):`, chunk.toString("hex"));
-          }
           this.rawListeners.forEach((listener) => listener(chunk));
         });
 
@@ -69,25 +60,25 @@ export class SerialPortService {
 
         // Xử lý lỗi (rút dây, lỗi phần cứng, ESP reset re-enumerate USB)
         this.port.on("error", (err) => {
-          console.error("[Serial] Port error (rút dây / ESP reset?):", err?.message ?? err);
+          serialLogger.error(`Port error (rút dây / ESP reset?): ${err?.message ?? err}`);
           triggerDisconnect();
           reject(err);
         });
 
         // Xử lý khi port đóng (rút dây, ESP reset, hoặc close chủ động)
         this.port.on("close", () => {
-          console.log("[Serial] Port closed — device disconnected hoặc ESP reset (sẽ thử reconnect nếu bật).");
+          serialLogger.info("Port closed — device disconnected hoặc ESP reset (sẽ thử reconnect nếu bật).");
           triggerDisconnect();
         });
 
         // Mở port
         this.port.open((err) => {
           if (err) {
-            console.error("[Serial] Failed to open port:", err);
+            serialLogger.error(`Failed to open port: ${err?.message ?? err}`);
             this.isConnected = false;
             reject(err);
           } else {
-            console.log(`[Serial] Port opened: ${this.config.path} @ ${this.config.baudRate} baud`);
+            serialLogger.info(`Port opened: ${this.config.path} @ ${this.config.baudRate} baud`);
             this.isConnected = true;
             resolve();
           }
@@ -115,7 +106,7 @@ export class SerialPortService {
 
       this.port.close((err) => {
         if (err) {
-          console.error("[Serial] Error closing port:", err);
+          serialLogger.error(`Error closing port: ${err?.message ?? err}`);
         }
         this.isConnected = false;
         this.port = null;
@@ -133,7 +124,7 @@ export class SerialPortService {
     }
     const isFrame = buffer.length >= 7 && buffer[0] === 0xaa && buffer[buffer.length - 1] === 0x55;
     if (!isFrame) {
-      console.log(`[Serial] TX raw (${buffer.length} bytes): ${buffer.toString("hex")}`);
+      serialLogger.info(`TX raw (${buffer.length} bytes): ${buffer.toString("hex")}`);
     }
     return new Promise((resolve, reject) => {
       this.port!.write(buffer, (err) => {

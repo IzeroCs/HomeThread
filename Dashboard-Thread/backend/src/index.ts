@@ -11,6 +11,9 @@ import { runMigrations } from "./database/migrations";
 import { SerialConfigService, CommunicateManager } from "./communicate";
 import { AppSettingsService } from "./services/AppSettingsService";
 import { WebSocketServer } from "./server/WebSocketServer";
+import { logger } from "./utils/logger";
+
+const serverLog = logger.child("Server");
 
 const PORT = process.env.PORT ?? 3000;
 
@@ -44,36 +47,35 @@ const communicateManager = new CommunicateManager(
 const wsServer = new WebSocketServer(io, serialConfigService, appSettingsService, communicateManager);
 
 httpServer.listen(PORT, () => {
-  console.log("=".repeat(50));
-  console.log("[Server] Backend WebSocket server initialized");
-  console.log(`[Server] Listening on ws://localhost:${PORT}`);
-  console.log("=".repeat(50));
+  serverLog.info("=".repeat(50));
+  serverLog.info("Backend WebSocket server initialized");
+  serverLog.info(`Listening on ws://localhost:${PORT}`);
+  serverLog.info("=".repeat(50));
 
   const config = serialConfigService.getLatest();
   if (config) {
-    console.log("[Server] Current serial config:");
-    console.log(`[Server]   Serial Port: ${config.serialPort}`);
-    console.log(`[Server]   Baud Rate: ${config.baudRate}`);
-    console.log(`[Server]   Command Prefix: ${config.commandPrefix}`);
+    serverLog.info("Current serial config:");
+    serverLog.info(`  Serial Port: ${config.serialPort}`);
+    serverLog.info(`  Baud Rate: ${config.baudRate}`);
     communicateManager.connectIfConfigured().catch((err) => {
-      console.error("[Server] Serial auto-connect failed:", err);
+      serverLog.error(`Serial auto-connect failed: ${err?.message ?? err}`);
     });
   } else {
-    console.log("[Server] No serial config. Configure via frontend WebSocket.");
+    serverLog.info("No serial config. Configure via frontend WebSocket.");
   }
 
-  console.log("=".repeat(50));
+  serverLog.info("=".repeat(50));
 });
 
 process.on("SIGINT", async () => {
-  console.log("\n[Server] Shutting down...");
+  serverLog.info("Shutting down...");
   await wsServer.close();
   closeDatabase();
   httpServer.close(() => process.exit(0));
 });
 
 process.on("SIGTERM", async () => {
-  console.log("\n[Server] Shutting down...");
+  serverLog.info("Shutting down...");
   await wsServer.close();
   closeDatabase();
   httpServer.close(() => process.exit(0));

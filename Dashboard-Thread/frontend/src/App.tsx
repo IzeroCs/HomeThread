@@ -38,12 +38,10 @@ function App() {
   const handleConfigSave = (newConfig: {
     serialPort: string;
     baudRate: number;
-    commandPrefix: string;
   }) => {
     wsSaveConfig({
       serialPort: newConfig.serialPort,
       baudRate: newConfig.baudRate,
-      commandPrefix: newConfig.commandPrefix,
     });
     setPage("dashboard");
   };

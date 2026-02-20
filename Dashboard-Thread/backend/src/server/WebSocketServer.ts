@@ -6,6 +6,9 @@
 import { Server, Socket } from "socket.io";
 import type { SerialConfigService, CommunicateManager } from "../communicate";
 import { AppSettingsService } from "../services/AppSettingsService";
+import { logger } from "../utils/logger";
+
+const wsLog = logger.child("WS");
 
 export class WebSocketServer {
   private io: Server;
@@ -37,7 +40,7 @@ export class WebSocketServer {
 
   private setupEventHandlers(): void {
     this.io.on("connection", (socket: Socket) => {
-      console.log(`[WS] Client connected: ${socket.id}`);
+      wsLog.info(`Client connected: ${socket.id}`);
 
       this.sendCurrentConfig(socket);
       this.sendSerialStatus(socket);
@@ -54,17 +57,17 @@ export class WebSocketServer {
       if (lastJoinerTable != null) socket.emit("commissioner:joinerTable", lastJoinerTable);
 
       socket.on("config:get", () => this.sendCurrentConfig(socket));
-      socket.on("config:save", (data: { serialPort: string; baudRate: number; commandPrefix?: string }) =>
+      socket.on("config:save", (data: { serialPort: string; baudRate: number }) =>
         this.handleConfigSave(socket, data)
       );
-      socket.on("config:update", (data: { id: number; serialPort?: string; baudRate?: number; commandPrefix?: string }) =>
+      socket.on("config:update", (data: { id: number; serialPort?: string; baudRate?: number }) =>
         this.handleConfigUpdate(socket, data)
       );
 
       socket.on("serial:connect", () => this.handleSerialConnect(socket));
       socket.on("serial:disconnect", () => this.handleSerialDisconnect(socket));
       socket.on("serial:status", () => this.sendSerialStatus(socket));
-      socket.on("serial:test", (data: { serialPort: string; baudRate: number; commandPrefix?: string }) =>
+      socket.on("serial:test", (data: { serialPort: string; baudRate: number }) =>
         this.handleSerialTest(socket, data)
       );
 
@@ -89,7 +92,7 @@ export class WebSocketServer {
       );
       socket.on("commissioner:getJoinerTable", () => this.handleCommissionerGetJoinerTable(socket));
 
-      socket.on("disconnect", () => console.log(`[WS] Client disconnected: ${socket.id}`));
+      socket.on("disconnect", () => wsLog.info(`Client disconnected: ${socket.id}`));
     });
   }
 
@@ -104,7 +107,6 @@ export class WebSocketServer {
   private validateConfig(data: {
     serialPort?: string;
     baudRate?: number;
-    commandPrefix?: string;
   }): string | null {
     if (data.serialPort !== undefined) {
       if (typeof data.serialPort !== "string" || !data.serialPort.trim()) return "Serial port is required";
@@ -118,7 +120,7 @@ export class WebSocketServer {
 
   private async handleConfigSave(
     socket: Socket,
-    data: { serialPort: string; baudRate: number; commandPrefix?: string }
+    data: { serialPort: string; baudRate: number }
   ): Promise<void> {
     const err = this.validateConfig(data);
     if (err) {
@@ -130,7 +132,6 @@ export class WebSocketServer {
       const config = this.serialConfigService.saveOrUpdate({
         serialPort: data.serialPort.trim(),
         baudRate: Number(data.baudRate),
-        commandPrefix: (data.commandPrefix ?? "").trim() || "ot",
       });
       socket.emit("config:saved", config);
       this.io.emit("config:current", config);
@@ -143,7 +144,7 @@ export class WebSocketServer {
 
   private async handleConfigUpdate(
     socket: Socket,
-    data: { id: number; serialPort?: string; baudRate?: number; commandPrefix?: string }
+    data: { id: number; serialPort?: string; baudRate?: number }
   ): Promise<void> {
     if (typeof data.id !== "number" || !Number.isInteger(data.id) || data.id < 1) {
       socket.emit("config:error", { error: "Invalid config id" });
@@ -155,10 +156,9 @@ export class WebSocketServer {
       return;
     }
     try {
-      const updates: { serialPort?: string; baudRate?: number; commandPrefix?: string } = {};
+      const updates: { serialPort?: string; baudRate?: number } = {};
       if (data.serialPort !== undefined) updates.serialPort = data.serialPort.trim();
       if (data.baudRate !== undefined) updates.baudRate = Number(data.baudRate);
-      if (data.commandPrefix !== undefined) updates.commandPrefix = data.commandPrefix.trim();
       const config = this.serialConfigService.update(data.id, updates);
       if (config) {
         await this.communicate.resetSerialPort();
@@ -200,7 +200,7 @@ export class WebSocketServer {
 
   private async handleSerialTest(
     socket: Socket,
-    data: { serialPort: string; baudRate: number; commandPrefix?: string }
+    data: { serialPort: string; baudRate: number }
   ): Promise<void> {
     const err = this.validateConfig(data);
     if (err) {

@@ -9,12 +9,13 @@
 #include "nvs_flash.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
-#include "esp_log.h"
+#include "esp_check.h"
 
 #include "br_launch.h"
 #include "br_rcp_ctrl.h"
-#include "led_status.h"
+#include "hardware/led_status.h"
 #include "coap_controller/leader_control_client.h"
+#include "communicate/communicate_task.h"
 
 void app_main(void)
 {
@@ -56,4 +57,7 @@ void app_main(void)
 
     // Initialize Leader Control Client (CoAP client để gửi lệnh stop đến Leader)
     ESP_ERROR_CHECK(leader_control_client_init());
+
+    // Communicate task: frame protocol (USB CDC hoặc UART) + boot ping
+    ESP_ERROR_CHECK(communicate_task_start());
 }

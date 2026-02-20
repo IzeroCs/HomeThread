@@ -9,17 +9,14 @@ interface SettingsProps {
   serialConfig: {
     serialPort: string;
     baudRate: number;
-    commandPrefix: string;
   } | null;
   onSaveSerialConfig: (config: {
     serialPort: string;
     baudRate: number;
-    commandPrefix: string;
   }) => void;
   onTestConnect: (config: {
     serialPort: string;
     baudRate: number;
-    commandPrefix: string;
   }) => Promise<{ success: boolean; error?: string }>;
 }
 

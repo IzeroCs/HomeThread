@@ -16,7 +16,7 @@ Backend + Frontend điều khiển **OpenThread CLI qua UART** (ESP32-H2 ot-br).
 - **Dashboard**: Router Table & Child Table (số lượng trong nhãn). Click một dòng → Modal xem đầy đủ thông tin (kể cả cột ẩn), tiêu đề theo RLOC16.
 - **Commissioner**: Thêm joiner (EUI64, PSK), tuỳ chọn timeout 30/60/120/180/500s; danh sách joiner với cột Expiration đếm ngược.
 - **Console**: Gửi lệnh CLI tùy ý, xem output realtime.
-- **Settings**: Cấu hình Serial (port, baud, command prefix), OpenThread (PAN ID, Channel, Network Name, tự chạy Thread khi kết nối).
+- **Settings**: Cấu hình Serial (port, baud), OpenThread (PAN ID, Channel, Network Name, tự chạy Thread khi kết nối).
 
 Component dùng chung: **Modal**, **TopNav** nằm trong `frontend/src/components/common/`.
 
@@ -77,13 +77,13 @@ Dashboard-Thread/
 
 ## Cấu hình
 
-- **Backend**: `backend/.env.example` — cổng serial, baud rate, `CLI_TIMEOUT_MS`, command prefix. Cấu hình serial lưu SQLite qua Settings.
+- **Backend**: `backend/.env.example` — cổng serial, baud rate. Cấu hình serial lưu SQLite qua Settings.
 - **Frontend**: Proxy trong `vite.config.ts` (`/api`, `/socket.io` → backend). Có thể set `VITE_WS_URL` nếu cần URL backend khác.
 
-## Backend – Serial & polling
+## Backend – Serial & frame protocol
 
-- **Khi mở serial**: Backend gửi **`ot reset`** ngay sau khi mở port, chờ 5s rồi mới verify (version/state). Giúp thiết bị ổn định khi ESP/border-router chạy trước.
-- **Prefix**: Nếu thiết bị trả "Unrecognized command", backend thử prefix **"ot"** và dùng cho cả phiên nếu thành công.
-- **AUTO_FETCH_DATA** (trong code `backend/src/server/WebSocketServer.ts`): Hằng `AUTO_FETCH_DATA = true/false`. Khi **false** — không gửi polling (Status, Router/Child table, Commissioner list); vẫn gửi lệnh **state** mỗi 15s (keepalive) để thiết bị không đứng sau khi flash. Khi **true** — polling đầy đủ như bình thường.
+- **Giao tiếp:** Backend dùng **frame protocol** (USB CDC) qua serial — không còn CLI hay command prefix. Cấu trúc frame: SOF, Frame ID, CMD, LEN, DATA, CRC8, EOF (xem `docs/usb_cdc_frame_structure.md`).
+- **Khi mở serial:** Backend gửi CMD_PING, nhận ACK; nếu đã có cấu hình serial trong DB thì tự gọi `connectIfConfigured()` và polling OT config.
+- **AUTO_FETCH_DATA** (trong `backend/src/server/WebSocketServer.ts`): Khi **false** — giảm polling (Status, Router/Child, Commissioner); vẫn keepalive định kỳ. Khi **true** — polling đầy đủ.
 
 Chi tiết và TODO: [TODO.md](./TODO.md).

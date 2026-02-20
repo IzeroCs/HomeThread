@@ -1,5 +1,11 @@
 # TODO - Thread Border Router
 
+## Transport UART (communicate)
+
+**Ghi chú:** Transport UART (frame trên UART) **sẽ phát triển tiếp sau**. Hiện tại frame mặc định chạy trên **USB CDC** (transport_usb). Khi cần frame trên UART: đặt `COMMUNICATE_FRAME_PORT_IS_UART = 1` trong `include/communicate/communicate_config.h` và cấu hình UART (số UART, GPIO, baud). Code transport_uart.c đã có, có thể mở rộng (ví dụ menuconfig, board khác).
+
+---
+
 ## Auto-flash RCP firmware khi boot
 
 Tính năng: Tự động flash firmware RCP khi BR boot nếu RCP chưa có firmware.
@@ -45,23 +51,23 @@ Tính năng: Tự động flash firmware RCP khi BR boot nếu RCP chưa có fir
 
 ## USB CDC Frame (Custom frames qua USB)
 
-Tính năng: Giao tiếp với Node/backend qua USB CDC theo cấu trúc khung định nghĩa trong [docs/usb_cdc_frame_structure.md](docs/usb_cdc_frame_structure.md).
+Tính năng: Giao tiếp với Node/backend qua USB CDC (hoặc UART) theo cấu trúc khung định nghĩa trong [docs/usb_cdc_frame_structure.md](docs/usb_cdc_frame_structure.md).
+
+### Đã có
+
+- **Transport USB CDC** (transport_usb.c): USB Serial/JTAG, init/send/deinit, RX task gọi callback.
+- **Parser/Serializer khung** (communicate.c): parse SOF…EOF, CRC8/MAXIM, `communicate_init()`, `communicate_send_frame()`.
+- **Transport UART** (transport_uart.c): code đã có; **sẽ phát triển tiếp sau** (xem mục Transport UART trên).
+- **communicate_task** (communicate_task.c): main gọi `communicate_task_start()` — gọi `communicate_init()` với RX callback nội bộ; RX: PING từ backend → ACK, lệnh khác → NACK (0x01); ping watchdog: mỗi 15s check, không nhận ping trong 5 lần → esp_restart().
 
 ### Cấu trúc khung (tóm tắt)
 
 - **SOF** 0xAA | **Frame ID** (1 byte) | **CMD** (1 byte) | **LEN** (2 bytes big-endian, max 2048) | **DATA** | **CRC8** | **EOF** 0x55
 - **CRC8:** CRC-8/MAXIM (poly 0x31, init 0x00) trên `[Frame ID, CMD, LEN_HIGH, LEN_LOW, DATA...]`
 
-### Các bước cần làm (ESP32 – BR)
+### Các bước còn lại (ESP32 – BR)
 
-1. **Parser/Serializer khung**
-   - Parse từ stream: tìm SOF 0xAA, đọc Frame ID, CMD, LEN (big-endian), DATA (LEN bytes), CRC8, EOF 0x55. Chỉ chấp nhận LEN ≤ 2048.
-   - Serialize khung khi gửi: SOF, Frame ID, CMD, LEN_HIGH, LEN_LOW, DATA, CRC8, EOF.
-
-2. **CRC8**
-   - Implement CRC-8/MAXIM (poly 0x31, init 0x00); dùng chung cho tính và kiểm tra.
-
-3. **Xử lý CMD (Pull từ Node → ESP32)**
+1. **Xử lý CMD (Pull từ Node → ESP32)** (trong communicate_task hoặc handler riêng)
    - **CMD_PING (0x04):** Trả CMD_ACK, Frame ID echo.
    - **CMD_RESET (0x10):** Reset thiết bị; trả CMD_ACK.
    - **CMD_FACTORY (0x11):** Factory reset (DATA = 0xAA); trả CMD_ACK hoặc CMD_NACK (invalid param nếu thiếu 0xAA).
@@ -71,16 +77,12 @@ Tính năng: Giao tiếp với Node/backend qua USB CDC theo cấu trúc khung �
    - **CMD_DATASET_ACTIVE (0x15):** Đọc Active Dataset; trả CMD_ACK + TLV binary.
    - **CMD_IP_ADDR (0x16):** Đọc IPv6 leader; trả CMD_ACK + 16 bytes.
 
-4. **Phản hồi Pull (ACK/NACK)**
+2. **Phản hồi Pull (ACK/NACK)**
    - Luôn echo **cùng Frame ID** trong CMD_ACK/CMD_NACK.
    - CMD_NACK: DATA = 1 byte error code (Invalid CMD 0x01, Not ready 0x02, Timeout 0x03, Invalid param 0x04, Busy 0x05).
 
-5. **Push (ESP32 → Node)**
+3. **Push (ESP32 → Node)**
    - **CMD_DATA (0x01):** Gửi CBOR từ child/router lên Node; tăng Frame ID cho mỗi khung.
-
-6. **USB CDC + FreeRTOS**
-   - Dùng 2 task: một cho TX, một cho RX (hoặc một task RX + queue sang task xử lý) để xử lý đồng thời.
-   - USB CDC trên ESP32-S3: cấu hình USB CDC trong sdkconfig (không dùng cho console), đọc/ghi qua driver CDC.
 
 ### Lưu ý
 

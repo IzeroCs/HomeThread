@@ -1,5 +1,7 @@
 # USB CDC Frame Structure
 
+**Transport:** Hiện tại frame chạy trên **USB CDC** (transport_usb, USB Serial/JTAG). **Transport UART** (transport_uart) sẽ phát triển tiếp; cấu hình trong `include/communicate/communicate_config.h` (`COMMUNICATE_FRAME_PORT_IS_UART`).
+
 ## Cấu trúc khung
 
 | Byte | Field | Mô tả |
@@ -35,5 +37,5 @@
 ## Lưu ý
 
 - CRC8 và LEN: hai bên dùng cùng thuật toán; LEN ≤ 2048.
-- Parser dựa vào LEN (không escape); Node buffer tích lũy; ESP32 nên 2 task TX/RX.
+- Parser dựa vào LEN (không escape); Node buffer tích lũy; ESP32 dùng task RX trong transport (USB CDC hoặc UART).
 - PAN ID hợp lệ: 0x0000–0xFFFE.

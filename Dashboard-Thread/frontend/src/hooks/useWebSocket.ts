@@ -30,14 +30,12 @@ export interface UseWebSocketReturn {
   saveConfig: (data: {
     serialPort: string;
     baudRate: number;
-    commandPrefix?: string;
   }) => void;
   connectSerial: () => void;
   disconnectSerial: () => void;
   testSerialConnect: (data: {
     serialPort: string;
     baudRate: number;
-    commandPrefix?: string;
   }) => Promise<{ success: boolean; error?: string }>;
   otConfig: OtConfig | null;
   getOtConfig: () => void;
@@ -203,7 +201,7 @@ export function useWebSocket(): UseWebSocketReturn {
   }, []);
 
   const saveConfig = useCallback(
-    (data: { serialPort: string; baudRate: number; commandPrefix: string }) => {
+    (data: { serialPort: string; baudRate: number }) => {
       socketRef.current?.emit("config:save", data);
     },
     []
@@ -221,7 +219,6 @@ export function useWebSocket(): UseWebSocketReturn {
     (data: {
       serialPort: string;
       baudRate: number;
-      commandPrefix: string;
     }): Promise<{ success: boolean; error?: string }> =>
       new Promise((resolve) => {
         if (!socketRef.current) {

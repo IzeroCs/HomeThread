@@ -5,6 +5,9 @@
 import Database from "better-sqlite3";
 import path from "path";
 import fs from "fs";
+import { logger } from "../utils/logger";
+
+const dbLog = logger.child("DB");
 
 const DB_DIR = path.join(process.cwd(), "data");
 const DB_PATH = path.join(DB_DIR, "database.db");
@@ -28,7 +31,7 @@ export function getDatabase(): Database.Database {
   dbInstance.pragma("foreign_keys = ON");
   dbInstance.pragma("journal_mode = WAL");
 
-  console.log(`[DB] Initialized: ${DB_PATH}`);
+  dbLog.info(`Initialized: ${path.relative("./", DB_PATH)}`);
 
   return dbInstance;
 }
@@ -37,6 +40,6 @@ export function closeDatabase(): void {
   if (dbInstance) {
     dbInstance.close();
     dbInstance = null;
-    console.log("[DB] Closed");
+    dbLog.info("Closed");
   }
 }

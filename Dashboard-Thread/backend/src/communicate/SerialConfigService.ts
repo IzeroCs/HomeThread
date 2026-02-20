@@ -8,7 +8,6 @@ export interface SerialConfig {
   id?: number;
   serialPort: string;
   baudRate: number;
-  commandPrefix: string;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -25,7 +24,6 @@ export class SerialConfigService {
         id,
         serial_port as serialPort,
         baud_rate as baudRate,
-        command_prefix as commandPrefix,
         created_at as createdAt,
         updated_at as updatedAt
       FROM serial_config
@@ -42,7 +40,6 @@ export class SerialConfigService {
       id: row.id,
       serialPort: row.serialPort,
       baudRate: row.baudRate,
-      commandPrefix: row.commandPrefix,
       createdAt: row.createdAt,
       updatedAt: row.updatedAt,
     };
@@ -57,7 +54,6 @@ export class SerialConfigService {
         id,
         serial_port as serialPort,
         baud_rate as baudRate,
-        command_prefix as commandPrefix,
         created_at as createdAt,
         updated_at as updatedAt
       FROM serial_config
@@ -73,7 +69,6 @@ export class SerialConfigService {
       id: row.id,
       serialPort: row.serialPort,
       baudRate: row.baudRate,
-      commandPrefix: row.commandPrefix,
       createdAt: row.createdAt,
       updatedAt: row.updatedAt,
     };
@@ -84,15 +79,11 @@ export class SerialConfigService {
    */
   create(config: Omit<SerialConfig, "id" | "createdAt" | "updatedAt">): SerialConfig {
     const stmt = this.db.prepare(`
-      INSERT INTO serial_config (serial_port, baud_rate, command_prefix)
-      VALUES (?, ?, ?)
+      INSERT INTO serial_config (serial_port, baud_rate)
+      VALUES (?, ?)
     `);
 
-    const result = stmt.run(
-      config.serialPort,
-      config.baudRate,
-      config.commandPrefix
-    );
+    const result = stmt.run(config.serialPort, config.baudRate);
 
     const created = this.getById(result.lastInsertRowid as number);
     if (!created) {
@@ -116,10 +107,6 @@ export class SerialConfigService {
     if (config.baudRate !== undefined) {
       updates.push("baud_rate = ?");
       values.push(config.baudRate);
-    }
-    if (config.commandPrefix !== undefined) {
-      updates.push("command_prefix = ?");
-      values.push(config.commandPrefix);
     }
 
     if (updates.length === 0) {
@@ -158,7 +145,6 @@ export class SerialConfigService {
         id,
         serial_port as serialPort,
         baud_rate as baudRate,
-        command_prefix as commandPrefix,
         created_at as createdAt,
         updated_at as updatedAt
       FROM serial_config
@@ -170,7 +156,6 @@ export class SerialConfigService {
       id: row.id,
       serialPort: row.serialPort,
       baudRate: row.baudRate,
-      commandPrefix: row.commandPrefix,
       createdAt: row.createdAt,
       updatedAt: row.updatedAt,
     }));
@@ -195,7 +180,6 @@ export class SerialConfigService {
       const updated = this.update(existing.id, {
         serialPort: config.serialPort,
         baudRate: config.baudRate,
-        commandPrefix: config.commandPrefix,
       });
       if (!updated) {
         throw new Error("Failed to update config");

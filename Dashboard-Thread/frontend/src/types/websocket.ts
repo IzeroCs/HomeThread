@@ -6,7 +6,6 @@ export interface SerialConfigFromBackend {
   id?: number;
   serialPort: string;
   baudRate: number;
-  commandPrefix: string;
   createdAt?: string;
   updatedAt?: string;
 }
