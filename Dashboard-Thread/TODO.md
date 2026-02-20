@@ -10,8 +10,12 @@ Phần đã triển khai được tóm tắt trong [README.md](./README.md). Dư
 - [x] Thư mục `communicate/`: SerialPort, SerialConfigService, frame (constants, crc8, frameBuilder, frameParser), CommunicateManager, OtConfigManager, PollingManager.
 - [x] Serial raw mode, parse/gửi frame, CMD_ACK/CMD_NACK → cache, Pull (CMD_PING, CMD_* config), polling + keepalive.
 - [x] WebSocketServer chỉ emit; Main khởi tạo io + CommunicateManager, `connectIfConfigured()` khi listen.
+- [x] **Tự khởi động Thread khi serial connect:** Nếu `thread_run_on_connect` bật, backend sau khi connect kiểm tra state (CMD_STATE); chỉ khi state = disabled mới gửi CMD_THREAD_START.
 - [ ] **CMD_DATA (CBOR)**: Parse CBOR từ CMD_DATA để cập nhật thread state / router-child-joiner table (khi firmware gửi).
 - [ ] **Set config / commissioner qua frame**: Khi firmware hỗ trợ CMD tương ứng.
+- [ ] **IP addr khi thread stop**: Khi thread đã start sau đó stop (state chuyển từ leader/router/child sang disabled/detached), ipaddr sẽ trống nhưng không được clear khỏi config. Cần xử lý để giữ lại ipaddr cũ hoặc clear khi state không còn leader/router/child. (Lưu lại để xử lý sau)
+- [ ] **Dataset active trả NACK**: Có lúc lấy dataset active (`CMD_DATASET_ACTIVE`) trả lại NACK thay vì ACK. Cần xử lý error case này (retry, log, hoặc fallback). (Lưu lại để xử lý sau)
+- [ ] **OpenThread config nên set**: Hiện tại frontend đã có PAN ID, Channel, Network Name (đủ cho hầu hết trường hợp). Có thể thêm tùy chọn: Extended PAN ID (nếu cần join network cụ thể), Network Key (nếu cần join network có sẵn). Các config khác (Active Timestamp, Mesh Local Prefix, Security Policy, Channel Mask, PSKc) nên để OpenThread tự quản lý. (Lưu lại để xử lý sau)
 
 Chi tiết: [docs/migration_to_frame_protocol.md](docs/migration_to_frame_protocol.md).
 

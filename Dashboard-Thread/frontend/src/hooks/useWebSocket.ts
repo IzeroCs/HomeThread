@@ -11,6 +11,7 @@ import type {
   OtThreadState,
   OtTableData,
 } from "../types/websocket";
+import { EVENTS } from "shared/src/events";
 
 // Dev: dùng cùng origin (vd. http://<IP>:5173) để truy cập từ LAN qua proxy
 // Production: set VITE_WS_URL hoặc dùng cùng host
@@ -38,13 +39,16 @@ export interface UseWebSocketReturn {
     baudRate: number;
   }) => Promise<{ success: boolean; error?: string }>;
   otConfig: OtConfig | null;
-  getOtConfig: () => void;
-  setOtConfig: (data: { panid?: string; channel?: number; networkName?: string }) => Promise<{ success: boolean; error?: string }>;
+  /** Gửi request lấy OT config từ thiết bị; resolve khi nhận OT_CONFIG hoặc sau timeout 6s. */
+  getOtConfig: () => Promise<OtConfig | null>;
+  setOtConfig: (data: { panid?: string; channel?: number; networkName?: string; extendedPanId?: string; networkKey?: string }) => Promise<{ success: boolean; error?: string }>;
   threadRunning: boolean | null;
   /** Raw state: leader, router, child, detached, disabled — dùng để đổi màu dot TopNav */
   threadState: string | null;
   getThreadState: () => void;
   setThreadRunning: (running: boolean) => Promise<{ success: boolean; error?: string }>;
+  startThread: () => Promise<{ success: boolean; error?: string }>;
+  stopThread: () => Promise<{ success: boolean; error?: string }>;
   threadRunOnConnect: boolean;
   getThreadRunOnConnect: () => void;
   setThreadRunOnConnect: (run: boolean) => void;
@@ -91,12 +95,12 @@ export function useWebSocket(): UseWebSocketReturn {
       setConnected(true);
       setConfigError(null);
       setSerialError(null);
-      socket.emit("config:get");
-      socket.emit("serial:status");
-      socket.emit("ot:getThreadRunOnConnect");
+      socket.emit(EVENTS.CONFIG_GET);
+      socket.emit(EVENTS.SERIAL_STATUS);
+      socket.emit(EVENTS.OT_GET_THREAD_RUN_ON_CONNECT);
     });
 
-    socket.on("disconnect", (reason) => {
+    socket.on("disconnect", () => {
       setConnected(false);
       setSerialStatus(null);
       setThreadRunningState(null);
@@ -108,52 +112,52 @@ export function useWebSocket(): UseWebSocketReturn {
       setSerialError(err.message);
     });
 
-    socket.on("config:current", (data: SerialConfigFromBackend | null) => {
+    socket.on(EVENTS.CONFIG_CURRENT, (data: SerialConfigFromBackend | null) => {
       setConfig(data);
       setConfigError(null);
     });
 
-    socket.on("config:saved", (data: SerialConfigFromBackend) => {
+    socket.on(EVENTS.CONFIG_SAVED, (data: SerialConfigFromBackend) => {
       setConfig(data);
       setConfigError(null);
     });
 
-    socket.on("config:updated", (data: SerialConfigFromBackend) => {
+    socket.on(EVENTS.CONFIG_UPDATED, (data: SerialConfigFromBackend) => {
       setConfig(data);
       setConfigError(null);
     });
 
-    socket.on("config:error", (data: { error?: string }) => {
+    socket.on(EVENTS.CONFIG_ERROR, (data: { error?: string }) => {
       setConfigError(data?.error ?? "Config error");
     });
 
-    socket.on("serial:status", (data: SerialStatus) => {
+    socket.on(EVENTS.SERIAL_STATUS, (data: SerialStatus) => {
       setSerialStatus(data);
       setSerialError(null);
     });
 
-    socket.on("serial:connected", (data: { success: boolean; status?: SerialStatus }) => {
+    socket.on(EVENTS.SERIAL_CONNECTED, (data: { success: boolean; status?: SerialStatus }) => {
       if (data.status) {
         setSerialStatus(data.status);
       }
       setSerialError(null);
     });
 
-    socket.on("serial:disconnected", () => {
+    socket.on(EVENTS.SERIAL_DISCONNECTED, () => {
       setSerialStatus((prev) =>
         prev ? { ...prev, isConnected: false } : null
       );
     });
 
-    socket.on("serial:error", (data: { error?: string }) => {
+    socket.on(EVENTS.SERIAL_ERROR, (data: { error?: string }) => {
       setSerialError(data?.error ?? "Serial error");
     });
 
-    socket.on("ot:config", (data: OtConfig) => {
+    socket.on(EVENTS.OT_CONFIG, (data: OtConfig) => {
       setOtConfigState(data.error ? { error: data.error } : data);
     });
 
-    socket.on("ot:threadState", (data: OtThreadState) => {
+    socket.on(EVENTS.OT_THREAD_STATE, (data: OtThreadState) => {
       if (data.error) {
         setThreadRunningState(null);
         setThreadState(null);
@@ -163,19 +167,19 @@ export function useWebSocket(): UseWebSocketReturn {
       }
     });
 
-    socket.on("ot:threadRunOnConnect", (data: { runOnConnect: boolean }) => {
+    socket.on(EVENTS.OT_THREAD_RUN_ON_CONNECT, (data: { runOnConnect: boolean }) => {
       setThreadRunOnConnectState(!!data.runOnConnect);
     });
 
-    socket.on("ot:routerTable", (data: OtTableData) => {
+    socket.on(EVENTS.OT_ROUTER_TABLE, (data: OtTableData) => {
       setRouterTable(data);
     });
 
-    socket.on("ot:childTable", (data: OtTableData) => {
+    socket.on(EVENTS.OT_CHILD_TABLE, (data: OtTableData) => {
       setChildTable(data);
     });
 
-    socket.on("commissioner:joinerTable", (data: OtTableData) => {
+    socket.on(EVENTS.OT_JOINER_TABLE, (data: OtTableData) => {
       setJoinerTable(data);
     });
 
@@ -197,22 +201,22 @@ export function useWebSocket(): UseWebSocketReturn {
   }, []);
 
   const getConfig = useCallback(() => {
-    socketRef.current?.emit("config:get");
+    socketRef.current?.emit(EVENTS.CONFIG_GET);
   }, []);
 
   const saveConfig = useCallback(
     (data: { serialPort: string; baudRate: number }) => {
-      socketRef.current?.emit("config:save", data);
+      socketRef.current?.emit(EVENTS.CONFIG_SAVE, data);
     },
     []
   );
 
   const connectSerial = useCallback(() => {
-    socketRef.current?.emit("serial:connect");
+    socketRef.current?.emit(EVENTS.SERIAL_CONNECT);
   }, []);
 
   const disconnectSerial = useCallback(() => {
-    socketRef.current?.emit("serial:disconnect");
+    socketRef.current?.emit(EVENTS.SERIAL_DISCONNECT);
   }, []);
 
   const testSerialConnect = useCallback(
@@ -226,40 +230,57 @@ export function useWebSocket(): UseWebSocketReturn {
           return;
         }
         const handler = (result: { success: boolean; error?: string }) => {
-          socketRef.current?.off("serial:test:result", handler);
+          socketRef.current?.off(EVENTS.SERIAL_TEST_RESULT, handler);
           resolve(result);
         };
-        socketRef.current.once("serial:test:result", handler);
-        socketRef.current.emit("serial:test", data);
+        socketRef.current.once(EVENTS.SERIAL_TEST_RESULT, handler);
+        socketRef.current.emit(EVENTS.SERIAL_TEST, data);
       }),
     []
   );
 
-  const getOtConfig = useCallback(() => {
+  const getOtConfig = useCallback((): Promise<OtConfig | null> => {
     setOtConfigState(null);
-    socketRef.current?.emit("ot:getConfig");
+    if (!socketRef.current) {
+      return Promise.resolve(null);
+    }
+    const socket = socketRef.current;
+    return new Promise((resolve) => {
+      const OT_CONFIG_TIMEOUT_MS = 6000;
+      const handler = (config: OtConfig) => {
+        clearTimeout(timeoutId);
+        socket?.off(EVENTS.OT_CONFIG, handler);
+        resolve(config);
+      };
+      socket.once(EVENTS.OT_CONFIG, handler);
+      socket.emit(EVENTS.OT_GET_CONFIG);
+      const timeoutId = setTimeout(() => {
+        socket?.off(EVENTS.OT_CONFIG, handler);
+        resolve(null);
+      }, OT_CONFIG_TIMEOUT_MS);
+    });
   }, []);
 
   const setOtConfig = useCallback(
-    (data: { panid?: string; channel?: number; networkName?: string }): Promise<{ success: boolean; error?: string }> =>
+    (data: { panid?: string; channel?: number; networkName?: string; extendedPanId?: string; networkKey?: string }): Promise<{ success: boolean; error?: string }> =>
       new Promise((resolve) => {
         if (!socketRef.current) {
           resolve({ success: false, error: "Not connected" });
           return;
         }
         const handler = (result: { success: boolean; error?: string }) => {
-          socketRef.current?.off("ot:setConfig:result", handler);
+          socketRef.current?.off(EVENTS.OT_SET_CONFIG_RESULT, handler);
           resolve(result);
         };
-        socketRef.current.once("ot:setConfig:result", handler);
-        socketRef.current.emit("ot:setConfig", data);
+        socketRef.current.once(EVENTS.OT_SET_CONFIG_RESULT, handler);
+        socketRef.current.emit(EVENTS.OT_SET_CONFIG, data);
       }),
     []
   );
 
   const getThreadState = useCallback(() => {
     setThreadRunningState(null);
-    socketRef.current?.emit("ot:getThreadState");
+    socketRef.current?.emit(EVENTS.OT_GET_THREAD_STATE);
   }, []);
 
   const setThreadRunning = useCallback(
@@ -270,34 +291,68 @@ export function useWebSocket(): UseWebSocketReturn {
           return;
         }
         const handler = (result: { success: boolean; error?: string }) => {
-          socketRef.current?.off("ot:setThreadRunning:result", handler);
+          socketRef.current?.off(EVENTS.OT_SET_THREAD_RUNNING_RESULT, handler);
           resolve(result);
         };
-        socketRef.current.once("ot:setThreadRunning:result", handler);
-        socketRef.current.emit("ot:setThreadRunning", { running });
+        socketRef.current.once(EVENTS.OT_SET_THREAD_RUNNING_RESULT, handler);
+        socketRef.current.emit(EVENTS.OT_SET_THREAD_RUNNING, { running });
       }),
     []
   );
 
   const getThreadRunOnConnect = useCallback(() => {
-    socketRef.current?.emit("ot:getThreadRunOnConnect");
+    socketRef.current?.emit(EVENTS.OT_GET_THREAD_RUN_ON_CONNECT);
   }, []);
+
+  const startThread = useCallback(
+    (): Promise<{ success: boolean; error?: string }> =>
+      new Promise((resolve) => {
+        if (!socketRef.current) {
+          resolve({ success: false, error: "Not connected" });
+          return;
+        }
+        const handler = (result: { success: boolean; error?: string }) => {
+          socketRef.current?.off(EVENTS.OT_START_THREAD_RESULT, handler);
+          resolve(result);
+        };
+        socketRef.current.once(EVENTS.OT_START_THREAD_RESULT, handler);
+        socketRef.current.emit(EVENTS.OT_START_THREAD);
+      }),
+    []
+  );
+
+  const stopThread = useCallback(
+    (): Promise<{ success: boolean; error?: string }> =>
+      new Promise((resolve) => {
+        if (!socketRef.current) {
+          resolve({ success: false, error: "Not connected" });
+          return;
+        }
+        const handler = (result: { success: boolean; error?: string }) => {
+          socketRef.current?.off(EVENTS.OT_STOP_THREAD_RESULT, handler);
+          resolve(result);
+        };
+        socketRef.current.once(EVENTS.OT_STOP_THREAD_RESULT, handler);
+        socketRef.current.emit(EVENTS.OT_STOP_THREAD);
+      }),
+    []
+  );
 
   const setThreadRunOnConnect = useCallback((run: boolean) => {
     setThreadRunOnConnectState(run);
-    socketRef.current?.emit("ot:setThreadRunOnConnect", { runOnConnect: run });
+    socketRef.current?.emit(EVENTS.OT_SET_THREAD_RUN_ON_CONNECT, { runOnConnect: run });
   }, []);
 
   const getRouterTable = useCallback(() => {
-    socketRef.current?.emit("ot:getRouterTable");
+    socketRef.current?.emit(EVENTS.OT_GET_ROUTER_TABLE);
   }, []);
 
   const getChildTable = useCallback(() => {
-    socketRef.current?.emit("ot:getChildTable");
+    socketRef.current?.emit(EVENTS.OT_GET_CHILD_TABLE);
   }, []);
 
   const getJoinerTable = useCallback(() => {
-    socketRef.current?.emit("commissioner:getJoinerTable");
+    socketRef.current?.emit(EVENTS.COMMISSIONER_GET_JOINER_TABLE);
   }, []);
 
   const commissionerConnect = useCallback(
@@ -308,11 +363,11 @@ export function useWebSocket(): UseWebSocketReturn {
           return;
         }
         const handler = (result: { success: boolean; error?: string }) => {
-          socketRef.current?.off("commissioner:connect:result", handler);
+          socketRef.current?.off(EVENTS.COMMISSIONER_CONNECT_RESULT, handler);
           resolve(result);
         };
-        socketRef.current.once("commissioner:connect:result", handler);
-        socketRef.current.emit("commissioner:connect", { eui64, psk, timeout: timeoutSeconds });
+        socketRef.current.once(EVENTS.COMMISSIONER_CONNECT_RESULT, handler);
+        socketRef.current.emit(EVENTS.COMMISSIONER_CONNECT, { eui64, psk, timeout: timeoutSeconds });
       }),
     []
   );
@@ -321,9 +376,9 @@ export function useWebSocket(): UseWebSocketReturn {
     if (!socketRef.current) {
       return () => {};
     }
-    socketRef.current.on("serial:data", callback);
+    socketRef.current.on(EVENTS.SERIAL_DATA, callback);
     return () => {
-      socketRef.current?.off("serial:data", callback);
+      socketRef.current?.off(EVENTS.SERIAL_DATA, callback);
     };
   }, []);
 
@@ -364,6 +419,8 @@ export function useWebSocket(): UseWebSocketReturn {
     threadState,
     getThreadState,
     setThreadRunning,
+    startThread,
+    stopThread,
     threadRunOnConnect,
     getThreadRunOnConnect,
     setThreadRunOnConnect,

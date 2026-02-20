@@ -3,12 +3,12 @@
  * Cập nhật qua set() (thay thế) hoặc update() (merge partial); không tự broadcast.
  */
 
-export type OtConfig = {
-  panid?: string;
-  channel?: number;
-  networkName?: string;
+import type { ParsedDataset } from "./frame";
+
+export type OtConfig = ParsedDataset & {
+  // Additional fields (không có trong ParsedDataset)
   ipaddr?: string;
-  datasetActive?: string;
+  datasetActive?: string; // Hex string gốc (để giữ lại cho compatibility)
   error?: string;
 };
 

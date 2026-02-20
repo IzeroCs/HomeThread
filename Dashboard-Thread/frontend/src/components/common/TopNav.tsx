@@ -27,25 +27,22 @@ export default function TopNav({
   onNavigate = () => {},
 }: TopNavProps) {
   const isCommissionerEnabled = threadState?.toLowerCase() === "leader";
-  const useThreadColor = serialConnected && threadRunOnConnect;
   const stateLower = threadState?.toLowerCase();
-  // child → xanh dương, router → tím, leader → xanh lá; detached/disabled/null → cam. Chưa bật tự chạy → cam.
+  // child → xanh dương, router → tím, leader → xanh lá; detached/disabled/null → cam. Chưa kết nối serial → xám.
   const statusClass = !serialConnected
     ? "status-disconnected"
-    : useThreadColor && stateLower
-      ? stateLower === "child"
-        ? "status-thread-blue"
-        : stateLower === "router"
-          ? "status-thread-purple"
-          : stateLower === "leader"
-            ? "status-thread-green"
-            : "status-serial"
-      : "status-serial";
+    : stateLower === "child"
+      ? "status-thread-blue"
+      : stateLower === "router"
+        ? "status-thread-purple"
+        : stateLower === "leader"
+          ? "status-thread-green"
+          : "status-serial"; // Cam cho detached/disabled/null hoặc chưa bật tự chạy
   const statusTitle = !serialConnected
     ? "Chưa kết nối serial"
-    : useThreadColor && threadState
+    : threadState
       ? `Serial đã kết nối, Thread: ${threadState}`
-      : useThreadColor
+      : threadRunOnConnect
         ? "Serial đã kết nối, đang chạy Thread"
         : "Serial đã kết nối";
   return (

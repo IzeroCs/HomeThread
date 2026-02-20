@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useWebSocketContext } from "../../hooks/useWebSocketContext";
+import { useToast } from "../../contexts/ToastContext";
 import "./OpenThreadConfigForm.scss";
 
 export default function OpenThreadConfigForm() {
@@ -8,13 +9,18 @@ export default function OpenThreadConfigForm() {
     otConfig,
     getOtConfig,
     setOtConfig,
+    startThread,
+    stopThread,
     threadRunOnConnect,
     getThreadRunOnConnect,
     setThreadRunOnConnect,
   } = useWebSocketContext();
+  const { showToast } = useToast();
   const [panid, setPanid] = useState("");
   const [channel, setChannel] = useState<number>(11);
   const [networkName, setNetworkName] = useState("");
+  const [extendedPanId, setExtendedPanId] = useState("");
+  const [networkKey, setNetworkKey] = useState("");
   const [loading, setLoading] = useState(false);
   const [applying, setApplying] = useState(false);
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
@@ -36,14 +42,19 @@ export default function OpenThreadConfigForm() {
       if (otConfig.panid != null) setPanid(otConfig.panid);
       if (otConfig.channel != null) setChannel(otConfig.channel);
       if (otConfig.networkName != null) setNetworkName(otConfig.networkName);
+      if (otConfig.extendedPanId != null) setExtendedPanId(otConfig.extendedPanId);
+      if (otConfig.networkKey != null) setNetworkKey(otConfig.networkKey);
     }
   }, [otConfig]);
 
   const handleLoad = async () => {
     setMessage(null);
     setLoading(true);
-    getOtConfig();
-    setTimeout(() => setLoading(false), 1500);
+    try {
+      await getOtConfig();
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleApply = async () => {
@@ -53,12 +64,14 @@ export default function OpenThreadConfigForm() {
       panid: panid.trim() || undefined,
       channel: channel >= 11 && channel <= 26 ? channel : undefined,
       networkName: networkName.trim() || undefined,
+      extendedPanId: extendedPanId.trim() || undefined,
+      networkKey: networkKey.trim() || undefined,
     });
     setApplying(false);
     if (result.success) {
-      setMessage({ type: "success", text: "Đã áp dụng cấu hình." });
+      showToast("success", "Đã áp dụng cấu hình thành công.");
     } else {
-      setMessage({ type: "error", text: result.error ?? "Áp dụng thất bại." });
+      showToast("error", result.error ?? "Áp dụng thất bại.");
     }
   };
 
@@ -67,7 +80,7 @@ export default function OpenThreadConfigForm() {
       <div className="form-card">
         <h2 className="form-page-title">OpenThread / Thread</h2>
         <p className="form-page-description">
-          Cấu hình Panid, Channel, Network Name trên thiết bị. Cần kết nối serial trước.
+          Cấu hình Panid, Channel, Network Name, Extended PAN ID, Network Key trên thiết bị
         </p>
 
         {!isConnected && (
@@ -119,16 +132,70 @@ export default function OpenThreadConfigForm() {
               disabled={!isConnected}
             />
           </div>
+          <div className="form-group">
+            <label htmlFor="ot-extendedpanid">Extended PAN ID</label>
+            <input
+              id="ot-extendedpanid"
+              type="text"
+              value={extendedPanId}
+              onChange={(e) => setExtendedPanId(e.target.value)}
+              placeholder="0x1234567890abcdef"
+              disabled={!isConnected}
+            />
+            <small className="form-hint">16 ký tự hex (8 bytes), ví dụ: 0x1234567890abcdef</small>
+          </div>
+          <div className="form-group">
+            <label htmlFor="ot-networkkey">Network Key</label>
+            <input
+              id="ot-networkkey"
+              type="text"
+              value={networkKey}
+              onChange={(e) => setNetworkKey(e.target.value)}
+              placeholder="0x1234567890abcdef1234567890abcdef"
+              disabled={!isConnected}
+            />
+            <small className="form-hint">32 ký tự hex (16 bytes), ví dụ: 0x1234567890abcdef1234567890abcdef</small>
+          </div>
           <div className="form-group ot-config-switch">
-            <label className="ot-config-checkbox-label">
-              <input
-                type="checkbox"
-                checked={threadRunOnConnect}
-                onChange={(e) => setThreadRunOnConnect(e.target.checked)}
-              />
-              <span className="ot-config-checkbox-text">
-                Khởi động Thread
-              </span>
+            <label className="ot-config-toggle-label">
+              <div className="ot-config-toggle-wrapper">
+                <input
+                  type="checkbox"
+                  className="ot-config-toggle-input"
+                  checked={threadRunOnConnect}
+                  onChange={async (e) => {
+                    const newValue = e.target.checked;
+                    setThreadRunOnConnect(newValue);
+                    
+                    // Gọi startThread hoặc stopThread khi toggle
+                    if (newValue) {
+                      const result = await startThread();
+                      if (result.success) {
+                        showToast("success", "Đã khởi động Thread.");
+                      } else {
+                        showToast("error", result.error ?? "Không thể khởi động Thread.");
+                        // Revert toggle nếu thất bại
+                        setThreadRunOnConnect(false);
+                      }
+                    } else {
+                      const result = await stopThread();
+                      if (result.success) {
+                        showToast("success", "Đã dừng Thread.");
+                      } else {
+                        showToast("error", result.error ?? "Không thể dừng Thread.");
+                        // Revert toggle nếu thất bại
+                        setThreadRunOnConnect(true);
+                      }
+                    }
+                  }}
+                />
+                <span className="ot-config-toggle-slider">
+                  <span className="ot-config-toggle-text-inner">
+                    {threadRunOnConnect ? "ON" : "OFF"}
+                  </span>
+                </span>
+              </div>
+              <span className="ot-config-toggle-text">Khởi động Thread</span>
             </label>
           </div>
           <div className="form-actions">

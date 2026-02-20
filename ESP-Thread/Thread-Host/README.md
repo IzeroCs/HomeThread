@@ -99,7 +99,6 @@ Thread-Host/
 │   ├── br_main.c                    # Entry point (app_main)
 │   ├── br_launch.c                  # Launch OpenThread BR
 │   ├── br_console.c                 # CLI console (OpenThread + system commands)
-│   ├── br_state_change.c            # OpenThread state change callback: log + gửi CMD_STATE (1 byte) tới backend
 │   ├── br_rcp_ctrl.c                # Control RESET/BOOT pins của RCP
 │   ├── br_custom_config.h           # OpenThread custom config (CoAP API enabled)
 │   ├── hardware/
@@ -110,9 +109,9 @@ Thread-Host/
 │   │   └── device_registry_handler.c   # Handler chung cho register/update/ping
 │   ├── communicate/
 │   │   ├── communicate.c               # Parse/serialize frame, gọi transport
-│   │   ├── communicate_task.c          # RX + state watchdog; gửi STATE tới backend khi role đổi (retry 1s nếu không ACK)
+│   │   ├── communicate_task.c          # RX callback + state watchdog (backend pull định kỳ)
 │   │   ├── communicate_queue.c         # Queue frame, process task gọi handler; timeout gửi, log khi chờ lâu
-│   │   ├── communicate_command.c      # Handler CMD_STATE, CMD_DATASET_ACTIVE, CMD_IP_ADDR
+│   │   ├── communicate_command.c      # Handler CMD STATE, DATASET_ACTIVE, IP_ADDR, SET_*, ROUTER/CHILD/JOINER_TABLE, THREAD_START/STOP/VERSION
 │   │   ├── transport_uart.c            # Transport UART (sẽ phát triển tiếp)
 │   │   └── transport_usb.c             # Transport USB CDC (USB Serial/JTAG)
 │   ├── include/
@@ -129,7 +128,7 @@ Thread-Host/
 │   ├── communicate/
 │   │   ├── communicate.h            # Communicate API, CMD defines
 │   │   ├── communicate_config.h     # FRAME_PORT_IS_UART, UART/CDC config
-│   │   ├── communicate_task.h       # communicate_task_start(), send_state_to_backend
+│   │   ├── communicate_task.h       # communicate_task_start(), mark_state_received, mark_ip_response_pending
 │   │   ├── communicate_queue.h      # communicate_queue_init(), post
 │   │   ├── communicate_command.h    # Command handler API
 │   │   ├── transport_uart.h         # Transport UART API
@@ -196,10 +195,10 @@ Thread-Host/
   - Handler chung dùng logic từ `device_registry_handler` cho cả 3 resource
   - Queue-based processing: enqueue CoAP data từ child devices, process và output qua UART
   - Hỗ trợ tối đa 10 items trong queue, payload tối đa 768 bytes
-- ✅ **Communicate (frame protocol)** — Parse/serialize khung SOF/Frame ID/CMD/LEN/DATA/CRC8/EOF; **transport USB CDC** (transport_usb) đã dùng; **transport UART** (transport_uart) sẽ phát triển tiếp. **communicate_task**: `communicate_task_start()` — init communicate + queue (timeout gửi 500 ms, log khi item chờ xử lý &gt; 2 s) + RX callback (STATE→ACK, lệnh khác→NACK) + state watchdog (backend gửi STATE interval; không nhận state trong 5 lần × 15s → restart). **BR→backend (Push):** khi OpenThread role thay đổi (`br_state_change`), BR gửi CMD_STATE với 1 byte (0=disabled..4=leader); nếu không nhận ACK trong 1s thì gửi lại; xem [docs/usb_cdc_frame_structure.md](docs/usb_cdc_frame_structure.md).
+- ✅ **Communicate (frame protocol)** — Parse/serialize khung SOF/Frame ID/CMD/LEN/DATA/CRC8/EOF; **transport USB CDC** (transport_usb) đã dùng; **transport UART** (transport_uart) sẽ phát triển tiếp. **communicate_task**: init + queue (timeout 500 ms, log khi chờ &gt; 2 s) + state watchdog. **Handlers:** CMD_STATE, DATASET_ACTIVE, IP_ADDR (ACK + data), SET_PANID/CHANNEL/NETWORK_NAME/EXTENDED_PANID/NETWORK_KEY, ROUTER/CHILD/JOINER_TABLE (ACK + table data), THREAD_START, THREAD_STOP, THREAD_VERSION (ACK + version string); xem [docs/usb_cdc_frame_structure.md](docs/usb_cdc_frame_structure.md) và [docs/table_data_format.md](docs/table_data_format.md). **Stack:** process task **comm_proc** 4096 bytes, state watchdog **state_wdg** 4069 bytes; mỗi 30 s log high water mark (tag `communicate_queue`, `communicate_task`) để theo dõi mức tiêu thụ stack — nếu high water mark thấp có thể tăng stack trong `communicate_queue.c` / `communicate_task.c`.
 - ❌ **Auto-flash RCP khi boot** — xem [TODO.md](TODO.md)
 - ❌ RCP update/firmware management (đã loại bỏ)
-- ⏳ **Xử lý CMD (Pull/Push)** — CMD STATE, RESET, FACTORY, DATASET_ACTIVE, IP_ADDR đã có handler (communicate_command); BR gửi CMD_STATE (1 byte) khi role đổi, retry 1s nếu không ACK; xem [TODO.md](TODO.md) và [docs/usb_cdc_frame_structure.md](docs/usb_cdc_frame_structure.md).
+- ✅ **Xử lý CMD** — STATE, DATASET_ACTIVE, IP_ADDR, SET_* (PANID, CHANNEL, NETWORK_NAME, EXTENDED_PANID, NETWORK_KEY), ROUTER/CHILD/JOINER_TABLE, THREAD_START, THREAD_STOP, THREAD_VERSION; BR trả ACK (+ data khi có) hoặc NACK; xem [docs/usb_cdc_frame_structure.md](docs/usb_cdc_frame_structure.md) và [docs/table_data_format.md](docs/table_data_format.md).
 
 ## Tài liệu tham khảo
 
@@ -207,6 +206,7 @@ Thread-Host/
 
 - **[docs/leader_stop_command_coap.md](docs/leader_stop_command_coap.md)** — CoAP Stop Command / Leader Control (GET `/network`, response trước khi stop, retry logic).
 - **[docs/usb_cdc_frame_structure.md](docs/usb_cdc_frame_structure.md)** — Cấu trúc khung USB CDC (SOF, Frame ID, CMD, LEN, DATA, CRC8, EOF); bảng CMD.
+- **[docs/table_data_format.md](docs/table_data_format.md)** — Format dữ liệu chi tiết cho Router Table, Child Table, và Joiner Table (CMD_ROUTER_TABLE, CMD_CHILD_TABLE, CMD_JOINER_TABLE).
 - **[docs/border_router_coap_server.md](docs/border_router_coap_server.md)** — CoAP server BR (device registry, resources, BR phải là Leader).
 
 ### Tài liệu chính thức

@@ -1,5 +1,6 @@
 import { useState, useEffect, FormEvent } from "react";
 import { SerialConfig } from "../../utils/SerialConfig";
+import { useToast } from "../../contexts/ToastContext";
 import "./SerialConfigForm.scss";
 
 const DEFAULT_CONFIG: SerialConfig = {
@@ -25,6 +26,7 @@ function validateForm(formData: SerialConfig): Partial<Record<keyof SerialConfig
 }
 
 export default function SerialConfigForm({ initialConfig, onSave, onTestConnect }: SerialConfigFormProps) {
+  const { showToast } = useToast();
   const [formData, setFormData] = useState<SerialConfig>(
     initialConfig ?? DEFAULT_CONFIG
   );
@@ -51,22 +53,31 @@ export default function SerialConfigForm({ initialConfig, onSave, onTestConnect 
     const newErrors = validateForm(formData);
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
+      const firstError = Object.values(newErrors)[0];
+      if (firstError) {
+        showToast("error", firstError);
+      }
       return;
     }
     setErrors({});
     setTestStatus({ type: "idle" });
     onSave(formData);
+    showToast("success", "Đã lưu cấu hình serial port.");
   };
 
   const handleTestConnect = async () => {
     const newErrors = validateForm(formData);
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
+      const firstError = Object.values(newErrors)[0];
+      if (firstError) {
+        showToast("error", firstError);
+      }
       return;
     }
     setErrors({});
     if (!onTestConnect) {
-      setTestStatus({ type: "error", message: "Test connect not available" });
+      showToast("error", "Test connect not available");
       return;
     }
     setTestStatus({ type: "loading" });
@@ -74,9 +85,11 @@ export default function SerialConfigForm({ initialConfig, onSave, onTestConnect 
     if (result.success) {
       setTestStatus({ type: "success", message: "Connection successful" });
       setTestSucceeded(true);
+      showToast("success", "Kết nối thành công!");
     } else {
       setTestStatus({ type: "error", message: result.error ?? "Connection failed" });
       setTestSucceeded(false);
+      showToast("error", result.error ?? "Kết nối thất bại.");
     }
   };
 

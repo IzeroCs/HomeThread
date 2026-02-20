@@ -2,73 +2,105 @@
 @use "../../styles/variables" as *;
 
 .form-page-form {
-  .ot-config-checkbox-label {
-    display: inline-flex;
+  .ot-config-toggle-label {
+    display: flex;
     align-items: center;
     gap: 12px;
     cursor: pointer;
     font-weight: 500;
     color: $text-primary;
     font-size: 14px;
+    justify-content: flex-start;
+  }
+
+  .ot-config-toggle-text {
+    user-select: none;
+  }
+
+  .ot-config-toggle-wrapper {
     position: relative;
+    display: inline-block;
+    width: 44px;
+    height: 22px;
+    flex-shrink: 0;
+  }
 
-    input[type="checkbox"] {
-      position: absolute;
-      opacity: 0;
-      width: 22px;
-      height: 22px;
-      left: 0;
-      top: 50%;
-      transform: translateY(-50%);
-      margin: 0;
-      cursor: pointer;
-      z-index: 1;
-    }
+  .ot-config-toggle-input {
+    position: absolute;
+    opacity: 0;
+    width: 0;
+    height: 0;
+    margin: 0;
+    cursor: pointer;
+  }
 
-    // Custom box (::before)
+  .ot-config-toggle-slider {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: #ccc;
+    border-radius: 6px;
+    transition: background-color 0.3s ease;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    padding: 0 3px;
+    font-size: 9px;
+    font-weight: 700;
+    color: white;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+
     &::before {
       content: "";
-      display: inline-block;
-      width: 22px;
-      height: 22px;
-      flex-shrink: 0;
-      border: 2px solid $border-color;
-      border-radius: 6px;
-      background: white;
-      transition: border-color 0.2s, background 0.2s, box-shadow 0.2s;
-    }
-
-    &:hover::before {
-      border-color: $primary-color;
-    }
-
-    &:has(input:checked)::before {
-      background: $primary-gradient;
-      border-color: transparent;
-      box-shadow: 0 2px 8px rgba(102, 126, 234, 0.35);
-    }
-
-    // Checkmark (::after) — căn giữa ô 22×22; dịch nhẹ phải để L-shape trông cân
-    &::after {
-      content: "";
       position: absolute;
-      left: 12px;
-      top: 11px;
-      width: 6px;
-      height: 11px;
-      border: solid white;
-      border-width: 0 2px 2px 0;
-      transform: translate(-50%, -50%) rotate(45deg) scale(0);
-      transition: transform 0.2s;
-    }
-
-    &:has(input:checked)::after {
-      transform: translate(-50%, -50%) rotate(45deg) scale(1);
+      height: 16px;
+      width: 16px;
+      left: 3px;
+      background-color: white;
+      border-radius: 4px;
+      transition: transform 0.3s ease;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+      z-index: 2;
     }
   }
 
-  .ot-config-checkbox-text {
-    user-select: none;
+  .ot-config-toggle-text-inner {
+    position: relative;
+    z-index: 1;
+    width: 100%;
+    text-align: center;
+    transition: opacity 0.2s ease;
+    pointer-events: none;
+  }
+
+  .ot-config-toggle-input:checked + .ot-config-toggle-slider {
+    background: $primary-gradient;
+  }
+
+  .ot-config-toggle-input:checked + .ot-config-toggle-slider::before {
+    transform: translateX(22px);
+  }
+
+  .ot-config-toggle-input:checked + .ot-config-toggle-slider .ot-config-toggle-text-inner {
+    text-align: left;
+    padding-left: 2px;
+  }
+
+  .ot-config-toggle-input:not(:checked) + .ot-config-toggle-slider .ot-config-toggle-text-inner {
+    text-align: right;
+    padding-right: 2px;
+  }
+
+  .ot-config-toggle-input:focus + .ot-config-toggle-slider {
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.2);
+  }
+
+  .ot-config-toggle-input:disabled + .ot-config-toggle-slider {
+    opacity: 0.6;
+    cursor: not-allowed;
   }
 }
 

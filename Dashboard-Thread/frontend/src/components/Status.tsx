@@ -1,43 +1,51 @@
 import { useWebSocketContext } from "../hooks/useWebSocketContext";
+import type { OtConfig } from "shared/src/types";
 import "./Status.scss";
 
-/** Gán nhãn cho từng dòng ipaddr theo chuẩn OpenThread (fe80 = Link-Local, RLOC, fd = Mesh-Local EID) */
-function ipaddrLineLabel(line: string): string {
-  const s = line.trim().toLowerCase();
-  if (s.startsWith("fe80")) return "Link-Local";
-  if (s.includes("0:ff:fe00:") || s.includes("00ff:fe00:")) return "RLOC";
-  if (s.startsWith("fd")) return "Mesh-Local EID";
-  return "IPv6";
-}
-
-/** Tách dòng dataset active "Key: value" thành [tag, value] để hiển thị dạng bảng như ipaddr */
-function parseDatasetLine(line: string): { tag: string; value: string } {
-  const idx = line.indexOf(":");
-  if (idx >= 0) {
-    return {
-      tag: line.slice(0, idx).trim(),
-      value: line.slice(idx + 1).trim(),
-    };
+/** Tạo danh sách các field dataset đã parse để hiển thị (loại trừ các field đã hiển thị ở trên: PAN ID, Channel, Network Name) */
+function getDatasetFields(otConfig: OtConfig | null | undefined): Array<{ label: string; value: string }> {
+  const fields: Array<{ label: string; value: string }> = [];
+  
+  if (otConfig?.activeTimestamp != null) {
+    fields.push({ label: "Active Timestamp", value: otConfig.activeTimestamp });
   }
-  return { tag: "—", value: line.trim() };
+  // Channel đã hiển thị ở trên, bỏ qua
+  if (otConfig?.wakeUpChannel != null) {
+    fields.push({ label: "Wake Up Channel", value: String(otConfig.wakeUpChannel) });
+  }
+  if (otConfig?.channelMask != null) {
+    fields.push({ label: "Channel Mask", value: otConfig.channelMask });
+  }
+  if (otConfig?.extendedPanId != null) {
+    fields.push({ label: "Extended PAN ID", value: otConfig.extendedPanId });
+  }
+  if (otConfig?.meshLocalPrefix != null) {
+    fields.push({ label: "Mesh Local Prefix", value: otConfig.meshLocalPrefix });
+  }
+  if (otConfig?.networkKey != null) {
+    fields.push({ label: "Network Key", value: otConfig.networkKey });
+  }
+  // Network Name đã hiển thị ở trên, bỏ qua
+  // PAN ID đã hiển thị ở trên, bỏ qua
+  if (otConfig?.pskc != null) {
+    fields.push({ label: "PSKc", value: otConfig.pskc });
+  }
+  if (otConfig?.securityPolicy != null) {
+    fields.push({ label: "Security Policy", value: otConfig.securityPolicy });
+  }
+  
+  return fields;
 }
-
-const RUNNING_STATES = ["leader", "router", "child"];
 
 export default function Status() {
-  const { serialStatus, otConfig, threadState } = useWebSocketContext();
+  const { serialStatus, otConfig } = useWebSocketContext();
   const isConnected = serialStatus?.isConnected ?? false;
   // OT config do backend interval (6s) broadcast; frontend chỉ hiển thị otConfig từ context.
 
-  const ipaddrLines =
-    otConfig?.ipaddr != null && otConfig.ipaddr !== ""
-      ? otConfig.ipaddr.split("\n").filter((l) => l.trim())
-      : [];
+  // Backend trả về ipaddr là một string IPv6 đơn (Leader RLOC) - 16 bytes được parse thành IPv6 string
+  const ipaddr = otConfig?.ipaddr?.trim() || null;
 
-  const datasetLines =
-    otConfig?.datasetActive != null && otConfig.datasetActive !== ""
-      ? otConfig.datasetActive.split("\n").filter((l) => l.trim())
-      : [];
+  const datasetFields = getDatasetFields(otConfig);
 
   return (
     <div className="status-page">
@@ -76,7 +84,13 @@ export default function Status() {
             <>
               <div className="status-row">
                 <span className="status-label">PAN ID:</span>
-                <span className="status-value">{otConfig?.panid ?? "—"}</span>
+                <span className="status-value">
+                  {otConfig?.panid
+                    ? otConfig.panid.startsWith("0x") || otConfig.panid.startsWith("0X")
+                      ? otConfig.panid
+                      : `0x${otConfig.panid}`
+                    : "—"}
+                </span>
               </div>
               <div className="status-row">
                 <span className="status-label">Channel:</span>
@@ -86,51 +100,23 @@ export default function Status() {
                 <span className="status-label">Network Name:</span>
                 <span className="status-value">{otConfig?.networkName ?? "—"}</span>
               </div>
-              {ipaddrLines.length > 0 ? (
-                <div className="status-ipaddr-block">
-                  <span className="status-label">IP Address:</span>
-                  <div className="status-ipaddr-lines">
-                    {ipaddrLines.map((line, i) => (
-                      <div key={i} className="status-ipaddr-row">
-                        <span className="status-ipaddr-tag">{ipaddrLineLabel(line)}</span>
-                        <span className="status-ipaddr-value">{line.trim()}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              ) : (
-                <div className="status-row">
-                  <span className="status-label">IP Address:</span>
-                  <span className="status-value">—</span>
-                </div>
+              <div className="status-row">
+                <span className="status-label">IP Address:</span>
+                <span className="status-value">{ipaddr ?? "—"}</span>
+              </div>
+              {datasetFields.length > 0 && (
+                <>
+                  {datasetFields.map((field, i) => (
+                    <div key={i} className="status-row">
+                      <span className="status-label">{field.label}:</span>
+                      <span className="status-value">{field.value}</span>
+                    </div>
+                  ))}
+                </>
               )}
             </>
           )}
         </div>
-        {isConnected && !otConfig?.error && (
-          <div className="status-card status-card-dataset">
-            <div className="status-ipaddr-block">
-              <span className="status-label">Dataset Active</span>
-              {datasetLines.length > 0 ? (
-                <div className="status-ipaddr-lines">
-                  {datasetLines.map((line, i) => {
-                    const { tag, value } = parseDatasetLine(line);
-                    return (
-                      <div key={i} className="status-ipaddr-row">
-                        <span className="status-ipaddr-tag">{tag}</span>
-                        <span className="status-ipaddr-value">{value}</span>
-                      </div>
-                    );
-                  })}
-                </div>
-              ) : (
-                <div className="status-ipaddr-lines status-ipaddr-lines-empty">
-                  <span className="status-value">—</span>
-                </div>
-              )}
-            </div>
-          </div>
-        )}
       </section>
     </div>
   );

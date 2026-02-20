@@ -13,17 +13,21 @@ import { PollingManager } from "./PollingManager";
 import { FrameParser, type ParsedFrame } from "./frame";
 import { AppSettingsService } from "../services/AppSettingsService";
 import { serialLogger, frameLogger } from "../utils/logger";
+import { DEVICE_ROLE, DEVICE_ROLE_NAMES } from "../openthread/deviceRole";
+import type { DeviceRole } from "../openthread/deviceRole";
+import { EVENTS, type EventName } from "shared/src/events";
+import type { SerialStatus } from "shared/src/types";
+import { parseRouterTable, parseChildTable, parseJoinerTable } from "./frame";
 
 export type { OtConfig } from "./OtConfigManager";
 export type { ThreadState, TableData } from "./ThreadDataManager";
+export type { SerialStatus };
 
 const RECONNECT_INTERVAL_MS = 3000;
 /** STATE 5 lần không có phản hồi (bất kỳ frame từ leader) thì đóng port và reconnect. */
 const STATE_WITHOUT_RESPONSE_LIMIT = 5;
 
-export type SerialStatus = { isConnected: boolean; path: string; baudRate: number };
-
-export type OnBroadcast = (event: string, data?: unknown) => void;
+export type OnBroadcast = (event: EventName, data?: unknown) => void;
 
 export class CommunicateManager {
   private serialConfigService: SerialConfigService;
@@ -40,14 +44,23 @@ export class CommunicateManager {
   private otConfigManager = new OtConfigManager();
   private threadDataManager = new ThreadDataManager();
 
-  private pollingManager = new PollingManager();
+  /** Số lượng frontend clients đang kết nối. Chỉ poll tables khi có frontend kết nối. */
+  private frontendConnectionCount = 0;
+
+  private pollingManager = new PollingManager({
+    fetchRouterTable: () => this.fetchRouterTable(),
+    fetchChildTable: () => this.fetchChildTable(),
+    fetchJoinerTable: () => this.fetchJoinerTable(),
+  });
   private stateIntervalId: ReturnType<typeof setInterval> | null = null;
-  private static readonly STATE_INTERVAL_MS = 15000;
+  private static readonly STATE_INTERVAL_MS = 5000;
 
   private frameParser = new FrameParser();
   private commandManager: CommandManager | null = null;
   /** Chỉ bật polling (OT config) sau khi leader ready (ví dụ sau khi nhận phản hồi STATE). */
   private leaderReady = false;
+  /** Role byte lần trước (để chỉ fetch ipaddr khi state đổi hoặc lần đầu). */
+  private lastRoleByte: number | null = null;
 
   constructor(
     serialConfigService: SerialConfigService,
@@ -63,7 +76,7 @@ export class CommunicateManager {
     this.onBroadcast = cb;
   }
 
-  private broadcast(event: string, data?: unknown): void {
+  private broadcast(event: EventName, data?: unknown): void {
     this.onBroadcast?.(event, data);
   }
 
@@ -92,6 +105,87 @@ export class CommunicateManager {
     return this.threadDataManager.getJoinerTable();
   }
 
+  /** Được gọi khi có frontend client kết nối. */
+  onFrontendConnected(): void {
+    this.frontendConnectionCount++;
+    // Kiểm tra và start polling nếu state phù hợp
+    const currentState = this.threadDataManager.getThreadState();
+    if (currentState?.state === "leader" || currentState?.state === "router" || currentState?.state === "child") {
+      this.updateTablesPolling(true);
+    }
+  }
+
+  /** Được gọi khi frontend client ngắt kết nối. */
+  onFrontendDisconnected(): void {
+    if (this.frontendConnectionCount > 0) {
+      this.frontendConnectionCount--;
+    }
+    // Nếu không còn frontend nào kết nối thì stop polling
+    if (this.frontendConnectionCount === 0) {
+      this.pollingManager.stopAll();
+    }
+  }
+
+  /** Cập nhật polling tables dựa trên state và frontend connection. */
+  private updateTablesPolling(isLeaderRouterOrChild: boolean): void {
+    const hasFrontendConnection = this.frontendConnectionCount > 0;
+    this.pollingManager.startTablesPolling(hasFrontendConnection, isLeaderRouterOrChild);
+  }
+
+  /** Fetch router table từ firmware. */
+  async fetchRouterTable(): Promise<void> {
+    if (!this.commandManager) return;
+    try {
+      const res = await this.commandManager.fetchRouterTable();
+      if (res.ack && res.data) {
+        const tableData = parseRouterTable(res.data);
+        this.threadDataManager.setRouterTable(tableData);
+        this.broadcast(EVENTS.OT_ROUTER_TABLE, tableData);
+      }
+    } catch (err) {
+      serialLogger.warn(`fetchRouterTable failed: ${(err as Error)?.message ?? err}`);
+      const errorData: TableData = { headers: [], rows: [], error: `Failed: ${(err as Error)?.message ?? err}` };
+      this.threadDataManager.setRouterTable(errorData);
+      this.broadcast(EVENTS.OT_ROUTER_TABLE, errorData);
+    }
+  }
+
+  /** Fetch child table từ firmware. */
+  async fetchChildTable(): Promise<void> {
+    if (!this.commandManager) return;
+    try {
+      const res = await this.commandManager.fetchChildTable();
+      if (res.ack && res.data) {
+        const tableData = parseChildTable(res.data);
+        this.threadDataManager.setChildTable(tableData);
+        this.broadcast(EVENTS.OT_CHILD_TABLE, tableData);
+      }
+    } catch (err) {
+      serialLogger.warn(`fetchChildTable failed: ${(err as Error)?.message ?? err}`);
+      const errorData: TableData = { headers: [], rows: [], error: `Failed: ${(err as Error)?.message ?? err}` };
+      this.threadDataManager.setChildTable(errorData);
+      this.broadcast(EVENTS.OT_CHILD_TABLE, errorData);
+    }
+  }
+
+  /** Fetch joiner table từ firmware. */
+  async fetchJoinerTable(): Promise<void> {
+    if (!this.commandManager) return;
+    try {
+      const res = await this.commandManager.fetchJoinerTable();
+      if (res.ack && res.data) {
+        const tableData = parseJoinerTable(res.data);
+        this.threadDataManager.setJoinerTable(tableData);
+        this.broadcast(EVENTS.OT_JOINER_TABLE, tableData);
+      }
+    } catch (err) {
+      serialLogger.warn(`fetchJoinerTable failed: ${(err as Error)?.message ?? err}`);
+      const errorData: TableData = { headers: [], rows: [], error: `Failed: ${(err as Error)?.message ?? err}` };
+      this.threadDataManager.setJoinerTable(errorData);
+      this.broadcast(EVENTS.OT_JOINER_TABLE, errorData);
+    }
+  }
+
   async connect(): Promise<void> {
     this.autoReconnectEnabled = true;
     await this.connectSerialInternal();
@@ -107,7 +201,7 @@ export class CommunicateManager {
       this.frameUnsubscribe = null;
       this.clearPendingFrames();
       this.frameParser.reset();
-      this.broadcast("serial:status", { isConnected: false, path: "", baudRate: 0 });
+      this.broadcast(EVENTS.SERIAL_STATUS, { isConnected: false, path: "", baudRate: 0 });
     }
   }
 
@@ -126,7 +220,7 @@ export class CommunicateManager {
     if (this.serialPort) {
       await this.serialPort.close();
       this.serialPort = null;
-      this.broadcast("serial:status", { isConnected: false, path: "", baudRate: 0 });
+      this.broadcast(EVENTS.SERIAL_STATUS, { isConnected: false, path: "", baudRate: 0 });
     }
   }
 
@@ -149,21 +243,105 @@ export class CommunicateManager {
     }
   }
 
+  /** Fetch một lần OT config (dataset active + IP). Gọi khi cần (vd. frontend refresh); dataset+IP còn được gọi khi state đổi / lần đầu có ACK state trong pullState. */
   async fetchOtConfig(): Promise<OtConfig> {
     if (!this.serialPort?.getStatus().isConnected) {
       return { error: "Serial not connected. Connect serial first." };
     }
-    const payload = await this.pollingManager.fetchOtConfigPayload(
-      (cmd, data) => this.sendPullRequestInternal(cmd, data),
-      () => this.otConfigManager.get() ?? {}
-    );
-    this.otConfigManager.set(payload);
-    this.broadcast("ot:config", payload);
-    return payload;
+    // Dataset active: fetch khi được gọi từ frontend (manual refresh)
+    // Lưu ý: trong pullState, dataset active chỉ fetch khi state thay đổi
+    await this.commandManager!.fetchDatasetActive();
+    // IP addr chỉ fetch khi state là leader/router/child
+    const currentState = this.threadDataManager.getThreadState();
+    if (currentState?.state) {
+      const stateName = currentState.state;
+      const isLeaderRouterOrChild =
+        stateName === DEVICE_ROLE_NAMES[DEVICE_ROLE.LEADER] ||
+        stateName === DEVICE_ROLE_NAMES[DEVICE_ROLE.ROUTER] ||
+        stateName === DEVICE_ROLE_NAMES[DEVICE_ROLE.CHILD];
+      if (isLeaderRouterOrChild) {
+        await this.commandManager!.fetchIpAddr();
+      }
+    }
+    const payload = this.otConfigManager.get();
+    this.broadcast(EVENTS.OT_CONFIG, payload ?? {});
+    return payload ?? {};
   }
 
   sendPullRequest(cmd: number, data?: Buffer): Promise<{ ack: boolean; data?: Buffer; errorCode?: number }> {
     return this.sendPullRequestInternal(cmd, data);
+  }
+
+  /** Set PAN ID qua frame protocol. */
+  async setPanid(panid: string): Promise<{ ack: boolean; errorCode?: number }> {
+    if (!this.commandManager) {
+      return { ack: false, errorCode: 0x02 }; // NOT_READY
+    }
+    const result = await this.commandManager.setPanid(panid);
+    return { ack: result.ack, errorCode: result.errorCode };
+  }
+
+  /** Set Channel qua frame protocol. */
+  async setChannel(channel: number): Promise<{ ack: boolean; errorCode?: number }> {
+    if (!this.commandManager) {
+      return { ack: false, errorCode: 0x02 }; // NOT_READY
+    }
+    const result = await this.commandManager.setChannel(channel);
+    return { ack: result.ack, errorCode: result.errorCode };
+  }
+
+  /** Set Network Name qua frame protocol. */
+  async setNetworkName(networkName: string): Promise<{ ack: boolean; errorCode?: number }> {
+    if (!this.commandManager) {
+      return { ack: false, errorCode: 0x02 }; // NOT_READY
+    }
+    const result = await this.commandManager.setNetworkName(networkName);
+    return { ack: result.ack, errorCode: result.errorCode };
+  }
+
+  /** Set Extended PAN ID qua frame protocol. */
+  async setExtendedPanid(extendedPanId: string): Promise<{ ack: boolean; errorCode?: number }> {
+    if (!this.commandManager) {
+      return { ack: false, errorCode: 0x02 }; // NOT_READY
+    }
+    const result = await this.commandManager.setExtendedPanid(extendedPanId);
+    return { ack: result.ack, errorCode: result.errorCode };
+  }
+
+  /** Set Network Key qua frame protocol. */
+  async setNetworkKey(networkKey: string): Promise<{ ack: boolean; errorCode?: number }> {
+    if (!this.commandManager) {
+      return { ack: false, errorCode: 0x02 }; // NOT_READY
+    }
+    const result = await this.commandManager.setNetworkKey(networkKey);
+    return { ack: result.ack, errorCode: result.errorCode };
+  }
+
+  /** Start Thread qua frame protocol. */
+  async startThread(): Promise<{ ack: boolean; errorCode?: number }> {
+    if (!this.commandManager) {
+      return { ack: false, errorCode: 0x02 }; // NOT_READY
+    }
+    const result = await this.commandManager.startThread();
+    return { ack: result.ack, errorCode: result.errorCode };
+  }
+
+  /** Stop Thread qua frame protocol. */
+  async stopThread(): Promise<{ ack: boolean; errorCode?: number }> {
+    if (!this.commandManager) {
+      return { ack: false, errorCode: 0x02 }; // NOT_READY
+    }
+    const result = await this.commandManager.stopThread();
+    return { ack: result.ack, errorCode: result.errorCode };
+  }
+
+  /** Gửi CMD_THREAD_VERSION, nhận ACK (data = version string/bytes tùy firmware). */
+  async getThreadVersion(): Promise<{ ack: boolean; data?: Buffer; errorCode?: number }> {
+    if (!this.commandManager) {
+      return { ack: false, errorCode: 0x02 }; // NOT_READY
+    }
+    const result = await this.commandManager.getThreadVersion();
+    return { ack: result.ack, data: result.data, errorCode: result.errorCode };
   }
 
   private stopAllPolling(): void {
@@ -201,14 +379,14 @@ export class CommunicateManager {
       broadcast: (event, data) => this.broadcast(event, data),
       onAckDataToConfig: (partial) => {
         this.otConfigManager.update(partial);
-        this.broadcast("ot:config", this.otConfigManager.get());
+        this.broadcast(EVENTS.OT_CONFIG, this.otConfigManager.get());
       },
     });
 
     this.serialPort.setOnDisconnect(() => this.onSerialDisconnected());
 
     this.frameUnsubscribe = this.serialPort.onRawData((chunk: Buffer) => {
-      this.broadcast("serial:data", chunk.toString("hex"));
+      this.broadcast(EVENTS.SERIAL_DATA, chunk.toString("hex"));
       this.frameParser.push(
         chunk,
         (frame: ParsedFrame) => {
@@ -227,18 +405,18 @@ export class CommunicateManager {
     this.commandManager?.clearPending();
   }
 
-  /** Bật gửi STATE định kỳ (ngay 1 lần + mỗi STATE_INTERVAL_MS), payload vài byte (fake nếu không truyền). */
+  /** Bật pull state định kỳ (ngay 1 lần + mỗi STATE_INTERVAL_MS). Backend tự gửi CMD_STATE, nhận ACK (1 byte role) rồi cập nhật thread state + fetch ipaddr nếu cần. */
   private startStateInterval(): void {
     if (this.stateIntervalId != null) return;
     if (!this.serialPort?.getStatus().isConnected) return;
-    this.sendStateToLeader();
+    this.pullState();
     this.stateIntervalId = setInterval(() => {
-      this.sendStateToLeader();
+      this.pullState();
     }, CommunicateManager.STATE_INTERVAL_MS);
   }
 
-  /** Gửi 1 frame STATE kèm payload (vài byte). Đã gửi 5 lần không có phản hồi thì đóng port và reconnect. */
-  private sendStateToLeader(): void {
+  /** Pull state: gửi CMD_STATE, nhận ACK (1 byte role). Cập nhật thread state, reset đếm; nếu state thay đổi thì fetch dataset active (trước), nếu leader/router/child thì fetch ipaddr. Thất bại thì tăng đếm, đủ 5 lần thì đóng port. */
+  private pullState(): void {
     if (!this.serialPort?.getStatus().isConnected || !this.commandManager) return;
     if (this.stateWithoutResponseCount >= STATE_WITHOUT_RESPONSE_LIMIT) {
       serialLogger.warn("STATE " + STATE_WITHOUT_RESPONSE_LIMIT + " lần không có phản hồi — đóng port và reconnect.");
@@ -246,15 +424,53 @@ export class CommunicateManager {
       port.close().then(() => this.onSerialDisconnected()).catch(() => this.onSerialDisconnected());
       return;
     }
-    try {
-      const frameId = this.commandManager.consumeNextFrameId();
-      const stateFrame = this.commandManager.sendState(frameId);
-      this.serialPort.writeRaw(stateFrame).catch((err) => serialLogger.warn(`Failed to send STATE to leader: ${(err as Error)?.message ?? err}`));
-      frameLogger.log("TX frameId=0x" + frameId.toString(16).padStart(2, "0") + " cmd=0x04 (STATE) len=" + (stateFrame.length - 7));
-      this.stateWithoutResponseCount++;
-    } catch (err) {
-      serialLogger.warn(`Failed to build STATE for leader: ${err}`);
-    }
+
+    const cmdMgr = this.commandManager;
+    cmdMgr
+      .fetchState()
+      .then((res) => {
+        if (res.ack && res.data && res.data.length >= 1) {
+          this.stateWithoutResponseCount = 0;
+          const roleByte = res.data[0]! as DeviceRole;
+          const stateName = DEVICE_ROLE_NAMES[roleByte] ?? "unknown";
+          const stateChangedOrFirst = this.lastRoleByte === null || this.lastRoleByte !== roleByte;
+          this.lastRoleByte = roleByte;
+
+          this.threadDataManager.setThreadState({ running: true, state: stateName });
+          this.broadcast(EVENTS.OT_THREAD_STATE, this.threadDataManager.getThreadState());
+
+          // Dataset active: chỉ fetch khi state thay đổi (hoặc lần đầu nhận ACK), không phụ thuộc state là gì
+          if (stateChangedOrFirst) {
+            cmdMgr.fetchDatasetActive().catch(() => {});
+          }
+
+          // IP addr: chỉ fetch khi state là leader/router/child và state đổi hoặc lần đầu
+          const isLeaderRouterOrChild =
+            roleByte === DEVICE_ROLE.LEADER ||
+            roleByte === DEVICE_ROLE.ROUTER ||
+            roleByte === DEVICE_ROLE.CHILD;
+          if (isLeaderRouterOrChild && stateChangedOrFirst) {
+            cmdMgr
+              .fetchIpAddr()
+              .then((ipRes) => {
+                if (ipRes.ack && ipRes.data?.length === 16 && ipRes.frameId != null) {
+                  cmdMgr.replyAck(ipRes.frameId);
+                }
+              })
+              .catch((err) =>
+                serialLogger.warn(`fetchIpAddr failed: ${(err as Error)?.message ?? err}`)
+              );
+          }
+
+          // Start/stop polling tables dựa trên state và frontend connection
+          this.updateTablesPolling(isLeaderRouterOrChild);
+        } else {
+          this.stateWithoutResponseCount++;
+        }
+      })
+      .catch(() => {
+        this.stateWithoutResponseCount++;
+      });
   }
 
   private sendPullRequestInternal(
@@ -266,6 +482,7 @@ export class CommunicateManager {
 
   private onSerialDisconnected(): void {
     this.leaderReady = false;
+    this.lastRoleByte = null;
     this.stateWithoutResponseCount = 0;
     this.stopAllPolling();
     this.frameUnsubscribe = null;
@@ -273,7 +490,7 @@ export class CommunicateManager {
     this.frameParser.reset();
     this.commandManager = null;
     this.serialPort = null;
-    this.broadcast("serial:status", { isConnected: false, path: "", baudRate: 0 });
+    this.broadcast(EVENTS.SERIAL_STATUS, { isConnected: false, path: "", baudRate: 0 });
     this.scheduleReconnect();
   }
 
@@ -307,33 +524,43 @@ export class CommunicateManager {
 
       this.clearReconnectTimer();
       this.stateWithoutResponseCount = 0;
-      this.broadcast("serial:connected", { success: true, status: this.serialPort!.getStatus() });
-      this.broadcast("serial:status", this.serialPort!.getStatus());
+      this.broadcast(EVENTS.SERIAL_CONNECTED, { success: true, status: this.serialPort!.getStatus() });
+      this.broadcast(EVENTS.SERIAL_STATUS, this.serialPort!.getStatus());
       serialLogger.info(`Connected: ${config.serialPort}`);
       this.startStateInterval();
+
+      // Tự khởi động Thread nếu user đã bật "tự chạy Thread khi kết nối" và thiết bị đang ở state disabled
+      if (this.appSettingsService.getThreadRunOnConnect()) {
+        setTimeout(() => {
+          if (!this.commandManager) return;
+          this.commandManager
+            .fetchState()
+            .then((res) => {
+              if (!res.ack || !res.data || res.data.length < 1) return;
+              const roleByte = res.data[0] as DeviceRole;
+              if (roleByte !== DEVICE_ROLE.DISABLED) {
+                serialLogger.info(`Auto-start Thread skipped: state is not disabled (role=${roleByte})`);
+                return;
+              }
+              return this.startThread();
+            })
+            .then((result) => {
+              if (result?.ack) {
+                serialLogger.info("Auto-started Thread (thread_run_on_connect=true, state was disabled)");
+              } else if (result != null) {
+                serialLogger.warn(`Auto-start Thread failed: errorCode=${result.errorCode}`);
+              }
+            })
+            .catch((err) => {
+              serialLogger.warn(`Auto-start Thread error: ${(err as Error)?.message ?? err}`);
+            });
+        }, 500);
+      }
     } catch (error) {
       serialLogger.error(`Connection failed: ${error}`);
-      this.broadcast("serial:status", { isConnected: false, path: config.serialPort, baudRate: config.baudRate });
+      this.broadcast(EVENTS.SERIAL_STATUS, { isConnected: false, path: config.serialPort, baudRate: config.baudRate });
       this.scheduleReconnect();
     }
-  }
-
-  /** Bật poll OT config (gọi từ bên ngoài khi leader ready, ví dụ sau khi nhận phản hồi STATE). */
-  startOtConfigPolling(): void {
-    if (!this.serialPort?.getStatus().isConnected) return;
-    this.pollingManager.startOtConfigPolling(
-      PollingManager.OT_CONFIG_POLL_MS,
-      (cmd, data) => this.sendPullRequestInternal(cmd, data),
-      () => this.otConfigManager.get() ?? {},
-      (payload) => {
-        this.otConfigManager.set(payload);
-        this.broadcast("ot:config", payload);
-      },
-      (err) => {
-        this.otConfigManager.set({ error: err instanceof Error ? err.message : "Unknown error" });
-        this.broadcast("ot:config", this.otConfigManager.get());
-      }
-    );
   }
 
   async close(): Promise<void> {

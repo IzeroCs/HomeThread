@@ -16,7 +16,8 @@
   },
   "workspaces": [
     "backend",
-    "frontend"
+    "frontend",
+    "shared"
   ],
   "engines": {
     "node": ">=18"

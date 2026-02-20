@@ -8,11 +8,12 @@ import Dashboard from "./components/Dashboard";
 import Commissioner from "./components/Commissioner";
 import Console from "./components/Console";
 import TopNav, { type NavPage } from "./components/common/TopNav";
+import ToastContainer from "./components/common/ToastContainer";
 import "./App.scss";
 
 function App() {
   const [config, setConfig] = useState<SerialConfigFromBackend | null>(null);
-  const [page, setPage] = useState<NavPage>("commissioner");
+  const [page, setPage] = useState<NavPage>("settings");
 
   const {
     connected: wsConnected,
@@ -88,6 +89,7 @@ function App() {
         threadRunOnConnect={threadRunOnConnect}
         dashboardCount={dashboardCount}
       />
+      <ToastContainer />
       <main className="app-main">
         {page === "status" && (
           <div className="app-container">

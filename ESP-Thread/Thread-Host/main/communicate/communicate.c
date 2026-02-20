@@ -10,6 +10,7 @@
 #include "communicate/transport_usb.h"
 #endif
 #include "esp_log.h"
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -90,7 +91,7 @@ static void on_transport_rx(uint8_t *data, size_t len, void *ctx)
         uint8_t frame_id = s_rx_buf[1];
         uint8_t cmd = s_rx_buf[2];
         const uint8_t *payload = data_len > 0 ? (s_rx_buf + FRAME_HEADER_LEN) : NULL;
-        ESP_LOGI(TAG, "frame RX: id=%u cmd=0x%02x len=%u", (unsigned)frame_id, (unsigned)cmd, (unsigned)data_len);
+        ESP_LOGI(TAG, "frame RX: id=%u cmd=%s len=%u", (unsigned)frame_id, communicate_cmd_name(cmd), (unsigned)data_len);
         if (s_rx_cb) {
             s_rx_cb(frame_id, cmd, payload, data_len, s_rx_ctx);
         }
@@ -123,12 +124,42 @@ esp_err_t communicate_init(communicate_rx_frame_cb_t rx_cb, void *rx_ctx)
     return ESP_OK;
 }
 
+const char *communicate_cmd_name(uint8_t cmd)
+{
+    switch (cmd) {
+        case CMD_DATA:           return "DATA";
+        case CMD_ACK:            return "ACK";
+        case CMD_NACK:           return "NACK";
+        case CMD_RESET:          return "RESET";
+        case CMD_FACTORY:        return "FACTORY";
+        case CMD_STATE:          return "STATE";
+        case CMD_DATASET_ACTIVE: return "DATASET_ACTIVE";
+        case CMD_IP_ADDR:        return "IP_ADDR";
+        case CMD_SET_PANID:      return "SET_PANID";
+        case CMD_SET_CHANNEL:    return "SET_CHANNEL";
+        case CMD_SET_NETWORK_NAME: return "SET_NETWORK_NAME";
+        case CMD_SET_EXTENDED_PANID: return "SET_EXTENDED_PANID";
+        case CMD_SET_NETWORK_KEY: return "SET_NETWORK_KEY";
+        case CMD_ROUTER_TABLE:   return "ROUTER_TABLE";
+        case CMD_CHILD_TABLE:    return "CHILD_TABLE";
+        case CMD_JOINER_TABLE:   return "JOINER_TABLE";
+        case CMD_THREAD_START:   return "THREAD_START";
+        case CMD_THREAD_STOP:    return "THREAD_STOP";
+        case CMD_THREAD_VERSION: return "THREAD_VERSION";
+        default: {
+            static char buf[8];
+            snprintf(buf, sizeof(buf), "0x%02x", cmd);
+            return buf;
+        }
+    }
+}
+
 esp_err_t communicate_send_frame(uint8_t frame_id, uint8_t cmd, const uint8_t *data, size_t len)
 {
     if (len > COMMUNICATE_FRAME_MAX_DATA_LEN) {
         return ESP_ERR_INVALID_SIZE;
     }
-    ESP_LOGI(TAG, "frame TX: id=%u cmd=0x%02x len=%u", (unsigned)frame_id, (unsigned)cmd, (unsigned)len);
+    ESP_LOGI(TAG, "frame TX: id=%u cmd=%s len=%u", (unsigned)frame_id, communicate_cmd_name(cmd), (unsigned)len);
     uint8_t header[FRAME_HEADER_LEN];
     header[0] = SOF;
     header[1] = frame_id;

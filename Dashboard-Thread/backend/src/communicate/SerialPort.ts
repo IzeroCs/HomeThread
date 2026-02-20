@@ -67,7 +67,7 @@ export class SerialPortService {
 
         // Xử lý khi port đóng (rút dây, ESP reset, hoặc close chủ động)
         this.port.on("close", () => {
-          serialLogger.info("Port closed — device disconnected hoặc ESP reset (sẽ thử reconnect nếu bật).");
+          serialLogger.info("Port closed — device disconnected or ESP reset.");
           triggerDisconnect();
         });
 

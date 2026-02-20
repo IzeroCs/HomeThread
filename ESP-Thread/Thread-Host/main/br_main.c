@@ -14,7 +14,7 @@
 
 #include "br_launch.h"
 #include "br_rcp_ctrl.h"
-#include "br_state_change.h"
+#include "openthread/dataset_init.h"
 #include "hardware/led_status.h"
 #include "hardware/boot_btn.h"
 #include "coap_controller/leader_control_client.h"
@@ -71,11 +71,11 @@ void app_main(void)
 
     launch_openthread_border_router(&openthread_config);
 
-    // Communicate task trước để state-change callback có thể gửi STATE tới backend (và retry nếu không ACK)
-    ESP_ERROR_CHECK(communicate_task_start());
+    /* Nếu chưa có active dataset thì tạo mới (ESP-BR-<MAC>) và set active */
+    openthread_dataset_init_on_boot();
 
-    // OpenThread state change callback (log + gửi CMD_STATE 1 byte tới backend khi role thay đổi)
-    ESP_ERROR_CHECK(br_state_change_init());
+    // Communicate task: frame protocol (USB CDC hoặc UART) + state watchdog
+    ESP_ERROR_CHECK(communicate_task_start());
 
     // Initialize LED status indicator (WS2812)
     // Disabled: đỏ nhấp nháy | Detached: xanh dương nhấp nháy

@@ -1,47 +1,21 @@
 /**
  * Types cho WebSocket (backend serial config và status)
+ * Một số types đã được move sang shared package
  */
 
-export interface SerialConfigFromBackend {
-  id?: number;
-  serialPort: string;
-  baudRate: number;
-  createdAt?: string;
-  updatedAt?: string;
-}
-
-export interface SerialStatus {
-  isConnected: boolean;
-  path: string;
-  baudRate: number;
-}
+// Re-export từ shared để backward compatibility
+export type {
+  SerialConfig as SerialConfigFromBackend,
+  SerialStatus,
+  OtConfig,
+  OtThreadState,
+  OtTableData,
+} from "shared/src/types";
 
 export interface CliResponse {
   id?: string;
   success: boolean;
   command?: string;
   output?: string[];
-  error?: string;
-}
-
-export interface OtConfig {
-  panid?: string;
-  channel?: number;
-  networkName?: string;
-  ipaddr?: string;
-  datasetActive?: string;
-  error?: string;
-}
-
-export interface OtThreadState {
-  running?: boolean;
-  /** Raw state từ thiết bị: leader, router, child, detached, disabled */
-  state?: string;
-  error?: string;
-}
-
-export interface OtTableData {
-  headers?: string[];
-  rows?: string[][];
   error?: string;
 }

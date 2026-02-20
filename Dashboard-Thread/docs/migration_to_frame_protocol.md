@@ -13,20 +13,23 @@ Tài liệu này liệt kê các bước / lệnh cần làm để chuyển Dash
 | Serial raw mode (`useFrameProtocol`, `onRawData`, `writeRaw`) | ✅ Xong | `communicate/SerialPort.ts` |
 | CRC-8/MAXIM + frame builder + frame parser | ✅ Xong | `communicate/frame/` |
 | CMD_ACK/CMD_NACK → cập nhật cache, emit `ot:config` | ✅ Xong | Trong CommunicateManager |
-| Gửi Pull (CMD_STATE, CMD_DATASET_ACTIVE, CMD_IP_ADDR), timeout, pending theo Frame ID | ✅ Xong | `sendPullRequest`, `fetchOtConfigPayload` |
-| Polling OT config định kỳ + keepalive CMD_STATE (payload vài byte) | ✅ Xong | CommunicateManager |
+| Gửi Pull (CMD_STATE, CMD_DATASET_ACTIVE, CMD_IP_ADDR), timeout, pending theo Frame ID | ✅ Xong | CommandManager.sendRequest / fetchState / fetchIpAddr / fetchDatasetActive |
+| Pull state định kỳ (CMD_STATE); dataset active chỉ khi state đổi hoặc lần đầu có ACK state; IP chỉ khi leader/router/child | ✅ Xong | CommunicateManager.pullState |
+| Parse Dataset Active từ hex-encoded TLVs thành các field riêng lẻ và lưu vào OtConfig | ✅ Xong | frame/datasetParser.ts parseDatasetActive, CommandManager.parseAckData |
+| Event names constants (EVENTS) thay vì string literals | ✅ Xong | communicate/events.ts với EVENTS const object và EventName type |
+| Polling định kỳ chỉ dùng cho router table, child table, joiner list (không poll OT config) | ✅ Xong | PollingManager poll các table khi có frontend kết nối và state là child/router/leader |
 | **CommunicateManager** – toàn bộ dữ liệu & khởi tạo giao tiếp | ✅ Xong | Dữ liệu nằm trong communicate |
 | **WebSocketServer** chỉ emit, lấy dữ liệu từ manager | ✅ Xong | Main khởi tạo io + manager, truyền vào WS |
 | Main (`index.ts`) khởi tạo io, CommunicateManager, gọi `connectIfConfigured()` | ✅ Xong | |
 | CMD_DATA (CBOR) → parse, cập nhật state/tables | ⏳ Chưa | Tạm emit `serial:frame:data` (hex) |
 | Set config / thread running / commissioner qua frame | ⏳ Chưa | Stub "Use frame protocol" khi firmware hỗ trợ |
-| Router table / Child table / Joiner table từ frame | ⏳ Chưa | Chưa có CMD tương ứng trong spec |
+| Router table / Child table / Joiner table từ frame | ✅ Xong | CMD_ROUTER_TABLE (0x30), CMD_CHILD_TABLE (0x31), CMD_JOINER_TABLE (0x32), parse binary format theo table_data_format.md (frame/tableParser.ts) |
 
 ---
 
 ## 1. Tổng quan
 
-- **Hiện tại:** Backend dùng **frame protocol** (USB CDC). Serial mở port với `useFrameProtocol: true`, đọc raw bytes; `CommunicateManager` parse frame, gửi CMD_STATE (keepalive, payload vài byte) và Pull (CMD_DATASET_ACTIVE, CMD_IP_ADDR), nhận CMD_ACK/CMD_NACK và cập nhật `lastOtConfig`, broadcast `serial:data` (hex), `ot:config`. **WebSocketServer** chỉ lấy dữ liệu từ manager và emit tới frontend; khởi tạo giao tiếp nằm ở main.
+- **Hiện tại:** Backend dùng **frame protocol** (USB CDC). Serial mở port với `useFrameProtocol: true`, đọc raw bytes; `CommunicateManager` parse frame, **pull state định kỳ** (CMD_STATE); **dataset active chỉ gọi khi state đổi hoặc lần đầu có ACK state, IP chỉ khi leader/router/child** (trong pullState), không poll OT config định kỳ. Nhận CMD_ACK/CMD_NACK → cập nhật `lastOtConfig`, broadcast events qua `EVENTS` constants (`serial:data`, `ot:config`, `ot:threadState`, `serial:status`, `serial:connected`, `serial:frame:data`, `ot:routerTable`, `ot:childTable`, `commissioner:joinerTable`). **PollingManager** poll định kỳ router table, child table, joiner table khi có frontend kết nối và state là child/router/leader. Dataset parser (`frame/datasetParser.ts`) parse hex-encoded TLVs thành các field. Table parser (`frame/tableParser.ts`) parse binary format theo spec trong `table_data_format.md`. **WebSocketServer** chỉ lấy dữ liệu từ manager và emit tới frontend; khởi tạo giao tiếp nằm ở main.
 - **Còn lại:** Parse CMD_DATA (CBOR) để cập nhật thread state / router-child-joiner table; set config & commissioner khi firmware có CMD tương ứng.
 
 ---
@@ -65,7 +68,11 @@ Tài liệu này liệt kê các bước / lệnh cần làm để chuyển Dash
 - **Build frame:** SOF + Frame ID (tăng dần) + CMD + LEN (big-endian, 2 bytes) + DATA (nếu có) + CRC8( [Frame ID, CMD, LEN_HIGH, LEN_LOW, DATA...] ) + EOF.
 - **Các lệnh cần gửi tương ứng tính năng hiện tại:**
   - **Keepalive:** CMD_STATE (0x04), kèm payload vài byte (tạm có thể dùng fake).
-  - **OT config:** CMD_DATASET_ACTIVE (0x12), CMD_IP_ADDR (0x13) → nhận qua CMD_ACK, parse DATA rồi merge vào `lastOtConfig` và emit `ot:config`.
+  - **OT config:** CMD_DATASET_ACTIVE (0x13), CMD_IP_ADDR (0x14) → nhận qua CMD_ACK, parse DATA rồi merge vào `lastOtConfig` và emit `ot:config`. Dataset Active được parse từ hex-encoded TLVs thành các field riêng lẻ (Active Timestamp, Channel, Network Name, PAN ID, Extended PAN ID, Mesh Local Prefix, Network Key, PSKc, Security Policy, Channel Mask) và lưu vào OtConfig (parser trong `frame/datasetParser.ts`).
+  - **Router table:** CMD_ROUTER_TABLE (0x30) → nhận qua CMD_ACK, parse binary format (15 bytes/entry) và emit `ot:routerTable`.
+  - **Child table:** CMD_CHILD_TABLE (0x31) → nhận qua CMD_ACK, parse binary format (17 bytes/entry) và emit `ot:childTable`.
+  - **Joiner table:** CMD_JOINER_TABLE (0x32) → nhận qua CMD_ACK, parse binary format (variable-length entries) và emit `commissioner:joinerTable`.
+  - **Set config:** CMD_SET_PANID (0x20), CMD_SET_CHANNEL (0x21), CMD_SET_NETWORK_NAME (0x22), CMD_SET_EXTENDED_PANID (0x23), CMD_SET_NETWORK_KEY (0x24) → gửi config parameters.
   - **Reset thiết bị:** CMD_RESET (0x10), không DATA.
   - **Factory reset:** CMD_FACTORY (0x11), DATA = `[0xAA]`.
 - **Hàng đợi / Frame ID:** Mỗi request Pull dùng một Frame ID duy nhất; khi nhận CMD_ACK/CMD_NACK với cùng Frame ID thì resolve promise và cập nhật cache.
@@ -73,14 +80,18 @@ Tài liệu này liệt kê các bước / lệnh cần làm để chuyển Dash
 ### 2.5. Map frame → WebSocketServer state và event
 
 - Khi nhận CMD_ACK với DATA tương ứng:
-  - Dataset Active → `lastOtConfig.datasetActive` (hex hoặc string tùy cách hiển thị), emit `ot:config`.
+  - Dataset Active → parse hex-encoded TLVs thành các field (`activeTimestamp`, `channel`, `networkName`, `panid`, `extendedPanId`, `meshLocalPrefix`, `networkKey`, `pskc`, `securityPolicy`, `channelMask`) bằng `frame/datasetParser.ts` và lưu vào `lastOtConfig`, đồng thời giữ lại `datasetActive` (hex string gốc) để compatibility, emit `ot:config`.
   - IPv6 (16 bytes) → `lastOtConfig.ipaddr`, emit `ot:config`.
+  - Router Table → parse binary format (count + 15 bytes/entry) bằng `frame/tableParser.ts`, lưu vào `lastRouterTable`, emit `ot:routerTable`.
+  - Child Table → parse binary format (count + 17 bytes/entry) bằng `frame/tableParser.ts`, lưu vào `lastChildTable`, emit `ot:childTable`.
+  - Joiner Table → parse binary format (count + variable-length entries) bằng `frame/tableParser.ts`, lưu vào `lastJoinerTable`, emit `commissioner:joinerTable`.
 - CMD_DATA (CBOR): parse và cập nhật `lastThreadState` / `lastRouterTable` / `lastChildTable` / … theo định dạng CBOR đã thống nhất với firmware.
 
 ### 2.6. Thay thế các handler đang stub
 
 - **pollThreadState:** Nếu có CMD Pull để lấy state → gửi frame tương ứng định kỳ; khi nhận ACK/DATA thì set `lastThreadState` và emit. Nếu state chỉ đến qua CMD_DATA thì chỉ cập nhật khi nhận CMD_DATA.
-- **fetchOtConfigPayload:** Gửi lần lượt CMD_DATASET_ACTIVE, CMD_IP_ADDR; merge kết quả ACK vào `lastOtConfig` và emit `ot:config`.
+- **Dataset + IP:** Chỉ gọi CMD_DATASET_ACTIVE và CMD_IP_ADDR khi state đổi hoặc lần đầu có ACK state (trong pullState); merge ACK vào `lastOtConfig` và emit `ot:config`. Khi frontend gửi OT_GET_CONFIG (nút "Lấy lại"), backend **luôn** gọi `fetchOtConfig()` (không dùng cache) rồi emit `ot:config`.
+- **Tự khởi động Thread:** Khi serial connect thành công, nếu cài đặt `thread_run_on_connect` bật thì backend delay 500ms, gửi CMD_STATE để lấy state; **chỉ khi state = disabled** mới gửi CMD_THREAD_START (tránh gửi start khi Thread đã chạy).
 - **handleOtSetConfig:** Gửi frame set config (nếu protocol mở rộng CMD set panid/channel/networkname); khi có ACK/NACK thì emit `ot:setConfig:result`.
 - **handleOtSetThreadRunning:** Tương tự, dùng CMD tương ứng (nếu có) hoặc để stub đến khi firmware hỗ trợ.
 - **handleCommissionerConnect:** Dùng frame commissioner (khi có CMD tương ứng trong spec).
@@ -88,13 +99,16 @@ Tài liệu này liệt kê các bước / lệnh cần làm để chuyển Dash
 
 ### 2.7. File / module gợi ý
 
-- **Thư mục giao tiếp phần cứng:** `backend/src/communicate/` (đã chứa `SerialPort.ts`, `SerialConfigService.ts`). Có thể thêm hoặc tạo thư mục con:
-  - `communicate/crc8.ts` – CRC-8/MAXIM.
-  - `communicate/frameParser.ts` – tích lũy byte, tìm SOF/EOF, validate LEN/CRC, output ParsedFrame.
-  - `communicate/frameBuilder.ts` – build frame TX (SOF, Frame ID, CMD, LEN, DATA, CRC8, EOF).
-  - `communicate/constants.ts` – SOF, EOF, CMD_*, error codes.
-- `SerialPortService` (trong `communicate/SerialPort.ts`): thêm đọc raw (Buffer) và đẩy vào `frameParser`; vẫn có thể log/hex dump cho `serial:data`.
+- **Thư mục giao tiếp phần cứng:** `backend/src/communicate/` (đã chứa `SerialPort.ts`, `SerialConfigService.ts`). Thư mục con `frame/` chứa:
+  - `frame/crc8.ts` – CRC-8/MAXIM.
+  - `frame/frameParser.ts` – tích lũy byte, tìm SOF/EOF, validate LEN/CRC, output ParsedFrame.
+  - `frame/frameBuilder.ts` – build frame TX (SOF, Frame ID, CMD, LEN, DATA, CRC8, EOF).
+  - `frame/constants.ts` – SOF, EOF, CMD_*, error codes.
+  - `frame/datasetParser.ts` – parse hex-encoded TLVs của Dataset Active thành các field riêng lẻ.
+  - `frame/tableParser.ts` – parse binary format của Router Table, Child Table, Joiner Table theo spec trong `table_data_format.md`.
+- `SerialPortService` (trong `communicate/SerialPort.ts`): đọc raw (Buffer) và đẩy vào `frameParser`; vẫn có thể log/hex dump cho `serial:data`.
 - `WebSocketServer`: gọi frameBuilder để gửi Pull; đăng ký callback từ frameParser để xử lý CMD_DATA/CMD_ACK/CMD_NACK và cập nhật last* + emit.
+- `PollingManager`: quản lý polling định kỳ cho router table, child table, joiner table. Chỉ poll khi có frontend kết nối và state là child/router/leader.
 
 ---
 
@@ -112,7 +126,7 @@ Tài liệu này liệt kê các bước / lệnh cần làm để chuyển Dash
 1. **CRC8 + frame builder** – Viết hàm CRC-8/MAXIM và build frame (ví dụ CMD_STATE, CMD_IP_ADDR) để test tay với thiết bị.
 2. **Serial raw + frame parser** – Chuyển SerialPort đọc raw, buffer tích lũy, parse SOF…EOF, validate CRC, emit parsed frame.
 3. **TX:** Gửi CMD_STATE (payload vài byte) / CMD_IP_ADDR từ backend, nhận CMD_ACK và log.
-4. **Map ACK → lastOtConfig** – Parse DATA của CMD_ACK (dataset active, ipaddr), set `lastOtConfig`, emit `ot:config`.
+4. **Map ACK → lastOtConfig** – Parse DATA của CMD_ACK (dataset active hex → parse thành các field TLV, ipaddr), set `lastOtConfig` với tất cả các field đã parse, emit `ot:config`. Dataset Active được parse từ hex-encoded TLVs thành các field: Active Timestamp, Channel, Network Name, PAN ID, Extended PAN ID, Mesh Local Prefix, Network Key, PSKc, Security Policy, Channel Mask.
 5. **Polling:** Bật lại poll (thread state, OT config) bằng cách gửi frame Pull định kỳ và cập nhật từ ACK/DATA.
 6. **Set config / thread running / commissioner** – Khi firmware hỗ trợ CMD tương ứng, gửi frame từ handler và emit kết quả.
 

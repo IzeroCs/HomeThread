@@ -6,6 +6,7 @@ export { SerialPortService, type SerialPortConfig } from "./SerialPort";
 export { SerialConfigService, type SerialConfig } from "./SerialConfigService";
 export { CommunicateManager } from "./CommunicateManager";
 export type { SerialStatus, OtConfig, ThreadState, TableData, OnBroadcast } from "./CommunicateManager";
+export { EVENTS, type EventName } from "shared/src/events";
 export {
   buildFrame,
   FrameParser,

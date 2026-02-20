@@ -30,6 +30,7 @@ export default function Commissioner() {
     joinerTable,
     getJoinerTable,
   } = useWebSocketContext();
+  const { showToast } = useToast();
   const isLeader = threadState?.toLowerCase() === "leader";
   const isSerialConnected = serialStatus?.isConnected ?? false;
   const [activeTab, setActiveTab] = useState<CommissionerTab>("add");
@@ -79,9 +80,9 @@ export default function Commissioner() {
     const result = await commissionerConnect(eui64.trim(), psk, timeoutSeconds);
     setConnecting(false);
     if (result.success) {
-      setMessage({ type: "success", text: "Đã thêm joiner. Thiết bị có thể kết nối mạng." });
+      showToast("success", "Đã thêm joiner. Thiết bị có thể kết nối mạng.");
     } else {
-      setMessage({ type: "error", text: result.error ?? "Kết nối thất bại." });
+      showToast("error", result.error ?? "Kết nối thất bại.");
     }
   };
 

@@ -16,7 +16,7 @@
 
 #define QUEUE_LEN            16
 #define ITEM_MAX_DATA        256
-#define PROCESS_TASK_STACK   2048
+#define PROCESS_TASK_STACK   10240  /* Tăng từ 2048 để tránh stack overflow khi gọi OpenThread/NVS */
 #define PROCESS_TASK_PRIO    5
 /** Nếu item chờ trong queue vượt ngưỡng này (ms) thì log cảnh báo. */
 #define QUEUE_WAIT_WARN_MS   2000
@@ -34,19 +34,30 @@ typedef struct {
 static QueueHandle_t s_queue = NULL;
 static TaskHandle_t s_process_task = NULL;
 
+#define STACK_MONITOR_INTERVAL_MS  30000  /* Log stack high water mark mỗi 30 giây */
+
 static void process_task(void *pv)
 {
     (void)pv;
     communicate_queue_item_t item;
+    static TickType_t s_last_stack_log = 0;
     for (;;) {
         if (xQueueReceive(s_queue, &item, portMAX_DELAY) != pdTRUE) {
             continue;
         }
-        TickType_t wait_ticks = xTaskGetTickCount() - item.enqueue_tick;
+        TickType_t now = xTaskGetTickCount();
+        if (now - s_last_stack_log >= pdMS_TO_TICKS(STACK_MONITOR_INTERVAL_MS)) {
+            UBaseType_t hwm = uxTaskGetStackHighWaterMark(NULL);
+            /* hwm = bytes còn lại tối thiểu từng có; stack used ≈ PROCESS_TASK_STACK - hwm */
+            ESP_LOGI(TAG, "comm_proc stack: high_water_mark=%u bytes (used ~%u / %u)",
+                     (unsigned)hwm, (unsigned)(PROCESS_TASK_STACK - hwm), (unsigned)PROCESS_TASK_STACK);
+            s_last_stack_log = now;
+        }
+        TickType_t wait_ticks = now - item.enqueue_tick;
         if (wait_ticks > pdMS_TO_TICKS(QUEUE_WAIT_WARN_MS)) {
-            ESP_LOGW(TAG, "queue wait long: %lu ms, frame_id=%u cmd=0x%02x",
+            ESP_LOGW(TAG, "queue wait long: %lu ms, frame_id=%u cmd=%s",
                      (unsigned long)(wait_ticks * portTICK_PERIOD_MS),
-                     (unsigned)item.frame_id, (unsigned)item.cmd);
+                     (unsigned)item.frame_id, communicate_cmd_name(item.cmd));
         }
         if (item.cmd == CMD_STATE) {
             communicate_task_mark_state_received();
@@ -55,6 +66,28 @@ static void process_task(void *pv)
             (void)communicate_command_handle_dataset_active(item.frame_id);
         } else if (item.cmd == CMD_IP_ADDR) {
             (void)communicate_command_handle_ipaddr(item.frame_id);
+        } else if (item.cmd == CMD_ROUTER_TABLE) {
+            (void)communicate_command_handle_router_table(item.frame_id);
+        } else if (item.cmd == CMD_CHILD_TABLE) {
+            (void)communicate_command_handle_child_table(item.frame_id);
+        } else if (item.cmd == CMD_JOINER_TABLE) {
+            (void)communicate_command_handle_joiner_table(item.frame_id);
+        } else if (item.cmd == CMD_SET_PANID) {
+            (void)communicate_command_handle_set_panid(item.frame_id, item.data, item.len);
+        } else if (item.cmd == CMD_SET_CHANNEL) {
+            (void)communicate_command_handle_set_channel(item.frame_id, item.data, item.len);
+        } else if (item.cmd == CMD_SET_NETWORK_NAME) {
+            (void)communicate_command_handle_set_network_name(item.frame_id, item.data, item.len);
+        } else if (item.cmd == CMD_SET_EXTENDED_PANID) {
+            (void)communicate_command_handle_set_extended_panid(item.frame_id, item.data, item.len);
+        } else if (item.cmd == CMD_SET_NETWORK_KEY) {
+            (void)communicate_command_handle_set_network_key(item.frame_id, item.data, item.len);
+        } else if (item.cmd == CMD_THREAD_START) {
+            (void)communicate_command_handle_thread_start(item.frame_id);
+        } else if (item.cmd == CMD_THREAD_STOP) {
+            (void)communicate_command_handle_thread_stop(item.frame_id);
+        } else if (item.cmd == CMD_THREAD_VERSION) {
+            (void)communicate_command_handle_thread_version(item.frame_id);
         } else {
             uint8_t err = 0x01; /* Invalid CMD */
             (void)communicate_send_frame(item.frame_id, CMD_NACK, &err, 1);
@@ -100,8 +133,8 @@ esp_err_t communicate_queue_post(uint8_t frame_id, uint8_t cmd, const uint8_t *d
         memcpy(item.data, data, (size_t)item.len);
     }
     if (xQueueSend(s_queue, &item, pdMS_TO_TICKS(QUEUE_SEND_TIMEOUT_MS)) != pdTRUE) {
-        ESP_LOGW(TAG, "queue full, send timeout %u ms, frame_id=%u cmd=0x%02x",
-                 (unsigned)QUEUE_SEND_TIMEOUT_MS, (unsigned)frame_id, (unsigned)cmd);
+        ESP_LOGW(TAG, "queue full, send timeout %u ms, frame_id=%u cmd=%s",
+                 (unsigned)QUEUE_SEND_TIMEOUT_MS, (unsigned)frame_id, communicate_cmd_name(cmd));
         return ESP_ERR_TIMEOUT; /* queue full */
     }
     return ESP_OK;

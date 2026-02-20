@@ -7,6 +7,8 @@ import { Server, Socket } from "socket.io";
 import type { SerialConfigService, CommunicateManager } from "../communicate";
 import { AppSettingsService } from "../services/AppSettingsService";
 import { logger } from "../utils/logger";
+import { EVENTS } from "shared/src/events";
+import { validateSerialConfig, validateOtSetConfig } from "shared/src/validation";
 
 const wsLog = logger.child("WS");
 
@@ -42,81 +44,78 @@ export class WebSocketServer {
     this.io.on("connection", (socket: Socket) => {
       wsLog.info(`Client connected: ${socket.id}`);
 
+      // Notify CommunicateManager về frontend connection
+      this.communicate.onFrontendConnected();
+
       this.sendCurrentConfig(socket);
       this.sendSerialStatus(socket);
 
       const lastThreadState = this.communicate.getLastThreadState();
-      if (lastThreadState != null) socket.emit("ot:threadState", lastThreadState);
+      if (lastThreadState != null) socket.emit(EVENTS.OT_THREAD_STATE, lastThreadState);
       const lastOtConfig = this.communicate.getLastOtConfig();
-      if (lastOtConfig != null) socket.emit("ot:config", lastOtConfig);
+      if (lastOtConfig != null) socket.emit(EVENTS.OT_CONFIG, lastOtConfig);
       const lastRouterTable = this.communicate.getLastRouterTable();
-      if (lastRouterTable != null) socket.emit("ot:routerTable", lastRouterTable);
+      if (lastRouterTable != null) socket.emit(EVENTS.OT_ROUTER_TABLE, lastRouterTable);
       const lastChildTable = this.communicate.getLastChildTable();
-      if (lastChildTable != null) socket.emit("ot:childTable", lastChildTable);
+      if (lastChildTable != null) socket.emit(EVENTS.OT_CHILD_TABLE, lastChildTable);
       const lastJoinerTable = this.communicate.getLastJoinerTable();
-      if (lastJoinerTable != null) socket.emit("commissioner:joinerTable", lastJoinerTable);
+      if (lastJoinerTable != null) socket.emit(EVENTS.OT_JOINER_TABLE, lastJoinerTable);
 
-      socket.on("config:get", () => this.sendCurrentConfig(socket));
-      socket.on("config:save", (data: { serialPort: string; baudRate: number }) =>
+      socket.on(EVENTS.CONFIG_GET, () => this.sendCurrentConfig(socket));
+      socket.on(EVENTS.CONFIG_SAVE, (data: { serialPort: string; baudRate: number }) =>
         this.handleConfigSave(socket, data)
       );
-      socket.on("config:update", (data: { id: number; serialPort?: string; baudRate?: number }) =>
+      socket.on(EVENTS.CONFIG_UPDATE, (data: { id: number; serialPort?: string; baudRate?: number }) =>
         this.handleConfigUpdate(socket, data)
       );
 
-      socket.on("serial:connect", () => this.handleSerialConnect(socket));
-      socket.on("serial:disconnect", () => this.handleSerialDisconnect(socket));
-      socket.on("serial:status", () => this.sendSerialStatus(socket));
-      socket.on("serial:test", (data: { serialPort: string; baudRate: number }) =>
+      socket.on(EVENTS.SERIAL_CONNECT, () => this.handleSerialConnect(socket));
+      socket.on(EVENTS.SERIAL_DISCONNECT, () => this.handleSerialDisconnect(socket));
+      socket.on(EVENTS.SERIAL_STATUS, () => this.sendSerialStatus(socket));
+      socket.on(EVENTS.SERIAL_TEST, (data: { serialPort: string; baudRate: number }) =>
         this.handleSerialTest(socket, data)
       );
 
-      socket.on("ot:getConfig", () => this.handleOtGetConfig(socket));
-      socket.on("ot:setConfig", (data: { panid?: string; channel?: number; networkName?: string }) =>
+      socket.on(EVENTS.OT_GET_CONFIG, () => this.handleOtGetConfig(socket));
+      socket.on(EVENTS.OT_SET_CONFIG, (data: { panid?: string; channel?: number; networkName?: string; extendedPanId?: string; networkKey?: string }) =>
         this.handleOtSetConfig(socket, data)
       );
-      socket.on("ot:getThreadState", () => this.handleOtGetThreadState(socket));
-      socket.on("ot:setThreadRunning", (data: { running: boolean }) => this.handleOtSetThreadRunning(socket, data));
-      socket.on("ot:getThreadRunOnConnect", () => {
-        socket.emit("ot:threadRunOnConnect", { runOnConnect: this.appSettingsService.getThreadRunOnConnect() });
+      socket.on(EVENTS.OT_GET_THREAD_STATE, () => this.handleOtGetThreadState(socket));
+      socket.on(EVENTS.OT_SET_THREAD_RUNNING, (data: { running: boolean }) => this.handleOtSetThreadRunning(socket, data));
+      socket.on(EVENTS.OT_START_THREAD, () => this.handleOtStartThread(socket));
+      socket.on(EVENTS.OT_STOP_THREAD, () => this.handleOtStopThread(socket));
+      socket.on(EVENTS.OT_GET_THREAD_RUN_ON_CONNECT, () => {
+        socket.emit(EVENTS.OT_THREAD_RUN_ON_CONNECT, { runOnConnect: this.appSettingsService.getThreadRunOnConnect() });
       });
-      socket.on("ot:setThreadRunOnConnect", (data: { runOnConnect: boolean }) => {
+      socket.on(EVENTS.OT_SET_THREAD_RUN_ON_CONNECT, (data: { runOnConnect: boolean }) => {
         this.appSettingsService.setThreadRunOnConnect(!!data.runOnConnect);
-        socket.emit("ot:threadRunOnConnect", { runOnConnect: !!data.runOnConnect });
+        socket.emit(EVENTS.OT_THREAD_RUN_ON_CONNECT, { runOnConnect: !!data.runOnConnect });
       });
-      socket.on("ot:getRouterTable", () => this.handleOtGetRouterTable(socket));
-      socket.on("ot:getChildTable", () => this.handleOtGetChildTable(socket));
+      socket.on(EVENTS.OT_GET_ROUTER_TABLE, () => this.handleOtGetRouterTable(socket));
+      socket.on(EVENTS.OT_GET_CHILD_TABLE, () => this.handleOtGetChildTable(socket));
 
-      socket.on("commissioner:connect", (data: { eui64?: string; psk?: string; timeout?: number }) =>
+      socket.on(EVENTS.COMMISSIONER_CONNECT, (data: { eui64?: string; psk?: string; timeout?: number }) =>
         this.handleCommissionerConnect(socket, data)
       );
-      socket.on("commissioner:getJoinerTable", () => this.handleCommissionerGetJoinerTable(socket));
+      socket.on(EVENTS.COMMISSIONER_GET_JOINER_TABLE, () => this.handleCommissionerGetJoinerTable(socket));
 
-      socket.on("disconnect", () => wsLog.info(`Client disconnected: ${socket.id}`));
+      socket.on("disconnect", () => {
+        wsLog.info(`Client disconnected: ${socket.id}`);
+        // Notify CommunicateManager về frontend disconnection
+        this.communicate.onFrontendDisconnected();
+      });
     });
   }
 
   private sendCurrentConfig(socket: Socket): void {
-    socket.emit("config:current", this.serialConfigService.getLatest());
+    socket.emit(EVENTS.CONFIG_CURRENT, this.serialConfigService.getLatest());
   }
 
   private sendSerialStatus(socket: Socket): void {
-    socket.emit("serial:status", this.communicate.getStatus());
+    socket.emit(EVENTS.SERIAL_STATUS, this.communicate.getStatus());
   }
 
-  private validateConfig(data: {
-    serialPort?: string;
-    baudRate?: number;
-  }): string | null {
-    if (data.serialPort !== undefined) {
-      if (typeof data.serialPort !== "string" || !data.serialPort.trim()) return "Serial port is required";
-    }
-    if (data.baudRate !== undefined) {
-      const n = Number(data.baudRate);
-      if (!Number.isInteger(n) || n < 9600 || n > 2000000) return "Baud rate must be an integer between 9600 and 2000000";
-    }
-    return null;
-  }
+  private validateConfig = validateSerialConfig;
 
   private async handleConfigSave(
     socket: Socket,
@@ -124,7 +123,7 @@ export class WebSocketServer {
   ): Promise<void> {
     const err = this.validateConfig(data);
     if (err) {
-      socket.emit("config:error", { error: err });
+      socket.emit(EVENTS.CONFIG_ERROR, { error: err });
       return;
     }
     try {
@@ -133,12 +132,12 @@ export class WebSocketServer {
         serialPort: data.serialPort.trim(),
         baudRate: Number(data.baudRate),
       });
-      socket.emit("config:saved", config);
-      this.io.emit("config:current", config);
+      socket.emit(EVENTS.CONFIG_SAVED, config);
+      this.io.emit(EVENTS.CONFIG_CURRENT, config);
       await this.communicate.connect();
-      socket.emit("serial:status", this.communicate.getStatus());
+      socket.emit(EVENTS.SERIAL_STATUS, this.communicate.getStatus());
     } catch (error) {
-      socket.emit("config:error", { error: error instanceof Error ? error.message : "Unknown error" });
+      socket.emit(EVENTS.CONFIG_ERROR, { error: error instanceof Error ? error.message : "Unknown error" });
     }
   }
 
@@ -162,23 +161,23 @@ export class WebSocketServer {
       const config = this.serialConfigService.update(data.id, updates);
       if (config) {
         await this.communicate.resetSerialPort();
-        socket.emit("config:updated", config);
-        this.io.emit("config:current", config);
+        socket.emit(EVENTS.CONFIG_UPDATED, config);
+        this.io.emit(EVENTS.CONFIG_CURRENT, config);
       } else {
-        socket.emit("config:error", { error: "Config not found" });
+        socket.emit(EVENTS.CONFIG_ERROR, { error: "Config not found" });
       }
     } catch (error) {
-      socket.emit("config:error", { error: error instanceof Error ? error.message : "Unknown error" });
+      socket.emit(EVENTS.CONFIG_ERROR, { error: error instanceof Error ? error.message : "Unknown error" });
     }
   }
 
   private async handleSerialConnect(socket: Socket): Promise<void> {
     try {
       await this.communicate.connect();
-      socket.emit("serial:connected", { success: true, status: this.communicate.getStatus() });
-      this.io.emit("serial:status", this.communicate.getStatus());
+      socket.emit(EVENTS.SERIAL_CONNECTED, { success: true, status: this.communicate.getStatus() });
+      this.io.emit(EVENTS.SERIAL_STATUS, this.communicate.getStatus());
     } catch (error) {
-      socket.emit("serial:error", {
+      socket.emit(EVENTS.SERIAL_ERROR, {
         success: false,
         error: error instanceof Error ? error.message : "Unknown error",
       });
@@ -188,8 +187,8 @@ export class WebSocketServer {
   private async handleSerialDisconnect(socket: Socket): Promise<void> {
     try {
       await this.communicate.disconnect();
-      socket.emit("serial:disconnected", { success: true });
-      this.io.emit("serial:status", this.communicate.getStatus());
+      socket.emit(EVENTS.SERIAL_DISCONNECTED, { success: true });
+      this.io.emit(EVENTS.SERIAL_STATUS, this.communicate.getStatus());
     } catch (error) {
       socket.emit("serial:error", {
         success: false,
@@ -204,16 +203,16 @@ export class WebSocketServer {
   ): Promise<void> {
     const err = this.validateConfig(data);
     if (err) {
-      socket.emit("serial:test:result", { success: false, error: err });
+      socket.emit(EVENTS.SERIAL_TEST_RESULT, { success: false, error: err });
       return;
     }
     const path = data.serialPort.trim();
     const baudRate = Number(data.baudRate);
     try {
       const result = await this.communicate.testConnection(path, baudRate);
-      socket.emit("serial:test:result", result);
+      socket.emit(EVENTS.SERIAL_TEST_RESULT, result);
     } catch (error) {
-      socket.emit("serial:test:result", {
+      socket.emit(EVENTS.SERIAL_TEST_RESULT, {
         success: false,
         error: error instanceof Error ? error.message : "Unknown error",
       });
@@ -223,102 +222,204 @@ export class WebSocketServer {
   private async handleOtGetConfig(socket: Socket): Promise<void> {
     const status = this.communicate.getStatus();
     if (!status.isConnected) {
-      socket.emit("ot:config", { error: "Serial not connected. Connect serial first." });
-      return;
-    }
-    let config = this.communicate.getLastOtConfig();
-    if (config != null) {
-      socket.emit("ot:config", config);
+      socket.emit(EVENTS.OT_CONFIG, { error: "Serial not connected. Connect serial first." });
       return;
     }
     try {
-      config = await this.communicate.fetchOtConfig();
-      socket.emit("ot:config", config);
+      const config = await this.communicate.fetchOtConfig();
+      socket.emit(EVENTS.OT_CONFIG, config);
     } catch (error) {
-      socket.emit("ot:config", { error: error instanceof Error ? error.message : "Unknown error" });
+      socket.emit(EVENTS.OT_CONFIG, { error: error instanceof Error ? error.message : "Unknown error" });
     }
   }
 
-  private validateOtSetConfig(data: {
-    panid?: string;
-    channel?: number;
-    networkName?: string;
-  }): string | null {
-    if (data.panid != null && data.panid !== "") {
-      const panid = data.panid.trim();
-      if (!/^0x[0-9a-fA-F]{1,4}$/.test(panid) && !/^[0-9a-fA-F]{1,4}$/.test(panid)) return "PAN ID không hợp lệ";
-      const num = panid.startsWith("0x") ? parseInt(panid.slice(2), 16) : parseInt(panid, 16);
-      if (Number.isNaN(num) || num < 0 || num > 0xfffe) return "PAN ID phải trong khoảng 0x0000–0xFFFE";
-    }
-    if (data.channel != null) {
-      const ch = Number(data.channel);
-      if (!Number.isInteger(ch) || ch < 11 || ch > 26) return "Channel phải là số nguyên 11–26";
-    }
-    if (data.networkName != null && data.networkName !== "") {
-      const name = data.networkName.trim();
-      if (Buffer.byteLength(name, "utf8") > 16) return "Network Name tối đa 16 byte (UTF-8)";
-      if (/[\x00-\x1f\x7f]/.test(name)) return "Network Name không được chứa ký tự điều khiển";
-    }
-    return null;
-  }
+  private validateOtSetConfigMethod = validateOtSetConfig;
 
   private async handleOtSetConfig(
     socket: Socket,
-    _data: { panid?: string; channel?: number; networkName?: string }
+    data: { panid?: string; channel?: number; networkName?: string; extendedPanId?: string; networkKey?: string }
   ): Promise<void> {
     if (!this.communicate.getStatus().isConnected) {
-      socket.emit("ot:setConfig:result", { success: false, error: "Serial not connected." });
+      socket.emit(EVENTS.OT_SET_CONFIG_RESULT, { success: false, error: "Serial not connected." });
       return;
     }
-    socket.emit("ot:setConfig:result", { success: false, error: "Use frame protocol for set config." });
+    const err = this.validateOtSetConfigMethod(data);
+    if (err) {
+      socket.emit(EVENTS.OT_SET_CONFIG_RESULT, { success: false, error: err });
+      return;
+    }
+
+    // Gửi các lệnh set config qua frame protocol
+    const results: Array<{ field: string; success: boolean; error?: string }> = [];
+
+    try {
+      // Set PAN ID nếu có
+      if (data.panid != null && data.panid !== "") {
+        const panidResult = await this.communicate.setPanid(data.panid);
+        if (panidResult.ack) {
+          results.push({ field: "PAN ID", success: true });
+        } else {
+          const errorMsg = panidResult.errorCode === 0x04 ? "Invalid PAN ID" : "Failed to set PAN ID";
+          results.push({ field: "PAN ID", success: false, error: errorMsg });
+        }
+      }
+
+      // Set Channel nếu có
+      if (data.channel != null) {
+        const channelResult = await this.communicate.setChannel(data.channel);
+        if (channelResult.ack) {
+          results.push({ field: "Channel", success: true });
+        } else {
+          const errorMsg = channelResult.errorCode === 0x04 ? "Invalid Channel" : "Failed to set Channel";
+          results.push({ field: "Channel", success: false, error: errorMsg });
+        }
+      }
+
+      // Set Network Name nếu có
+      if (data.networkName != null && data.networkName !== "") {
+        const networkNameResult = await this.communicate.setNetworkName(data.networkName);
+        if (networkNameResult.ack) {
+          results.push({ field: "Network Name", success: true });
+        } else {
+          const errorMsg = networkNameResult.errorCode === 0x04 ? "Invalid Network Name" : "Failed to set Network Name";
+          results.push({ field: "Network Name", success: false, error: errorMsg });
+        }
+      }
+
+      // Set Extended PAN ID nếu có
+      if (data.extendedPanId != null && data.extendedPanId !== "") {
+        const extendedPanIdResult = await this.communicate.setExtendedPanid(data.extendedPanId);
+        if (extendedPanIdResult.ack) {
+          results.push({ field: "Extended PAN ID", success: true });
+        } else {
+          const errorMsg = extendedPanIdResult.errorCode === 0x04 ? "Invalid Extended PAN ID" : "Failed to set Extended PAN ID";
+          results.push({ field: "Extended PAN ID", success: false, error: errorMsg });
+        }
+      }
+
+      // Set Network Key nếu có
+      if (data.networkKey != null && data.networkKey !== "") {
+        const networkKeyResult = await this.communicate.setNetworkKey(data.networkKey);
+        if (networkKeyResult.ack) {
+          results.push({ field: "Network Key", success: true });
+        } else {
+          const errorMsg = networkKeyResult.errorCode === 0x04 ? "Invalid Network Key" : "Failed to set Network Key";
+          results.push({ field: "Network Key", success: false, error: errorMsg });
+        }
+      }
+
+      // Kiểm tra kết quả: nếu tất cả thành công thì success, nếu có lỗi thì trả về lỗi đầu tiên
+      const failedResults = results.filter((r) => !r.success);
+      if (failedResults.length > 0) {
+        const firstError = failedResults[0];
+        socket.emit(EVENTS.OT_SET_CONFIG_RESULT, {
+          success: false,
+          error: `${firstError.field}: ${firstError.error ?? "Failed"}`,
+        });
+      } else if (results.length > 0) {
+        // Tất cả thành công, fetch lại config để cập nhật
+        await this.communicate.fetchOtConfig();
+        socket.emit(EVENTS.OT_SET_CONFIG_RESULT, { success: true });
+      } else {
+        // Không có field nào để set
+        socket.emit(EVENTS.OT_SET_CONFIG_RESULT, { success: false, error: "No fields to set" });
+      }
+    } catch (error) {
+      socket.emit(EVENTS.OT_SET_CONFIG_RESULT, {
+        success: false,
+        error: error instanceof Error ? error.message : "Unknown error",
+      });
+    }
   }
 
   private async handleOtGetThreadState(socket: Socket): Promise<void> {
     if (!this.communicate.getStatus().isConnected) {
-      socket.emit("ot:threadState", { error: "Serial not connected. Connect serial first." });
+      socket.emit(EVENTS.OT_THREAD_STATE, { error: "Serial not connected. Connect serial first." });
       return;
     }
     const state = this.communicate.getLastThreadState();
     if (state != null) {
-      socket.emit("ot:threadState", state);
+      socket.emit(EVENTS.OT_THREAD_STATE, state);
       return;
     }
-    socket.emit("ot:threadState", { error: "Use frame protocol." });
+    socket.emit(EVENTS.OT_THREAD_STATE, { error: "Use frame protocol." });
   }
 
   private async handleOtSetThreadRunning(socket: Socket, _data: { running: boolean }): Promise<void> {
     if (!this.communicate.getStatus().isConnected) {
-      socket.emit("ot:setThreadRunning:result", { success: false, error: "Serial not connected." });
+      socket.emit(EVENTS.OT_SET_THREAD_RUNNING_RESULT, { success: false, error: "Serial not connected." });
       return;
     }
-    socket.emit("ot:setThreadRunning:result", { success: false, error: "Use frame protocol." });
+    socket.emit(EVENTS.OT_SET_THREAD_RUNNING_RESULT, { success: false, error: "Use frame protocol." });
+  }
+
+  private async handleOtStartThread(socket: Socket): Promise<void> {
+    if (!this.communicate.getStatus().isConnected) {
+      socket.emit(EVENTS.OT_START_THREAD_RESULT, { success: false, error: "Serial not connected." });
+      return;
+    }
+    try {
+      const result = await this.communicate.startThread();
+      if (result.ack) {
+        socket.emit(EVENTS.OT_START_THREAD_RESULT, { success: true });
+      } else {
+        const errorMsg = result.errorCode === 0x04 ? "Invalid parameter" : result.errorCode === 0x02 ? "Not ready" : "Failed to start Thread";
+        socket.emit(EVENTS.OT_START_THREAD_RESULT, { success: false, error: errorMsg });
+      }
+    } catch (error) {
+      socket.emit(EVENTS.OT_START_THREAD_RESULT, {
+        success: false,
+        error: error instanceof Error ? error.message : "Unknown error",
+      });
+    }
+  }
+
+  private async handleOtStopThread(socket: Socket): Promise<void> {
+    if (!this.communicate.getStatus().isConnected) {
+      socket.emit(EVENTS.OT_STOP_THREAD_RESULT, { success: false, error: "Serial not connected." });
+      return;
+    }
+    try {
+      const result = await this.communicate.stopThread();
+      if (result.ack) {
+        socket.emit(EVENTS.OT_STOP_THREAD_RESULT, { success: true });
+      } else {
+        const errorMsg = result.errorCode === 0x04 ? "Invalid parameter" : result.errorCode === 0x02 ? "Not ready" : "Failed to stop Thread";
+        socket.emit(EVENTS.OT_STOP_THREAD_RESULT, { success: false, error: errorMsg });
+      }
+    } catch (error) {
+      socket.emit(EVENTS.OT_STOP_THREAD_RESULT, {
+        success: false,
+        error: error instanceof Error ? error.message : "Unknown error",
+      });
+    }
   }
 
   private async handleOtGetRouterTable(socket: Socket): Promise<void> {
     if (!this.communicate.getStatus().isConnected) {
-      socket.emit("ot:routerTable", { error: "Serial not connected. Connect serial first." });
+      socket.emit(EVENTS.OT_ROUTER_TABLE, { error: "Serial not connected. Connect serial first." });
       return;
     }
     const table = this.communicate.getLastRouterTable();
-    socket.emit("ot:routerTable", table ?? { error: "No data." });
+    socket.emit(EVENTS.OT_ROUTER_TABLE, table ?? { error: "No data." });
   }
 
   private async handleOtGetChildTable(socket: Socket): Promise<void> {
     if (!this.communicate.getStatus().isConnected) {
-      socket.emit("ot:childTable", { error: "Serial not connected. Connect serial first." });
+      socket.emit(EVENTS.OT_CHILD_TABLE, { error: "Serial not connected. Connect serial first." });
       return;
     }
     const table = this.communicate.getLastChildTable();
-    socket.emit("ot:childTable", table ?? { error: "No data." });
+    socket.emit(EVENTS.OT_CHILD_TABLE, table ?? { error: "No data." });
   }
 
   private async handleCommissionerGetJoinerTable(socket: Socket): Promise<void> {
     if (!this.communicate.getStatus().isConnected) {
-      socket.emit("commissioner:joinerTable", { error: "Serial not connected. Connect serial first." });
+      socket.emit(EVENTS.OT_JOINER_TABLE, { error: "Serial not connected. Connect serial first." });
       return;
     }
     const table = this.communicate.getLastJoinerTable();
-    socket.emit("commissioner:joinerTable", table ?? { error: "No data." });
+    socket.emit(EVENTS.OT_JOINER_TABLE, table ?? { error: "No data." });
   }
 
   private async handleCommissionerConnect(
@@ -326,9 +427,9 @@ export class WebSocketServer {
     _data: { eui64?: string; psk?: string; timeout?: number }
   ): Promise<void> {
     if (!this.communicate.getStatus().isConnected) {
-      socket.emit("commissioner:connect:result", { success: false, error: "Serial not connected. Connect serial first." });
+      socket.emit(EVENTS.COMMISSIONER_CONNECT_RESULT, { success: false, error: "Serial not connected. Connect serial first." });
       return;
     }
-    socket.emit("commissioner:connect:result", { success: false, error: "Use frame protocol for commissioner." });
+    socket.emit(EVENTS.COMMISSIONER_CONNECT_RESULT, { success: false, error: "Use frame protocol for commissioner." });
   }
 }

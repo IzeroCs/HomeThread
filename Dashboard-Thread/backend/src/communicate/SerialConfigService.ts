@@ -3,14 +3,9 @@
  */
 
 import { getDatabase } from "../database/Database";
+import type { SerialConfig } from "shared/src/types";
 
-export interface SerialConfig {
-  id?: number;
-  serialPort: string;
-  baudRate: number;
-  createdAt?: string;
-  updatedAt?: string;
-}
+export type { SerialConfig };
 
 export class SerialConfigService {
   private db = getDatabase();

@@ -22,10 +22,10 @@ esp_err_t communicate_task_start(void);
 void communicate_task_mark_state_received(void);
 
 /**
- * Gửi CMD_STATE tới backend kèm 1 byte state (0=disabled, 1=detached, 2=child, 3=router, 4=leader).
- * Nếu không nhận ACK trong 1s thì gửi lại (retry).
+ * Gọi sau khi đã gửi ACK (16 byte leader RLOC) cho CMD_IP_ADDR.
+ * BR chờ backend gửi ACK xác nhận; không nhận trong 1s thì gửi lại (retry).
  */
-void communicate_task_send_state_to_backend(uint8_t state_byte);
+void communicate_task_mark_ip_response_pending(uint8_t frame_id);
 
 #ifdef __cplusplus
 }
