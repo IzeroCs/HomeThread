@@ -1,5 +1,5 @@
 /**
- * CommandManager - Xử lý frame protocol (RX: PING, DATA, ACK, NACK; TX: PING, ACK, pull request).
+ * CommandManager - Xử lý frame protocol (RX: DATA, ACK, NACK; TX: STATE, ACK, pull request).
  * Tách riêng khỏi CommunicateManager để quản lý logic lệnh và pending request/response.
  */
 
@@ -9,11 +9,8 @@ import { serialLogger, frameLogger } from "../utils/logger";
 
 const FRAME_RESPONSE_TIMEOUT_MS = 5000;
 
-/** Phần config được cập nhật từ ACK data (channel, panid, networkName, ...). */
+/** Phần config được cập nhật từ ACK data (ipaddr, datasetActive). */
 export type AckDataConfig = {
-  channel?: number;
-  panid?: string;
-  networkName?: string;
   ipaddr?: string;
   datasetActive?: string;
 };
@@ -49,15 +46,11 @@ export class CommandManager {
   constructor(private callbacks: CommandManagerCallbacks) {}
 
   /**
-   * Xử lý frame nhận từ leader (PING → trả ACK; DATA → broadcast; ACK/NACK → resolve pending).
+   * Xử lý frame nhận từ leader (DATA → broadcast; ACK/NACK → resolve pending).
    */
   handle(frame: ParsedFrame): void {
     this.logFrame(frame, "RX");
 
-    if (frame.cmd === CMD.PING) {
-      this.replyAckToPing(frame.frameId);
-      return;
-    }
     if (frame.cmd === CMD.DATA) {
       this.handleCmdData(frame);
       return;
@@ -83,20 +76,13 @@ export class CommandManager {
     }
   }
 
-  /** Trả ACK (cùng Frame ID) khi leader gửi PING. */
-  replyAckToPing(frameId: number): void {
-    try {
-      const ackFrame = buildFrame(frameId, CMD.ACK, undefined);
-      this.callbacks.writeRaw(ackFrame).catch((err) => serialLogger.warn(`Failed to send ACK to PING: ${err?.message ?? err}`));
-      frameLogger.log(`TX (reply) frameId=0x${frameId.toString(16).padStart(2, "0")} cmd=0x02 (ACK) len=0`);
-    } catch (err) {
-      serialLogger.warn(`Failed to build ACK for PING: ${err?.message ?? err}`);
-    }
-  }
+  /** Dữ liệu fake mặc định cho STATE (vài byte, tạm dùng keepalive). */
+  private static readonly STATE_FAKE_PAYLOAD = Buffer.from([0x01, 0x02, 0x03]);
 
-  /** Gửi frame PING (dùng bởi ping interval). */
-  sendPing(frameId: number): Buffer {
-    return buildFrame(frameId, CMD.PING, undefined);
+  /** Gửi frame STATE kèm payload (vài byte). Không truyền data thì dùng STATE_FAKE_PAYLOAD. */
+  sendState(frameId: number, data?: Buffer): Buffer {
+    const payload = data && data.length > 0 ? data : CommandManager.STATE_FAKE_PAYLOAD;
+    return buildFrame(frameId, CMD.STATE, payload);
   }
 
   /** Gửi pull request (cmd + data), chờ ACK/NACK. */
@@ -171,16 +157,6 @@ export class CommandManager {
 
   private parseAckData(data: Buffer): AckDataConfig | null {
     if (data.length === 0) return null;
-    if (data.length === 1 && data[0]! >= 11 && data[0]! <= 26) {
-      return { channel: data[0]! };
-    }
-    if (data.length === 2) {
-      return { panid: "0x" + data.readUInt16BE(0).toString(16).toUpperCase().padStart(4, "0") };
-    }
-    if (data.length >= 1 && data.length <= 16) {
-      const networkName = data.toString("utf8").replace(/\0/g, "");
-      return networkName ? { networkName } : null;
-    }
     if (data.length === 16) {
       const ipaddr = Array.from(data)
         .map((b) => b.toString(16).padStart(2, "0"))

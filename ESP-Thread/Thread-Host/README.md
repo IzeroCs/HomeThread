@@ -99,6 +99,7 @@ Thread-Host/
 │   ├── br_main.c                    # Entry point (app_main)
 │   ├── br_launch.c                  # Launch OpenThread BR
 │   ├── br_console.c                 # CLI console (OpenThread + system commands)
+│   ├── br_state_change.c            # OpenThread state change callback: log + gửi CMD_STATE (1 byte) tới backend
 │   ├── br_rcp_ctrl.c                # Control RESET/BOOT pins của RCP
 │   ├── br_custom_config.h           # OpenThread custom config (CoAP API enabled)
 │   ├── hardware/
@@ -109,7 +110,9 @@ Thread-Host/
 │   │   └── device_registry_handler.c   # Handler chung cho register/update/ping
 │   ├── communicate/
 │   │   ├── communicate.c               # Parse/serialize frame, gọi transport
-│   │   ├── communicate_task.c          # RX callback (PING→ACK, khác→NACK) + ping watchdog
+│   │   ├── communicate_task.c          # RX + state watchdog; gửi STATE tới backend khi role đổi (retry 1s nếu không ACK)
+│   │   ├── communicate_queue.c         # Queue frame, process task gọi handler; timeout gửi, log khi chờ lâu
+│   │   ├── communicate_command.c      # Handler CMD_STATE, CMD_DATASET_ACTIVE, CMD_IP_ADDR
 │   │   ├── transport_uart.c            # Transport UART (sẽ phát triển tiếp)
 │   │   └── transport_usb.c             # Transport USB CDC (USB Serial/JTAG)
 │   ├── include/
@@ -126,7 +129,9 @@ Thread-Host/
 │   ├── communicate/
 │   │   ├── communicate.h            # Communicate API, CMD defines
 │   │   ├── communicate_config.h     # FRAME_PORT_IS_UART, UART/CDC config
-│   │   ├── communicate_task.h       # communicate_task_start() — RX + ping watchdog
+│   │   ├── communicate_task.h       # communicate_task_start(), send_state_to_backend
+│   │   ├── communicate_queue.h      # communicate_queue_init(), post
+│   │   ├── communicate_command.h    # Command handler API
 │   │   ├── transport_uart.h         # Transport UART API
 │   │   └── transport_usb.h          # Transport USB CDC API
 │   └── coap_controller/
@@ -191,10 +196,10 @@ Thread-Host/
   - Handler chung dùng logic từ `device_registry_handler` cho cả 3 resource
   - Queue-based processing: enqueue CoAP data từ child devices, process và output qua UART
   - Hỗ trợ tối đa 10 items trong queue, payload tối đa 768 bytes
-- ✅ **Communicate (frame protocol)** — Parse/serialize khung SOF/Frame ID/CMD/LEN/DATA/CRC8/EOF; **transport USB CDC** (transport_usb) đã dùng; **transport UART** (transport_uart) sẽ phát triển tiếp. **communicate_task**: main gọi `communicate_task_start()` — init communicate + RX callback (PING→ACK, lệnh khác→NACK) + ping watchdog (backend ping interval; không nhận ping trong 5 lần × 15s → restart ESP); xem [TODO.md](TODO.md).
+- ✅ **Communicate (frame protocol)** — Parse/serialize khung SOF/Frame ID/CMD/LEN/DATA/CRC8/EOF; **transport USB CDC** (transport_usb) đã dùng; **transport UART** (transport_uart) sẽ phát triển tiếp. **communicate_task**: `communicate_task_start()` — init communicate + queue (timeout gửi 500 ms, log khi item chờ xử lý &gt; 2 s) + RX callback (STATE→ACK, lệnh khác→NACK) + state watchdog (backend gửi STATE interval; không nhận state trong 5 lần × 15s → restart). **BR→backend (Push):** khi OpenThread role thay đổi (`br_state_change`), BR gửi CMD_STATE với 1 byte (0=disabled..4=leader); nếu không nhận ACK trong 1s thì gửi lại; xem [docs/usb_cdc_frame_structure.md](docs/usb_cdc_frame_structure.md).
 - ❌ **Auto-flash RCP khi boot** — xem [TODO.md](TODO.md)
 - ❌ RCP update/firmware management (đã loại bỏ)
-- ⏳ **Xử lý CMD (Pull/Push)** — CMD PING, RESET, FACTORY, NETWORK_NAME, … và gọi `communicate_init()` trong main khi cần; xem [TODO.md](TODO.md) và [docs/usb_cdc_frame_structure.md](docs/usb_cdc_frame_structure.md).
+- ⏳ **Xử lý CMD (Pull/Push)** — CMD STATE, RESET, FACTORY, DATASET_ACTIVE, IP_ADDR đã có handler (communicate_command); BR gửi CMD_STATE (1 byte) khi role đổi, retry 1s nếu không ACK; xem [TODO.md](TODO.md) và [docs/usb_cdc_frame_structure.md](docs/usb_cdc_frame_structure.md).
 
 ## Tài liệu tham khảo
 

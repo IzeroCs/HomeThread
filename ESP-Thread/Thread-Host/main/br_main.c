@@ -1,5 +1,6 @@
 #include "esp_err.h"
 #include "esp_event.h"
+#include "esp_log_level.h"
 #include "esp_netif.h"
 #include "mdns.h"
 #include "esp_openthread_netif_glue.h"
@@ -13,13 +14,33 @@
 
 #include "br_launch.h"
 #include "br_rcp_ctrl.h"
+#include "br_state_change.h"
 #include "hardware/led_status.h"
+#include "hardware/boot_btn.h"
 #include "coap_controller/leader_control_client.h"
 #include "communicate/communicate_task.h"
+#include "esp_log.h"
+#include "esp_system.h"
+
+#define TAG "br_main"
+
+#define BOOT_BTN_GPIO         0    /* BOOT button trên ESP32-S3 DevKit */
+#define BOOT_BTN_HOLD_MS      3000 /* Giữ ~3s = long press */
+
+static void on_boot_long_press(void *ctx)
+{
+    (void)ctx;
+    ESP_LOGW(TAG, "Boot button long press: factory reset and restart");
+    esp_err_t err = nvs_flash_erase();
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG, "nvs_flash_erase failed %s", esp_err_to_name(err));
+    }
+    esp_restart();
+}
 
 void app_main(void)
 {
-  esp_log_level_set("OPENTHREAD", ESP_LOG_INFO);
+  esp_log_level_set("OPENTHREAD", ESP_LOG_WARN);
 
   esp_vfs_eventfd_config_t eventfd_config = {
         .max_fds = 3,
@@ -50,6 +71,12 @@ void app_main(void)
 
     launch_openthread_border_router(&openthread_config);
 
+    // Communicate task trước để state-change callback có thể gửi STATE tới backend (và retry nếu không ACK)
+    ESP_ERROR_CHECK(communicate_task_start());
+
+    // OpenThread state change callback (log + gửi CMD_STATE 1 byte tới backend khi role thay đổi)
+    ESP_ERROR_CHECK(br_state_change_init());
+
     // Initialize LED status indicator (WS2812)
     // Disabled: đỏ nhấp nháy | Detached: xanh dương nhấp nháy
     // Leader: xanh lá tĩnh | Router: tím tĩnh | Child: xanh dương tĩnh
@@ -58,6 +85,15 @@ void app_main(void)
     // Initialize Leader Control Client (CoAP client để gửi lệnh stop đến Leader)
     ESP_ERROR_CHECK(leader_control_client_init());
 
-    // Communicate task: frame protocol (USB CDC hoặc UART) + boot ping
-    ESP_ERROR_CHECK(communicate_task_start());
+    // Boot button: long press ~3s → factory reset (erase NVS) và restart
+    boot_btn_config_t btn_cfg = {
+        .gpio_num = BOOT_BTN_GPIO,
+        .hold_ms = BOOT_BTN_HOLD_MS,
+        .poll_ms = 50,
+        .on_long_press = on_boot_long_press,
+        .ctx = NULL,
+        .task_stack_size = 0,
+        .task_priority = 0,
+    };
+    ESP_ERROR_CHECK(boot_btn_start(&btn_cfg));
 }

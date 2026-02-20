@@ -18,14 +18,11 @@ extern "C" {
 #define CMD_DATA            0x01
 #define CMD_ACK             0x02
 #define CMD_NACK            0x03
-#define CMD_PING            0x04
 #define CMD_RESET           0x10
 #define CMD_FACTORY         0x11
-#define CMD_NETWORK_NAME    0x12
-#define CMD_PAN_ID          0x13
-#define CMD_CHANNEL         0x14
-#define CMD_DATASET_ACTIVE  0x15
-#define CMD_IP_ADDR         0x16
+#define CMD_STATE           0x12
+#define CMD_DATASET_ACTIVE  0x13
+#define CMD_IP_ADDR         0x14
 
 /** Callback khi nhận được một frame hợp lệ (frame_id, cmd, data, len). */
 typedef void (*communicate_rx_frame_cb_t)(uint8_t frame_id, uint8_t cmd, const uint8_t *data, size_t len, void *ctx);

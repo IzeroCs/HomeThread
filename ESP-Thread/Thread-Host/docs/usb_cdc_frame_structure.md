@@ -21,16 +21,13 @@
 | CMD_DATA | 0x01 | ESP32→Node | Push CBOR |
 | CMD_ACK | 0x02 | ESP32→Node | Pull response OK |
 | CMD_NACK | 0x03 | ESP32→Node | Pull response lỗi (1 byte error code) |
-| CMD_PING | 0x04 | Node→ESP32 | Pull: kiểm tra kết nối |
 | CMD_RESET | 0x10 | Node→ESP32 | Pull: reset |
 | CMD_FACTORY | 0x11 | Node→ESP32 | Pull: factory reset (DATA = 0xAA) |
-| CMD_NETWORK_NAME | 0x12 | Node→ESP32 | Pull: đọc tên mạng |
-| CMD_PAN_ID | 0x13 | Node→ESP32 | Pull: đọc PAN ID |
-| CMD_CHANNEL | 0x14 | Node→ESP32 | Pull: đọc Channel |
-| CMD_DATASET_ACTIVE | 0x15 | Node→ESP32 | Pull: đọc Active Dataset |
-| CMD_IP_ADDR | 0x16 | Node→ESP32 | Pull: đọc IPv6 leader |
+| CMD_STATE | 0x12 | Node↔ESP32 | **Node→ESP32 (Pull):** check kết nối (backend gửi interval; ESP trả ACK). **ESP32→Node (Push):** BR gửi khi state (role) thay đổi; DATA = 1 byte (0=disabled, 1=detached, 2=child, 3=router, 4=leader); backend trả CMD_ACK cùng Frame ID; không ACK trong 1s thì BR gửi lại. |
+| CMD_DATASET_ACTIVE | 0x13 | Node→ESP32 | Pull: đọc Active Dataset |
+| CMD_IP_ADDR | 0x14 | Node→ESP32 | Pull: đọc IPv6 leader |
 
-**CMD_ACK:** Echo cùng Frame ID; DATA tùy CMD (Network Name: UTF-8; PAN ID: 2 bytes; Channel: 1 byte; Dataset: TLV; IP: 16 bytes).
+**CMD_ACK:** Echo cùng Frame ID; DATA tùy CMD (Dataset: TLV; IP: 16 bytes). Khi BR gửi CMD_STATE (Push), backend trả CMD_ACK cùng Frame ID để BR dừng retry.
 
 **Error codes (CMD_NACK):** 0x01 Invalid CMD, 0x02 Not ready, 0x03 Timeout, 0x04 Invalid param, 0x05 Busy.
 

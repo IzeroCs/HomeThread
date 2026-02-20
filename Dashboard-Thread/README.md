@@ -1,6 +1,6 @@
 # Dashboard-Thread
 
-Backend + Frontend điều khiển **OpenThread CLI qua UART** (ESP32-H2 ot-br). Một project chung cho cả API và giao diện web.
+Backend + Frontend điều khiển **OpenThread qua UART** (ESP32-H2 ot-br), dùng **frame protocol USB CDC** — không còn CLI. Một project chung cho cả API và giao diện web.
 
 ## Stack
 
@@ -15,7 +15,7 @@ Backend + Frontend điều khiển **OpenThread CLI qua UART** (ESP32-H2 ot-br).
 - **Status**: Trạng thái serial, OpenThread (PAN ID, Channel, Network Name, IP, Dataset Active), thread state.
 - **Dashboard**: Router Table & Child Table (số lượng trong nhãn). Click một dòng → Modal xem đầy đủ thông tin (kể cả cột ẩn), tiêu đề theo RLOC16.
 - **Commissioner**: Thêm joiner (EUI64, PSK), tuỳ chọn timeout 30/60/120/180/500s; danh sách joiner với cột Expiration đếm ngược.
-- **Console**: Gửi lệnh CLI tùy ý, xem output realtime.
+- **Console**: Xem dữ liệu serial realtime (hex); gửi lệnh qua frame khi firmware hỗ trợ.
 - **Settings**: Cấu hình Serial (port, baud), OpenThread (PAN ID, Channel, Network Name, tự chạy Thread khi kết nối).
 
 Component dùng chung: **Modal**, **TopNav** nằm trong `frontend/src/components/common/`.
@@ -32,11 +32,13 @@ Component dùng chung: **Modal**, **TopNav** nằm trong `frontend/src/component
 ```
 Dashboard-Thread/
 ├── package.json          # Root: workspaces, scripts chạy cả BE + FE
-├── backend/              # Node.js + TypeScript (WebSocket, Serial/UART)
+├── backend/              # Node.js + TypeScript (WebSocket, Serial frame protocol)
 │   ├── src/
-│   │   ├── server/       # WebSocketServer
-│   │   ├── communicate/  # SerialPort, SerialConfig (giao tiếp phần cứng)
-│   │   └── services/     # AppSettings, Database
+│   │   ├── server/       # WebSocketServer (chỉ emit, lấy data từ CommunicateManager)
+│   │   ├── communicate/ # SerialPort, SerialConfig, frame (parser/builder/crc8), CommunicateManager, OtConfigManager, PollingManager
+│   │   ├── database/     # SQLite (Database, migrations)
+│   │   ├── services/     # AppSettings
+│   │   └── utils/        # logger
 │   └── package.json
 ├── frontend/
 │   ├── src/
@@ -44,6 +46,7 @@ Dashboard-Thread/
 │   │   │   └── common/   # Modal, TopNav
 │   │   └── hooks/        # useWebSocket, useWebSocketContext
 │   └── package.json
+├── docs/                 # entity_model_schema, migration_to_frame_protocol, usb_cdc_frame_structure
 ├── TODO.md
 └── README.md
 ```
@@ -82,8 +85,16 @@ Dashboard-Thread/
 
 ## Backend – Serial & frame protocol
 
-- **Giao tiếp:** Backend dùng **frame protocol** (USB CDC) qua serial — không còn CLI hay command prefix. Cấu trúc frame: SOF, Frame ID, CMD, LEN, DATA, CRC8, EOF (xem `docs/usb_cdc_frame_structure.md`).
-- **Khi mở serial:** Backend gửi CMD_PING, nhận ACK; nếu đã có cấu hình serial trong DB thì tự gọi `connectIfConfigured()` và polling OT config.
-- **AUTO_FETCH_DATA** (trong `backend/src/server/WebSocketServer.ts`): Khi **false** — giảm polling (Status, Router/Child, Commissioner); vẫn keepalive định kỳ. Khi **true** — polling đầy đủ.
+- **Giao tiếp:** Backend dùng **frame protocol** (USB CDC) qua serial — không còn CLI. Cấu trúc frame: SOF, Frame ID, CMD, LEN, DATA, CRC8, EOF (xem `docs/usb_cdc_frame_structure.md`).
+- **communicate/:** `SerialPort` (raw mode, `useFrameProtocol`), `SerialConfigService`, thư mục `frame/` (constants, crc8, frameBuilder, frameParser), **CommunicateManager** nắm dữ liệu (lastThreadState, lastOtConfig) và khởi tạo giao tiếp; **OtConfigManager**, **PollingManager**. Main truyền `onBroadcast => io.emit` để manager push event.
+- **WebSocketServer:** Chỉ emit tới frontend; lấy dữ liệu qua `communicate.getStatus()`, `communicate.getLastOtConfig()`; không chứa logic serial/frame.
+- **Khi mở serial:** Gửi CMD_STATE (keepalive, payload vài byte), nhận phản hồi; nếu đã có cấu hình serial trong DB thì tự `connectIfConfigured()` và polling OT config.
+- **AUTO_FETCH_DATA** (`WebSocketServer.ts`): **false** — giảm polling, vẫn keepalive định kỳ; **true** — polling đầy đủ (Status, Router/Child, Commissioner).
+- **Database:** SQLite (cấu hình serial, app settings); schema IoT entity (xem `docs/entity_model_schema.md`).
 
-Chi tiết và TODO: [TODO.md](./TODO.md).
+## Đã triển khai (tóm tắt)
+
+- **Backend:** Serial raw + frame parse/build, CRC8/MAXIM, CMD_ACK/CMD_NACK → cache + emit `ot:config`; CMD_STATE (keepalive, payload vài byte), Pull (CMD_DATASET_ACTIVE, CMD_IP_ADDR), polling + keepalive; WebSocket events: `status`, `serial:connect`/`disconnect`, `serial:data` (hex), `ot:config`, `ot:threadState`, `ot:routerTable`, `ot:childTable`, `commissioner:connect`/`commissioner:connect:result`.
+- **Frontend:** Status (Serial + OT config, Dataset Active bảng), Dashboard (Router/Child table với số lượng trong nhãn, click dòng → Modal RLOC16), Commissioner (EUI64/PSK, timeout 30/60/120/180/500s, chỉ khi leader), Console (log serial realtime hex, 320px), Settings (Serial + OT), form thống nhất (`_form.scss`), TopNav symbol màu theo thread state, truy cập LAN (Vite host true, proxy).
+
+Chi tiết migration frame: [docs/migration_to_frame_protocol.md](docs/migration_to_frame_protocol.md). Việc còn lại: [TODO.md](./TODO.md).

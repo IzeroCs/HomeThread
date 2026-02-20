@@ -58,7 +58,9 @@ Tính năng: Giao tiếp với Node/backend qua USB CDC (hoặc UART) theo cấu
 - **Transport USB CDC** (transport_usb.c): USB Serial/JTAG, init/send/deinit, RX task gọi callback.
 - **Parser/Serializer khung** (communicate.c): parse SOF…EOF, CRC8/MAXIM, `communicate_init()`, `communicate_send_frame()`.
 - **Transport UART** (transport_uart.c): code đã có; **sẽ phát triển tiếp sau** (xem mục Transport UART trên).
-- **communicate_task** (communicate_task.c): main gọi `communicate_task_start()` — gọi `communicate_init()` với RX callback nội bộ; RX: PING từ backend → ACK, lệnh khác → NACK (0x01); ping watchdog: mỗi 15s check, không nhận ping trong 5 lần → esp_restart().
+- **communicate_task** (communicate_task.c): `communicate_task_start()` — init communicate + queue + RX callback; RX: STATE từ backend → ACK, lệnh khác → NACK (0x01); state watchdog: mỗi 15s check, không nhận state trong 5 lần → esp_restart(). **Push BR→backend:** khi OpenThread role thay đổi (`br_state_change`), gửi CMD_STATE với 1 byte (0=disabled..4=leader); không nhận ACK trong 1s thì gửi lại (retry).
+- **communicate_queue** (communicate_queue.c): queue frame, process task gọi command handler; gửi vào queue timeout 500 ms (queue đầy thì trả ESP_ERR_TIMEOUT, RX gửi NACK 0x05 Busy); log cảnh báo khi item chờ xử lý &gt; 2 s.
+- **communicate_command** (communicate_command.c): handler CMD_STATE, CMD_DATASET_ACTIVE, CMD_IP_ADDR (OpenThread lock, trả ACK/NACK).
 
 ### Cấu trúc khung (tóm tắt)
 
@@ -67,21 +69,19 @@ Tính năng: Giao tiếp với Node/backend qua USB CDC (hoặc UART) theo cấu
 
 ### Các bước còn lại (ESP32 – BR)
 
-1. **Xử lý CMD (Pull từ Node → ESP32)** (trong communicate_task hoặc handler riêng)
-   - **CMD_PING (0x04):** Trả CMD_ACK, Frame ID echo.
-   - **CMD_RESET (0x10):** Reset thiết bị; trả CMD_ACK.
-   - **CMD_FACTORY (0x11):** Factory reset (DATA = 0xAA); trả CMD_ACK hoặc CMD_NACK (invalid param nếu thiếu 0xAA).
-   - **CMD_NETWORK_NAME (0x12):** Đọc tên mạng Thread; trả CMD_ACK + chuỗi UTF-8 (1–16 bytes).
-   - **CMD_PAN_ID (0x13):** Đọc PAN ID; trả CMD_ACK + 2 bytes [PAN_HIGH, PAN_LOW].
-   - **CMD_CHANNEL (0x14):** Đọc Channel; trả CMD_ACK + 1 byte (11–26).
-   - **CMD_DATASET_ACTIVE (0x15):** Đọc Active Dataset; trả CMD_ACK + TLV binary.
-   - **CMD_IP_ADDR (0x16):** Đọc IPv6 leader; trả CMD_ACK + 16 bytes.
+1. **Xử lý CMD (Pull từ Node → ESP32)** — đã có trong communicate_command + communicate_queue
+   - **CMD_STATE (0x12):** Backend gửi interval để check; ESP trả CMD_ACK.
+   - **CMD_RESET (0x10):** Reset thiết bị; trả CMD_ACK. (chưa hook vào communicate_command)
+   - **CMD_FACTORY (0x11):** Factory reset (DATA = 0xAA); trả CMD_ACK hoặc CMD_NACK. (chưa hook)
+   - **CMD_DATASET_ACTIVE (0x13):** Đọc Active Dataset; trả CMD_ACK + TLV binary. ✅
+   - **CMD_IP_ADDR (0x14):** Đọc IPv6 leader; trả CMD_ACK + 16 bytes. ✅
 
 2. **Phản hồi Pull (ACK/NACK)**
    - Luôn echo **cùng Frame ID** trong CMD_ACK/CMD_NACK.
    - CMD_NACK: DATA = 1 byte error code (Invalid CMD 0x01, Not ready 0x02, Timeout 0x03, Invalid param 0x04, Busy 0x05).
 
 3. **Push (ESP32 → Node)**
+   - **CMD_STATE (0x12):** BR gửi khi role thay đổi; DATA = 1 byte (0=disabled..4=leader); backend trả CMD_ACK cùng Frame ID; không ACK trong 1s thì BR gửi lại. ✅
    - **CMD_DATA (0x01):** Gửi CBOR từ child/router lên Node; tăng Frame ID cho mỗi khung.
 
 ### Lưu ý

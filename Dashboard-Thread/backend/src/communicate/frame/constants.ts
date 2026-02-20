@@ -9,14 +9,11 @@ export const CMD = {
   DATA: 0x01,
   ACK: 0x02,
   NACK: 0x03,
-  PING: 0x04,
   RESET: 0x10,
   FACTORY: 0x11,
-  NETWORK_NAME: 0x12,
-  PAN_ID: 0x13,
-  CHANNEL: 0x14,
-  DATASET_ACTIVE: 0x15,
-  IP_ADDR: 0x16,
+  STATE: 0x12,
+  DATASET_ACTIVE: 0x13,
+  IP_ADDR: 0x14,
 } as const;
 
 export type CmdCode = (typeof CMD)[keyof typeof CMD];
@@ -26,12 +23,9 @@ export const CMD_NAMES: Record<number, string> = {
   [CMD.DATA]: "DATA",
   [CMD.ACK]: "ACK",
   [CMD.NACK]: "NACK",
-  [CMD.PING]: "PING",
   [CMD.RESET]: "RESET",
   [CMD.FACTORY]: "FACTORY",
-  [CMD.NETWORK_NAME]: "NETWORK_NAME",
-  [CMD.PAN_ID]: "PAN_ID",
-  [CMD.CHANNEL]: "CHANNEL",
+  [CMD.STATE]: "STATE",
   [CMD.DATASET_ACTIVE]: "DATASET_ACTIVE",
   [CMD.IP_ADDR]: "IP_ADDR",
 };

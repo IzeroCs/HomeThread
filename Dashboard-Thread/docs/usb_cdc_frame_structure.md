@@ -36,15 +36,12 @@
 | CMD_DATA | `0x01` | ESP32→Node | **Push** | CBOR data từ child/router |
 | CMD_ACK | `0x02` | ESP32→Node | Pull response | Xác nhận thực hiện lệnh thành công |
 | CMD_NACK | `0x03` | ESP32→Node | Pull response | Báo lỗi thực hiện lệnh |
-| CMD_PING | `0x04` | Node→ESP32 | **Pull** | Kiểm tra kết nối |
+| CMD_STATE | `0x04` | Node→ESP32 | — | Keepalive / trạng thái; kèm payload vài byte (tùy triển khai) |
 | *(reserved)* | `0x05–0x0F` | — | — | Dành mở rộng sau |
 | CMD_RESET | `0x10` | Node→ESP32 | **Pull** | Reset thiết bị |
 | CMD_FACTORY | `0x11` | Node→ESP32 | **Pull** | Factory reset |
-| CMD_NETWORK_NAME | `0x12` | Node→ESP32 | **Pull** | Đọc tên mạng Thread |
-| CMD_PAN_ID | `0x13` | Node→ESP32 | **Pull** | Đọc PAN ID |
-| CMD_CHANNEL | `0x14` | Node→ESP32 | **Pull** | Đọc Channel |
-| CMD_DATASET_ACTIVE | `0x15` | Node→ESP32 | **Pull** | Đọc Active Dataset |
-| CMD_IP_ADDR | `0x16` | Node→ESP32 | **Pull** | Đọc IPv6 của leader |
+| CMD_DATASET_ACTIVE | `0x12` | Node→ESP32 | **Pull** | Đọc Active Dataset |
+| CMD_IP_ADDR | `0x13` | Node→ESP32 | **Pull** | Đọc IPv6 của leader |
 
 ---
 
@@ -55,21 +52,15 @@
 | CMD_DATA | ESP32→Node | CBOR từ child/router | Tùy số field |
 | CMD_ACK | ESP32→Node | Data phản hồi (nếu có) | Tùy CMD |
 | CMD_NACK | ESP32→Node | Error code (1 byte) – xem bảng Error codes | 1 byte |
-| CMD_PING | Node→ESP32 | Không có | 0 byte |
+| CMD_STATE | Node→ESP32 | Payload vài byte (keepalive / state; tạm có thể dùng fake) | Vài byte |
 | CMD_RESET | Node→ESP32 | Không có | 0 byte |
 | CMD_FACTORY | Node→ESP32 | `0xAA` (confirm byte) | 1 byte |
-| CMD_NETWORK_NAME | Node→ESP32 | Không có (request) | 0 byte |
-| CMD_PAN_ID | Node→ESP32 | Không có (request) | 0 byte |
-| CMD_CHANNEL | Node→ESP32 | Không có (request) | 0 byte |
 | CMD_DATASET_ACTIVE | Node→ESP32 | Không có (request) | 0 byte |
 | CMD_IP_ADDR | Node→ESP32 | Không có (request) | 0 byte |
 
 **CMD_ACK trả data theo CMD request:**
-- Network Name: Chuỗi UTF-8 (1–16 bytes)
-- PAN ID: `[PAN_HIGH, PAN_LOW]` – 2 bytes, range `0x0000–0xFFFE`
-- Channel: `[channel]` – 1 byte, range `11–26`
-- Dataset Active: TLV binary (tùy dataset)
-- IP Addr: IPv6 address – 16 bytes (ý nghĩa chi tiết xử lý sau)
+- Dataset Active: TLV binary hoặc hex (tùy dataset)
+- IP Addr: IPv6 address – 16 bytes
 
 ---
 
@@ -119,11 +110,17 @@ AA  01  01  00 05  01 02 03 04 05  XX  55
 └─ SOF
 ```
 
-### Pull đọc Channel
+### Pull đọc IP (CMD_IP_ADDR)
 
 ```
-Node→ESP32:   AA  02  14  00 00  XX  55   (Frame ID=2, CMD_CHANNEL 0x14, LEN=0)
-ESP32→Node:   AA  02  02  00 01  0F  XX  55   (Frame ID=2 echo, CMD_ACK, LEN=1, channel=15)
+Node→ESP32:   AA  02  13  00 00  XX  55   (Frame ID=2, CMD_IP_ADDR 0x13, LEN=0)
+ESP32→Node:   AA  02  02  00 10  [16 bytes IPv6]  XX  55   (Frame ID=2 echo, CMD_ACK, LEN=16)
+```
+
+### Gửi STATE (keepalive, payload vài byte)
+
+```
+Node→ESP32:   AA  00  04  00 03  01 02 03  XX  55   (Frame ID=0, CMD_STATE 0x04, LEN=3, DATA=01 02 03)
 ```
 
 ---

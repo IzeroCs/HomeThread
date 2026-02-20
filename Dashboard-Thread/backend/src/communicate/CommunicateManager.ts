@@ -18,8 +18,8 @@ export type { OtConfig } from "./OtConfigManager";
 export type { ThreadState, TableData } from "./ThreadDataManager";
 
 const RECONNECT_INTERVAL_MS = 3000;
-/** Ping 5 lần không có phản hồi (bất kỳ frame từ leader) thì đóng port và reconnect. */
-const PING_WITHOUT_RESPONSE_LIMIT = 5;
+/** STATE 5 lần không có phản hồi (bất kỳ frame từ leader) thì đóng port và reconnect. */
+const STATE_WITHOUT_RESPONSE_LIMIT = 5;
 
 export type SerialStatus = { isConnected: boolean; path: string; baudRate: number };
 
@@ -34,19 +34,19 @@ export class CommunicateManager {
   private frameUnsubscribe: (() => void) | null = null;
   private autoReconnectEnabled = true;
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
-  /** Số lần PING liên tiếp không nhận được bất kỳ frame nào từ leader; đạt 5 thì đóng port và reconnect. */
-  private pingWithoutResponseCount = 0;
+  /** Số lần STATE liên tiếp không nhận được bất kỳ frame nào từ leader; đạt 5 thì đóng port và reconnect. */
+  private stateWithoutResponseCount = 0;
 
   private otConfigManager = new OtConfigManager();
   private threadDataManager = new ThreadDataManager();
 
   private pollingManager = new PollingManager();
-  private pingIntervalId: ReturnType<typeof setInterval> | null = null;
-  private static readonly PING_INTERVAL_MS = 15000;
+  private stateIntervalId: ReturnType<typeof setInterval> | null = null;
+  private static readonly STATE_INTERVAL_MS = 15000;
 
   private frameParser = new FrameParser();
   private commandManager: CommandManager | null = null;
-  /** Chỉ bật polling (OT config) sau khi leader gửi PING và ta đã trả ACK. */
+  /** Chỉ bật polling (OT config) sau khi leader ready (ví dụ sau khi nhận phản hồi STATE). */
   private leaderReady = false;
 
   constructor(
@@ -170,9 +170,9 @@ export class CommunicateManager {
     this.pollingManager.stopAll();
     this.threadDataManager.clear();
     this.otConfigManager.clear();
-    if (this.pingIntervalId != null) {
-      clearInterval(this.pingIntervalId);
-      this.pingIntervalId = null;
+    if (this.stateIntervalId != null) {
+      clearInterval(this.stateIntervalId);
+      this.stateIntervalId = null;
     }
   }
 
@@ -212,7 +212,7 @@ export class CommunicateManager {
       this.frameParser.push(
         chunk,
         (frame: ParsedFrame) => {
-          this.pingWithoutResponseCount = 0;
+          this.stateWithoutResponseCount = 0;
           this.commandManager!.handle(frame);
         },
         (bytes, reason) => {
@@ -227,33 +227,33 @@ export class CommunicateManager {
     this.commandManager?.clearPending();
   }
 
-  /** Bật gửi PING định kỳ (ngay 1 lần + mỗi PING_INTERVAL_MS). */
-  private startPingInterval(): void {
-    if (this.pingIntervalId != null) return;
+  /** Bật gửi STATE định kỳ (ngay 1 lần + mỗi STATE_INTERVAL_MS), payload vài byte (fake nếu không truyền). */
+  private startStateInterval(): void {
+    if (this.stateIntervalId != null) return;
     if (!this.serialPort?.getStatus().isConnected) return;
-    this.sendPingToLeader();
-    this.pingIntervalId = setInterval(() => {
-      this.sendPingToLeader();
-    }, CommunicateManager.PING_INTERVAL_MS);
+    this.sendStateToLeader();
+    this.stateIntervalId = setInterval(() => {
+      this.sendStateToLeader();
+    }, CommunicateManager.STATE_INTERVAL_MS);
   }
 
-  /** Gửi 1 frame PING. Đã gửi 5 lần không có phản hồi thì đóng port và reconnect. */
-  private sendPingToLeader(): void {
+  /** Gửi 1 frame STATE kèm payload (vài byte). Đã gửi 5 lần không có phản hồi thì đóng port và reconnect. */
+  private sendStateToLeader(): void {
     if (!this.serialPort?.getStatus().isConnected || !this.commandManager) return;
-    if (this.pingWithoutResponseCount >= PING_WITHOUT_RESPONSE_LIMIT) {
-      serialLogger.warn("Ping " + PING_WITHOUT_RESPONSE_LIMIT + " lần không có phản hồi — đóng port và reconnect.");
+    if (this.stateWithoutResponseCount >= STATE_WITHOUT_RESPONSE_LIMIT) {
+      serialLogger.warn("STATE " + STATE_WITHOUT_RESPONSE_LIMIT + " lần không có phản hồi — đóng port và reconnect.");
       const port = this.serialPort;
       port.close().then(() => this.onSerialDisconnected()).catch(() => this.onSerialDisconnected());
       return;
     }
     try {
       const frameId = this.commandManager.consumeNextFrameId();
-      const pingFrame = this.commandManager.sendPing(frameId);
-      this.serialPort.writeRaw(pingFrame).catch((err) => serialLogger.warn(`Failed to send PING to leader: ${err?.message ?? err}`));
-      frameLogger.log("TX frameId=0x" + frameId.toString(16).padStart(2, "0") + " cmd=0x04 (PING) len=0");
-      this.pingWithoutResponseCount++;
+      const stateFrame = this.commandManager.sendState(frameId);
+      this.serialPort.writeRaw(stateFrame).catch((err) => serialLogger.warn(`Failed to send STATE to leader: ${(err as Error)?.message ?? err}`));
+      frameLogger.log("TX frameId=0x" + frameId.toString(16).padStart(2, "0") + " cmd=0x04 (STATE) len=" + (stateFrame.length - 7));
+      this.stateWithoutResponseCount++;
     } catch (err) {
-      serialLogger.warn(`Failed to build PING for leader: ${err}`);
+      serialLogger.warn(`Failed to build STATE for leader: ${err}`);
     }
   }
 
@@ -266,7 +266,7 @@ export class CommunicateManager {
 
   private onSerialDisconnected(): void {
     this.leaderReady = false;
-    this.pingWithoutResponseCount = 0;
+    this.stateWithoutResponseCount = 0;
     this.stopAllPolling();
     this.frameUnsubscribe = null;
     this.clearPendingFrames();
@@ -306,11 +306,11 @@ export class CommunicateManager {
       await this.serialPort!.open();
 
       this.clearReconnectTimer();
-      this.pingWithoutResponseCount = 0;
+      this.stateWithoutResponseCount = 0;
       this.broadcast("serial:connected", { success: true, status: this.serialPort!.getStatus() });
       this.broadcast("serial:status", this.serialPort!.getStatus());
       serialLogger.info(`Connected: ${config.serialPort}`);
-      this.startPingInterval();
+      this.startStateInterval();
     } catch (error) {
       serialLogger.error(`Connection failed: ${error}`);
       this.broadcast("serial:status", { isConnected: false, path: config.serialPort, baudRate: config.baudRate });
@@ -318,7 +318,7 @@ export class CommunicateManager {
     }
   }
 
-  /** Bật poll OT config (gọi từ bên ngoài khi leader ready, ví dụ sau khi nhận PING). */
+  /** Bật poll OT config (gọi từ bên ngoài khi leader ready, ví dụ sau khi nhận phản hồi STATE). */
   startOtConfigPolling(): void {
     if (!this.serialPort?.getStatus().isConnected) return;
     this.pollingManager.startOtConfigPolling(

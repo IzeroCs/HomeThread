@@ -33,30 +33,18 @@ export class PollingManager {
   static readonly JOINER_TABLE_POLL_MS = 6000;
 
   /**
-   * Fetch một lần đầy đủ OT config (network name, PAN ID, channel, ...) qua sendRequest.
+   * Fetch một lần OT config (dataset active, IP) qua sendRequest.
    */
   async fetchOtConfigPayload(
     sendRequest: SendPullRequest,
     getBaseConfig: () => OtConfigPayload
   ): Promise<OtConfigPayload> {
     const base = { ...getBaseConfig() };
-    const cmds = [
-      CMD.NETWORK_NAME,
-      CMD.PAN_ID,
-      CMD.CHANNEL,
-      CMD.DATASET_ACTIVE,
-      CMD.IP_ADDR,
-    ] as const;
+    const cmds = [CMD.DATASET_ACTIVE, CMD.IP_ADDR] as const;
     for (const cmd of cmds) {
       const res = await sendRequest(cmd);
       if (res.ack && res.data && res.data.length > 0) {
-        if (cmd === CMD.CHANNEL && res.data.length === 1) {
-          base.channel = res.data[0];
-        } else if (cmd === CMD.PAN_ID && res.data.length === 2) {
-          base.panid = "0x" + res.data.readUInt16BE(0).toString(16).toUpperCase().padStart(4, "0");
-        } else if (cmd === CMD.NETWORK_NAME && res.data.length <= 16) {
-          base.networkName = res.data.toString("utf8").replace(/\0/g, "");
-        } else if (cmd === CMD.IP_ADDR && res.data.length === 16) {
+        if (cmd === CMD.IP_ADDR && res.data.length === 16) {
           base.ipaddr = Array.from(res.data)
             .map((b) => b.toString(16).padStart(2, "0"))
             .join(":");

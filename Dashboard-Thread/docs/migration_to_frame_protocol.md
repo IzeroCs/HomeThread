@@ -13,8 +13,8 @@ Tài liệu này liệt kê các bước / lệnh cần làm để chuyển Dash
 | Serial raw mode (`useFrameProtocol`, `onRawData`, `writeRaw`) | ✅ Xong | `communicate/SerialPort.ts` |
 | CRC-8/MAXIM + frame builder + frame parser | ✅ Xong | `communicate/frame/` |
 | CMD_ACK/CMD_NACK → cập nhật cache, emit `ot:config` | ✅ Xong | Trong CommunicateManager |
-| Gửi Pull (CMD_PING, CMD_* config), timeout, pending theo Frame ID | ✅ Xong | `sendPullRequest`, `fetchOtConfigPayload` |
-| Polling OT config định kỳ + keepalive CMD_PING | ✅ Xong | CommunicateManager |
+| Gửi Pull (CMD_STATE, CMD_DATASET_ACTIVE, CMD_IP_ADDR), timeout, pending theo Frame ID | ✅ Xong | `sendPullRequest`, `fetchOtConfigPayload` |
+| Polling OT config định kỳ + keepalive CMD_STATE (payload vài byte) | ✅ Xong | CommunicateManager |
 | **CommunicateManager** – toàn bộ dữ liệu & khởi tạo giao tiếp | ✅ Xong | Dữ liệu nằm trong communicate |
 | **WebSocketServer** chỉ emit, lấy dữ liệu từ manager | ✅ Xong | Main khởi tạo io + manager, truyền vào WS |
 | Main (`index.ts`) khởi tạo io, CommunicateManager, gọi `connectIfConfigured()` | ✅ Xong | |
@@ -26,7 +26,7 @@ Tài liệu này liệt kê các bước / lệnh cần làm để chuyển Dash
 
 ## 1. Tổng quan
 
-- **Hiện tại:** Backend dùng **frame protocol** (USB CDC). Serial mở port với `useFrameProtocol: true`, đọc raw bytes; `CommunicateManager` parse frame, gửi Pull (CMD_PING, CMD_* config), nhận CMD_ACK/CMD_NACK và cập nhật `lastOtConfig`, broadcast `serial:data` (hex), `ot:config`. **WebSocketServer** chỉ lấy dữ liệu từ manager và emit tới frontend; khởi tạo giao tiếp nằm ở main.
+- **Hiện tại:** Backend dùng **frame protocol** (USB CDC). Serial mở port với `useFrameProtocol: true`, đọc raw bytes; `CommunicateManager` parse frame, gửi CMD_STATE (keepalive, payload vài byte) và Pull (CMD_DATASET_ACTIVE, CMD_IP_ADDR), nhận CMD_ACK/CMD_NACK và cập nhật `lastOtConfig`, broadcast `serial:data` (hex), `ot:config`. **WebSocketServer** chỉ lấy dữ liệu từ manager và emit tới frontend; khởi tạo giao tiếp nằm ở main.
 - **Còn lại:** Parse CMD_DATA (CBOR) để cập nhật thread state / router-child-joiner table; set config & commissioner khi firmware có CMD tương ứng.
 
 ---
@@ -57,15 +57,15 @@ Tài liệu này liệt kê các bước / lệnh cần làm để chuyển Dash
 ### 2.3. Xử lý từng CMD nhận từ ESP32 (RX)
 
 - **CMD_DATA (0x01):** DATA là CBOR từ child/router. Parse CBOR, cập nhật dữ liệu tương ứng (state, config, router/child table tùy spec) rồi set `lastThreadState` / `lastOtConfig` / `lastRouterTable` / `lastChildTable` và `io.emit("ot:threadState" | "ot:config" | ...)`.
-- **CMD_ACK (0x02):** Response cho Pull request. DATA = payload theo CMD đã gửi (Network Name UTF-8, PAN ID 2 bytes, Channel 1 byte, Dataset TLV, IPv6 16 bytes). Map theo Frame ID đang chờ → cập nhật cache và emit event tương ứng.
+- **CMD_ACK (0x02):** Response cho Pull request. DATA = payload theo CMD đã gửi (Dataset Active, IPv6 16 bytes). Map theo Frame ID đang chờ → cập nhật cache và emit event tương ứng.
 - **CMD_NACK (0x03):** DATA = 1 byte error code. Map theo Frame ID → emit lỗi cho client tương ứng (hoặc broadcast nếu không gắn socket).
 
 ### 2.4. Gửi frame Pull (TX) – Node → ESP32
 
 - **Build frame:** SOF + Frame ID (tăng dần) + CMD + LEN (big-endian, 2 bytes) + DATA (nếu có) + CRC8( [Frame ID, CMD, LEN_HIGH, LEN_LOW, DATA...] ) + EOF.
 - **Các lệnh cần gửi tương ứng tính năng hiện tại:**
-  - **Thread state / keepalive:** CMD_PING (0x04) hoặc CMD tương đương nếu ESP cung cấp state qua ACK.
-  - **OT config:** CMD_NETWORK_NAME (0x12), CMD_PAN_ID (0x13), CMD_CHANNEL (0x14), CMD_DATASET_ACTIVE (0x15), CMD_IP_ADDR (0x16) → nhận qua CMD_ACK, parse DATA rồi merge vào `lastOtConfig` và emit `ot:config`.
+  - **Keepalive:** CMD_STATE (0x04), kèm payload vài byte (tạm có thể dùng fake).
+  - **OT config:** CMD_DATASET_ACTIVE (0x12), CMD_IP_ADDR (0x13) → nhận qua CMD_ACK, parse DATA rồi merge vào `lastOtConfig` và emit `ot:config`.
   - **Reset thiết bị:** CMD_RESET (0x10), không DATA.
   - **Factory reset:** CMD_FACTORY (0x11), DATA = `[0xAA]`.
 - **Hàng đợi / Frame ID:** Mỗi request Pull dùng một Frame ID duy nhất; khi nhận CMD_ACK/CMD_NACK với cùng Frame ID thì resolve promise và cập nhật cache.
@@ -73,21 +73,18 @@ Tài liệu này liệt kê các bước / lệnh cần làm để chuyển Dash
 ### 2.5. Map frame → WebSocketServer state và event
 
 - Khi nhận CMD_ACK với DATA tương ứng:
-  - Network Name → `lastOtConfig.networkName`, emit `ot:config`.
-  - PAN ID (2 bytes) → format `0xXXXX` → `lastOtConfig.panid`, emit `ot:config`.
-  - Channel (1 byte) → `lastOtConfig.channel`, emit `ot:config`.
-  - Dataset Active (TLV) → `lastOtConfig.datasetActive` (hex hoặc string tùy cách hiển thị), emit `ot:config`.
+  - Dataset Active → `lastOtConfig.datasetActive` (hex hoặc string tùy cách hiển thị), emit `ot:config`.
   - IPv6 (16 bytes) → `lastOtConfig.ipaddr`, emit `ot:config`.
 - CMD_DATA (CBOR): parse và cập nhật `lastThreadState` / `lastRouterTable` / `lastChildTable` / … theo định dạng CBOR đã thống nhất với firmware.
 
 ### 2.6. Thay thế các handler đang stub
 
 - **pollThreadState:** Nếu có CMD Pull để lấy state → gửi frame tương ứng định kỳ; khi nhận ACK/DATA thì set `lastThreadState` và emit. Nếu state chỉ đến qua CMD_DATA thì chỉ cập nhật khi nhận CMD_DATA.
-- **fetchOtConfigPayload:** Gửi lần lượt (hoặc theo batch) CMD_NETWORK_NAME, CMD_PAN_ID, CMD_CHANNEL, CMD_DATASET_ACTIVE, CMD_IP_ADDR; merge kết quả ACK vào `lastOtConfig` và emit `ot:config`.
+- **fetchOtConfigPayload:** Gửi lần lượt CMD_DATASET_ACTIVE, CMD_IP_ADDR; merge kết quả ACK vào `lastOtConfig` và emit `ot:config`.
 - **handleOtSetConfig:** Gửi frame set config (nếu protocol mở rộng CMD set panid/channel/networkname); khi có ACK/NACK thì emit `ot:setConfig:result`.
 - **handleOtSetThreadRunning:** Tương tự, dùng CMD tương ứng (nếu có) hoặc để stub đến khi firmware hỗ trợ.
 - **handleCommissionerConnect:** Dùng frame commissioner (khi có CMD tương ứng trong spec).
-- **runSerialKeepalive:** Gửi CMD_PING (0x04) định kỳ.
+- **runSerialKeepalive:** Gửi CMD_STATE (0x04) kèm payload vài byte định kỳ.
 
 ### 2.7. File / module gợi ý
 
@@ -112,10 +109,10 @@ Tài liệu này liệt kê các bước / lệnh cần làm để chuyển Dash
 
 ## 4. Thứ tự triển khai gợi ý
 
-1. **CRC8 + frame builder** – Viết hàm CRC-8/MAXIM và build frame Pull (ví dụ CMD_PING, CMD_CHANNEL) để test tay với thiết bị.
+1. **CRC8 + frame builder** – Viết hàm CRC-8/MAXIM và build frame (ví dụ CMD_STATE, CMD_IP_ADDR) để test tay với thiết bị.
 2. **Serial raw + frame parser** – Chuyển SerialPort đọc raw, buffer tích lũy, parse SOF…EOF, validate CRC, emit parsed frame.
-3. **TX:** Gửi CMD_PING / CMD_CHANNEL (hoặc một CMD đơn giản) từ WebSocketServer, nhận CMD_ACK và log.
-4. **Map ACK → lastOtConfig** – Parse DATA của CMD_ACK (channel, panid, network name, …), set `lastOtConfig`, emit `ot:config`.
+3. **TX:** Gửi CMD_STATE (payload vài byte) / CMD_IP_ADDR từ backend, nhận CMD_ACK và log.
+4. **Map ACK → lastOtConfig** – Parse DATA của CMD_ACK (dataset active, ipaddr), set `lastOtConfig`, emit `ot:config`.
 5. **Polling:** Bật lại poll (thread state, OT config) bằng cách gửi frame Pull định kỳ và cập nhật từ ACK/DATA.
 6. **Set config / thread running / commissioner** – Khi firmware hỗ trợ CMD tương ứng, gửi frame từ handler và emit kết quả.
 
