@@ -1,5 +1,5 @@
 /**
- * Table Parser - Parse binary table data từ Border Router theo format trong table_data_format.md
+ * Table Parser - Parse binary table data từ Border Router theo format trong Documents/protocol/table_data_format.md
  */
 
 export interface RouterEntry {
