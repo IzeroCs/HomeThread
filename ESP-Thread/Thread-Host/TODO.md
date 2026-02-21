@@ -82,6 +82,7 @@ Tính năng: Giao tiếp với Node/backend qua USB CDC (hoặc UART) theo cấu
    - **CMD_THREAD_START (0x40):** Bật IPv6 + Thread; trả CMD_ACK. ✅
    - **CMD_THREAD_STOP (0x41):** Tắt Thread + IPv6; trả CMD_ACK. ✅
    - **CMD_THREAD_VERSION (0x42):** Trả CMD_ACK + chuỗi version OpenThread (UTF-8). ✅
+   - **CMD_COMMISSIONER_JOINER (0x43):** Thêm joiner vào commissioner; DATA = EUI64(8) + PSKD_len(1) + PSKD(1–32) + Timeout(4 big-endian, giây); EUI64 all-zero = wildcard; tự động start commissioner nếu chưa active; trả CMD_ACK hoặc CMD_NACK (0x02 not ready, 0x04 invalid param). ✅
 
 2. **Phản hồi Pull (ACK/NACK)**
    - Luôn echo **cùng Frame ID** trong CMD_ACK/CMD_NACK.

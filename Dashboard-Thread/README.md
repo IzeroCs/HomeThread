@@ -49,7 +49,7 @@ Dashboard-Thread/
 │   │   │   └── common/   # Modal, TopNav
 │   │   └── hooks/        # useWebSocket, useWebSocketContext
 │   └── package.json
-├── docs/                 # entity_model_schema, migration_to_frame_protocol, usb_cdc_frame_structure
+├── docs/                 # (đã chuyển sang HomeThread/Documents/)
 ├── TODO.md
 └── README.md
 ```
@@ -92,7 +92,7 @@ Dashboard-Thread/
 
 ## Backend – Serial & frame protocol
 
-- **Giao tiếp:** Frame protocol (USB CDC) qua serial — không còn CLI. Cấu trúc frame: SOF, Frame ID, CMD, LEN, DATA, CRC8, EOF (xem `docs/usb_cdc_frame_structure.md`).
+- **Giao tiếp:** Frame protocol (USB CDC) qua serial — không còn CLI. Cấu trúc frame: SOF, Frame ID, CMD, LEN, DATA, CRC8, EOF (xem `Documents/protocol/usb_cdc_frame_structure.md` ở thư mục gốc HomeThread).
 - **Kiến trúc:** `CommunicateManager` điều phối serial + frame; `CommandManager` gửi/nhận frame, quản lý pending theo Frame ID + timeout; `OtConfigManager` lưu config; `PollingManager` poll table định kỳ. `WebSocketServer` chỉ relay event — không chứa logic serial/frame.
 - **Khi mở serial:** Pull state định kỳ (CMD_STATE, 5s). Dataset active + IP chỉ fetch khi state thay đổi hoặc lần đầu. Thread version (CMD_THREAD_VERSION) fetch một lần sau lần đầu nhận ACK state. Nếu `thread_run_on_connect` bật và state = disabled → tự gửi CMD_THREAD_START.
 - **Polling tables:** Router/Child/Joiner table poll mỗi 6s (child delay 1.5s) — chỉ khi có frontend kết nối và state là leader/router/child.
@@ -109,4 +109,4 @@ Dashboard-Thread/
 
 - **Database:** SQLite lưu cấu hình serial và app settings (`thread_run_on_connect`).
 
-Chi tiết: [docs/usb_cdc_frame_structure.md](docs/usb_cdc_frame_structure.md) · [docs/migration_to_frame_protocol.md](docs/migration_to_frame_protocol.md) · Việc còn lại: [TODO.md](./TODO.md).
+Chi tiết: [Documents/protocol/usb_cdc_frame_structure.md](../Documents/protocol/usb_cdc_frame_structure.md) · [Documents/dashboard/migration_to_frame_protocol.md](../Documents/dashboard/migration_to_frame_protocol.md) · Việc còn lại: [TODO.md](./TODO.md).
