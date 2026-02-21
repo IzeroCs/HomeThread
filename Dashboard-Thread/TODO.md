@@ -34,4 +34,4 @@ Phần đã triển khai được mô tả trong [README.md](./README.md). Dư�
 
 ---
 
-Chi tiết đã triển khai: **xem README.md** và [docs/migration_to_frame_protocol.md](docs/migration_to_frame_protocol.md).
+Chi tiết đã triển khai: **xem README.md** và [Documents/dashboard/migration_to_frame_protocol.md](../Documents/dashboard/migration_to_frame_protocol.md).

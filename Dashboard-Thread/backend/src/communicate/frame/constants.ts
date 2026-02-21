@@ -1,5 +1,5 @@
 /**
- * USB CDC Frame constants - theo docs/usb_cdc_frame_structure.md
+ * USB CDC Frame constants - theo Documents/protocol/usb_cdc_frame_structure.md
  */
 
 export const SOF = 0xaa;
