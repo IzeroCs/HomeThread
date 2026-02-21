@@ -28,3 +28,6 @@ frontend/dist/
 # Backend
 backend/dist/
 backend/data/
+
+# Local docs symlink (trỏ về HomeThread/Documents/)
+docs

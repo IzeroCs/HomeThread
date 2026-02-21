@@ -11,8 +11,8 @@ function parseExpirationSeconds(cell: string): number | null {
 }
 
 function formatRemainingSeconds(sec: number): string {
-  if (sec <= 0) return "0 s";
-  return `${sec} s`;
+  if (sec <= 0) return "0s";
+  return `${sec}s`;
 }
 
 const DEFAULT_EUI64 = "f0f5bdfffe104b24";

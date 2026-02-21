@@ -51,7 +51,7 @@ Tính năng: Tự động flash firmware RCP khi BR boot nếu RCP chưa có fir
 
 ## USB CDC Frame (Custom frames qua USB)
 
-Tính năng: Giao tiếp với Node/backend qua USB CDC (hoặc UART) theo cấu trúc khung định nghĩa trong [docs/usb_cdc_frame_structure.md](docs/usb_cdc_frame_structure.md).
+Tính năng: Giao tiếp với Node/backend qua USB CDC (hoặc UART) theo cấu trúc khung định nghĩa trong [Documents/protocol/usb_cdc_frame_structure.md](../../Documents/protocol/usb_cdc_frame_structure.md).
 
 ### Đã có
 

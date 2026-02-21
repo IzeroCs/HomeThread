@@ -680,6 +680,37 @@ int communicate_command_handle_commissioner_joiner(uint8_t frame_id, const uint8
             send_nack(frame_id, 0x02); /* Not ready */
             return -1;
         }
+        esp_openthread_lock_release();
+
+        /* Chờ commissioner chuyển sang ACTIVE; release lock giữa các lần check
+         * để OT task xử lý được petition. Timeout 5s. */
+        ESP_LOGI(TAG, "Commissioner: waiting for ACTIVE state...");
+        const TickType_t deadline = xTaskGetTickCount() + pdMS_TO_TICKS(1000);
+        bool became_active = false;
+        while (xTaskGetTickCount() < deadline) {
+            vTaskDelay(pdMS_TO_TICKS(200));
+            if (!esp_openthread_lock_acquire(pdMS_TO_TICKS(500))) {
+                continue;
+            }
+            comm_state = otCommissionerGetState(instance);
+            esp_openthread_lock_release();
+            if (comm_state == OT_COMMISSIONER_STATE_ACTIVE) {
+                became_active = true;
+                break;
+            }
+        }
+
+        if (!became_active) {
+            ESP_LOGE(TAG, "Commissioner: timed out waiting for ACTIVE (state=%d)", (int)comm_state);
+            send_nack(frame_id, 0x02); /* Not ready */
+            return -1;
+        }
+
+        ESP_LOGI(TAG, "Commissioner: ACTIVE");
+        if (!esp_openthread_lock_acquire(pdMS_TO_TICKS(2000))) {
+            send_nack(frame_id, 0x03); /* Timeout */
+            return -1;
+        }
     }
 
     otExtAddress ot_eui64;

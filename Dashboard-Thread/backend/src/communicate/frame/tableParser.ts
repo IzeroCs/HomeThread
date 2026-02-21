@@ -178,7 +178,7 @@ export function parseJoinerTable(data: Buffer): TableData {
   try {
     const count = data[0]!;
     if (count === 0) {
-      return { headers: ["Type", "SharedId", "PSKD", "ExpirationTime"], rows: [] };
+      return { headers: ["Type", "SharedId", "PSKD", "Expiration"], rows: [] };
     }
 
     const entries: JoinerEntry[] = [];
@@ -253,7 +253,7 @@ export function parseJoinerTable(data: Buffer): TableData {
     }
 
     // Convert to TableData format
-    const headers = ["Type", "SharedId", "PSKD", "ExpirationTime"];
+    const headers = ["Type", "SharedId", "PSKD", "Expiration"];
     const rows = entries.map((entry) => {
       let sharedIdStr = "";
       if (entry.sharedId?.eui64) {
@@ -265,9 +265,8 @@ export function parseJoinerTable(data: Buffer): TableData {
       }
 
       const typeStr = entry.type === 0x00 ? "ANY" : entry.type === 0x01 ? "EUI64" : "DISCERNER";
-      const expirationStr = entry.expirationTime === 0 ? "Never" : `${entry.expirationTime}ms`;
 
-      return [typeStr, sharedIdStr, entry.pskd, expirationStr];
+      return [typeStr, sharedIdStr, entry.pskd, entry.expirationTime.toString()];
     });
 
     return { headers, rows };

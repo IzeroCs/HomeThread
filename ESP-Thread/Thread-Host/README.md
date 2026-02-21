@@ -40,7 +40,7 @@ Project cấu hình **Basic Thread Border Router** chạy trên **ESP32-S3** (Ho
 
 **USB CDC (cho custom frames):**
 - USB port trên ESP32-S3 DevKit dùng cho custom frames (không dùng cho console).
-- Giao tiếp với Node/backend theo cấu trúc khung: SOF 0xAA, Frame ID, CMD, LEN, DATA, CRC8, EOF 0x55 (xem [docs/usb_cdc_frame_structure.md](docs/usb_cdc_frame_structure.md)).
+- Giao tiếp với Node/backend theo cấu trúc khung: SOF 0xAA, Frame ID, CMD, LEN, DATA, CRC8, EOF 0x55 (xem [Documents/protocol/usb_cdc_frame_structure.md](../../Documents/protocol/usb_cdc_frame_structure.md)).
 - **Transport USB CDC** đã có: module `communicate` + `transport_usb` (USB Serial/JTAG); frame mặc định chạy trên USB CDC, log trên UART. **Transport UART** (frame trên UART) sẽ phát triển tiếp — xem [TODO.md](TODO.md).
 
 ## Yêu cầu
@@ -139,7 +139,7 @@ Thread-Host/
 │       └── device_registry_handler.h   # Device registry handler header
 ├── components/
 │   └── cmd_system/                  # System console commands (version, restart, free, heap...)
-├── docs/                            # Tài liệu (CoAP, USB CDC frame, device registry)
+├── docs -> ../../Documents/         # Symlink → HomeThread/Documents/
 ├── partitions.csv                   # Partition table
 ├── sdkconfig.defaults              # Default config
 ├── CMakeLists.txt                  # Root CMake
@@ -189,7 +189,7 @@ Thread-Host/
   - Gửi **GET `/network`** (một segment, CONFIRMABLE, port 5683) đến Leader RLOC; không payload
   - Gửi khi: first time, Leader RLOC16 thay đổi, retry on failure, hoặc retry timeout (sau 2 phút nếu Leader vẫn còn)
   - Task chạy suốt vòng đời, check mỗi 5 giây; timeout response 5 giây
-  - Chi tiết format, flow, leader election timing: xem [docs/leader_stop_command_coap.md](docs/leader_stop_command_coap.md)
+  - Chi tiết format, flow, leader election timing: xem [Documents/coap/leader_stop_command_coap.md](../../Documents/coap/leader_stop_command_coap.md)
 - ✅ **Device Registry Server (CoAP)** - Nhận đăng ký từ child devices
   - CoAP server với 3 resources: `/device/register`, `/device/update`, `/device/ping`
   - Handler chung dùng logic từ `device_registry_handler` cho cả 3 resource
