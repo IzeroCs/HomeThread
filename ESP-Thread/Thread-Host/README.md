@@ -186,15 +186,17 @@ Thread-Host/
   - Child: xanh dương tĩnh
   - GPIO mặc định: 48 (onboard LED) hoặc 5 (external LED), có thể config qua menuconfig
 - ✅ **Leader Control Client (CoAP)** - Tự động gửi lệnh stop đến Leader khi cần
-  - Gửi **GET `/network`** (một segment, CONFIRMABLE, port 5683) đến Leader RLOC; không payload
+  - Gửi **GET `/network/stop`** (CONFIRMABLE, port 5683) đến Leader RLOC; không payload
   - Gửi khi: first time, Leader RLOC16 thay đổi, retry on failure, hoặc retry timeout (sau 2 phút nếu Leader vẫn còn)
   - Task chạy suốt vòng đời, check mỗi 5 giây; timeout response 5 giây
+  - Lock quản lý đúng: acquire/release bên trong `send_coap_stop_command_once`; caller release trước khi gọi
   - Chi tiết format, flow, leader election timing: xem [Documents/coap/leader_stop_command_coap.md](../../Documents/coap/leader_stop_command_coap.md)
 - ✅ **Device Registry Server (CoAP)** - Nhận đăng ký từ child devices
-  - CoAP server với 3 resources: `/device/register`, `/device/update`, `/device/ping`
+  - CoAP server với 3 resources: `/device/register`, `/device/update`, `/device/ping`; khởi động trong `app_main`
   - Handler chung dùng logic từ `device_registry_handler` cho cả 3 resource
-  - Queue-based processing: enqueue CoAP data từ child devices, process và output qua UART
+  - Queue-based processing: enqueue CoAP data (payload + RLOC16) từ child devices, log payload nhận được
   - Hỗ trợ tối đa 10 items trong queue, payload tối đa 768 bytes
+  - Chưa forward lên backend qua frame protocol và chưa gửi CoAP response về cho child — xem [TODO.md](TODO.md)
 - ✅ **Communicate (frame protocol)** — Parse/serialize khung SOF/Frame ID/CMD/LEN/DATA/CRC8/EOF; **transport USB CDC** (transport_usb) đã dùng; **transport UART** (transport_uart) sẽ phát triển tiếp. **communicate_task**: init + queue (timeout 500 ms, log khi chờ &gt; 2 s) + state watchdog. **Handlers:** CMD_STATE, DATASET_ACTIVE, IP_ADDR (ACK + data), SET_PANID/CHANNEL/NETWORK_NAME/EXTENDED_PANID/NETWORK_KEY, ROUTER/CHILD/JOINER_TABLE (ACK + table data), THREAD_START, THREAD_STOP, THREAD_VERSION (ACK + version string), CMD_RESET (ACK + restart sau 2s), CMD_FACTORY (ACK + NVS erase + restart sau 2s); xem [Documents/protocol/usb_cdc_frame_structure.md](../../Documents/protocol/usb_cdc_frame_structure.md) và [Documents/protocol/table_data_format.md](../../Documents/protocol/table_data_format.md). **Stack & heap monitor:** task `stk_mon` log mỗi 30 s — stack high water mark của tất cả task + heap free/min_free; tên task và stack size tập trung tại `include/br_config.h` (`TASK_NAME_*`, `TASK_STACK_*`).
 - ❌ **Auto-flash RCP khi boot** — xem [TODO.md](TODO.md)
 - ❌ RCP update/firmware management (đã loại bỏ)

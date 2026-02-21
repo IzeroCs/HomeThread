@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useWebSocketContext } from "../hooks/useWebSocketContext";
 import Modal from "./common/Modal";
 import "./Dashboard.scss";
@@ -26,6 +26,8 @@ function TableSection({
   isConnected,
   hiddenColumns = [],
   onRowClick,
+  leaderRloc16,
+  ageColName = "age",
 }: {
   title: string;
   data: { headers?: string[]; rows?: string[][]; error?: string } | null;
@@ -36,6 +38,10 @@ function TableSection({
   hiddenColumns?: string[];
   /** Gọi khi user click vào một dòng (rowIndex). */
   onRowClick?: (rowIndex: number) => void;
+  /** RLOC16 của leader để highlight row tương ứng (dạng "0xfc00"). */
+  leaderRloc16?: string;
+  /** Tên cột Age để đếm lên (mặc định "age"). */
+  ageColName?: string;
 }) {
   const hasData =
     data &&
@@ -51,6 +57,45 @@ function TableSection({
     const headers = data?.headers ?? [];
     return headers.map((_, i) => i).filter((i) => !hiddenSet.has(normCol(headers[i])));
   }, [data?.headers, hiddenSet]);
+
+  const rloc16ColIndex = useMemo(() => {
+    const headers = data?.headers ?? [];
+    const i = headers.findIndex((h) => normCol(h) === "rloc16");
+    return i >= 0 ? i : -1;
+  }, [data?.headers]);
+
+  const ageColIndex = useMemo(() => {
+    const headers = data?.headers ?? [];
+    const i = headers.findIndex((h) => normCol(h) === normCol(ageColName));
+    return i >= 0 ? i : -1;
+  }, [data?.headers, ageColName]);
+
+  // ageOffsets[ri] = số giây đã đếm thêm kể từ lần cập nhật bảng gần nhất
+  const [ageOffsets, setAgeOffsets] = useState<number[]>([]);
+  // Dùng ref để track rows đã sync lần cuối, tránh reset không cần thiết
+  const lastRowsRef = useRef<string[][] | null>(null);
+
+  useEffect(() => {
+    const rows = data?.rows ?? [];
+    if (ageColIndex < 0 || rows.length === 0) {
+      setAgeOffsets([]);
+      lastRowsRef.current = null;
+      return;
+    }
+    // Khi data rows thay đổi: reset offset về 0 (bắt đầu đếm từ giá trị mới)
+    if (lastRowsRef.current !== rows) {
+      lastRowsRef.current = rows;
+      setAgeOffsets(new Array(rows.length).fill(0));
+    }
+  }, [data?.rows, ageColIndex]);
+
+  useEffect(() => {
+    if (ageColIndex < 0 || (data?.rows?.length ?? 0) === 0) return;
+    const t = setInterval(() => {
+      setAgeOffsets((prev) => prev.map((v) => v + 1));
+    }, 1000);
+    return () => clearInterval(t);
+  }, [ageColIndex, data?.rows?.length]);
 
   return (
     <section className="dashboard-section">
@@ -84,17 +129,34 @@ function TableSection({
               </tr>
             </thead>
             <tbody>
-              {(data!.rows ?? []).map((row, ri) => (
+              {(data!.rows ?? []).map((row, ri) => {
+                const isLeaderRow =
+                  leaderRloc16 != null &&
+                  rloc16ColIndex >= 0 &&
+                  row[rloc16ColIndex]?.toLowerCase() === leaderRloc16.toLowerCase();
+                const rowClass = [
+                  onRowClick ? "dashboard-table-row-clickable" : "",
+                  isLeaderRow ? "dashboard-table-row-leader" : "",
+                ].filter(Boolean).join(" ") || undefined;
+                return (
                 <tr
                   key={ri}
-                  className={onRowClick ? "dashboard-table-row-clickable" : undefined}
+                  className={rowClass}
                   onClick={onRowClick ? () => onRowClick(ri) : undefined}
                 >
-                  {visibleIndices.map((ci) => (
-                    <td key={ci}>{row[ci] ?? ""}</td>
-                  ))}
+                  {visibleIndices.map((ci) => {
+                    let cellValue = row[ci] ?? "";
+                    if (ci === ageColIndex && ageOffsets.length > ri) {
+                      const base = parseInt(cellValue, 10);
+                      if (!Number.isNaN(base)) {
+                        cellValue = String(base + (ageOffsets[ri] ?? 0)) + "s";
+                      }
+                    }
+                    return <td key={ci}>{cellValue}</td>;
+                  })}
                 </tr>
-              ))}
+                );
+              })}
             </tbody>
           </table>
         )}
@@ -108,6 +170,7 @@ type SelectedRow = { type: "router"; rowIndex: number } | { type: "child"; rowIn
 export default function Dashboard() {
   const {
     serialStatus,
+    otConfig,
     routerTable,
     childTable,
     getRouterTable,
@@ -153,6 +216,7 @@ export default function Dashboard() {
         isConnected={isConnected}
         hiddenColumns={ROUTER_TABLE_HIDDEN_COLUMNS}
         onRowClick={(ri) => setSelectedRow({ type: "router", rowIndex: ri })}
+        leaderRloc16={otConfig?.leaderRloc16}
       />
       <TableSection
         title={`Child Table (${childCount})`}

@@ -13,7 +13,7 @@ Backend + Frontend điều khiển **OpenThread qua UART** (ESP32-H2 ot-br), dù
 ## Tính năng chính
 
 - **Status**: Trạng thái serial, OpenThread (PAN ID, Channel, Network Name, Version, IP Address, Dataset Active đầy đủ các field), thread state.
-- **Dashboard**: Router Table & Child Table (số lượng trong nhãn). Click một dòng → Modal chi tiết theo RLOC16.
+- **Dashboard**: Router Table & Child Table (số lượng trong nhãn). Click một dòng → Modal chi tiết theo RLOC16. Row của leader được highlight xanh lá. Cột Age đếm lên realtime theo giây (reset về giá trị mới khi bảng cập nhật).
 - **Commissioner**: Thêm joiner (EUI64, PSKd, timeout 30–500s); danh sách joiner với cột Expiration đếm ngược. Giao tiếp qua CMD_COMMISSIONER_JOINER (frame protocol).
 - **Console**: Xem dữ liệu serial realtime (hex).
 - **Settings**:

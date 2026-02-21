@@ -19,6 +19,7 @@
 #include "hardware/led_status.h"
 #include "hardware/boot_btn.h"
 #include "coap_controller/leader_control_client.h"
+#include "coap_controller/device_registry_server.h"
 #include "communicate/communicate_task.h"
 #include "esp_log.h"
 #include "esp_system.h"
@@ -137,6 +138,9 @@ void app_main(void)
 
     // Initialize Leader Control Client (CoAP client để gửi lệnh stop đến Leader)
     ESP_ERROR_CHECK(leader_control_client_init());
+
+    // Initialize Device Registry CoAP server (nhận register/update/ping từ child devices)
+    ESP_ERROR_CHECK(device_registry_server_init());
 
     // Boot button: long press ~3s → factory reset (erase NVS) và restart
     boot_btn_config_t btn_cfg = {

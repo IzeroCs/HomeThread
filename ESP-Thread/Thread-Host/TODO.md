@@ -91,6 +91,10 @@ Tính năng: Giao tiếp với Node/backend qua USB CDC (hoặc UART) theo cấu
 3. **Push (ESP32 → Node)**
    - **CMD_DATA (0x01):** Gửi CBOR từ child/router lên Node; tăng Frame ID cho mỗi khung.
 
+   **Device Registry (CoAP → USB frame)** ❌ Chưa làm
+   - Forward payload nhận từ `/device/register`, `/device/update`, `/device/ping` lên backend qua `CMD_DATA` frame.
+   - Gửi CoAP response (ACK/CHANGED) về cho child device sau khi enqueue thành công.
+
 4. **Push system health (ESP32 → Node)** ❌ Chưa làm
    - **CMD_SYS_HEALTH (TBD):** Push định kỳ (hoặc khi backend pull) thông tin sức khoẻ hệ thống để backend/Node monitor từ xa.
    - **Payload dự kiến:**

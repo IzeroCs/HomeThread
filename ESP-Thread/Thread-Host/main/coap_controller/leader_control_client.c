@@ -183,28 +183,30 @@ static esp_err_t send_coap_stop_command_once(otInstance *instance, uint16_t lead
         return ESP_ERR_INVALID_STATE;
     }
 
-    // Construct Leader RLOC address
+    if (!esp_openthread_lock_acquire(pdMS_TO_TICKS(1000))) {
+        ESP_LOGE(TAG, "send_coap: failed to acquire lock");
+        return ESP_ERR_TIMEOUT;
+    }
+
     otIp6Address leader_address;
     construct_leader_rloc_address(instance, leader_rloc16, &leader_address);
 
-    // Reset response context
     memset(&s_response_ctx, 0, sizeof(s_response_ctx));
 
-    // Create CoAP message
     otMessage *message = otCoapNewMessage(instance, NULL);
     if (!message) {
         ESP_LOGE(TAG, "Failed to create CoAP message");
+        esp_openthread_lock_release();
         return ESP_ERR_NO_MEM;
     }
 
-    // Initialize CoAP message as GET request
     otCoapMessageInit(message, OT_COAP_TYPE_CONFIRMABLE, OT_COAP_CODE_GET);
 
-    // Set URI path: /network/stop
     otError err = otCoapMessageAppendUriPathOptions(message, "network");
     if (err != OT_ERROR_NONE) {
         ESP_LOGE(TAG, "Failed to append URI path 'network': %d", err);
         otMessageFree(message);
+        esp_openthread_lock_release();
         return ESP_FAIL;
     }
 
@@ -212,17 +214,18 @@ static esp_err_t send_coap_stop_command_once(otInstance *instance, uint16_t lead
     if (err != OT_ERROR_NONE) {
         ESP_LOGE(TAG, "Failed to append URI path 'stop': %d", err);
         otMessageFree(message);
+        esp_openthread_lock_release();
         return ESP_FAIL;
     }
 
-    // Prepare message info
     otMessageInfo message_info;
     memset(&message_info, 0, sizeof(message_info));
     memcpy(&message_info.mPeerAddr, &leader_address, sizeof(otIp6Address));
     message_info.mPeerPort = OT_DEFAULT_COAP_PORT;
 
-    // Send CoAP request
     err = otCoapSendRequest(instance, message, &message_info, coap_response_handler, &s_response_ctx);
+    esp_openthread_lock_release();
+
     if (err != OT_ERROR_NONE) {
         ESP_LOGE(TAG, "Failed to send CoAP request: %d", err);
         otMessageFree(message);
@@ -231,7 +234,6 @@ static esp_err_t send_coap_stop_command_once(otInstance *instance, uint16_t lead
 
     ESP_LOGI(TAG, "CoAP GET /network/stop sent to Leader (RLOC16: 0x%04x), waiting for response...", leader_rloc16);
 
-    // Wait for response (with timeout)
     int timeout_ms = COAP_RESPONSE_TIMEOUT_MS;
     int elapsed_ms = 0;
     while (!s_response_ctx.response_received && elapsed_ms < timeout_ms) {
@@ -331,19 +333,18 @@ static void leader_rloc_check_task(void *arg)
                         if (send_err == ESP_OK && success) {
                             ESP_LOGI(TAG, "✓ CoAP stop command acknowledged by Leader (RLOC16: 0x%04x)", leader_rloc16);
                             last_send_success = true;
-                            last_leader_rloc16 = leader_rloc16;  // Update only after success
-                            last_send_time_ms = current_time_ms;  // Record timestamp for retry timeout
+                            last_leader_rloc16 = leader_rloc16;
+                            last_send_time_ms = current_time_ms;
                         } else {
                             ESP_LOGW(TAG, "✗ CoAP stop command failed or not acknowledged (err: %d, success: %d, RLOC16: 0x%04x)",
                                      send_err, success, leader_rloc16);
                             last_send_success = false;
-                            // Don't update last_leader_rloc16 on failure - will retry next time
                         }
 
-                        // Re-acquire lock for next iteration
-                        if (!esp_openthread_lock_acquire(pdMS_TO_TICKS(1000))) {
-                            ESP_LOGW(TAG, "Failed to re-acquire lock");
-                        }
+                        /* send_coap_stop_command_once tự quản lý lock bên trong.
+                         * Sau khi hàm trả về lock đã được release — không cần re-acquire,
+                         * nhảy thẳng xuống next_iteration để bỏ qua lock_release() bên dưới. */
+                        goto next_iteration;
                     } else {
                         ESP_LOGD(TAG, "Skipping CoAP send (Leader RLOC16 unchanged: 0x%04x, last_send_success=%d)",
                                  leader_rloc16, last_send_success);
@@ -357,6 +358,7 @@ static void leader_rloc_check_task(void *arg)
             esp_openthread_lock_release();
         }
 
+next_iteration:
         // Check every 5 seconds
         vTaskDelay(pdMS_TO_TICKS(LEADER_RLOC_CHECK_INTERVAL_MS));
     }

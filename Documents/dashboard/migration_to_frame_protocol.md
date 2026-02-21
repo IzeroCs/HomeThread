@@ -25,6 +25,9 @@
 | Router table / Child table / Joiner table từ frame | ✅ Xong | CMD_ROUTER_TABLE/CHILD_TABLE/JOINER_TABLE; parse binary per `table_data_format.md` (frame/tableParser.ts) |
 | Thread Version (CMD_THREAD_VERSION) | ✅ Xong | Fetch một lần sau khi lần đầu nhận ACK state; lưu vào `OtConfig.threadVersion`; hiển thị trong tab Status |
 | Reset / Factory Reset qua frame | ✅ Xong | CMD_RESET (0x10), CMD_FACTORY (0x11, confirm byte 0xAA); frontend tab System có ConfirmModal + countdown 5s |
+| Leader highlight trong Router Table | ✅ Xong | Backend extract `leaderRloc16` từ byte 14–15 của 16-byte IPv6 ACK; lưu vào `OtConfig.leaderRloc16`; frontend highlight row có RLOC16 khớp (nền xanh lá) |
+| Age đếm lên realtime (Router/Child Table) | ✅ Xong | Frontend `setInterval` 1s tăng offset; reset offset khi backend cập nhật bảng mới; hiển thị `base + offset` |
+| Joiner Expiration đếm ngược realtime | ✅ Xong | Backend gửi `expirationTime` dạng ms (số nguyên); frontend chia 1000 → giây rồi đếm ngược; header cột là `Expiration` để frontend match đúng |
 | CMD_DATA (CBOR) → parse, cập nhật state/tables | ⏳ Chưa | Tạm emit `serial:frame:data` (hex) |
 
 ---

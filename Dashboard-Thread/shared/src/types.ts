@@ -40,6 +40,7 @@ export interface OtConfig {
   securityPolicy?: string;
   // Additional fields
   ipaddr?: string;
+  leaderRloc16?: string; // RLOC16 của leader, dạng "0xfc00"
   datasetActive?: string; // Hex string gốc (để giữ lại cho compatibility)
   threadVersion?: string;
   error?: string;

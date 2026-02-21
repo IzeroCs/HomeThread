@@ -17,6 +17,7 @@ const FRAME_RESPONSE_TIMEOUT_MS = 5000;
 export type AckDataConfig = ParsedDataset & {
   // Additional fields (không có trong ParsedDataset)
   ipaddr?: string;
+  leaderRloc16?: string;
   datasetActive?: string; // Hex string gốc (để giữ lại cho compatibility)
 };
 
@@ -414,8 +415,12 @@ export class CommandManager {
     if (data.length === 16) {
       const ipaddr = bytes16ToIPv6String(data);
       if (ipaddr) {
+        // Byte 14-15 của Leader RLOC IPv6 = RLOC16 của leader
+        const rloc16 = ((data[14]! << 8) | data[15]!);
+        const leaderRloc16 = `0x${rloc16.toString(16).padStart(4, "0")}`;
         frameLogger.log(`  IP Address: ${ipaddr}`);
-        return { ipaddr };
+        frameLogger.log(`  Leader RLOC16: ${leaderRloc16}`);
+        return { ipaddr, leaderRloc16 };
       }
       return null;
     }

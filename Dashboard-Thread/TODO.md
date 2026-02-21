@@ -7,8 +7,6 @@ Phần đã triển khai được mô tả trong [README.md](./README.md). Dư�
 ## Frame protocol & kiến trúc
 
 - [ ] **CMD_DATA (CBOR)**: Parse CBOR từ CMD_DATA để cập nhật thread state / router-child-joiner table khi firmware push.
-- [ ] **IP addr khi thread stop**: Khi state chuyển từ leader/router/child → disabled/detached, `ipaddr` không được clear khỏi OtConfig. Cần xử lý clear hoặc giữ nguyên có chủ đích. *(để sau)*
-- [ ] **Dataset active trả NACK**: Đôi khi CMD_DATASET_ACTIVE trả NACK thay vì ACK — cần retry hoặc fallback. *(để sau)*
 
 ---
 
@@ -20,7 +18,6 @@ Phần đã triển khai được mô tả trong [README.md](./README.md). Dư�
 
 ## Frontend
 
-- [ ] **Settings – toggle "Khởi động Thread"**: Hiện tại toggle gửi start/stop ngay khi bật/tắt. Cân nhắc chỉ áp dụng khi nhấn "Áp dụng".
 - [ ] **Shortcut lệnh**: Nút nhanh cho các lệnh thường dùng (state, scan, ...).
 - [ ] **Lịch sử lệnh**: Lưu và chọn lại lệnh đã gửi (localStorage).
 - [ ] **Live terminal**: Hiển thị mọi byte UART realtime.

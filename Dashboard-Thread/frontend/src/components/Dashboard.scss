@@ -119,6 +119,14 @@
   tbody tr.dashboard-table-row-clickable {
     cursor: pointer;
   }
+
+  tbody tr.dashboard-table-row-leader td {
+    background: color.mix(white, #22c55e, 85%);
+  }
+
+  tbody tr.dashboard-table-row-leader:hover td {
+    background: color.mix(white, #22c55e, 78%);
+  }
 }
 
 .dashboard-muted {
