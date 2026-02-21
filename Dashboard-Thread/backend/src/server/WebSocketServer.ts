@@ -91,6 +91,8 @@ export class WebSocketServer {
         this.appSettingsService.setThreadRunOnConnect(!!data.runOnConnect);
         socket.emit(EVENTS.OT_THREAD_RUN_ON_CONNECT, { runOnConnect: !!data.runOnConnect });
       });
+      socket.on(EVENTS.DEVICE_RESET, () => this.handleDeviceReset(socket));
+      socket.on(EVENTS.DEVICE_FACTORY_RESET, () => this.handleDeviceFactoryReset(socket));
       socket.on(EVENTS.OT_GET_ROUTER_TABLE, () => this.handleOtGetRouterTable(socket));
       socket.on(EVENTS.OT_GET_CHILD_TABLE, () => this.handleOtGetChildTable(socket));
 
@@ -424,12 +426,81 @@ export class WebSocketServer {
 
   private async handleCommissionerConnect(
     socket: Socket,
-    _data: { eui64?: string; psk?: string; timeout?: number }
+    data: { eui64?: string; psk?: string; timeout?: number }
   ): Promise<void> {
     if (!this.communicate.getStatus().isConnected) {
       socket.emit(EVENTS.COMMISSIONER_CONNECT_RESULT, { success: false, error: "Serial not connected. Connect serial first." });
       return;
     }
-    socket.emit(EVENTS.COMMISSIONER_CONNECT_RESULT, { success: false, error: "Use frame protocol for commissioner." });
+    const eui64 = (data.eui64 ?? "").trim();
+    const psk = (data.psk ?? "").trim();
+    const timeoutSeconds = typeof data.timeout === "number" ? data.timeout : 60;
+    if (!eui64 || !psk) {
+      socket.emit(EVENTS.COMMISSIONER_CONNECT_RESULT, { success: false, error: "EUI64 và PSK không được để trống." });
+      return;
+    }
+    try {
+      const result = await this.communicate.commissionerJoiner(eui64, psk, timeoutSeconds);
+      if (result.ack) {
+        socket.emit(EVENTS.COMMISSIONER_CONNECT_RESULT, { success: true });
+      } else {
+        const errorMap: Record<number, string> = {
+          0x02: "Thiết bị chưa sẵn sàng (không phải leader hoặc commissioner chưa active).",
+          0x03: "Timeout — firmware không phản hồi kịp.",
+          0x04: "Tham số không hợp lệ (EUI64 hoặc PSK sai định dạng).",
+        };
+        const errorMsg = result.errorCode != null
+          ? (errorMap[result.errorCode] ?? `Thất bại (error code: 0x${result.errorCode.toString(16)})`)
+          : "Thêm joiner thất bại.";
+        socket.emit(EVENTS.COMMISSIONER_CONNECT_RESULT, { success: false, error: errorMsg });
+      }
+    } catch (error) {
+      socket.emit(EVENTS.COMMISSIONER_CONNECT_RESULT, {
+        success: false,
+        error: error instanceof Error ? error.message : "Unknown error",
+      });
+    }
+  }
+
+  private async handleDeviceReset(socket: Socket): Promise<void> {
+    if (!this.communicate.getStatus().isConnected) {
+      socket.emit(EVENTS.DEVICE_RESET_RESULT, { success: false, error: "Serial not connected." });
+      return;
+    }
+    try {
+      const result = await this.communicate.reset();
+      if (result.ack) {
+        socket.emit(EVENTS.DEVICE_RESET_RESULT, { success: true });
+      } else {
+        const errorMsg = result.errorCode === 0x02 ? "Not ready" : "Failed to reset device";
+        socket.emit(EVENTS.DEVICE_RESET_RESULT, { success: false, error: errorMsg });
+      }
+    } catch (error) {
+      socket.emit(EVENTS.DEVICE_RESET_RESULT, {
+        success: false,
+        error: error instanceof Error ? error.message : "Unknown error",
+      });
+    }
+  }
+
+  private async handleDeviceFactoryReset(socket: Socket): Promise<void> {
+    if (!this.communicate.getStatus().isConnected) {
+      socket.emit(EVENTS.DEVICE_FACTORY_RESET_RESULT, { success: false, error: "Serial not connected." });
+      return;
+    }
+    try {
+      const result = await this.communicate.factoryReset();
+      if (result.ack) {
+        socket.emit(EVENTS.DEVICE_FACTORY_RESET_RESULT, { success: true });
+      } else {
+        const errorMsg = result.errorCode === 0x02 ? "Not ready" : "Failed to factory reset device";
+        socket.emit(EVENTS.DEVICE_FACTORY_RESET_RESULT, { success: false, error: errorMsg });
+      }
+    } catch (error) {
+      socket.emit(EVENTS.DEVICE_FACTORY_RESET_RESULT, {
+        success: false,
+        error: error instanceof Error ? error.message : "Unknown error",
+      });
+    }
   }
 }

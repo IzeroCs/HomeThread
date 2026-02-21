@@ -8,6 +8,10 @@
 #include "esp_log.h"
 #include "esp_openthread.h"
 #include "esp_openthread_lock.h"
+#include "esp_partition.h"
+#include "esp_system.h"
+#include "esp_timer.h"
+#include "nvs_flash.h"
 #include "openthread/commissioner.h"
 #include "openthread/device_role.h"
 #include "openthread/dataset.h"
@@ -20,10 +24,97 @@
 #define TAG "communicate_cmd"
 
 #define LEADER_RLOC_LEN 16
+/** Độ trễ (µs) trước khi thực thi reset/factory sau khi đã gửi ACK. */
+#define CMD_EXEC_DELAY_US  (2000000ULL)
 
 /* Cache leader RLOC (16 byte); refresh khi backend pull CMD_IP_ADDR. */
 static uint8_t s_cached_leader_rloc[LEADER_RLOC_LEN];
 static bool s_cached_leader_rloc_valid = false;
+
+/* ---- Deferred reset / factory-reset (timer-based) ---- */
+
+static esp_timer_handle_t s_reset_timer   = NULL;
+static esp_timer_handle_t s_factory_timer = NULL;
+
+/** Dừng Thread stack và hạ IPv6 interface trước khi reset/factory. */
+static void thread_graceful_shutdown(void)
+{
+    otInstance *instance = esp_openthread_get_instance();
+    if (instance == NULL) {
+        return;
+    }
+    if (!esp_openthread_lock_acquire(pdMS_TO_TICKS(2000))) {
+        ESP_LOGW(TAG, "graceful shutdown: lock timeout, skipping");
+        return;
+    }
+    (void)otThreadSetEnabled(instance, false);
+    (void)otIp6SetEnabled(instance, false);
+    esp_openthread_lock_release();
+    ESP_LOGI(TAG, "graceful shutdown: thread stopped, ip6 down");
+}
+
+static void reset_timer_cb(void *arg)
+{
+    (void)arg;
+    ESP_LOGW(TAG, "CMD_RESET: stopping thread then restarting");
+    thread_graceful_shutdown();
+    esp_restart();
+}
+
+/**
+ * Erase NVS partition hoàn toàn ở mức flash raw.
+ * KHÔNG dừng OpenThread trước — tránh OT write-back dataset vào NVS sau khi đã erase.
+ * esp_restart() cắt đứt toàn bộ, không có gì kịp ghi lại.
+ */
+static void do_nvs_erase_and_restart(void)
+{
+    nvs_flash_deinit();
+
+    const esp_partition_t *nvs_part = esp_partition_find_first(
+        ESP_PARTITION_TYPE_DATA, ESP_PARTITION_SUBTYPE_DATA_NVS, "nvs");
+    if (nvs_part != NULL) {
+        esp_err_t err = esp_partition_erase_range(nvs_part, 0, nvs_part->size);
+        if (err == ESP_OK) {
+            ESP_LOGI(TAG, "NVS partition erased OK (%lu bytes)", (unsigned long)nvs_part->size);
+        } else {
+            ESP_LOGE(TAG, "partition erase failed: %s", esp_err_to_name(err));
+        }
+    } else {
+        ESP_LOGW(TAG, "NVS partition not found, fallback nvs_flash_erase");
+        nvs_flash_erase();
+    }
+    esp_restart();
+}
+
+static void factory_timer_cb(void *arg)
+{
+    (void)arg;
+    ESP_LOGW(TAG, "CMD_FACTORY: erasing NVS partition then restarting");
+    do_nvs_erase_and_restart();
+}
+
+/**
+ * Tạo timer lần đầu (nếu chưa có) rồi start one-shot 2s.
+ * Nếu timer đang chạy (lệnh reset/factory trước đó), stop rồi restart.
+ */
+static esp_err_t start_deferred_timer(esp_timer_handle_t *handle, esp_timer_cb_t cb, const char *name)
+{
+    if (*handle == NULL) {
+        const esp_timer_create_args_t args = {
+            .callback        = cb,
+            .arg             = NULL,
+            .dispatch_method = ESP_TIMER_TASK,
+            .name            = name,
+        };
+        if (esp_timer_create(&args, handle) != ESP_OK) {
+            return ESP_FAIL;
+        }
+    }
+    esp_timer_stop(*handle); /* không lỗi nếu timer chưa chạy */
+    return esp_timer_start_once(*handle, CMD_EXEC_DELAY_US);
+}
+
+/* ---- end deferred timer ---- */
 
 static void refresh_leader_rloc_cache(void)
 {
@@ -486,6 +577,36 @@ int communicate_command_handle_thread_stop(uint8_t frame_id)
     return (err == ESP_OK) ? 0 : -1;
 }
 
+int communicate_command_handle_reset(uint8_t frame_id)
+{
+    /* Gửi ACK ngay để backend nhận xác nhận, sau đó thực thi restart sau 2s. */
+    esp_err_t err = communicate_send_frame(frame_id, CMD_ACK, NULL, 0);
+    if (err != ESP_OK) {
+        return -1;
+    }
+    if (start_deferred_timer(&s_reset_timer, reset_timer_cb, "cmd_reset") != ESP_OK) {
+        ESP_LOGE(TAG, "CMD_RESET: timer failed, restarting immediately");
+        esp_restart();
+    }
+    ESP_LOGW(TAG, "CMD_RESET: ACK sent, restarting in 2s");
+    return 0;
+}
+
+int communicate_command_handle_factory(uint8_t frame_id)
+{
+    esp_err_t err = communicate_send_frame(frame_id, CMD_ACK, NULL, 0);
+    if (err != ESP_OK) {
+        return -1;
+    }
+    if (start_deferred_timer(&s_factory_timer, factory_timer_cb, "cmd_factory") != ESP_OK) {
+        ESP_LOGE(TAG, "CMD_FACTORY: timer failed, doing factory reset immediately");
+        nvs_flash_erase();
+        esp_restart();
+    }
+    ESP_LOGW(TAG, "CMD_FACTORY: ACK sent, factory reset in 2s");
+    return 0;
+}
+
 int communicate_command_handle_thread_version(uint8_t frame_id)
 {
     const char *version = otGetVersionString();
@@ -498,5 +619,90 @@ int communicate_command_handle_thread_version(uint8_t frame_id)
         len = 64;
     }
     esp_err_t err = communicate_send_frame(frame_id, CMD_ACK, (const uint8_t *)version, len);
+    return (err == ESP_OK) ? 0 : -1;
+}
+
+int communicate_command_handle_commissioner_joiner(uint8_t frame_id, const uint8_t *data, size_t len)
+{
+    /* Minimum: EUI64(8) + PSKD_len(1) + PSKD(min 1) + Timeout(4) = 14 bytes */
+    if (data == NULL || len < 14) {
+        send_nack(frame_id, 0x04); /* Invalid param */
+        return -1;
+    }
+
+    const uint8_t *p = data;
+    uint8_t eui64[8];
+    memcpy(eui64, p, 8);
+    p += 8;
+
+    uint8_t pskd_len = *p++;
+    if (pskd_len == 0 || pskd_len > OT_JOINER_MAX_PSKD_LENGTH) {
+        send_nack(frame_id, 0x04); /* Invalid param */
+        return -1;
+    }
+
+    /* Validate total frame length: 8 + 1 + pskd_len + 4 */
+    if (len != (size_t)(8 + 1 + pskd_len + 4)) {
+        send_nack(frame_id, 0x04); /* Invalid param */
+        return -1;
+    }
+
+    char pskd_str[OT_JOINER_MAX_PSKD_LENGTH + 1];
+    memcpy(pskd_str, p, pskd_len);
+    pskd_str[pskd_len] = '\0';
+    p += pskd_len;
+
+    uint32_t timeout_s = ((uint32_t)p[0] << 24) | ((uint32_t)p[1] << 16)
+                       | ((uint32_t)p[2] << 8)  |  (uint32_t)p[3];
+
+    /* EUI64 all-zero → wildcard */
+    static const uint8_t k_zero_eui64[8] = {0};
+    bool is_wildcard = (memcmp(eui64, k_zero_eui64, 8) == 0);
+
+    otInstance *instance = esp_openthread_get_instance();
+    if (instance == NULL) {
+        send_nack(frame_id, 0x02); /* Not ready */
+        return -1;
+    }
+
+    if (!esp_openthread_lock_acquire(pdMS_TO_TICKS(2000))) {
+        send_nack(frame_id, 0x03); /* Timeout */
+        return -1;
+    }
+
+    /* Start commissioner nếu chưa active */
+    otCommissionerState comm_state = otCommissionerGetState(instance);
+    if (comm_state != OT_COMMISSIONER_STATE_ACTIVE) {
+        otError start_err = otCommissionerStart(instance, NULL, NULL, NULL);
+        if (start_err != OT_ERROR_NONE && start_err != OT_ERROR_ALREADY) {
+            esp_openthread_lock_release();
+            ESP_LOGE(TAG, "otCommissionerStart failed: %d", start_err);
+            send_nack(frame_id, 0x02); /* Not ready */
+            return -1;
+        }
+    }
+
+    otExtAddress ot_eui64;
+    memcpy(ot_eui64.m8, eui64, 8);
+
+    otError ot_err = otCommissionerAddJoiner(
+        instance,
+        is_wildcard ? NULL : &ot_eui64,
+        pskd_str,
+        timeout_s
+    );
+    esp_openthread_lock_release();
+
+    if (ot_err != OT_ERROR_NONE) {
+        ESP_LOGE(TAG, "otCommissionerAddJoiner failed: %d (pskd=%s, timeout=%lu, wildcard=%d)",
+                 ot_err, pskd_str, (unsigned long)timeout_s, (int)is_wildcard);
+        uint8_t nack_code = (ot_err == OT_ERROR_INVALID_ARGS) ? 0x04 : 0x02;
+        send_nack(frame_id, nack_code);
+        return -1;
+    }
+
+    ESP_LOGI(TAG, "Commissioner: joiner added pskd=%s timeout=%lus wildcard=%d",
+             pskd_str, (unsigned long)timeout_s, (int)is_wildcard);
+    esp_err_t err = communicate_send_frame(frame_id, CMD_ACK, NULL, 0);
     return (err == ESP_OK) ? 0 : -1;
 }

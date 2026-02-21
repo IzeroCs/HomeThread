@@ -3,6 +3,7 @@
  */
 
 #include "hardware/boot_btn.h"
+#include "br_config.h"
 #include "driver/gpio.h"
 #include "esp_log.h"
 #include "freertos/FreeRTOS.h"
@@ -11,8 +12,8 @@
 
 static const char *TAG = "boot_btn";
 
-#define DEFAULT_STACK_SIZE  4096
-#define DEFAULT_PRIORITY     4
+#define DEFAULT_STACK_SIZE  TASK_STACK_BOOT_BTN
+#define DEFAULT_PRIORITY    4
 
 static void boot_btn_task(void *pv)
 {
@@ -64,7 +65,7 @@ esp_err_t boot_btn_start(const boot_btn_config_t *config)
     uint32_t stack = copy->task_stack_size > 0 ? copy->task_stack_size : DEFAULT_STACK_SIZE;
     UBaseType_t prio = copy->task_priority > 0 ? copy->task_priority : DEFAULT_PRIORITY;
 
-    BaseType_t ok = xTaskCreate(boot_btn_task, "boot_btn", stack, copy, prio, NULL);
+    BaseType_t ok = xTaskCreate(boot_btn_task, TASK_NAME_BOOT_BTN, stack, copy, prio, NULL);
     if (ok != pdPASS) {
         vPortFree(copy);
         return ESP_ERR_NO_MEM;

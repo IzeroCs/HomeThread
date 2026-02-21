@@ -67,16 +67,16 @@ httpServer.listen(PORT, () => {
   serverLog.info("=".repeat(50));
 });
 
-process.on("SIGINT", async () => {
+process.on("SIGINT", () => {
   serverLog.info("Shutting down...");
-  await wsServer.close();
+  communicateManager.shutdown();
   closeDatabase();
   httpServer.close(() => process.exit(0));
 });
 
-process.on("SIGTERM", async () => {
+process.on("SIGTERM", () => {
   serverLog.info("Shutting down...");
-  await wsServer.close();
+  communicateManager.shutdown();
   closeDatabase();
   httpServer.close(() => process.exit(0));
 });

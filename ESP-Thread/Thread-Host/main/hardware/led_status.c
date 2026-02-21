@@ -8,6 +8,7 @@
  */
 
 #include "hardware/led_status.h"
+#include "br_config.h"
 #include "driver/rmt_encoder.h"
 #include "driver/rmt_tx.h"
 #include "esp_log.h"
@@ -178,7 +179,7 @@ esp_err_t led_status_start(const led_status_config_t *config)
     flush_led();
 
     // Tạo task để update LED status
-    if (xTaskCreate(led_status_task, "led_status", 2048, NULL, 5, NULL) != pdPASS) {
+    if (xTaskCreate(led_status_task, TASK_NAME_LED_STATUS, TASK_STACK_LED_STATUS, NULL, 5, NULL) != pdPASS) {
         ESP_LOGE(TAG, "Failed to create led_status task");
         rmt_disable(s_chan);
         rmt_del_encoder(s_encoder);

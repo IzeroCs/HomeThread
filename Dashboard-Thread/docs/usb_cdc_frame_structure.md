@@ -55,8 +55,9 @@
 | *(reserved)* | `0x33–0x3F` | — | — | Dành mở rộng sau |
 | CMD_THREAD_START | `0x40` | Node→ESP32 | **Pull** | Khởi động Thread |
 | CMD_THREAD_STOP | `0x41` | Node→ESP32 | **Pull** | Dừng Thread |
-| CMD_THREAD_VERSION | `0x42` | Node→ESP32 | **Pull** | Lấy phiên bản Thread (ACK data = version string/bytes tùy firmware) |
-| *(reserved)* | `0x43–0xFF` | — | — | Dành mở rộng sau |
+| CMD_THREAD_VERSION | `0x42` | Node→ESP32 | **Pull** | Lấy phiên bản Thread (ACK data = version string UTF-8) |
+| CMD_COMMISSIONER_JOINER | `0x43` | Node→ESP32 | **Pull** | Thêm joiner vào commissioner (EUI64 + PSKd + timeout) |
+| *(reserved)* | `0x44–0xFF` | — | — | Dành mở rộng sau |
 
 ---
 
@@ -83,14 +84,16 @@
 | CMD_THREAD_START | Node→ESP32 | Không có (request) | 0 byte |
 | CMD_THREAD_STOP | Node→ESP32 | Không có (request) | 0 byte |
 | CMD_THREAD_VERSION | Node→ESP32 | Không có (request) | 0 byte |
+| CMD_COMMISSIONER_JOINER | Node→ESP32 | `EUI64(8) + PSKD_len(1) + PSKD(variable) + Timeout(4)` | 14–45 bytes |
 
 **CMD_ACK trả data theo CMD request:**
-- Dataset Active: TLV binary hoặc hex (tùy dataset)
+- Dataset Active: TLV binary (raw bytes từ `otDatasetGetActiveTlvs`)
 - IP Addr: IPv6 address – 16 bytes (xem mục dưới)
-- Router Table: Format tùy firmware (CBOR hoặc text)
-- Child Table: Format tùy firmware (CBOR hoặc text)
-- Joiner Table: Format tùy firmware (CBOR hoặc text)
-- Thread Version (CMD_THREAD_VERSION): Version string hoặc bytes tùy firmware (vd. "1.2.0" hoặc binary)
+- Router Table: binary format (count + entries, xem `table_data_format.md`)
+- Child Table: binary format (count + entries, xem `table_data_format.md`)
+- Joiner Table: binary format (count + entries, xem `table_data_format.md`)
+- Thread Version (CMD_THREAD_VERSION): UTF-8 string (vd. `"OPENTHREAD/thread-reference-20230706-..."`, tối đa 64 byte)
+- Commissioner Joiner (CMD_COMMISSIONER_JOINER): Không có data (0 byte) – chỉ xác nhận thêm joiner thành công
 
 ### Định dạng 16 byte IPv6 (IP Addr)
 
@@ -121,6 +124,32 @@
 - **Rust:** kiểu `std::net::Ipv6Addr` từ 16 byte (octets).
 
 Tóm lại: **16 byte = 8 số 16-bit big-endian liên tiếp;** chuỗi IPv6 là 8 đoạn hex cách nhau `:`, có thể rút gọn một khối 0 bằng `::`.
+
+### Định dạng DATA của CMD_COMMISSIONER_JOINER (Node → ESP32)
+
+Node gửi frame `CMD_COMMISSIONER_JOINER (0x43)` với DATA có cấu trúc:
+
+| Offset | Field | Kích thước | Mô tả |
+|--------|-------|------------|-------|
+| 0 | **EUI64** | 8 bytes | Địa chỉ joiner (big-endian). Tất cả `0x00` = wildcard (chấp nhận bất kỳ joiner nào) |
+| 8 | **PSKD_len** | 1 byte | Độ dài chuỗi PSKd (1–32) |
+| 9 | **PSKD** | PSKD_len bytes | PSKd string (không null-terminated, ASCII printable) |
+| 9+PSKD_len | **Timeout** | 4 bytes | uint32 big-endian, đơn vị **giây** (vd. 60, 120, 500) |
+
+**Tổng kích thước:** tối thiểu 14 bytes (PSKD_len=1), tối đa 45 bytes (PSKD_len=32).
+
+**Ví dụ** – EUI64 `f0:f5:bd:ff:fe:10:4b:24`, PSKd `"J01NME"`, timeout 120s:
+
+```
+[f0 f5 bd ff fe 10 4b 24]  [06]  [4a 30 31 4e 4d 45]  [00 00 00 78]
+ └──── EUI64 (8 bytes) ───┘  │    └─── "J01NME" ────┘   └─ 120 (4B) ┘
+                         PSKD_len=6
+```
+
+**ACK response:** 0 byte data – chỉ xác nhận `otCommissionerAddJoiner()` thành công.  
+**NACK:**
+- `0x02` (Not ready) – commissioner chưa active hoặc thiết bị không phải leader.
+- `0x04` (Invalid param) – PSKD_len = 0, PSKD_len > 32, hoặc timeout = 0.
 
 ---
 

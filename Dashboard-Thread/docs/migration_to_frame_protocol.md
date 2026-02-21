@@ -22,8 +22,11 @@ Tài liệu này liệt kê các bước / lệnh cần làm để chuyển Dash
 | **WebSocketServer** chỉ emit, lấy dữ liệu từ manager | ✅ Xong | Main khởi tạo io + manager, truyền vào WS |
 | Main (`index.ts`) khởi tạo io, CommunicateManager, gọi `connectIfConfigured()` | ✅ Xong | |
 | CMD_DATA (CBOR) → parse, cập nhật state/tables | ⏳ Chưa | Tạm emit `serial:frame:data` (hex) |
-| Set config / thread running / commissioner qua frame | ⏳ Chưa | Stub "Use frame protocol" khi firmware hỗ trợ |
+| Set config / thread running qua frame | ✅ Xong | CMD_SET_* (PAN ID, Channel, Network Name, Extended PAN ID, Network Key), CMD_THREAD_START/STOP |
+| Commissioner Joiner qua frame | ✅ Xong | CMD_COMMISSIONER_JOINER (0x43): EUI64(8) + PSKd_len(1) + PSKd(variable) + Timeout(4 uint32 BE); validate EUI64 hex, PSKd Thread Base32 6–32 ký tự (loại I/O/Q/Z); frontend chỉ check rỗng |
 | Router table / Child table / Joiner table từ frame | ✅ Xong | CMD_ROUTER_TABLE (0x30), CMD_CHILD_TABLE (0x31), CMD_JOINER_TABLE (0x32), parse binary format theo table_data_format.md (frame/tableParser.ts) |
+| Thread Version (CMD_THREAD_VERSION) | ✅ Xong | Fetch một lần sau khi lần đầu nhận ACK state; parse ACK data (≤2 byte → uint big-endian, >2 byte → UTF-8); lưu vào `OtConfig.threadVersion`; hiển thị trong tab Status |
+| Reset / Factory Reset qua frame | ✅ Xong | CMD_RESET (0x10, không DATA), CMD_FACTORY (0x11, confirm byte 0xAA); frontend có tab System trong Settings với modal xác nhận + đếm ngược 5s |
 
 ---
 
@@ -31,6 +34,9 @@ Tài liệu này liệt kê các bước / lệnh cần làm để chuyển Dash
 
 - **Hiện tại:** Backend dùng **frame protocol** (USB CDC). Serial mở port với `useFrameProtocol: true`, đọc raw bytes; `CommunicateManager` parse frame, **pull state định kỳ** (CMD_STATE); **dataset active chỉ gọi khi state đổi hoặc lần đầu có ACK state, IP chỉ khi leader/router/child** (trong pullState), không poll OT config định kỳ. Nhận CMD_ACK/CMD_NACK → cập nhật `lastOtConfig`, broadcast events qua `EVENTS` constants (`serial:data`, `ot:config`, `ot:threadState`, `serial:status`, `serial:connected`, `serial:frame:data`, `ot:routerTable`, `ot:childTable`, `commissioner:joinerTable`). **PollingManager** poll định kỳ router table, child table, joiner table khi có frontend kết nối và state là child/router/leader. Dataset parser (`frame/datasetParser.ts`) parse hex-encoded TLVs thành các field. Table parser (`frame/tableParser.ts`) parse binary format theo spec trong `table_data_format.md`. **WebSocketServer** chỉ lấy dữ liệu từ manager và emit tới frontend; khởi tạo giao tiếp nằm ở main.
 - **Còn lại:** Parse CMD_DATA (CBOR) để cập nhật thread state / router-child-joiner table; set config & commissioner khi firmware có CMD tương ứng.
+- **Thread Version:** Backend fetch CMD_THREAD_VERSION một lần mỗi khi connect (khi chưa có `threadVersion` trong OtConfig), parse ACK data thành string, broadcast `ot:config` với `threadVersion`. Frontend hiển thị trong tab Status ("OpenThread (Version)"). Khi disconnect, OtConfig bị clear → version sẽ fetch lại lần connect tiếp theo.
+- **Reset / Factory Reset:** CMD_RESET (0x10) và CMD_FACTORY (0x11, kèm confirm byte 0xAA) — frontend gửi qua WebSocket event, backend relay qua frame, trả kết quả về frontend. Tab System trong Settings có ConfirmModal dùng chung với đếm ngược 5 giây trước khi nút xác nhận kích hoạt.
+- **Commissioner Joiner:** CMD_COMMISSIONER_JOINER (0x43) — backend build DATA frame `EUI64(8) + PSKd_len(1) + PSKd(variable) + Timeout(4 uint32 BE)`; validate EUI64 (16 hex chars, strip prefix/dấu phân cách), PSKd (auto uppercase, Thread Base32 alphabet `[A-HJ-NPR-Y0-9]`, 6–32 ký tự), timeout (integer > 0). Frontend chỉ check rỗng — mọi validate kỹ do backend xử lý và trả error message về qua `commissioner:connect:result`.
 
 ---
 

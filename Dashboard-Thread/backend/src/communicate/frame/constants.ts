@@ -15,7 +15,6 @@ export const CMD = {
   STATE: 0x12,
   IP_ADDR: 0x13,
   DATASET_ACTIVE: 0x14,
-  DATASET_COMMIT_ACTIVE: 0x15,
 
   // Set config commands (bắt đầu từ 0x20)
   SET_PANID: 0x20,
@@ -32,7 +31,8 @@ export const CMD = {
   // Thread start/stop
   THREAD_START: 0x40,
   THREAD_STOP: 0x41,
-  THREAD_VERSION: 0x42
+  THREAD_VERSION: 0x42,
+  COMMISSIONER_JOINER: 0x43
 } as const;
 
 export type CmdCode = (typeof CMD)[keyof typeof CMD];
@@ -58,6 +58,7 @@ export const CMD_NAMES: Record<number, string> = {
   [CMD.THREAD_START]: "THREAD_START",
   [CMD.THREAD_STOP]: "THREAD_STOP",
   [CMD.THREAD_VERSION]: "THREAD_VERSION",
+  [CMD.COMMISSIONER_JOINER]: "COMMISSIONER_JOINER",
 };
 
 /** Max DATA length (bytes) */

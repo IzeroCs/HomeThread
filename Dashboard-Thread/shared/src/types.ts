@@ -41,6 +41,7 @@ export interface OtConfig {
   // Additional fields
   ipaddr?: string;
   datasetActive?: string; // Hex string gốc (để giữ lại cho compatibility)
+  threadVersion?: string;
   error?: string;
 }
 

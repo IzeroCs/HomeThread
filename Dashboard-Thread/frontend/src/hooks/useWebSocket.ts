@@ -60,6 +60,8 @@ export interface UseWebSocketReturn {
   getJoinerTable: () => void;
   commissionerConnect: (eui64: string, psk: string, timeoutSeconds?: number) => Promise<{ success: boolean; error?: string }>;
   onSerialData: (callback: (data: string) => void) => () => void;
+  reset: () => Promise<{ success: boolean; error?: string }>;
+  factoryReset: () => Promise<{ success: boolean; error?: string }>;
 }
 
 export function useWebSocket(): UseWebSocketReturn {
@@ -372,6 +374,40 @@ export function useWebSocket(): UseWebSocketReturn {
     []
   );
 
+  const reset = useCallback(
+    (): Promise<{ success: boolean; error?: string }> =>
+      new Promise((resolve) => {
+        if (!socketRef.current) {
+          resolve({ success: false, error: "Not connected" });
+          return;
+        }
+        const handler = (result: { success: boolean; error?: string }) => {
+          socketRef.current?.off(EVENTS.DEVICE_RESET_RESULT, handler);
+          resolve(result);
+        };
+        socketRef.current.once(EVENTS.DEVICE_RESET_RESULT, handler);
+        socketRef.current.emit(EVENTS.DEVICE_RESET);
+      }),
+    []
+  );
+
+  const factoryReset = useCallback(
+    (): Promise<{ success: boolean; error?: string }> =>
+      new Promise((resolve) => {
+        if (!socketRef.current) {
+          resolve({ success: false, error: "Not connected" });
+          return;
+        }
+        const handler = (result: { success: boolean; error?: string }) => {
+          socketRef.current?.off(EVENTS.DEVICE_FACTORY_RESET_RESULT, handler);
+          resolve(result);
+        };
+        socketRef.current.once(EVENTS.DEVICE_FACTORY_RESET_RESULT, handler);
+        socketRef.current.emit(EVENTS.DEVICE_FACTORY_RESET);
+      }),
+    []
+  );
+
   const onSerialData = useCallback((callback: (data: string) => void) => {
     if (!socketRef.current) {
       return () => {};
@@ -432,5 +468,7 @@ export function useWebSocket(): UseWebSocketReturn {
     getJoinerTable,
     commissionerConnect,
     onSerialData,
+    reset,
+    factoryReset,
   };
 }

@@ -57,3 +57,23 @@
     .netif_queue_size = 10, \
     .task_queue_size = 10, \
 }
+
+/* ---- Task names — dùng trong xTaskCreate và xTaskGetHandle ---- */
+#define TASK_NAME_MAIN          "main"
+#define TASK_NAME_COMM_QUEUE    "comm_queue"
+#define TASK_NAME_COMM_TASK     "comm_task"
+#define TASK_NAME_BOOT_BTN      "boot_btn"
+#define TASK_NAME_LED_STATUS    "led_status"
+#define TASK_NAME_USB_RX        "usb_rx"
+#define TASK_NAME_LEADER_RLOC   "leader_rloc"
+#define TASK_NAME_STK_MON       "stk_mon"
+
+/* ---- Task stack sizes (bytes) ---- */
+#define TASK_STACK_MAIN         CONFIG_ESP_MAIN_TASK_STACK_SIZE
+#define TASK_STACK_COMM_QUEUE   10240
+#define TASK_STACK_COMM_TASK    4096
+#define TASK_STACK_BOOT_BTN     4096
+#define TASK_STACK_LED_STATUS   2048
+#define TASK_STACK_USB_RX       2048
+#define TASK_STACK_LEADER_RLOC  4096
+#define TASK_STACK_STK_MON      3072

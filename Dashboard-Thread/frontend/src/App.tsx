@@ -13,7 +13,7 @@ import "./App.scss";
 
 function App() {
   const [config, setConfig] = useState<SerialConfigFromBackend | null>(null);
-  const [page, setPage] = useState<NavPage>("settings");
+  const [page, setPage] = useState<NavPage>("commissioner");
 
   const {
     connected: wsConnected,

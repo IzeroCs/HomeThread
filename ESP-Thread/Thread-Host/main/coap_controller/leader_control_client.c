@@ -4,6 +4,7 @@
  */
 
 #include "coap_controller/leader_control_client.h"
+#include "br_config.h"
 #include "br_custom_config.h"  // Enable CoAP API
 #include "esp_log.h"
 #include "esp_openthread.h"
@@ -369,7 +370,7 @@ esp_err_t leader_control_client_init(void)
     ESP_LOGI(TAG, "Leader Control Client initialized");
 
     // Create task to continuously check and log Leader RLOC16
-    xTaskCreate(leader_rloc_check_task, "leader_rloc_check", 4096, NULL, 5, NULL);
+    xTaskCreate(leader_rloc_check_task, TASK_NAME_LEADER_RLOC, TASK_STACK_LEADER_RLOC, NULL, 5, NULL);
     ESP_LOGI(TAG, "Leader RLOC check task created (checks every %d ms)", LEADER_RLOC_CHECK_INTERVAL_MS);
 
     return ESP_OK;

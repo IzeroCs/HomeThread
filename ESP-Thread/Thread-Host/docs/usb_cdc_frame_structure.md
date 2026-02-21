@@ -37,8 +37,9 @@
 | CMD_THREAD_START | 0x40 | Node→ESP32 | Bật IPv6 + Thread (ifconfig up, thread start). BR trả CMD_ACK (DATA rỗng). |
 | CMD_THREAD_STOP | 0x41 | Node→ESP32 | Tắt Thread + IPv6. BR trả CMD_ACK (DATA rỗng). |
 | CMD_THREAD_VERSION | 0x42 | Node→ESP32 | Pull: BR trả CMD_ACK + chuỗi version OpenThread (UTF-8, tối đa 64 bytes). |
+| CMD_COMMISSIONER_JOINER | 0x43 | Node→ESP32 | Pull: thêm joiner vào commissioner. DATA = EUI64(8) + PSKD_len(1) + PSKD(variable, 1–32) + Timeout(4, uint32 big-endian, giây). EUI64 all-zero = wildcard. BR trả CMD_ACK (DATA rỗng) hoặc CMD_NACK (0x02 not ready, 0x04 invalid param). |
 
-**CMD_ACK:** Echo cùng Frame ID; DATA tùy CMD (STATE: 1 byte role; Dataset: TLV; IP: 16 byte nhị phân; Router/Child/Joiner Table: xem [table_data_format.md](table_data_format.md); THREAD_VERSION: chuỗi version UTF-8). Với CMD_IP_ADDR, backend trả CMD_ACK cùng Frame ID để xác nhận đã nhận.
+**CMD_ACK:** Echo cùng Frame ID; DATA tùy CMD (STATE: 1 byte role; Dataset: TLV; IP: 16 byte nhị phân; Router/Child/Joiner Table: xem [table_data_format.md](table_data_format.md); THREAD_VERSION: chuỗi version UTF-8; COMMISSIONER_JOINER: DATA rỗng). Với CMD_IP_ADDR, backend trả CMD_ACK cùng Frame ID để xác nhận đã nhận.
 
 **Error codes (CMD_NACK):** 0x01 Invalid CMD, 0x02 Not ready, 0x03 Timeout, 0x04 Invalid param, 0x05 Busy.
 

@@ -53,6 +53,8 @@ export class CommandManager {
   private datasetActiveFrameIds = new Set<number>();
   /** Track frameId của IP_ADDR commands để thu gọn log ACK. */
   private ipAddrFrameIds = new Set<number>();
+  /** Track frameId của TABLE commands (ROUTER/CHILD/JOINER) để ẩn log TX + ACK. */
+  private tableFrameIds = new Set<number>();
 
   constructor(private callbacks: CommandManagerCallbacks) {}
 
@@ -61,9 +63,9 @@ export class CommandManager {
    * Backend gửi CMD (STATE, IP_ADDR, ...) thì leader trả ACK kèm data, không có leader gửi CMD_STATE/IP_ADDR.
    */
   handle(frame: ParsedFrame): void {
-    // Filter: không log ACK của STATE command
-    if (frame.cmd === CMD.ACK && this.stateFrameIds.has(frame.frameId)) {
-      // Không log, nhưng vẫn xử lý bình thường
+    // Filter: không log ACK của STATE command và TABLE commands
+    if (frame.cmd === CMD.ACK && (this.stateFrameIds.has(frame.frameId) || this.tableFrameIds.has(frame.frameId))) {
+      // Không log
     } else if (frame.cmd === CMD.ACK && this.datasetActiveFrameIds.has(frame.frameId)) {
       // Thu gọn log ACK của dataset active: chỉ log 1 dòng thay vì toàn bộ hex data
       const cmdName = CMD_NAMES[frame.cmd] ?? `0x${frame.cmd.toString(16)}`;
@@ -89,17 +91,24 @@ export class CommandManager {
       if (pending) {
         clearTimeout(pending.timeoutId);
         this.pendingFrames.delete(frame.frameId);
+        // Chỉ merge vào config khi ACK là của CMD_IP_ADDR hoặc CMD_DATASET_ACTIVE
+        const isConfigAck =
+          this.ipAddrFrameIds.has(frame.frameId) ||
+          this.datasetActiveFrameIds.has(frame.frameId);
         // Xóa frameId khỏi tracking sets sau khi nhận ACK
         this.stateFrameIds.delete(frame.frameId);
         this.datasetActiveFrameIds.delete(frame.frameId);
         this.ipAddrFrameIds.delete(frame.frameId);
+        this.tableFrameIds.delete(frame.frameId);
         pending.resolve({
           ack: true,
           data: frame.data.length > 0 ? frame.data : undefined,
           frameId: frame.frameId,
         });
+        if (isConfigAck) {
+          this.applyAckDataToConfig(frame.data);
+        }
       }
-      this.applyAckDataToConfig(frame.data);
       return;
     }
     if (frame.cmd === CMD.NACK) {
@@ -218,6 +227,17 @@ export class CommandManager {
     return this.sendRequest(CMD.SET_NETWORK_KEY, data);
   }
 
+  /** Gửi CMD_RESET để reset thiết bị (không có data). */
+  reset(): Promise<{ ack: boolean; data?: Buffer; errorCode?: number; frameId?: number }> {
+    return this.sendRequest(CMD.RESET);
+  }
+
+  /** Gửi CMD_FACTORY để factory reset thiết bị (confirm byte 0xAA). */
+  factoryReset(): Promise<{ ack: boolean; data?: Buffer; errorCode?: number; frameId?: number }> {
+    const data = Buffer.from([0xaa]);
+    return this.sendRequest(CMD.FACTORY, data);
+  }
+
   /** Gửi CMD_THREAD_START để khởi động Thread. */
   startThread(): Promise<{ ack: boolean; data?: Buffer; errorCode?: number; frameId?: number }> {
     return this.sendRequest(CMD.THREAD_START);
@@ -231,6 +251,40 @@ export class CommandManager {
   /** Gửi CMD_THREAD_VERSION (request), nhận ACK với payload version (string/bytes tùy firmware). */
   getThreadVersion(): Promise<{ ack: boolean; data?: Buffer; errorCode?: number; frameId?: number }> {
     return this.sendRequest(CMD.THREAD_VERSION);
+  }
+
+  /**
+   * Gửi CMD_COMMISSIONER_JOINER để thêm joiner vào commissioner.
+   * DATA format: EUI64(8) + PSKD_len(1) + PSKD(variable, 1–32 bytes) + Timeout(4, uint32 big-endian, giây).
+   * eui64: hex string 16 ký tự (8 bytes); tất cả zero = wildcard.
+   * pskd: ASCII string, 1–32 ký tự.
+   * timeoutSeconds: uint32, đơn vị giây.
+   */
+  commissionerJoiner(
+    eui64: string,
+    pskd: string,
+    timeoutSeconds: number
+  ): Promise<{ ack: boolean; data?: Buffer; errorCode?: number; frameId?: number }> {
+    const eui64Str = eui64.trim().replace(/^0x|^0X/, "").replace(/[:\-\s]/g, "");
+    if (!/^[0-9a-fA-F]{16}$/.test(eui64Str)) {
+      return Promise.resolve({ ack: false, errorCode: 0x04 }); // INVALID_PARAM
+    }
+    // PSKd: Thread spec yêu cầu 6–32 ký tự, chỉ uppercase alphanum trừ I, O, Q, Z
+    const pskdUpper = pskd.toUpperCase();
+    if (pskdUpper.length < 6 || pskdUpper.length > 32 || !/^[A-HJ-NPR-Y0-9]+$/.test(pskdUpper)) {
+      return Promise.resolve({ ack: false, errorCode: 0x04 }); // INVALID_PARAM
+    }
+    const pskdBytes = Buffer.from(pskdUpper, "ascii");
+    if (!Number.isInteger(timeoutSeconds) || timeoutSeconds <= 0 || timeoutSeconds > 0xffffffff) {
+      return Promise.resolve({ ack: false, errorCode: 0x04 }); // INVALID_PARAM
+    }
+    // Build: EUI64(8) + PSKD_len(1) + PSKD(variable) + Timeout(4)
+    const data = Buffer.allocUnsafe(8 + 1 + pskdBytes.length + 4);
+    Buffer.from(eui64Str, "hex").copy(data, 0);
+    data[8] = pskdBytes.length;
+    pskdBytes.copy(data, 9);
+    data.writeUInt32BE(timeoutSeconds, 9 + pskdBytes.length);
+    return this.sendRequest(CMD.COMMISSIONER_JOINER, data);
   }
 
   /** Gửi ACK (cùng frameId) cho leader biết đã nhận dữ liệu (vd. sau khi nhận ACK IP addr). */
@@ -259,6 +313,7 @@ export class CommandManager {
           this.stateFrameIds.delete(frameId);
           this.datasetActiveFrameIds.delete(frameId);
           this.ipAddrFrameIds.delete(frameId);
+          this.tableFrameIds.delete(frameId);
           resolve({ ack: false, errorCode: 0x03 });
         }
       }, FRAME_RESPONSE_TIMEOUT_MS);
@@ -277,13 +332,18 @@ export class CommandManager {
       if (cmd === CMD.IP_ADDR) {
         this.ipAddrFrameIds.add(frameId);
       }
+      // Track frameId của TABLE commands để ẩn log TX + ACK
+      if (cmd === CMD.ROUTER_TABLE || cmd === CMD.CHILD_TABLE || cmd === CMD.JOINER_TABLE) {
+        this.tableFrameIds.add(frameId);
+      }
 
       try {
         const frame = buildFrame(frameId, cmd, data);
         const cmdName = CMD_NAMES[cmd] ?? `0x${cmd.toString(16)}`;
         const dataLen = data?.length ?? 0;
-        // Filter: không log STATE command
-        if (cmd !== CMD.STATE) {
+        // Filter: không log STATE command và TABLE commands
+        const isSilentCmd = cmd === CMD.STATE || cmd === CMD.ROUTER_TABLE || cmd === CMD.CHILD_TABLE || cmd === CMD.JOINER_TABLE;
+        if (!isSilentCmd) {
           frameLogger.log(
             `TX frameId=0x${frameId.toString(16).padStart(2, "0")} cmd=0x${cmd.toString(16).padStart(2, "0")} (${cmdName}) len=${dataLen}`
           );
@@ -293,6 +353,7 @@ export class CommandManager {
             this.stateFrameIds.delete(frameId);
             this.datasetActiveFrameIds.delete(frameId);
             this.ipAddrFrameIds.delete(frameId);
+            this.tableFrameIds.delete(frameId);
             clearTimeout(timeoutId);
             resolve({ ack: false, errorCode: 0x03 });
           }
@@ -302,6 +363,7 @@ export class CommandManager {
           this.stateFrameIds.delete(frameId);
           this.datasetActiveFrameIds.delete(frameId);
           this.ipAddrFrameIds.delete(frameId);
+          this.tableFrameIds.delete(frameId);
           clearTimeout(timeoutId);
           resolve({ ack: false, errorCode: 0x01 });
         }
@@ -324,6 +386,7 @@ export class CommandManager {
     this.stateFrameIds.clear();
     this.datasetActiveFrameIds.clear();
     this.ipAddrFrameIds.clear();
+    this.tableFrameIds.clear();
   }
 
   private logFrame(frame: ParsedFrame, direction: "RX"): void {

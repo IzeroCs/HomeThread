@@ -5,7 +5,7 @@ import "./Status.scss";
 /** Tạo danh sách các field dataset đã parse để hiển thị (loại trừ các field đã hiển thị ở trên: PAN ID, Channel, Network Name) */
 function getDatasetFields(otConfig: OtConfig | null | undefined): Array<{ label: string; value: string }> {
   const fields: Array<{ label: string; value: string }> = [];
-  
+
   if (otConfig?.activeTimestamp != null) {
     fields.push({ label: "Active Timestamp", value: otConfig.activeTimestamp });
   }
@@ -33,7 +33,7 @@ function getDatasetFields(otConfig: OtConfig | null | undefined): Array<{ label:
   if (otConfig?.securityPolicy != null) {
     fields.push({ label: "Security Policy", value: otConfig.securityPolicy });
   }
-  
+
   return fields;
 }
 
@@ -99,6 +99,10 @@ export default function Status() {
               <div className="status-row">
                 <span className="status-label">Network Name:</span>
                 <span className="status-value">{otConfig?.networkName ?? "—"}</span>
+              </div>
+              <div className="status-row">
+                <span className="status-label">Thread version:</span>
+                <span className="status-value">{otConfig?.threadVersion ?? "—"}</span>
               </div>
               <div className="status-row">
                 <span className="status-label">IP Address:</span>

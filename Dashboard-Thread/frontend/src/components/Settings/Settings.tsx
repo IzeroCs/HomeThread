@@ -1,9 +1,10 @@
 import { useState } from "react";
 import SerialConfigForm from "./SerialConfigForm";
 import OpenThreadConfigForm from "./OpenThreadConfigForm";
+import SystemTab from "./SystemTab";
 import "./Settings.scss";
 
-export type SettingsTab = "serial" | "openthread";
+export type SettingsTab = "serial" | "openthread" | "system";
 
 interface SettingsProps {
   serialConfig: {
@@ -44,6 +45,13 @@ export default function Settings({
         >
           OpenThread
         </button>
+        <button
+          type="button"
+          className={`settings-tab ${activeTab === "system" ? "active" : ""}`}
+          onClick={() => setActiveTab("system")}
+        >
+          System
+        </button>
       </div>
       <div className="settings-tab-content">
         {activeTab === "serial" && (
@@ -54,6 +62,7 @@ export default function Settings({
           />
         )}
         {activeTab === "openthread" && <OpenThreadConfigForm />}
+        {activeTab === "system" && <SystemTab />}
       </div>
     </div>
   );

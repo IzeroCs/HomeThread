@@ -317,6 +317,24 @@ export class CommunicateManager {
     return { ack: result.ack, errorCode: result.errorCode };
   }
 
+  /** Gửi CMD_RESET để reset thiết bị. */
+  async reset(): Promise<{ ack: boolean; errorCode?: number }> {
+    if (!this.commandManager) {
+      return { ack: false, errorCode: 0x02 }; // NOT_READY
+    }
+    const result = await this.commandManager.reset();
+    return { ack: result.ack, errorCode: result.errorCode };
+  }
+
+  /** Gửi CMD_FACTORY để factory reset thiết bị (confirm byte 0xAA). */
+  async factoryReset(): Promise<{ ack: boolean; errorCode?: number }> {
+    if (!this.commandManager) {
+      return { ack: false, errorCode: 0x02 }; // NOT_READY
+    }
+    const result = await this.commandManager.factoryReset();
+    return { ack: result.ack, errorCode: result.errorCode };
+  }
+
   /** Start Thread qua frame protocol. */
   async startThread(): Promise<{ ack: boolean; errorCode?: number }> {
     if (!this.commandManager) {
@@ -342,6 +360,19 @@ export class CommunicateManager {
     }
     const result = await this.commandManager.getThreadVersion();
     return { ack: result.ack, data: result.data, errorCode: result.errorCode };
+  }
+
+  /** Gửi CMD_COMMISSIONER_JOINER để thêm joiner vào commissioner. */
+  async commissionerJoiner(
+    eui64: string,
+    pskd: string,
+    timeoutSeconds: number
+  ): Promise<{ ack: boolean; errorCode?: number }> {
+    if (!this.commandManager) {
+      return { ack: false, errorCode: 0x02 }; // NOT_READY
+    }
+    const result = await this.commandManager.commissionerJoiner(eui64, pskd, timeoutSeconds);
+    return { ack: result.ack, errorCode: result.errorCode };
   }
 
   private stopAllPolling(): void {
@@ -444,6 +475,39 @@ export class CommunicateManager {
             cmdMgr.fetchDatasetActive().catch(() => {});
           }
 
+          // Thread version: chỉ fetch một lần khi chưa có version trong config
+          if (this.otConfigManager.get()?.threadVersion == null) {
+            this.getThreadVersion()
+              .then((versionRes) => {
+                if (versionRes.ack && versionRes.data && versionRes.data.length > 0) {
+                  // Firmware có thể trả về: 2 bytes uint16 big-endian (e.g. 0x0004 = "4") hoặc ASCII string
+                  let version: string;
+                  if (versionRes.data.length <= 2) {
+                    // Interpret as uint16 big-endian (e.g. Thread version 1.3 = 4)
+                    version = versionRes.data.readUIntBE(0, versionRes.data.length).toString();
+                  } else {
+                    version = versionRes.data.toString("utf8").replace(/\0/g, "").trim();
+                  }
+                  this.otConfigManager.update({ threadVersion: version });
+                  this.broadcast(EVENTS.OT_CONFIG, this.otConfigManager.get());
+                }
+              })
+              .catch((err) => serialLogger.warn(`getThreadVersion failed: ${(err as Error)?.message ?? err}`));
+          }
+
+          // Auto-start Thread: khi state vừa đổi sang disabled và thread_run_on_connect bật
+          if (stateChangedOrFirst && roleByte === DEVICE_ROLE.DISABLED && this.appSettingsService.getThreadRunOnConnect()) {
+            this.startThread()
+              .then((result) => {
+                if (result.ack) {
+                  serialLogger.info("Auto-started Thread (thread_run_on_connect=true, state was disabled)");
+                } else {
+                  serialLogger.warn(`Auto-start Thread failed: errorCode=${result.errorCode}`);
+                }
+              })
+              .catch((err) => serialLogger.warn(`Auto-start Thread error: ${(err as Error)?.message ?? err}`));
+          }
+
           // IP addr: chỉ fetch khi state là leader/router/child và state đổi hoặc lần đầu
           const isLeaderRouterOrChild =
             roleByte === DEVICE_ROLE.LEADER ||
@@ -528,34 +592,6 @@ export class CommunicateManager {
       this.broadcast(EVENTS.SERIAL_STATUS, this.serialPort!.getStatus());
       serialLogger.info(`Connected: ${config.serialPort}`);
       this.startStateInterval();
-
-      // Tự khởi động Thread nếu user đã bật "tự chạy Thread khi kết nối" và thiết bị đang ở state disabled
-      if (this.appSettingsService.getThreadRunOnConnect()) {
-        setTimeout(() => {
-          if (!this.commandManager) return;
-          this.commandManager
-            .fetchState()
-            .then((res) => {
-              if (!res.ack || !res.data || res.data.length < 1) return;
-              const roleByte = res.data[0] as DeviceRole;
-              if (roleByte !== DEVICE_ROLE.DISABLED) {
-                serialLogger.info(`Auto-start Thread skipped: state is not disabled (role=${roleByte})`);
-                return;
-              }
-              return this.startThread();
-            })
-            .then((result) => {
-              if (result?.ack) {
-                serialLogger.info("Auto-started Thread (thread_run_on_connect=true, state was disabled)");
-              } else if (result != null) {
-                serialLogger.warn(`Auto-start Thread failed: errorCode=${result.errorCode}`);
-              }
-            })
-            .catch((err) => {
-              serialLogger.warn(`Auto-start Thread error: ${(err as Error)?.message ?? err}`);
-            });
-        }, 500);
-      }
     } catch (error) {
       serialLogger.error(`Connection failed: ${error}`);
       this.broadcast(EVENTS.SERIAL_STATUS, { isConnected: false, path: config.serialPort, baudRate: config.baudRate });
@@ -563,6 +599,7 @@ export class CommunicateManager {
     }
   }
 
+  /** Đóng toàn bộ: dừng polling, clear pending frames, đóng serial port. Dùng khi disconnect serial từ frontend. */
   async close(): Promise<void> {
     this.autoReconnectEnabled = false;
     this.clearReconnectTimer();
@@ -576,5 +613,19 @@ export class CommunicateManager {
       await this.serialPort.close();
       this.serialPort = null;
     }
+  }
+
+  /** Shutdown khi server tắt: dừng polling, clear pending frames, bỏ listener — nhưng KHÔNG đóng serial port để thiết bị tiếp tục chạy. */
+  shutdown(): void {
+    this.autoReconnectEnabled = false;
+    this.clearReconnectTimer();
+    this.stopAllPolling();
+    this.clearPendingFrames();
+    if (this.frameUnsubscribe) {
+      this.frameUnsubscribe();
+      this.frameUnsubscribe = null;
+    }
+    this.frameParser.reset();
+    serialLogger.info("Server shutdown: serial port left open (device continues running).");
   }
 }

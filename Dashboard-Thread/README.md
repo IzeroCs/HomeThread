@@ -12,13 +12,16 @@ Backend + Frontend điều khiển **OpenThread qua UART** (ESP32-H2 ot-br), dù
 
 ## Tính năng chính
 
-- **Status**: Trạng thái serial, OpenThread (PAN ID, Channel, Network Name, IP, Dataset Active với các field đã parse), thread state.
-- **Dashboard**: Router Table & Child Table (số lượng trong nhãn). Click một dòng → Modal xem đầy đủ thông tin (kể cả cột ẩn), tiêu đề theo RLOC16.
-- **Commissioner**: Thêm joiner (EUI64, PSK), tuỳ chọn timeout 30/60/120/180/500s; danh sách joiner với cột Expiration đếm ngược.
-- **Console**: Xem dữ liệu serial realtime (hex); gửi lệnh qua frame khi firmware hỗ trợ.
-- **Settings**: Cấu hình Serial (port, baud), OpenThread (PAN ID, Channel, Network Name, Extended PAN ID, Network Key, toggle khởi động/dừng Thread).
+- **Status**: Trạng thái serial, OpenThread (PAN ID, Channel, Network Name, Version, IP Address, Dataset Active đầy đủ các field), thread state.
+- **Dashboard**: Router Table & Child Table (số lượng trong nhãn). Click một dòng → Modal chi tiết theo RLOC16.
+- **Commissioner**: Thêm joiner (EUI64, PSKd, timeout 30–500s); danh sách joiner với cột Expiration đếm ngược. Giao tiếp qua CMD_COMMISSIONER_JOINER (frame protocol).
+- **Console**: Xem dữ liệu serial realtime (hex).
+- **Settings**:
+  - *Serial*: Cấu hình port, baud rate, test connect trước khi lưu.
+  - *OpenThread*: PAN ID, Channel, Network Name, Extended PAN ID, Network Key; toggle khởi động/dừng Thread; nút "Lấy lại" fetch config từ thiết bị.
+  - *System*: Nút Reset và Factory Reset với modal xác nhận + đếm ngược 5 giây.
 
-Component dùng chung: **Modal**, **TopNav** nằm trong `frontend/src/components/common/`.
+Component dùng chung: **Modal**, **ConfirmModal**, **TopNav**, **ToastContainer** trong `frontend/src/components/common/`.
 
 **TopNav symbol màu sắc**: Symbol trạng thái trên TopNav đổi màu theo thread state:
 - 🟢 **Xanh lá** — leader
@@ -89,16 +92,21 @@ Dashboard-Thread/
 
 ## Backend – Serial & frame protocol
 
-- **Giao tiếp:** Backend dùng **frame protocol** (USB CDC) qua serial — không còn CLI. Cấu trúc frame: SOF, Frame ID, CMD, LEN, DATA, CRC8, EOF (xem `docs/usb_cdc_frame_structure.md`).
-- **communicate/:** `SerialPort` (raw mode, `useFrameProtocol`), `SerialConfigService`, thư mục `frame/` (constants, crc8, frameBuilder, frameParser, datasetParser, tableParser), **CommunicateManager** nắm dữ liệu (lastThreadState, lastOtConfig) và khởi tạo giao tiếp; **OtConfigManager**, **PollingManager**. Main truyền `onBroadcast => io.emit` để manager push event.
-- **WebSocketServer:** Chỉ emit tới frontend; lấy dữ liệu qua `communicate.getStatus()`, `communicate.getLastOtConfig()`; không chứa logic serial/frame.
-- **Khi mở serial:** Pull state định kỳ (CMD_STATE); dataset + IP chỉ gọi khi state đổi hoặc lần đầu có ACK state (không poll OT config định kỳ). Nếu đã có cấu hình serial trong DB thì tự `connectIfConfigured()`. Nếu cài đặt "tự chạy Thread khi kết nối" (`thread_run_on_connect`) bật thì sau khi connect, backend kiểm tra state; **chỉ khi state = disabled** mới gửi CMD_THREAD_START (tự khởi động Thread).
-- **Polling:** Định kỳ chỉ dùng cho state (pullState), và router table, child table, joiner table. PollingManager chỉ poll các table khi có frontend kết nối và state là child/router/leader. Router table poll mỗi 6s, child table delay 1.5s rồi poll mỗi 6s, joiner table poll mỗi 6s.
-- **Database:** SQLite (cấu hình serial, app settings); schema IoT entity (xem `docs/entity_model_schema.md`).
+- **Giao tiếp:** Frame protocol (USB CDC) qua serial — không còn CLI. Cấu trúc frame: SOF, Frame ID, CMD, LEN, DATA, CRC8, EOF (xem `docs/usb_cdc_frame_structure.md`).
+- **Kiến trúc:** `CommunicateManager` điều phối serial + frame; `CommandManager` gửi/nhận frame, quản lý pending theo Frame ID + timeout; `OtConfigManager` lưu config; `PollingManager` poll table định kỳ. `WebSocketServer` chỉ relay event — không chứa logic serial/frame.
+- **Khi mở serial:** Pull state định kỳ (CMD_STATE, 5s). Dataset active + IP chỉ fetch khi state thay đổi hoặc lần đầu. Thread version (CMD_THREAD_VERSION) fetch một lần sau lần đầu nhận ACK state. Nếu `thread_run_on_connect` bật và state = disabled → tự gửi CMD_THREAD_START.
+- **Polling tables:** Router/Child/Joiner table poll mỗi 6s (child delay 1.5s) — chỉ khi có frontend kết nối và state là leader/router/child.
+- **CMD hỗ trợ:**
 
-## Đã triển khai (tóm tắt)
+| Nhóm | CMD |
+|---|---|
+| Đọc trạng thái | CMD_STATE, CMD_DATASET_ACTIVE, CMD_IP_ADDR, CMD_THREAD_VERSION |
+| Đọc tables | CMD_ROUTER_TABLE, CMD_CHILD_TABLE, CMD_JOINER_TABLE |
+| Set config | CMD_SET_PANID, CMD_SET_CHANNEL, CMD_SET_NETWORK_NAME, CMD_SET_EXTENDED_PANID, CMD_SET_NETWORK_KEY |
+| Thread | CMD_THREAD_START, CMD_THREAD_STOP |
+| Commissioner | CMD_COMMISSIONER_JOINER (EUI64 + PSKd + timeout) |
+| Hệ thống | CMD_RESET, CMD_FACTORY |
 
-- **Backend:** Serial raw + frame parse/build, CRC8/MAXIM, CMD_ACK/CMD_NACK → cache + emit `ot:config`; pull state định kỳ (CMD_STATE); dataset active được parse từ hex-encoded TLVs thành các field (Active Timestamp, Channel, Network Name, PAN ID, Extended PAN ID, Mesh Local Prefix, Network Key, PSKc, Security Policy, Channel Mask) và lưu vào OtConfig (parser trong `frame/datasetParser.ts`); dataset + IP chỉ khi state đổi hoặc lần đầu có ACK state (reply ACK cho leader); PollingManager poll router/child/joiner table khi có frontend kết nối và state là child/router/leader, parse binary format theo spec (parser trong `frame/tableParser.ts`); hỗ trợ set config qua frame protocol (CMD_SET_PANID, CMD_SET_CHANNEL, CMD_SET_NETWORK_NAME, CMD_SET_EXTENDED_PANID, CMD_SET_NETWORK_KEY); hỗ trợ start/stop Thread (CMD_THREAD_START, CMD_THREAD_STOP), CMD_THREAD_VERSION (0x42) để lấy phiên bản; tự khởi động Thread khi serial connect nếu `thread_run_on_connect` bật và state disabled. WebSocket events được định nghĩa trong `EVENTS` constants từ shared package (`serial:status`, `serial:data`, `serial:connected`, `ot:config`, `ot:threadState`, `serial:frame:data`, `ot:routerTable`, `ot:childTable`, `commissioner:joinerTable`, `ot:startThread`, `ot:stopThread`, `ot:setConfig:result`, v.v.).
-- **Frontend:** Status (Serial + OT config, Dataset Active với các field đã parse), Dashboard (Router/Child table với số lượng trong nhãn, click dòng → Modal RLOC16), Commissioner (EUI64/PSK, timeout 30/60/120/180/500s, chỉ khi leader), Console (log serial realtime hex, 320px), Settings (Serial + OT với các field Extended PAN ID, Network Key, toggle khởi động/dừng Thread), form thống nhất (`_form.scss`), TopNav symbol màu theo thread state, truy cập LAN (Vite host true, proxy), Toast notification system (góc phải trên, hiển thị success/error/warning/info).
+- **Database:** SQLite lưu cấu hình serial và app settings (`thread_run_on_connect`).
 
-Chi tiết migration frame: [docs/migration_to_frame_protocol.md](docs/migration_to_frame_protocol.md). Việc còn lại: [TODO.md](./TODO.md).
+Chi tiết: [docs/usb_cdc_frame_structure.md](docs/usb_cdc_frame_structure.md) · [docs/migration_to_frame_protocol.md](docs/migration_to_frame_protocol.md) · Việc còn lại: [TODO.md](./TODO.md).

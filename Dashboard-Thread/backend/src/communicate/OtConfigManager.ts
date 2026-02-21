@@ -9,6 +9,7 @@ export type OtConfig = ParsedDataset & {
   // Additional fields (không có trong ParsedDataset)
   ipaddr?: string;
   datasetActive?: string; // Hex string gốc (để giữ lại cho compatibility)
+  threadVersion?: string;
   error?: string;
 };
 

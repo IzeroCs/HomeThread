@@ -9,6 +9,7 @@
 
 #if !COMMUNICATE_FRAME_PORT_IS_UART
 
+#include "br_config.h"
 #include "driver/usb_serial_jtag.h"
 #include "esp_log.h"
 #include "freertos/FreeRTOS.h"
@@ -18,7 +19,7 @@
 
 #define TAG "transport_usb"
 
-#define RX_TASK_STACK         2048
+#define RX_TASK_STACK         TASK_STACK_USB_RX
 #define RX_TASK_PRIO          5
 #define RX_READ_CHUNK        128
 #define RX_READ_TIMEOUT_MS   50
@@ -58,7 +59,7 @@ esp_err_t transport_usb_init(transport_usb_rx_cb_t rx_cb, void *rx_ctx)
         return err;
     }
 
-    BaseType_t ok = xTaskCreate(usb_rx_task, "usb_rx", RX_TASK_STACK, NULL, RX_TASK_PRIO, &s_rx_task_handle);
+    BaseType_t ok = xTaskCreate(usb_rx_task, TASK_NAME_USB_RX, RX_TASK_STACK, NULL, RX_TASK_PRIO, &s_rx_task_handle);
     if (ok != pdPASS) {
         usb_serial_jtag_driver_uninstall();
         return ESP_ERR_NO_MEM;

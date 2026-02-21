@@ -1,0 +1,65 @@
+@use "../../styles/variables" as *;
+
+.confirm-modal-content {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.confirm-modal-message {
+  margin: 0;
+  font-size: 15px;
+  color: $text-primary;
+  line-height: 1.6;
+}
+
+.confirm-modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+.confirm-modal-btn {
+  padding: 10px 22px;
+  border: none;
+  border-radius: $border-radius-small;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.2s, background 0.2s;
+
+  &:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+  }
+
+  &.cancel {
+    background: $bg-light;
+    color: $text-secondary;
+    border: 1px solid $border-color;
+
+    &:hover:not(:disabled) {
+      background: darken(#f8f9fa, 4%);
+    }
+  }
+
+  &.confirm {
+    color: white;
+
+    &.danger {
+      background: #e74c3c;
+
+      &:hover:not(:disabled) {
+        background: #c0392b;
+      }
+    }
+
+    &.warning {
+      background: #e67e22;
+
+      &:hover:not(:disabled) {
+        background: #ca6f1e;
+      }
+    }
+  }
+}

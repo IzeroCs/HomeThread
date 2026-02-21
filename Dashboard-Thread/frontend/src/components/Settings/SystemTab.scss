@@ -1,0 +1,78 @@
+@use "../../styles/form";
+@use "../../styles/variables" as *;
+
+.system-action-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  border: 1px solid $border-color;
+  border-radius: $border-radius-small;
+  overflow: hidden;
+}
+
+.system-action-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 20px 24px;
+  background: white;
+  border-bottom: 1px solid $border-color;
+
+  &:last-child {
+    border-bottom: none;
+  }
+}
+
+.system-action-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+  min-width: 0;
+}
+
+.system-action-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: $text-primary;
+}
+
+.system-action-desc {
+  font-size: 13px;
+  color: $text-secondary;
+  line-height: 1.4;
+}
+
+.system-action-btn {
+  flex-shrink: 0;
+  padding: 10px 20px;
+  border: none;
+  border-radius: $border-radius-small;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  color: white;
+  transition: background 0.2s, opacity 0.2s;
+
+  &:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+  }
+
+  &.warning {
+    background: #e67e22;
+
+    &:hover:not(:disabled) {
+      background: #ca6f1e;
+    }
+  }
+
+  &.danger {
+    background: #e74c3c;
+
+    &:hover:not(:disabled) {
+      background: #c0392b;
+    }
+  }
+}

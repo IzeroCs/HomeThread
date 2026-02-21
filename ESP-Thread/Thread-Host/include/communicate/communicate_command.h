@@ -1,6 +1,6 @@
 /*
- * Communicate command: handler cho CMD STATE, DATASET_ACTIVE, IP_ADDR.
- * Gọi từ communicate_task RX callback.
+ * Communicate command: handler cho tất cả CMD (STATE, DATASET_ACTIVE, IP_ADDR, SET_*, TABLE, THREAD_*, RESET, FACTORY, COMMISSIONER_JOINER).
+ * Gọi từ communicate_queue process_task.
  */
 
 #ifndef COMMUNICATE_COMMAND_H
@@ -99,6 +99,28 @@ int communicate_command_handle_thread_stop(uint8_t frame_id);
  * Trả 0 nếu thành công, khác 0 nếu lỗi.
  */
 int communicate_command_handle_thread_version(uint8_t frame_id);
+
+/**
+ * Xử lý CMD_RESET (0x10): gửi CMD_ACK ngay, sau 2s thực thi esp_restart().
+ * Không yêu cầu DATA. Trả 0 nếu gửi ACK thành công, -1 nếu lỗi gửi frame.
+ */
+int communicate_command_handle_reset(uint8_t frame_id);
+
+/**
+ * Xử lý CMD_FACTORY (0x11): xóa NVS (nvs_flash_erase) rồi esp_restart() — giống boot button long press.
+ * Gửi CMD_ACK ngay, sau 2s thực thi factory reset. Không yêu cầu DATA.
+ * Trả 0 nếu gửi ACK thành công, -1 nếu lỗi gửi frame.
+ */
+int communicate_command_handle_factory(uint8_t frame_id);
+
+/**
+ * Xử lý CMD_COMMISSIONER_JOINER (0x43): thêm joiner vào commissioner.
+ * DATA = EUI64(8) + PSKD_len(1) + PSKD(1–32 bytes) + Timeout(4, uint32 big-endian, giây).
+ * EUI64 all-zero = wildcard (chấp nhận mọi joiner).
+ * Tự động start commissioner nếu chưa active.
+ * Trả CMD_ACK (DATA rỗng) hoặc CMD_NACK (0x02 not ready, 0x04 invalid param).
+ */
+int communicate_command_handle_commissioner_joiner(uint8_t frame_id, const uint8_t *data, size_t len);
 
 #ifdef __cplusplus
 }

@@ -55,6 +55,12 @@ export const EVENTS = {
   COMMISSIONER_CONNECT: "commissioner:connect",
   COMMISSIONER_CONNECT_RESULT: "commissioner:connect:result",
   COMMISSIONER_GET_JOINER_TABLE: "commissioner:getJoinerTable",
+
+  // Device commands
+  DEVICE_RESET: "device:reset",
+  DEVICE_RESET_RESULT: "device:reset:result",
+  DEVICE_FACTORY_RESET: "device:factoryReset",
+  DEVICE_FACTORY_RESET_RESULT: "device:factoryReset:result",
 } as const;
 
 export type EventName = (typeof EVENTS)[keyof typeof EVENTS];

@@ -7,6 +7,7 @@
 #include "communicate/communicate.h"
 #include "communicate/communicate_queue.h"
 #include "communicate/communicate_command.h"
+#include "br_config.h"
 #include "esp_log.h"
 #include "esp_system.h"
 #include "esp_timer.h"
@@ -17,7 +18,7 @@
 
 #define STATE_WATCHDOG_INTERVAL_MS   (15 * 1000)  /* 15s mỗi lần check */
 #define STATE_WATCHDOG_MAX_MISS      5             /* 5 lần miss → restart */
-#define STATE_WATCHDOG_TASK_STACK    4096
+#define STATE_WATCHDOG_TASK_STACK    TASK_STACK_COMM_TASK
 #define STATE_WATCHDOG_TASK_PRIO     5
 #define STATE_TO_BACKEND_RETRY_MS    1000          /* retry gửi IP response nếu backend không ACK */
 
@@ -75,22 +76,12 @@ void communicate_task_mark_ip_response_pending(uint8_t frame_id)
     }
 }
 
-#define STACK_MONITOR_INTERVAL_MS  30000  /* Log stack high water mark mỗi ~30s */
-
 static void state_watchdog_task(void *pv)
 {
     (void)pv;
     uint32_t miss_count = 0;
-    TickType_t last_stack_log = 0;
     for (;;) {
         vTaskDelay(pdMS_TO_TICKS(STATE_WATCHDOG_INTERVAL_MS));
-        TickType_t now = xTaskGetTickCount();
-        if (now - last_stack_log >= pdMS_TO_TICKS(STACK_MONITOR_INTERVAL_MS)) {
-            UBaseType_t hwm = uxTaskGetStackHighWaterMark(NULL);
-            ESP_LOGI(TAG, "state_wdg stack: high_water_mark=%u bytes (used ~%u / %u)",
-                     (unsigned)hwm, (unsigned)(STATE_WATCHDOG_TASK_STACK - hwm), (unsigned)STATE_WATCHDOG_TASK_STACK);
-            last_stack_log = now;
-        }
         if (s_state_received) {
             s_state_received = false;
             miss_count = 0;
@@ -124,7 +115,7 @@ esp_err_t communicate_task_start(void)
     if (esp_timer_create(&ip_retry_args, &s_ip_retry_timer) != ESP_OK) {
         return ESP_ERR_NO_MEM;
     }
-    if (xTaskCreate(state_watchdog_task, "state_wdg", STATE_WATCHDOG_TASK_STACK, NULL, STATE_WATCHDOG_TASK_PRIO, NULL) != pdPASS) {
+    if (xTaskCreate(state_watchdog_task, TASK_NAME_COMM_TASK, STATE_WATCHDOG_TASK_STACK, NULL, STATE_WATCHDOG_TASK_PRIO, NULL) != pdPASS) {
         esp_timer_delete(s_ip_retry_timer);
         s_ip_retry_timer = NULL;
         return ESP_ERR_NO_MEM;

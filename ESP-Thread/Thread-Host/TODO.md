@@ -72,8 +72,8 @@ Tính năng: Giao tiếp với Node/backend qua USB CDC (hoặc UART) theo cấu
 
 1. **Xử lý CMD (Pull từ Node → ESP32)** — đã có trong communicate_command + communicate_queue
    - **CMD_STATE (0x12):** Backend gửi interval để check; ESP trả CMD_ACK + 1 byte role. ✅
-   - **CMD_RESET (0x10):** Reset thiết bị; trả CMD_ACK. (chưa hook vào communicate_command)
-   - **CMD_FACTORY (0x11):** Factory reset (DATA = 0xAA); trả CMD_ACK hoặc CMD_NACK. (chưa hook)
+   - **CMD_RESET (0x10):** Reset thiết bị; trả CMD_ACK rồi sau 2s dừng Thread + restart. ✅
+   - **CMD_FACTORY (0x11):** Factory reset; trả CMD_ACK rồi sau 2s xóa NVS partition (raw erase) + restart. ✅
    - **CMD_DATASET_ACTIVE (0x13):** Đọc Active Dataset; trả CMD_ACK + TLV binary. ✅
    - **CMD_IP_ADDR (0x14):** Đọc IPv6 leader; trả CMD_ACK + 16 bytes. ✅
    - **CMD_ROUTER_TABLE (0x30):** Đọc Router Table; trả CMD_ACK + table data (count + entries). ✅
@@ -89,6 +89,15 @@ Tính năng: Giao tiếp với Node/backend qua USB CDC (hoặc UART) theo cấu
 
 3. **Push (ESP32 → Node)**
    - **CMD_DATA (0x01):** Gửi CBOR từ child/router lên Node; tăng Frame ID cho mỗi khung.
+
+4. **Push system health (ESP32 → Node)** ❌ Chưa làm
+   - **CMD_SYS_HEALTH (TBD):** Push định kỳ (hoặc khi backend pull) thông tin sức khoẻ hệ thống để backend/Node monitor từ xa.
+   - **Payload dự kiến:**
+     - Stack high water mark của từng task (bytes còn lại tối thiểu): `comm_queue`, `comm_task`, `boot_btn`, `led_status`, `usb_rx`, `leader_rloc`, `stk_mon`
+     - Heap free hiện tại (bytes)
+     - Heap min free từ trước đến giờ (bytes)
+   - **Nguồn dữ liệu:** `uxTaskGetStackHighWaterMark()` + `esp_get_free_heap_size()` + `esp_get_minimum_free_heap_size()` — đã có trong `stack_monitor_task` ở `br_main.c`.
+   - **Hướng triển khai:** Thêm handler `communicate_command_handle_sys_health()` trong `communicate_command.c`; backend pull theo interval hoặc ESP push khi heap thấp.
 
 ### Lưu ý
 

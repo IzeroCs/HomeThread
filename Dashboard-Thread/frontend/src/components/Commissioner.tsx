@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { useWebSocketContext } from "../hooks/useWebSocketContext";
+import { useToast } from "../contexts/ToastContext";
 import "./Commissioner.scss";
 
 /** Thiết bị trả expiration theo ms → chia 1000 để ra giây */
@@ -76,8 +77,12 @@ export default function Commissioner() {
 
   const handleConnect = async () => {
     setMessage(null);
+    if (!eui64.trim() || !psk.trim()) {
+      showToast("error", "EUI64 và PSK không được để trống.");
+      return;
+    }
     setConnecting(true);
-    const result = await commissionerConnect(eui64.trim(), psk, timeoutSeconds);
+    const result = await commissionerConnect(eui64.trim(), psk.trim(), timeoutSeconds);
     setConnecting(false);
     if (result.success) {
       showToast("success", "Đã thêm joiner. Thiết bị có thể kết nối mạng.");

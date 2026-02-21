@@ -7,6 +7,7 @@
 #include "esp_openthread_types.h"
 #include "br_config.h"
 #include "esp_vfs_eventfd.h"
+#include "esp_partition.h"
 #include "nvs_flash.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
@@ -27,13 +28,65 @@
 #define BOOT_BTN_GPIO         0    /* BOOT button trên ESP32-S3 DevKit */
 #define BOOT_BTN_HOLD_MS      3000 /* Giữ ~3s = long press */
 
+#define STACK_MONITOR_INTERVAL_MS  30000
+#define STACK_MONITOR_TASK_PRIO    2
+
+typedef struct {
+    const char *name;
+    uint32_t    total;
+} task_stack_info_t;
+
+static const task_stack_info_t k_tasks[] = {
+    { TASK_NAME_MAIN,         TASK_STACK_MAIN         },
+    { TASK_NAME_COMM_QUEUE,   TASK_STACK_COMM_QUEUE   },
+    { TASK_NAME_COMM_TASK,    TASK_STACK_COMM_TASK    },
+    { TASK_NAME_BOOT_BTN,     TASK_STACK_BOOT_BTN     },
+    { TASK_NAME_LED_STATUS,   TASK_STACK_LED_STATUS   },
+    { TASK_NAME_USB_RX,       TASK_STACK_USB_RX       },
+    { TASK_NAME_LEADER_RLOC,  TASK_STACK_LEADER_RLOC  },
+    { TASK_NAME_STK_MON,      TASK_STACK_STK_MON      },
+};
+
+static void stack_monitor_task(void *pv)
+{
+    (void)pv;
+    const int n = (int)(sizeof(k_tasks) / sizeof(k_tasks[0]));
+    TaskHandle_t handles[sizeof(k_tasks) / sizeof(k_tasks[0])];
+    for (int i = 0; i < n; i++) {
+        handles[i] = xTaskGetHandle(k_tasks[i].name);
+    }
+    for (;;) {
+        vTaskDelay(pdMS_TO_TICKS(STACK_MONITOR_INTERVAL_MS));
+        for (int i = 0; i < n; i++) {
+            if (handles[i] == NULL) {
+                continue;
+            }
+            UBaseType_t hwm  = uxTaskGetStackHighWaterMark(handles[i]);
+            uint32_t    used = k_tasks[i].total > (uint32_t)hwm ? k_tasks[i].total - (uint32_t)hwm : 0;
+            ESP_LOGI(TAG, "stack hwm | %-22s high_water_mark=%4u bytes (used ~%4u / %u)",
+                     k_tasks[i].name, (unsigned)hwm, (unsigned)used, (unsigned)k_tasks[i].total);
+        }
+        ESP_LOGI(TAG, "heap      | free=%u bytes  min_free=%u bytes",
+                 (unsigned)esp_get_free_heap_size(),
+                 (unsigned)esp_get_minimum_free_heap_size());
+    }
+}
+
 static void on_boot_long_press(void *ctx)
 {
     (void)ctx;
-    ESP_LOGW(TAG, "Boot button long press: factory reset and restart");
-    esp_err_t err = nvs_flash_erase();
-    if (err != ESP_OK) {
-        ESP_LOGE(TAG, "nvs_flash_erase failed %s", esp_err_to_name(err));
+    ESP_LOGW(TAG, "Boot button long press: factory reset");
+    nvs_flash_deinit();
+    const esp_partition_t *nvs_part = esp_partition_find_first(
+        ESP_PARTITION_TYPE_DATA, ESP_PARTITION_SUBTYPE_DATA_NVS, "nvs");
+    if (nvs_part != NULL) {
+        esp_err_t err = esp_partition_erase_range(nvs_part, 0, nvs_part->size);
+        if (err != ESP_OK) {
+            ESP_LOGE(TAG, "partition erase failed: %s", esp_err_to_name(err));
+        }
+    } else {
+        ESP_LOGW(TAG, "NVS partition not found, using nvs_flash_erase fallback");
+        nvs_flash_erase();
     }
     esp_restart();
 }
@@ -92,8 +145,10 @@ void app_main(void)
         .poll_ms = 50,
         .on_long_press = on_boot_long_press,
         .ctx = NULL,
-        .task_stack_size = 0,
+        .task_stack_size = TASK_STACK_BOOT_BTN,
         .task_priority = 0,
     };
     ESP_ERROR_CHECK(boot_btn_start(&btn_cfg));
+
+    xTaskCreate(stack_monitor_task, TASK_NAME_STK_MON, TASK_STACK_STK_MON, NULL, STACK_MONITOR_TASK_PRIO, NULL);
 }

@@ -11,7 +11,7 @@
 .settings-tabs {
   display: flex;
   gap: 4px;
-  margin-bottom: 24px;
+  margin-bottom: 0;
   border-bottom: 2px solid $border-color;
 }
 
@@ -42,4 +42,11 @@
 
 .settings-tab-content {
   width: 100%;
+
+  // Nối liền với tab bar phía trên
+  .form-card {
+    border-top-left-radius: 0;
+    border-top-right-radius: 0;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.12);
+  }
 }
