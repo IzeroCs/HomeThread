@@ -61,7 +61,7 @@ Tính năng: Giao tiếp với Node/backend qua USB CDC (hoặc UART) theo cấu
 - **communicate_task** (communicate_task.c): `communicate_task_start()` — init communicate + queue + RX callback; RX: STATE từ backend → ACK + 1 byte role, lệnh khác → NACK (0x01); state watchdog: mỗi 15s check, không nhận state trong 5 lần → esp_restart(). Backend pull định kỳ; BR không push.
 - **communicate_queue** (communicate_queue.c): queue frame, process task **comm_proc** gọi command handler; stack **4096** bytes (`PROCESS_TASK_STACK`); gửi vào queue timeout 500 ms (queue đầy thì trả ESP_ERR_TIMEOUT, RX gửi NACK 0x05 Busy); log cảnh báo khi item chờ xử lý &gt; 2 s. **Stack monitor:** mỗi 30 s log high water mark (bytes còn lại tối thiểu) và ước lượng stack đã dùng — xem serial monitor tag `communicate_queue`.
 - **communicate_task** (communicate_task.c): state watchdog task **state_wdg**, stack **4069** bytes (`STATE_WATCHDOG_TASK_STACK`); **stack monitor:** mỗi ~30 s log high water mark — tag `communicate_task`. RX callback + state watchdog (15s, 5 lần miss → restart) như trên.
-- **communicate_command** (communicate_command.c): handler CMD_STATE, DATASET_ACTIVE, IP_ADDR (cache leader RLOC), SET_PANID/CHANNEL/NETWORK_NAME/EXTENDED_PANID/NETWORK_KEY, ROUTER/CHILD/JOINER_TABLE, THREAD_START, THREAD_STOP, THREAD_VERSION. OpenThread lock, trả ACK/NACK. Format table: xem [docs/table_data_format.md](../docs/table_data_format.md). **Ghi chú stack:** OpenThread không công bố stack cần cho `otIp6SetEnabled`/`otThreadSetEnabled`; nên theo dõi high water mark của **comm_proc** để chỉnh `PROCESS_TASK_STACK` nếu cần.
+- **communicate_command** (communicate_command.c): handler CMD_STATE, DATASET_ACTIVE, IP_ADDR (cache leader RLOC), SET_PANID/CHANNEL/NETWORK_NAME/EXTENDED_PANID/NETWORK_KEY, ROUTER/CHILD/JOINER_TABLE, THREAD_START, THREAD_STOP, THREAD_VERSION. OpenThread lock, trả ACK/NACK. Format table: xem [Documents/protocol/table_data_format.md](../../Documents/protocol/table_data_format.md). **Ghi chú stack:** OpenThread không công bố stack cần cho `otIp6SetEnabled`/`otThreadSetEnabled`; nên theo dõi high water mark của **comm_proc** để chỉnh `PROCESS_TASK_STACK` nếu cần.
 
 ### Cấu trúc khung (tóm tắt)
 
@@ -104,5 +104,5 @@ Tính năng: Giao tiếp với Node/backend qua USB CDC (hoặc UART) theo cấu
 
 - SOF/EOF không escape; parser dựa vào LEN để biết độ dài DATA (trong DATA có thể chứa mọi byte).
 - PAN ID hợp lệ: 0x0000–0xFFFE (0xFFFF là broadcast).
-- Chi tiết bảng CMD, error codes: xem [docs/usb_cdc_frame_structure.md](docs/usb_cdc_frame_structure.md).
-- Format dữ liệu cho Router/Child/Joiner Table: xem [docs/table_data_format.md](../docs/table_data_format.md).
+- Chi tiết bảng CMD, error codes: xem [Documents/protocol/usb_cdc_frame_structure.md](../../Documents/protocol/usb_cdc_frame_structure.md).
+- Format dữ liệu cho Router/Child/Joiner Table: xem [Documents/protocol/table_data_format.md](../../Documents/protocol/table_data_format.md).

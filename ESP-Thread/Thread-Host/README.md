@@ -195,20 +195,20 @@ Thread-Host/
   - Handler chung dùng logic từ `device_registry_handler` cho cả 3 resource
   - Queue-based processing: enqueue CoAP data từ child devices, process và output qua UART
   - Hỗ trợ tối đa 10 items trong queue, payload tối đa 768 bytes
-- ✅ **Communicate (frame protocol)** — Parse/serialize khung SOF/Frame ID/CMD/LEN/DATA/CRC8/EOF; **transport USB CDC** (transport_usb) đã dùng; **transport UART** (transport_uart) sẽ phát triển tiếp. **communicate_task**: init + queue (timeout 500 ms, log khi chờ &gt; 2 s) + state watchdog. **Handlers:** CMD_STATE, DATASET_ACTIVE, IP_ADDR (ACK + data), SET_PANID/CHANNEL/NETWORK_NAME/EXTENDED_PANID/NETWORK_KEY, ROUTER/CHILD/JOINER_TABLE (ACK + table data), THREAD_START, THREAD_STOP, THREAD_VERSION (ACK + version string), CMD_RESET (ACK + restart sau 2s), CMD_FACTORY (ACK + NVS erase + restart sau 2s); xem [docs/usb_cdc_frame_structure.md](docs/usb_cdc_frame_structure.md) và [docs/table_data_format.md](docs/table_data_format.md). **Stack & heap monitor:** task `stk_mon` log mỗi 30 s — stack high water mark của tất cả task + heap free/min_free; tên task và stack size tập trung tại `include/br_config.h` (`TASK_NAME_*`, `TASK_STACK_*`).
+- ✅ **Communicate (frame protocol)** — Parse/serialize khung SOF/Frame ID/CMD/LEN/DATA/CRC8/EOF; **transport USB CDC** (transport_usb) đã dùng; **transport UART** (transport_uart) sẽ phát triển tiếp. **communicate_task**: init + queue (timeout 500 ms, log khi chờ &gt; 2 s) + state watchdog. **Handlers:** CMD_STATE, DATASET_ACTIVE, IP_ADDR (ACK + data), SET_PANID/CHANNEL/NETWORK_NAME/EXTENDED_PANID/NETWORK_KEY, ROUTER/CHILD/JOINER_TABLE (ACK + table data), THREAD_START, THREAD_STOP, THREAD_VERSION (ACK + version string), CMD_RESET (ACK + restart sau 2s), CMD_FACTORY (ACK + NVS erase + restart sau 2s); xem [Documents/protocol/usb_cdc_frame_structure.md](../../Documents/protocol/usb_cdc_frame_structure.md) và [Documents/protocol/table_data_format.md](../../Documents/protocol/table_data_format.md). **Stack & heap monitor:** task `stk_mon` log mỗi 30 s — stack high water mark của tất cả task + heap free/min_free; tên task và stack size tập trung tại `include/br_config.h` (`TASK_NAME_*`, `TASK_STACK_*`).
 - ❌ **Auto-flash RCP khi boot** — xem [TODO.md](TODO.md)
 - ❌ RCP update/firmware management (đã loại bỏ)
-- ✅ **Xử lý CMD** — STATE, DATASET_ACTIVE, IP_ADDR, SET_* (PANID, CHANNEL, NETWORK_NAME, EXTENDED_PANID, NETWORK_KEY), ROUTER/CHILD/JOINER_TABLE, THREAD_START, THREAD_STOP, THREAD_VERSION, RESET, FACTORY, COMMISSIONER_JOINER; BR trả ACK (+ data khi có) hoặc NACK; xem [docs/usb_cdc_frame_structure.md](docs/usb_cdc_frame_structure.md) và [docs/table_data_format.md](docs/table_data_format.md).
+- ✅ **Xử lý CMD** — STATE, DATASET_ACTIVE, IP_ADDR, SET_* (PANID, CHANNEL, NETWORK_NAME, EXTENDED_PANID, NETWORK_KEY), ROUTER/CHILD/JOINER_TABLE, THREAD_START, THREAD_STOP, THREAD_VERSION, RESET, FACTORY, COMMISSIONER_JOINER; BR trả ACK (+ data khi có) hoặc NACK; xem [Documents/protocol/usb_cdc_frame_structure.md](../../Documents/protocol/usb_cdc_frame_structure.md) và [Documents/protocol/table_data_format.md](../../Documents/protocol/table_data_format.md).
 - ❌ **Push system health** — Gửi stack HWM + heap size cho backend/Node để monitor từ xa; xem [TODO.md](TODO.md).
 
 ## Tài liệu tham khảo
 
-### Tài liệu trong project (docs/)
+### Tài liệu (HomeThread/Documents/)
 
-- **[docs/leader_stop_command_coap.md](docs/leader_stop_command_coap.md)** — CoAP Stop Command / Leader Control (GET `/network`, response trước khi stop, retry logic).
-- **[docs/usb_cdc_frame_structure.md](docs/usb_cdc_frame_structure.md)** — Cấu trúc khung USB CDC (SOF, Frame ID, CMD, LEN, DATA, CRC8, EOF); bảng CMD.
-- **[docs/table_data_format.md](docs/table_data_format.md)** — Format dữ liệu chi tiết cho Router Table, Child Table, và Joiner Table (CMD_ROUTER_TABLE, CMD_CHILD_TABLE, CMD_JOINER_TABLE).
-- **[docs/border_router_coap_server.md](docs/border_router_coap_server.md)** — CoAP server BR (device registry, resources, BR phải là Leader).
+- **[Documents/protocol/usb_cdc_frame_structure.md](../../Documents/protocol/usb_cdc_frame_structure.md)** — Cấu trúc khung USB CDC (SOF, Frame ID, CMD, LEN, DATA, CRC8, EOF); bảng CMD.
+- **[Documents/protocol/table_data_format.md](../../Documents/protocol/table_data_format.md)** — Format dữ liệu Router Table, Child Table, Joiner Table.
+- **[Documents/coap/leader_stop_command_coap.md](../../Documents/coap/leader_stop_command_coap.md)** — CoAP Stop Command / Leader Control.
+- **[Documents/coap/border_router_coap_server.md](../../Documents/coap/border_router_coap_server.md)** — CoAP server BR (device registry).
 
 ### Tài liệu chính thức
 
