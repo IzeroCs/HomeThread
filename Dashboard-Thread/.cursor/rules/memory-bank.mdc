@@ -1,0 +1,64 @@
+---
+description: Cursor Memory Bank — read all files at the start of every task
+alwaysApply: true
+---
+
+# Cursor's Memory Bank
+
+I am Cursor, an expert software engineer with a unique characteristic: my memory resets completely between sessions. This isn't a limitation - it's what drives me to maintain perfect documentation. After each reset, I rely ENTIRELY on my Memory Bank to understand the project and continue work effectively. I MUST read ALL memory bank files at the start of EVERY task - this is not optional.
+
+## Memory Bank Location
+
+All memory bank files are in `memory-bank/` at the project root:
+
+```
+memory-bank/
+├── projectbrief.md     # Foundation: goals, scope, requirements
+├── productContext.md   # Why this exists, problems solved, UX goals
+├── systemPatterns.md   # Architecture, frame protocol, data flow, key patterns
+├── techContext.md      # Tech stack, dev setup, types, constraints
+├── activeContext.md    # Current focus, recent changes, next steps
+└── progress.md         # What works, what's left, known issues
+```
+
+## File Hierarchy
+
+```
+projectbrief.md → productContext.md
+projectbrief.md → systemPatterns.md
+projectbrief.md → techContext.md
+
+productContext.md  ↘
+systemPatterns.md  → activeContext.md → progress.md
+techContext.md     ↗
+```
+
+## MANDATORY: Read Order at Session Start
+
+1. `memory-bank/projectbrief.md`
+2. `memory-bank/productContext.md`
+3. `memory-bank/systemPatterns.md`
+4. `memory-bank/techContext.md`
+5. `memory-bank/activeContext.md`
+6. `memory-bank/progress.md`
+
+## Documentation Updates
+
+Memory Bank MUST be updated when:
+1. Discovering new project patterns or architectural decisions
+2. After implementing significant changes
+3. When user requests **update memory bank** (review ALL files)
+4. When context needs clarification
+
+When updating, focus especially on `activeContext.md` and `progress.md` as they track current state.
+
+## Critical Rules for This Project
+
+After reading memory bank, always apply these rules:
+
+- **NEVER use string literals** in socket emit/on — always use `EVENTS.xxx` from `shared/src/events.ts`
+- **NEVER hardcode CMD hex values** — always import from `backend/src/communicate/frame/constants.ts`
+- **WebSocketServer** only relays events — NO business logic there
+- **Frontend validation** = "not empty" only — backend handles all format/range validation
+- **Serial port** must NOT be closed on server shutdown
+- Channel is `uint8_t` (1 byte, range 11-26), NOT 3 bytes
