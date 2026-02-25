@@ -19,17 +19,31 @@ extern "C" {
 #define MAX_ENTITIES CONFIG_ENTITY_MODEL_MAX_ENTITIES
 
 /**
+ * Device type IDs (Zigbee-style, number to save bandwidth)
+ * String fields: manufacturer_name, model_identifier, device_name only.
+ */
+#define DEVICE_TYPE_THREAD_ENDPOINT  0x0000
+#define DEVICE_TYPE_ON_OFF_LIGHT    0x0100
+#define DEVICE_TYPE_SENSOR_HUB      0x0200
+#define DEVICE_TYPE_SWITCH          0x0300
+
+/**
+ * Version encoding: major << 16 | minor << 8 | patch (e.g. 1.2.3 = 0x00010203)
+ */
+#define DEVICE_VERSION(major, minor, patch)  (((uint32_t)(major) << 16) | ((uint32_t)(minor) << 8) | (uint32_t)(patch))
+
+/**
  * Device Info Structure
- * Basic device metadata that identifies and describes the device.
+ * manufacturer, model, device_name = string; device_type, sw_version, hw_version = number (save bandwidth).
  */
 typedef struct {
     char device_id[16];        // Unique identifier: "living-room-001"
     char device_name[32];      // Human-readable: "Living Room Controller"
-    char device_type[16];      // Type: "light_controller", "sensor_hub"
+    uint16_t device_type;      // Zigbee-style type ID (e.g. DEVICE_TYPE_ON_OFF_LIGHT)
     char manufacturer[32];     // Manufacturer name: "MyCompany"
-    char model[32];            // Model number: "LC-100"
-    char sw_version[16];       // Software version: "1.2.3"
-    char hw_version[16];       // Hardware version: "v2.0"
+    char model[32];            // Model identifier: "LC-100"
+    uint32_t sw_version;       // Software version: DEVICE_VERSION(maj,min,patch)
+    uint32_t hw_version;       // Hardware version: DEVICE_VERSION(maj,min,patch) or revision
     uint64_t mac_address;      // IEEE EUI-64 address (8 bytes)
 } device_info_t;
 

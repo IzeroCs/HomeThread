@@ -21,13 +21,24 @@ static bool s_initialized = false;
 static const device_info_t s_default_device_info = {
     .device_id = "esp-device",
     .device_name = "ESP Thread Device",
-    .device_type = "thread_endpoint",
+    .device_type = DEVICE_TYPE_THREAD_ENDPOINT,
     .manufacturer = "Espressif",
     .model = "ESP32",
-    .sw_version = "1.0.0",
-    .hw_version = "v1.0",
+    .sw_version = DEVICE_VERSION(1, 0, 0),
+    .hw_version = DEVICE_VERSION(1, 0, 0),
     .mac_address = 0
 };
+
+/* Map device_type (number) to prefix string for device_id generation */
+static const char *device_type_to_prefix(uint16_t device_type)
+{
+    switch (device_type) {
+        case DEVICE_TYPE_ON_OFF_LIGHT: return "light";
+        case DEVICE_TYPE_SENSOR_HUB:   return "sensor";
+        case DEVICE_TYPE_SWITCH:      return "switch";
+        default:                      return "device";
+    }
+}
 
 int device_model_init(const device_info_t *info)
 {
@@ -48,10 +59,7 @@ int device_model_init(const device_info_t *info)
     
     // Auto-generate device_id if not provided or empty
     if (s_device_model.info.device_id[0] == '\0') {
-        // Use device_type as prefix, or "device" as fallback
-        const char *prefix = (s_device_model.info.device_type[0] != '\0') 
-                           ? s_device_model.info.device_type 
-                           : "device";
+        const char *prefix = device_type_to_prefix(s_device_model.info.device_type);
         
         esp_err_t err = device_model_generate_device_id(prefix, 
                                                          s_device_model.info.device_id, 

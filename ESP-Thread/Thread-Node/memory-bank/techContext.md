@@ -80,6 +80,22 @@ CONFIG_ENTITY_MODEL_MAX_TYPES=16     # Số loại entity có thể đăng ký
 CONFIG_ENTITY_MODEL_MAX_ENTITIES=32  # Số entity tối đa trên một thiết bị
 ```
 
+### Device Registry (thread_endpoint.c)
+
+```c
+#define REGISTRY_ACK_TIMEOUT_MS  20000   // Timeout chờ ACK từ Leader (20s)
+#define REGISTRY_PERIODIC_MS     5000    // Khoảng cách giữa hai lần gửi thành công (5s)
+#define REGISTRY_RETRY_DELAY_MS  2000    // Delay trước khi retry khi NACK/timeout (2s)
+```
+
+### Device info (device_model.h)
+
+- **Strings** (manufacturer, model, device_name): dùng cho hiển thị / định danh.
+- **Numbers** (Zigbee-style, giảm băng thông khi gửi register nhiều lần):
+  - `device_type`: uint16 (DEVICE_TYPE_ON_OFF_LIGHT = 0x0100, DEVICE_TYPE_SENSOR_HUB = 0x0200, …)
+  - `sw_version`, `hw_version`: uint32 = `DEVICE_VERSION(major, minor, patch)` (e.g. 1.2.3 → 0x00010203)
+- CBOR payload: device_type, sw_version, hw_version encode dạng unsigned int.
+
 ## Custom OpenThread config (`openthread_custom_config.h`)
 
 File này được chỉ định trong `sdkconfig.defaults` qua `CONFIG_OPENTHREAD_CUSTOM_PARAMETERS_FILE`:

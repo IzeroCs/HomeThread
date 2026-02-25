@@ -20,7 +20,7 @@ Border Router (Thread-Host) cần biết:
 - Các thuộc tính của từng entity
 - Trạng thái mạng của thiết bị (IP, RLOC, role)
 
-Thread-Node giải quyết bằng cách tự động gửi CBOR-encoded device model lên `/device/register` sau khi join thành công và định kỳ mỗi 5 giây.
+Thread-Node giải quyết bằng cách tự động gửi CBOR-encoded device model lên `/device/register` sau khi join thành công. Chỉ gửi khi role là **Child hoặc Router**; gửi xong **chờ ACK/NACK** (timeout 20s), thành công thì gửi lại sau 5s, thất bại thì retry sau 2s — tránh tích tụ request và NoBufs. Leader (Border Router) phải luôn trả response (ACK/NACK) cho mọi request (xem `docs/coap/border_router_coap_server.md`).
 
 ### 3. Quản lý Leader role
 
@@ -75,7 +75,10 @@ void on_joined(void) {
 Thread-Node                           Border Router (Thread-Host)
     │                                         │
     │── POST /device/register (CBOR) ────────►│  Đăng ký device + entities
-    │   [mỗi 5s hoặc khi role thay đổi]       │
+    │   [chỉ khi Child/Router; chờ ACK rồi    │
+    │    mới gửi tiếp; Leader trả 2.01/NACK] │
+    │   [device_type, sw_version, hw_version  │
+    │    = number để giảm băng thông]        │
     │                                         │
     │◄── GET /network/stop ──────────────────│  BR yêu cầu node tạm rời mạng
     │── 2.05 Content ──────────────────────►│

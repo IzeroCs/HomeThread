@@ -19,6 +19,38 @@ Response: `2.01 Created` hoặc `4.00`/`5.03` khi lỗi.
 
 ---
 
+## ACK / NACK — Phản hồi bắt buộc cho mọi message từ Node
+
+**Nguyên tắc:** Leader (Border Router) **bắt buộc** phải trả response (ACK hoặc NACK) cho **mọi** CoAP request nhận được từ Node. Không được bỏ qua hoặc im lặng.
+
+**Lý do:**
+
+- Node gửi request **CONFIRMABLE** (CON). Nếu Leader không trả response, Node sẽ retransmit cho đến khi timeout, message nằm lâu trong hàng đợi → dễ dẫn tới **NoBufs** (message buffer pool cạn) trên Node.
+- Node có thể triển khai cơ chế "chỉ gửi request tiếp theo sau khi nhận response hoặc timeout". Điều này chỉ hoạt động nếu Leader luôn trả ACK/NACK.
+
+**ACK (thành công):** Leader trả một trong các mã sau khi xử lý xong và chấp nhận request:
+
+| Code | Ý nghĩa |
+|------|----------|
+| `2.01 Created` | Đã tạo / đã nhận và lưu (dùng cho POST `/device/register`, `/device/update`) |
+| `2.04 Changed` | Đã cập nhật thành công |
+| `2.05 Content` | Trả dữ liệu (dùng cho GET nếu có) |
+
+**NACK (lỗi):** Leader trả một trong các mã sau khi từ chối hoặc lỗi xử lý:
+
+| Code | Ý nghĩa |
+|------|----------|
+| `4.00 Bad Request` | Payload sai format, thiếu trường bắt buộc |
+| `4.01 Unauthorized` | Không được phép (nếu có cơ chế auth) |
+| `4.04 Not Found` | URI không tồn tại |
+| `4.13 Request Entity Too Large` | Payload quá lớn |
+| `5.00 Internal Server Error` | Lỗi nội bộ Leader khi xử lý |
+| `5.03 Service Unavailable` | Tạm thời không xử lý được (ví dụ queue đầy) |
+
+**Implementation:** Trong mọi CoAP resource handler, Leader phải gọi `otCoapSendResponse()` với một trong các mã trên — kể cả khi chỉ enqueue và xử lý sau, vẫn phải gửi ngay response (ví dụ `2.01 Created`) để Node biết request đã được nhận.
+
+---
+
 ## Địa chỉ Leader
 
 Child gửi đến **Leader ALOC** (0xfc00): `mesh_prefix + 0000:00ff:fe00:fc00`.  
@@ -159,6 +191,7 @@ entity_id=light.0 type=on_off_light name=LED
 3. **Thread routing**: CoAP request tự động route qua Thread mesh đến Leader.
 4. **Re-registration**: Child gửi lại khi role thay đổi (Child → Router).
 5. **Response timeout**: Child retry nếu không nhận được response.
+6. **ACK/NACK bắt buộc**: Leader phải luôn trả response (ACK hoặc NACK) cho mọi request từ Node — xem mục [ACK / NACK](#ack--nack--phản-hồi-bắt-buộc-cho-mọi-message-từ-node) ở trên.
 
 ---
 

@@ -40,9 +40,11 @@ erDiagram
         int id PK
         text device_id UK
         text device_name
-        text device_type
+        text device_type "from payload: uint16 Zigbee-style; store as text or int"
         text manufacturer
         text model
+        int sw_version "from payload: uint32 (major<<16|minor<<8|patch)"
+        int hw_version "from payload: uint32"
         text mac_address UK
         text ipv6_addr
         text rloc16

@@ -223,7 +223,11 @@ All functions return 0 on success, negative on error. Use ESP-IDF logging (`ESP_
 
 ### Device Model Contents
 
-- **Device info:** `device_id`, `device_name`, `device_type`, `manufacturer`, `model`, `sw_version`, `hw_version`, `mac_address`
+- **Device info:**  
+  - **Strings** (for display / identification): `device_id`, `device_name`, `manufacturer`, `model`  
+  - **Numbers** (Zigbee-style, save bandwidth when sending repeatedly): `device_type` (uint16), `sw_version` (uint32), `hw_version` (uint32), `mac_address` (uint64)  
+  - `device_type`: Zigbee-style ID (e.g. `0x0100` = On/Off Light). See `device_model.h` for `DEVICE_TYPE_*`.  
+  - Versions: `major << 16 | minor << 8 | patch` (e.g. 1.2.3 = `0x00010203`), macro `DEVICE_VERSION(maj, min, patch)`.
 - **Network info:** `rloc16`, `ipv6_addr`, `role`
 - **Entities:** Pointers to entity structs (not copies)
 

@@ -357,11 +357,11 @@ static int serialize_sensor_entity(cbor_encoder_t *enc, const entity_sensor_t *s
  * {
  *   "device_id": string,
  *   "device_name": string,
- *   "device_type": string,
+ *   "device_type": uint16,
  *   "manufacturer": string,
  *   "model": string,
- *   "sw_version": string,
- *   "hw_version": string,
+ *   "sw_version": uint32,
+ *   "hw_version": uint32,
  *   "mac_address": uint64,
  *   "network": {
  *     "rloc16": uint16,
@@ -414,7 +414,7 @@ int entity_serialize_cbor(uint16_t rloc16, const char *ml_eid_str,
     if (cbor_encode_text_string(&enc, device->info.device_name) < 0) return -1;
     
     if (cbor_encode_text_string(&enc, "device_type") < 0) return -1;
-    if (cbor_encode_text_string(&enc, device->info.device_type) < 0) return -1;
+    if (cbor_encode_uint(&enc, device->info.device_type) < 0) return -1;
     
     if (device->info.manufacturer[0] != '\0') {
         if (cbor_encode_text_string(&enc, "manufacturer") < 0) return -1;
@@ -426,15 +426,11 @@ int entity_serialize_cbor(uint16_t rloc16, const char *ml_eid_str,
         if (cbor_encode_text_string(&enc, device->info.model) < 0) return -1;
     }
     
-    if (device->info.sw_version[0] != '\0') {
-        if (cbor_encode_text_string(&enc, "sw_version") < 0) return -1;
-        if (cbor_encode_text_string(&enc, device->info.sw_version) < 0) return -1;
-    }
+    if (cbor_encode_text_string(&enc, "sw_version") < 0) return -1;
+    if (cbor_encode_uint(&enc, device->info.sw_version) < 0) return -1;
     
-    if (device->info.hw_version[0] != '\0') {
-        if (cbor_encode_text_string(&enc, "hw_version") < 0) return -1;
-        if (cbor_encode_text_string(&enc, device->info.hw_version) < 0) return -1;
-    }
+    if (cbor_encode_text_string(&enc, "hw_version") < 0) return -1;
+    if (cbor_encode_uint(&enc, device->info.hw_version) < 0) return -1;
     
     if (device->info.mac_address != 0) {
         if (cbor_encode_text_string(&enc, "mac_address") < 0) return -1;

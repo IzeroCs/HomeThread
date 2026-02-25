@@ -1,3 +1,4 @@
+@use "sass:color";
 @use "../../styles/variables" as *;
 
 .confirm-modal-content {
@@ -39,7 +40,7 @@
     border: 1px solid $border-color;
 
     &:hover:not(:disabled) {
-      background: darken(#f8f9fa, 4%);
+      background: color.adjust(#f8f9fa, $lightness: -4%);
     }
   }
 

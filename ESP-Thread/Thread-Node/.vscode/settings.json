@@ -35,5 +35,7 @@
     "titleBar.inactiveBackground": "#83256199",
     "titleBar.inactiveForeground": "#e7e7e799"
 },
-"peacock.color": "#832561"
+"peacock.color": "#832561",
+"idf.espIdfPath": "/home/izerocs/esp/v5.5.2/esp-idf",
+"idf.toolsPath": "/home/izerocs/esp/.espressif"
 }

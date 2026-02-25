@@ -2,7 +2,13 @@
 
 ## Focus hiện tại (2026-02-21)
 
-Dự án đang ở giai đoạn **migration và hoàn thiện** sau khi lớp hạ tầng Thread (joiner, registry, LED, button) đã hoàn chỉnh. Các công việc còn lại tập trung vào **Entity CoAP Server** và **CBOR serialization** cho các entity type chưa implement.
+Dự án đang ở giai đoạn **migration và hoàn thiện** sau khi lớp hạ tầng Thread (joiner, registry, LED, button) đã hoàn chỉnh. **Device register ACK flow** đã implement: chỉ gửi khi Child/Router, chờ ACK (20s), retry khi NACK/timeout. Các công việc còn lại tập trung vào **Entity CoAP Server** và **CBOR serialization** cho các entity type chưa implement.
+
+## Recent changes
+
+- **Device register ACK flow** (`thread_endpoint.c`, `device_registry.c`): Chỉ gửi `/device/register` khi role là Child hoặc Router; gửi xong chờ ACK/NACK (callback `on_registry_response`); timeout 20s thì retry sau 2s; success thì gửi tiếp sau 5s. Leader check trong `device_registry_register()` — từ chối khi role là Leader.
+- **Tài liệu ACK/NACK** (`docs/coap/border_router_coap_server.md`): Thêm mục "ACK / NACK — Phản hồi bắt buộc cho mọi message từ Node"; Leader phải luôn trả response (ACK hoặc NACK); bảng mã ACK (2.01, 2.04, 2.05) và NACK (4.xx, 5.xx). Cập nhật `docs/README.md`.
+- **Device info numeric (Zigbee-style)** (`device_model.h`, `device_model.c`, `entity_serialization.c`, `entity_model_specification.md`, `entity_model_schema.md`): Chỉ giữ **string** cho manufacturer, model, device_name; **number** cho device_type (uint16), sw_version (uint32), hw_version (uint32) để giảm băng thông khi gửi register nhiều lần. device_type = Zigbee-style ID (DEVICE_TYPE_*); version = DEVICE_VERSION(maj,min,patch). Example `light_on_off` dùng numeric constants.
 
 ## Công việc đang pending
 
@@ -72,9 +78,10 @@ Phía Thread-Host chưa implement việc forward CBOR data từ `/device/registe
 |---|---|---|
 | `components/thread/thread_endpoint.c` | ✅ Complete | Entry point chính |
 | `components/thread/thread_joiner.c` | ✅ Complete | Joiner state machine |
-| `components/thread/device_registry/device_registry.c` | ✅ Complete | CoAP POST /device/register |
+| `components/thread/device_registry/device_registry.c` | ✅ Complete | CoAP POST /device/register; từ chối khi role Leader; callback ACK/NACK |
 | `components/entity/coap_server/entity_coap_server.c` | ❌ Stub | Tất cả return 5.01 |
-| `components/entity/serialization/entity_serialization.c` | ⚠️ Partial | Light+sensor OK, rest missing |
+| `components/entity/serialization/entity_serialization.c` | ⚠️ Partial | Light+sensor OK, rest missing; device info encode device_type/sw/hw as uint |
+| `components/entity/model/include/device_model.h` | ✅ Complete | device_info_t: strings (name, manufacturer, model) + numbers (device_type, sw_version, hw_version) |
 | `main/main.c` | ❌ Stub | Migration pending |
 
 ## Các bước tiếp theo

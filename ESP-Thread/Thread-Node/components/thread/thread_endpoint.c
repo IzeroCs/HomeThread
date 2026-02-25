@@ -34,6 +34,13 @@ static thread_endpoint_config_t s_config;
 static bool s_started = false;
 static TaskHandle_t s_registry_task_handle = NULL;
 
+/* Registry ACK flow: result from last CoAP response (set by callback) */
+static volatile bool s_registry_last_success = false;
+
+#define REGISTRY_ACK_TIMEOUT_MS  20000
+#define REGISTRY_PERIODIC_MS     5000
+#define REGISTRY_RETRY_DELAY_MS  2000
+
 /* Log Leader Data (partition, leader router id, weight, data version) */
 static void log_leader_data(void)
 {
@@ -83,13 +90,24 @@ static void on_boot_long_press(void *ctx)
     thread_joiner_factory_reset(true);
 }
 
-/* Task để register device (tránh stack overflow trong event handler) */
-/* Gửi định kỳ mỗi 2 giây sau khi device đã join */
+/* Callback khi nhận ACK/NACK từ Leader (CoAP response) */
+static void on_registry_response(bool success, void *ctx)
+{
+    (void)ctx;
+    s_registry_last_success = success;
+    if (s_registry_task_handle) {
+        xTaskNotifyGive(s_registry_task_handle);
+    }
+}
+
+/* Task để register device: chỉ gửi khi Child/Router, chờ ACK rồi mới gửi tiếp */
 static void registry_task(void *pvParameters)
 {
     (void)pvParameters;
     bool started_periodic = false;
-    const TickType_t periodic_interval = pdMS_TO_TICKS(5000); // 2 seconds
+    const TickType_t periodic_interval = pdMS_TO_TICKS(REGISTRY_PERIODIC_MS);
+    const TickType_t ack_timeout_ticks = pdMS_TO_TICKS(REGISTRY_ACK_TIMEOUT_MS);
+    const TickType_t retry_delay_ticks = pdMS_TO_TICKS(REGISTRY_RETRY_DELAY_MS);
 
     while (1) {
         /* Wait for notification (khi join hoặc role change) */
@@ -98,50 +116,80 @@ static void registry_task(void *pvParameters)
         /* Delay để network ready */
         vTaskDelay(pdMS_TO_TICKS(1000));
 
-        /* Register device lần đầu */
-        device_registry_register(NULL, NULL);
-
-        /* Bắt đầu gửi định kỳ mỗi 2 giây */
-        if (!started_periodic) {
-            started_periodic = true;
-            ESP_LOGI(TAG, "Starting periodic device model registration (every 2s)");
+        /* Lấy role: chỉ gửi khi Child hoặc Router */
+        otInstance *instance = esp_openthread_get_instance();
+        if (!instance) {
+            continue;
         }
 
-        /* Gửi định kỳ mỗi 2 giây */
+        otDeviceRole role;
+        if (!esp_openthread_lock_acquire(pdMS_TO_TICKS(200))) {
+            continue;
+        }
+        role = otThreadGetDeviceRole(instance);
+        esp_openthread_lock_release();
+
+        if (role != OT_DEVICE_ROLE_CHILD && role != OT_DEVICE_ROLE_ROUTER) {
+            /* Detached, Disabled, hoặc Leader — không gửi, chờ notify lại */
+            ESP_LOGD(TAG, "Registry: role not Child/Router, skip send (role=%d)", (int)role);
+            continue;
+        }
+
+        if (!started_periodic) {
+            started_periodic = true;
+            ESP_LOGI(TAG, "Starting periodic device registration (every %d s, wait ACK)", REGISTRY_PERIODIC_MS / 1000);
+        }
+
+        /* Vòng gửi — chờ ACK rồi mới gửi tiếp hoặc retry */
         while (started_periodic) {
-            vTaskDelay(periodic_interval);
-
-            /* Kiểm tra device đã join chưa */
-            otInstance *instance = esp_openthread_get_instance();
-            if (!instance) {
+            /* Kiểm tra role trước mỗi lần gửi */
+            if (!esp_openthread_lock_acquire(pdMS_TO_TICKS(200))) {
+                vTaskDelay(retry_delay_ticks);
                 continue;
             }
+            role = otThreadGetDeviceRole(instance);
+            esp_openthread_lock_release();
 
-            bool is_joined = false;
-            if (esp_openthread_lock_acquire(pdMS_TO_TICKS(200))) {
-                otDeviceRole role = otThreadGetDeviceRole(instance);
-                is_joined = (role != OT_DEVICE_ROLE_DISABLED && role != OT_DEVICE_ROLE_DETACHED);
-                esp_openthread_lock_release();
-            } else {
-                /* Không lấy được lock, skip lần này */
-                continue;
-            }
-
-            if (is_joined) {
-                /* Gửi device model lên Leader */
-                device_registry_register(NULL, NULL);
-            } else {
-                /* Device đã detached, dừng gửi định kỳ */
+            if (role != OT_DEVICE_ROLE_CHILD && role != OT_DEVICE_ROLE_ROUTER) {
                 started_periodic = false;
-                ESP_LOGI(TAG, "Device detached, stopping periodic registration");
+                ESP_LOGI(TAG, "Device detached or leader, stopping periodic registration");
                 break;
             }
 
-            /* Kiểm tra xem có notification mới không (role change) */
+            /* Xóa notification cũ trước khi gửi */
+            ulTaskNotifyTake(pdTRUE, 0);
+
+            /* Gửi CoAP POST /device/register với callback */
+            esp_err_t err = device_registry_register(on_registry_response, NULL);
+            if (err != ESP_OK) {
+                ESP_LOGW(TAG, "Registry send failed: %s, retry in %d ms", esp_err_to_name(err), REGISTRY_RETRY_DELAY_MS);
+                vTaskDelay(retry_delay_ticks);
+                continue;
+            }
+
+            /* Chờ ACK/NACK hoặc timeout */
+            uint32_t notified = ulTaskNotifyTake(pdTRUE, ack_timeout_ticks);
+            bool success = s_registry_last_success;
+
+            if (notified == 0) {
+                /* Timeout — coi như thất bại, gửi lại sau retry delay */
+                ESP_LOGW(TAG, "Registry ACK timeout (%d ms), retry", REGISTRY_ACK_TIMEOUT_MS);
+                vTaskDelay(retry_delay_ticks);
+                continue;
+            }
+
+            if (success) {
+                /* ACK — chờ periodic interval rồi gửi tiếp */
+                vTaskDelay(periodic_interval);
+            } else {
+                /* NACK hoặc lỗi — gửi lại sau retry delay */
+                ESP_LOGW(TAG, "Registry NACK or error, retry in %d ms", REGISTRY_RETRY_DELAY_MS);
+                vTaskDelay(retry_delay_ticks);
+            }
+
+            /* Có notification mới (role change) — xử lý ngay bằng cách thoát vòng và chờ lại từ đầu */
             if (ulTaskNotifyTake(pdFALSE, 0) > 0) {
-                /* Có notification mới, gửi ngay và tiếp tục loop */
-                vTaskDelay(pdMS_TO_TICKS(100)); // Delay nhỏ để network ready
-                device_registry_register(NULL, NULL);
+                break;
             }
         }
     }

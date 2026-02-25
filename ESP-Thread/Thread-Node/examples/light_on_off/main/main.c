@@ -15,13 +15,13 @@ static const char *TAG = "light_on_off";
 
 #define LIGHT_GPIO  2   /* Den on/off noi ngoai; RGB status dung GPIO 8 */
 
-// Device info constants (ESP-IDF style)
+// Device info: strings = manufacturer, model, device_name; numbers = device_type, sw_version, hw_version (save bandwidth)
 #define ESP_MANUFACTURER_NAME    "Espressif"
 #define ESP_MODEL_IDENTIFIER     "ESP32-C6"
-#define ESP_SW_VERSION           "1.0.0"
-#define ESP_HW_VERSION           "v1.0"
-#define ESP_DEVICE_TYPE          "light_controller"
 #define ESP_DEVICE_NAME          "Light Controller"
+#define ESP_DEVICE_TYPE          DEVICE_TYPE_ON_OFF_LIGHT
+#define ESP_SW_VERSION           DEVICE_VERSION(1, 0, 0)
+#define ESP_HW_VERSION           DEVICE_VERSION(1, 0, 0)
 
 /* Flag để tránh init nhiều lần khi on_joined() được gọi lại */
 static bool s_app_initialized = false;

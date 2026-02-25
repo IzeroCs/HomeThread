@@ -22,7 +22,7 @@ Thread-Node là **lớp thiết bị cuối** (End Device / Router Node) trong h
 
 1. **Reusable framework**: Lập trình viên chỉ cần implement callback `on_joined()` — toàn bộ hạ tầng Thread (joining, registration, LED, button) được xử lý tự động bởi `thread_endpoint_start()`.
 
-2. **Entity Model**: Hệ thống trừu tượng hóa thiết bị IoT theo chuẩn `entity_model_specification.md` v1.3.0 — hỗ trợ light, switch, fan, sensor, climate, binary_sensor. Mỗi entity được mô tả bằng C struct, serialize bằng CBOR, và truyền đi qua CoAP.
+2. **Entity Model**: Hệ thống trừu tượng hóa thiết bị IoT theo chuẩn `entity_model_specification.md` v1.3.0 — hỗ trợ light, switch, fan, sensor, climate, binary_sensor. Mỗi entity được mô tả bằng C struct, serialize bằng CBOR, và truyền đi qua CoAP. Device info: manufacturer, model, device_name = string; device_type, sw_version, hw_version = number (Zigbee-style) để giảm băng thông khi gửi register nhiều lần.
 
 3. **Thread mesh reliability**: Tự động retry khi join thất bại, factory reset qua boot button, status LED phản ánh trạng thái mạng, và cơ chế tránh tranh quyền Leader với Border Router.
 
@@ -54,6 +54,6 @@ Thread-Node là **lớp thiết bị cuối** (End Device / Router Node) trong h
 ## Tài liệu tham chiếu
 
 - `Documents/iot-entity-model/entity_model_specification.md` — Entity type system spec v1.3.0
-- `Documents/coap/border_router_coap_server.md` — CoAP device registry spec
+- `docs/coap/border_router_coap_server.md` — CoAP device registry spec; **ACK/NACK bắt buộc** cho mọi message Node → Leader
 - `Documents/coap/leader_stop_command_coap.md` — CoAP network stop spec
 - `Documents/iot-entity-model/entity_model_schema.md` — SQLite schema (phía Dashboard)

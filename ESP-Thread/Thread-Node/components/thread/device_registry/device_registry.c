@@ -227,6 +227,11 @@ esp_err_t device_registry_register(device_registry_callback_fn callback, void *c
         ESP_LOGW(TAG, "Device not joined yet");
         return ESP_ERR_INVALID_STATE;
     }
+    if (role == OT_DEVICE_ROLE_LEADER) {
+        esp_openthread_lock_release();
+        ESP_LOGW(TAG, "Device is Leader, no need to register to self");
+        return ESP_ERR_INVALID_STATE;
+    }
 
     /* Lay thong tin device (phải có lock) */
     uint16_t rloc16 = 0;

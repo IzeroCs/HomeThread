@@ -2,7 +2,7 @@
 
 ## Tổng quan trạng thái
 
-**Giai đoạn**: Infrastructure hoàn chỉnh, đang hoàn thiện Entity Control layer
+**Giai đoạn**: Infrastructure + Device register ACK flow hoàn chỉnh, đang hoàn thiện Entity Control layer
 
 ```
 Infrastructure Layer     ████████████████████ 100%
@@ -23,7 +23,7 @@ Examples                 ████████████░░░░░░�
 | **Status LED** | `status_led.c/.h` | WS2812 via RMT. 6 trạng thái: Boot/NotJoined/Detached/Child/Router/Leader |
 | **Boot Button** | `boot_btn.c/.h` | Long press detection, gọi factory reset |
 | **CoAP Server Manager** | `thread_coap.c/.h` | Idempotent start, resource registration với lock, response helper |
-| **Device Registry** | `device_registry.c/.h` | CoAP POST → `/device/register` tại Leader RLOC, retry mỗi 5s |
+| **Device Registry** | `device_registry.c/.h` | CoAP POST → `/device/register` tại Leader RLOC; chỉ gửi khi Child/Router; chờ ACK (20s) rồi gửi tiếp; retry 2s khi NACK/timeout; từ chối khi role Leader |
 | **Network Stop** | `thread_network_stop.c/.h` | CoAP GET `/network/stop`, tạm dừng 120s nếu là Leader |
 | **Custom OT Config** | `openthread_custom_config.h` | Child timeout 60s, supervision 30s/60s, leader weight |
 
@@ -32,7 +32,7 @@ Examples                 ████████████░░░░░░�
 | Component | File(s) | Mô tả |
 |---|---|---|
 | **Entity Model** | `entity_model.c/.h` | Type registry + entity CRUD (add, get, set, remove, describe, get_by_index) |
-| **Device Model** | `device_model.c/.h` | Singleton device_model_t: device_info_t + entities + network info. Auto MAC-based ID |
+| **Device Model** | `device_model.c/.h` | Singleton device_model_t: device_info_t (strings: name, manufacturer, model; numbers: device_type uint16, sw_version/hw_version uint32) + entities + network info. Auto MAC-based ID; device_type → prefix cho device_id |
 | **entity_light_t** | `entity_light.h` | state, brightness, color_temp, rgb[3], mode (ON_OFF/DIMMABLE/RGB/RGBW/CCT), effects |
 | **entity_switch_t** | `entity_switch.h` | Struct định nghĩa (data) |
 | **entity_fan_t** | `entity_fan.h` | Struct định nghĩa (data) |
@@ -51,11 +51,26 @@ Examples                 ████████████░░░░░░�
 | `entity_climate_t` | ❌ Chưa có |
 | `entity_binary_sensor_t` | ❌ Chưa có |
 
+### Device register ACK flow
+
+| Mục | Trạng thái |
+|---|---|
+| Chỉ gửi khi Child/Router | ✅ Implement trong `registry_task` và `device_registry_register()` |
+| Chờ ACK/NACK (callback) | ✅ `on_registry_response` + task notify; timeout 20s |
+| Retry khi NACK/timeout | ✅ Delay 2s rồi gửi lại |
+| Leader không gửi | ✅ `device_registry_register()` return `ESP_ERR_INVALID_STATE` khi role Leader |
+
+### Tài liệu
+
+| Tài liệu | Trạng thái |
+|---|---|
+| ACK/NACK bắt buộc (Leader) | ✅ Mục trong `docs/coap/border_router_coap_server.md`; `docs/README.md` cập nhật |
+
 ### Examples
 
 | Example | Trạng thái | Ghi chú |
 |---|---|---|
-| `examples/light_on_off/` | ✅ **Buildable và functional** | Thread join + LED + button + device registry + entity model. CoAP control không hoạt động (5.01) |
+| `examples/light_on_off/` | ✅ **Buildable và functional** | Thread join + LED + button + device registry (ACK flow) + entity model. CoAP control không hoạt động (5.01) |
 
 ## Còn lại ❌
 
@@ -102,6 +117,10 @@ Chỉ có `light_on_off`. Thiếu:
 
 ## Known Issues / Constraints
 
+### Issue 0: NoBufs (đã giảm thiểu)
+
+Trước đây gửi register mỗi 5s không chờ response → tích tụ request → NoBufs. Đã xử lý bằng **device register ACK flow**: chỉ gửi khi Child/Router, chờ ACK (20s) rồi mới gửi tiếp; Leader phải trả ACK/NACK (tài liệu trong `border_router_coap_server.md`).
+
 ### Issue 1: entity_coap_server không functional
 
 Tất cả CoAP control commands từ Border Router đều bị reject với `5.01 Not Implemented`. Đây là limitation lớn nhất của hiện tại.
@@ -129,7 +148,8 @@ Root `Thread-Node/` không buildable như một standalone project. Lập trình
 | v0.3 | Entity Model data structures (6 entity types) |
 | v0.4 | CBOR serialization (light + sensor), device_model singleton |
 | v0.5 | network/stop handler, /entities CoAP resource skeleton (stub) |
-| v0.6 (hiện tại) | light_on_off example hoàn chỉnh, custom OT config |
-| **v0.7 (tiếp theo)** | **entity_coap_server implementation** |
-| v0.8 | CBOR cho switch/fan/climate/binary_sensor |
-| v1.0 | main.c template, additional examples |
+| v0.6 | light_on_off example hoàn chỉnh, custom OT config |
+| v0.7 | **Device register ACK flow** (chỉ Child/Router, chờ ACK, retry); **ACK/NACK docs**; Leader check trong device_registry |
+| v0.8 (hiện tại) | **Device info numeric** (device_type, sw_version, hw_version = number; Zigbee-style; giảm băng thông register) |
+| **v0.9 (tiếp theo)** | **entity_coap_server implementation** |
+| v1.0 | CBOR cho switch/fan/climate/binary_sensor; main.c template; additional examples |

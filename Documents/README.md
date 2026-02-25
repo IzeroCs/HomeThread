@@ -40,14 +40,14 @@ Documents/
 
 | Tài liệu | Mô tả |
 |----------|-------|
-| [iot-entity-model/entity_model_specification.md](iot-entity-model/entity_model_specification.md) | Entity model cho firmware (ESP-IDF): struct-based, event-driven, API, validation |
-| [iot-entity-model/entity_model_schema.md](iot-entity-model/entity_model_schema.md) | SQLite schema cho backend/border router: devices, entities, entity_*, sensor_history, events |
+| [iot-entity-model/entity_model_specification.md](iot-entity-model/entity_model_specification.md) | Entity model cho firmware (ESP-IDF): struct-based, event-driven, API, validation; **device info**: strings (manufacturer, model, device_name) + numbers (device_type, sw_version, hw_version) |
+| [iot-entity-model/entity_model_schema.md](iot-entity-model/entity_model_schema.md) | SQLite schema cho backend/border router: devices (sw_version, hw_version int), entities, entity_*, sensor_history, events |
 
 ### CoAP (ESP-IDF + OpenThread)
 
 | Tài liệu | Mô tả |
 |----------|-------|
-| [coap/border_router_coap_server.md](coap/border_router_coap_server.md) | CoAP server trên BR: device registry, resources /device/register, implementation |
+| [coap/border_router_coap_server.md](coap/border_router_coap_server.md) | CoAP server trên BR: device registry, resources /device/register; **ACK/NACK bắt buộc** cho mọi message Node → Leader |
 | [coap/leader_stop_command_coap.md](coap/leader_stop_command_coap.md) | Leader Control: GET /network, response copy token, gửi response trước khi stop |
 | [coap/coap_client_snippet.md](coap/coap_client_snippet.md) | Snippet CoAP client thuần: NON-CONFIRMABLE GET /ping đến Leader RLOC |
 
