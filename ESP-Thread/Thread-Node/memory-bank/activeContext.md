@@ -94,6 +94,8 @@ Phía Thread-Host chưa implement việc forward CBOR data từ `/device/registe
 
 4. **Quyết định và implement main/main.c** — nếu muốn Thread-Node root buildable như một template project
 
+5. **TODO (xử lý sau):** Check khi node tự nhảy lên Leader — khi đó node đang ở partition tách riêng (BR vẫn Leader ở partition kia), nên BR **không gửi được** `/network/stop` sang. Cần xử lý khác: phát hiện role = Leader khi prefer_not_leader bật → trigger re-join / chờ partition merge / recovery, sẽ làm sau.
+
 ## Nguồn tham khảo cho migration
 
 - `Documents/iot-entity-model/entity_model_specification.md` v1.3.0 — định nghĩa đầy đủ attribute set cho từng entity type

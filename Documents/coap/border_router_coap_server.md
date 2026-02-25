@@ -49,6 +49,8 @@ Response: `2.01 Created` hoặc `4.00`/`5.03` khi lỗi.
 
 **Implementation:** Trong mọi CoAP resource handler, Leader phải gọi `otCoapSendResponse()` với một trong các mã trên — kể cả khi chỉ enqueue và xử lý sau, vẫn phải gửi ngay response (ví dụ `2.01 Created`) để Node biết request đã được nhận.
 
+**Lưu ý NoBufs / partition:** Nếu Node gửi quá nhiều CoAP confirmable mà không chờ ACK, message buffer trên Node có thể cạn (NoBufs). Theo OpenThread issue #4508, buffer exhaustion có thể dẫn tới mất MLE/keep-alive → topology thay đổi, partition → Node có thể tự trở thành Leader. Node nên chỉ gửi request tiếp theo sau khi nhận ACK/NACK hoặc timeout (đã áp dụng trong Thread-Node device register ACK flow).
+
 ---
 
 ## Địa chỉ Leader

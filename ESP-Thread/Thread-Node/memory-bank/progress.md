@@ -121,6 +121,10 @@ Chỉ có `light_on_off`. Thiếu:
 
 Trước đây gửi register mỗi 5s không chờ response → tích tụ request → NoBufs. Đã xử lý bằng **device register ACK flow**: chỉ gửi khi Child/Router, chờ ACK (20s) rồi mới gửi tiếp; Leader phải trả ACK/NACK (tài liệu trong `border_router_coap_server.md`).
 
+**NoBufs → partition / "nhảy Leader":** Khi message buffer cạn (nhiều CoAP confirmable cùng lúc), MLE/keep-alive có thể mất → topology thay đổi, mạng dễ partition → node có thể tự trở thành Leader (ref: OpenThread issue #4508). ACK flow giảm số request đồng thời nên test ổn định lâu, không còn nhảy.
+
+**TODO (xử lý sau):** Thêm check: nếu node tự dưng chuyển lên Leader (do NoBufs → partition, node nằm ở partition tách riêng nên thành Leader của partition đó). Lúc này BR vẫn là Leader ở partition kia, nên BR **không thể** gửi `/network/stop` sang (không cùng partition). Cần xử lý khác — vd. phát hiện role = Leader khi `prefer_not_leader` bật rồi trigger re-join / chờ partition merge / hoặc recovery logic, sẽ làm sau.
+
 ### Issue 1: entity_coap_server không functional
 
 Tất cả CoAP control commands từ Border Router đều bị reject với `5.01 Not Implemented`. Đây là limitation lớn nhất của hiện tại.
