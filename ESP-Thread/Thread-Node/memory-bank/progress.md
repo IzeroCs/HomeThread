@@ -147,13 +147,13 @@ Root `Thread-Node/` không buildable như một standalone project. Lập trình
 
 | Giai đoạn | Mô tả |
 |---|---|
-| v0.1 | Thread Joiner cơ bản, status LED, boot button |
-| v0.2 | Device Registry (CoAP POST với CBOR) |
-| v0.3 | Entity Model data structures (6 entity types) |
-| v0.4 | CBOR serialization (light + sensor), device_model singleton |
-| v0.5 | network/stop handler, /entities CoAP resource skeleton (stub) |
-| v0.6 | light_on_off example hoàn chỉnh, custom OT config |
-| v0.7 | **Device register ACK flow** (chỉ Child/Router, chờ ACK, retry); **ACK/NACK docs**; Leader check trong device_registry |
-| v0.8 (hiện tại) | **Device info numeric** (device_type, sw_version, hw_version = number; Zigbee-style; giảm băng thông register) |
-| **v0.9 (tiếp theo)** | **entity_coap_server implementation** |
-| v1.0 | CBOR cho switch/fan/climate/binary_sensor; main.c template; additional examples |
+| 0.1.0 | Thread Joiner cơ bản, status LED, boot button |
+| 0.2.0 | Device Registry (CoAP POST với CBOR) |
+| 0.3.0 | Entity Model data structures (6 entity types) |
+| 0.4.0 | CBOR serialization (light + sensor), device_model singleton |
+| 0.5.0 | network/stop handler, /entities CoAP resource skeleton (stub) |
+| 0.6.0 | light_on_off example hoàn chỉnh, custom OT config |
+| 0.7.0 | **Device register ACK flow** (chỉ Child/Router, chờ ACK, retry); **ACK/NACK docs**; Leader check trong device_registry |
+| 0.8.0 (hiện tại) | **Device info numeric** (device_type, sw_version, hw_version = number; Zigbee-style; giảm băng thông register) |
+| **0.9.0 (tiếp theo)** | **entity_coap_server implementation** |
+| 1.0.0 | CBOR cho switch/fan/climate/binary_sensor; main.c template; additional examples |

@@ -17,6 +17,7 @@
 #include <stdbool.h>
 #include "esp_log.h"
 #include "entity_serialization.h"
+#include "cbor_register_keys.h"
 #include "device_model.h"
 #include "entity_model.h"
 #include "entity_light.h"
@@ -253,32 +254,32 @@ static int serialize_light_entity(cbor_encoder_t *enc, const entity_light_t *lig
     if (cbor_start_indefinite_map(enc) < 0) return -1;
     
     // Base fields
-    if (cbor_encode_text_string(enc, "entity_id") < 0) return -1;
+    if (cbor_encode_uint(enc, CBOR_K_ENT_ENTITY_ID) < 0) return -1;
     if (cbor_encode_text_string(enc, light->base.entity_id) < 0) return -1;
     
-    if (cbor_encode_text_string(enc, "name") < 0) return -1;
+    if (cbor_encode_uint(enc, CBOR_K_ENT_NAME) < 0) return -1;
     if (cbor_encode_text_string(enc, light->base.name) < 0) return -1;
     
-    if (cbor_encode_text_string(enc, "type") < 0) return -1;
+    if (cbor_encode_uint(enc, CBOR_K_ENT_TYPE) < 0) return -1;
     if (cbor_encode_text_string(enc, "light") < 0) return -1;
     
-    if (cbor_encode_text_string(enc, "device_class") < 0) return -1;
+    if (cbor_encode_uint(enc, CBOR_K_ENT_DEVICE_CLASS) < 0) return -1;
     if (cbor_encode_text_string(enc, light->base.device_class) < 0) return -1;
     
-    if (cbor_encode_text_string(enc, "available") < 0) return -1;
+    if (cbor_encode_uint(enc, CBOR_K_ENT_AVAILABLE) < 0) return -1;
     if (cbor_encode_bool(enc, light->base.available) < 0) return -1;
     
-    if (cbor_encode_text_string(enc, "last_update") < 0) return -1;
+    if (cbor_encode_uint(enc, CBOR_K_ENT_LAST_UPDATE) < 0) return -1;
     if (cbor_encode_uint(enc, light->base.last_update) < 0) return -1;
     
     // Light-specific fields
-    if (cbor_encode_text_string(enc, "state") < 0) return -1;
+    if (cbor_encode_uint(enc, CBOR_K_ENT_STATE) < 0) return -1;
     if (cbor_encode_bool(enc, light->state) < 0) return -1;
     
-    if (cbor_encode_text_string(enc, "brightness") < 0) return -1;
+    if (cbor_encode_uint(enc, CBOR_K_ENT_BRIGHTNESS) < 0) return -1;
     if (cbor_encode_uint(enc, light->brightness) < 0) return -1;
     
-    if (cbor_encode_text_string(enc, "mode") < 0) return -1;
+    if (cbor_encode_uint(enc, CBOR_K_ENT_MODE) < 0) return -1;
     const char *mode_str = "on_off";
     switch (light->mode) {
         case LIGHT_MODE_DIMMABLE: mode_str = "dimmable"; break;
@@ -291,7 +292,7 @@ static int serialize_light_entity(cbor_encoder_t *enc, const entity_light_t *lig
     
     // RGB array (if RGB or RGBW mode)
     if (light->mode == LIGHT_MODE_RGB || light->mode == LIGHT_MODE_RGBW) {
-        if (cbor_encode_text_string(enc, "rgb") < 0) return -1;
+        if (cbor_encode_uint(enc, CBOR_K_ENT_RGB) < 0) return -1;
         if (cbor_start_array(enc, 3) < 0) return -1;
         if (cbor_encode_uint(enc, light->rgb[0]) < 0) return -1;
         if (cbor_encode_uint(enc, light->rgb[1]) < 0) return -1;
@@ -300,7 +301,7 @@ static int serialize_light_entity(cbor_encoder_t *enc, const entity_light_t *lig
     
     // Color temperature (if CCT mode)
     if (light->mode == LIGHT_MODE_CCT) {
-        if (cbor_encode_text_string(enc, "color_temp") < 0) return -1;
+        if (cbor_encode_uint(enc, CBOR_K_ENT_COLOR_TEMP) < 0) return -1;
         if (cbor_encode_uint(enc, light->color_temp) < 0) return -1;
     }
     
@@ -319,29 +320,29 @@ static int serialize_sensor_entity(cbor_encoder_t *enc, const entity_sensor_t *s
     if (cbor_start_indefinite_map(enc) < 0) return -1;
     
     // Base fields
-    if (cbor_encode_text_string(enc, "entity_id") < 0) return -1;
+    if (cbor_encode_uint(enc, CBOR_K_ENT_ENTITY_ID) < 0) return -1;
     if (cbor_encode_text_string(enc, sensor->base.entity_id) < 0) return -1;
     
-    if (cbor_encode_text_string(enc, "name") < 0) return -1;
+    if (cbor_encode_uint(enc, CBOR_K_ENT_NAME) < 0) return -1;
     if (cbor_encode_text_string(enc, sensor->base.name) < 0) return -1;
     
-    if (cbor_encode_text_string(enc, "type") < 0) return -1;
+    if (cbor_encode_uint(enc, CBOR_K_ENT_TYPE) < 0) return -1;
     if (cbor_encode_text_string(enc, "sensor") < 0) return -1;
     
-    if (cbor_encode_text_string(enc, "device_class") < 0) return -1;
+    if (cbor_encode_uint(enc, CBOR_K_ENT_DEVICE_CLASS) < 0) return -1;
     if (cbor_encode_text_string(enc, sensor->base.device_class) < 0) return -1;
     
-    if (cbor_encode_text_string(enc, "available") < 0) return -1;
+    if (cbor_encode_uint(enc, CBOR_K_ENT_AVAILABLE) < 0) return -1;
     if (cbor_encode_bool(enc, sensor->base.available) < 0) return -1;
     
-    if (cbor_encode_text_string(enc, "last_update") < 0) return -1;
+    if (cbor_encode_uint(enc, CBOR_K_ENT_LAST_UPDATE) < 0) return -1;
     if (cbor_encode_uint(enc, sensor->base.last_update) < 0) return -1;
     
     // Sensor-specific fields
-    if (cbor_encode_text_string(enc, "value") < 0) return -1;
+    if (cbor_encode_uint(enc, CBOR_K_ENT_VALUE) < 0) return -1;
     if (cbor_encode_float(enc, sensor->value) < 0) return -1;
     
-    if (cbor_encode_text_string(enc, "unit") < 0) return -1;
+    if (cbor_encode_uint(enc, CBOR_K_ENT_UNIT) < 0) return -1;
     if (cbor_encode_text_string(enc, sensor->unit) < 0) return -1;
     
     // End map
@@ -353,24 +354,18 @@ static int serialize_sensor_entity(cbor_encoder_t *enc, const entity_sensor_t *s
 /**
  * Serialize device model to CBOR format.
  * 
- * CBOR structure:
+ * CBOR structure (numeric map keys, see cbor_register_keys.h):
  * {
- *   "device_id": string,
- *   "device_name": string,
- *   "device_type": uint16,
- *   "manufacturer": string,
- *   "model": string,
- *   "sw_version": uint32,
- *   "hw_version": uint32,
- *   "mac_address": uint64,
- *   "network": {
- *     "rloc16": uint16,
- *     "role": string,
- *     "ipv6_addr": bytes(16)
- *   },
- *   "entities": [
- *     { entity objects... }
- *   ]
+ *   0: string,   // device_id
+ *   1: string,   // device_name
+ *   2: uint16,   // device_type
+ *   3: string?,  // manufacturer
+ *   4: string?,  // model
+ *   5: uint32,   // sw_version
+ *   6: uint32,   // hw_version
+ *   7: uint64?,  // mac_address
+ *   8: { 0: rloc16, 1: role, 2: ipv6_addr, 3?: parent },  // network
+ *   9: [ entity maps... ]  // entities
  * }
  */
 int entity_serialize_cbor(uint16_t rloc16, const char *ml_eid_str, 
@@ -407,45 +402,45 @@ int entity_serialize_cbor(uint16_t rloc16, const char *ml_eid_str,
     }
     
     // Device info fields (from Device Model)
-    if (cbor_encode_text_string(&enc, "device_id") < 0) return -1;
+    if (cbor_encode_uint(&enc, CBOR_K_DEVICE_ID) < 0) return -1;
     if (cbor_encode_text_string(&enc, device->info.device_id) < 0) return -1;
     
-    if (cbor_encode_text_string(&enc, "device_name") < 0) return -1;
+    if (cbor_encode_uint(&enc, CBOR_K_DEVICE_NAME) < 0) return -1;
     if (cbor_encode_text_string(&enc, device->info.device_name) < 0) return -1;
     
-    if (cbor_encode_text_string(&enc, "device_type") < 0) return -1;
+    if (cbor_encode_uint(&enc, CBOR_K_DEVICE_TYPE) < 0) return -1;
     if (cbor_encode_uint(&enc, device->info.device_type) < 0) return -1;
     
     if (device->info.manufacturer[0] != '\0') {
-        if (cbor_encode_text_string(&enc, "manufacturer") < 0) return -1;
+        if (cbor_encode_uint(&enc, CBOR_K_MANUFACTURER) < 0) return -1;
         if (cbor_encode_text_string(&enc, device->info.manufacturer) < 0) return -1;
     }
     
     if (device->info.model[0] != '\0') {
-        if (cbor_encode_text_string(&enc, "model") < 0) return -1;
+        if (cbor_encode_uint(&enc, CBOR_K_MODEL) < 0) return -1;
         if (cbor_encode_text_string(&enc, device->info.model) < 0) return -1;
     }
     
-    if (cbor_encode_text_string(&enc, "sw_version") < 0) return -1;
+    if (cbor_encode_uint(&enc, CBOR_K_SW_VERSION) < 0) return -1;
     if (cbor_encode_uint(&enc, device->info.sw_version) < 0) return -1;
     
-    if (cbor_encode_text_string(&enc, "hw_version") < 0) return -1;
+    if (cbor_encode_uint(&enc, CBOR_K_HW_VERSION) < 0) return -1;
     if (cbor_encode_uint(&enc, device->info.hw_version) < 0) return -1;
     
     if (device->info.mac_address != 0) {
-        if (cbor_encode_text_string(&enc, "mac_address") < 0) return -1;
+        if (cbor_encode_uint(&enc, CBOR_K_MAC_ADDRESS) < 0) return -1;
         if (cbor_encode_uint(&enc, device->info.mac_address) < 0) return -1;
     }
     
     // Network info (from Device Model, fallback to parameters if not set)
-    if (cbor_encode_text_string(&enc, "network") < 0) return -1;
+    if (cbor_encode_uint(&enc, CBOR_K_NETWORK) < 0) return -1;
     if (cbor_start_indefinite_map(&enc) < 0) return -1;
     
-    if (cbor_encode_text_string(&enc, "rloc16") < 0) return -1;
+    if (cbor_encode_uint(&enc, CBOR_K_NET_RLOC16) < 0) return -1;
     uint16_t net_rloc16 = (device->rloc16 != 0) ? device->rloc16 : rloc16;
     if (cbor_encode_uint(&enc, net_rloc16) < 0) return -1;
     
-    if (cbor_encode_text_string(&enc, "role") < 0) return -1;
+    if (cbor_encode_uint(&enc, CBOR_K_NET_ROLE) < 0) return -1;
     const char *role_str = "unknown";
     switch (device->role) {
         case 0: role_str = "child"; break;
@@ -455,7 +450,7 @@ int entity_serialize_cbor(uint16_t rloc16, const char *ml_eid_str,
     }
     if (cbor_encode_text_string(&enc, role_str) < 0) return -1;
     
-    if (cbor_encode_text_string(&enc, "ipv6_addr") < 0) return -1;
+    if (cbor_encode_uint(&enc, CBOR_K_NET_IPV6) < 0) return -1;
     // Use device_model ipv6_addr if set, otherwise try to parse ml_eid_str
     const uint8_t *ipv6_addr = device->ipv6_addr;
     bool ipv6_is_zero = true;
@@ -479,14 +474,14 @@ int entity_serialize_cbor(uint16_t rloc16, const char *ml_eid_str,
     
     // Parent RLOC16 (from parameters, not stored in device_model yet)
     if (parent_rloc16 != 0) {
-        if (cbor_encode_text_string(&enc, "parent") < 0) return -1;
+        if (cbor_encode_uint(&enc, CBOR_K_NET_PARENT) < 0) return -1;
         if (cbor_encode_uint(&enc, parent_rloc16) < 0) return -1;
     }
     
     if (cbor_end_indefinite_map(&enc) < 0) return -1; // End network map
     
     // Entities array
-    if (cbor_encode_text_string(&enc, "entities") < 0) return -1;
+    if (cbor_encode_uint(&enc, CBOR_K_ENTITIES) < 0) return -1;
     if (cbor_start_indefinite_array(&enc) < 0) return -1;
     
     // Serialize all entities

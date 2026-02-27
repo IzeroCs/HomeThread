@@ -153,6 +153,11 @@ flowchart TD
 - Evolution of project decisions
 - Tool usage patterns
 
+### Version notation for progress.md
+- When documenting release history in `memory-bank/progress.md`, always use Semantic Versioning `MAJOR.MINOR.PATCH` (no leading `v`).
+- Examples: `0.8.0`, `0.9.0`, `1.0.0`.
+- If only major/minor are known, set `PATCH = 0` (e.g. legacy `v0.8` becomes `0.8.0`).
+
 The format is flexible - focus on capturing valuable insights that help me work more effectively with you and the project. Think of .cursor/rules as a living document that grows smarter as we work together.
 
 REMEMBER: After every memory reset, I begin completely fresh. The Memory Bank is my only link to previous work. It must be maintained with precision and clarity, as my effectiveness depends entirely on its accuracy.

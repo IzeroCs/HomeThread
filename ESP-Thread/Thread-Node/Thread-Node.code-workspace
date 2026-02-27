@@ -1,0 +1,25 @@
+{
+  "folders": [
+    {
+      "name": "Thread-Node",
+      "path": "."
+    },
+    {
+      "name": "light_on_off (build)",
+      "path": "examples/light_on_off"
+    }
+  ],
+  "settings": {
+    "idf.port": "/dev/ttyACM2",
+    "idf.flashType": "UART",
+    "idf.espIdfPath": "/home/izerocs/esp/v5.5.3/esp-idf",
+    "idf.toolsPath": "/home/izerocs/esp/.espressif",
+    "idf.pythonInstallPath": "/usr/bin/python3",
+    "idf.openOcdConfigs": ["board/esp32c6-bridge.cfg"],
+    "idf.customExtraVars": {
+      "OPENOCD_SCRIPTS": "/home/izerocs/.espressif/tools/openocd-esp32/v0.12.0-esp32-20240318/openocd-esp32/share/openocd/scripts",
+      "ESP_ROM_ELF_DIR": "/home/izerocs/.espressif/tools/esp-rom-elfs/20240305/",
+      "IDF_TARGET": "esp32c6"
+    }
+  }
+}

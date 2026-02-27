@@ -39,6 +39,10 @@ idf.py -p /dev/ttyUSB0 erase-flash
 
 **Không build từ root `Thread-Node/`** — `main/main.c` là stub, chưa có project() hoàn chỉnh cho root. Chỉ build từ `examples/light_on_off/`.
 
+### ESP-IDF VS Code (Build / Flash / Monitor từ giao diện)
+
+Để dùng lệnh Build / Flash / Monitor của extension ESP-IDF mà không cần mở terminal thủ công: mở workspace **File > Open Workspace from File** → chọn `Thread-Node.code-workspace`. Sau đó **F1** → **ESP-IDF: Pick a Workspace Folder** (hoặc icon "Current Project" trên status bar) → chọn **light_on_off (build)**. Từ đó ESP-IDF: Build / Flash / Monitor chạy `idf.py` trong `examples/light_on_off`.
+
 ## Cấu hình quan trọng (Kconfig / sdkconfig.defaults)
 
 ### Thread Joiner

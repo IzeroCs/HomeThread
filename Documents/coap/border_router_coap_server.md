@@ -11,7 +11,7 @@ CoAP server trên BR (port 5683) nhận đăng ký từ child devices. Resources
 
 | Path | Method | Mô tả |
 |------|--------|--------|
-| `/device/register` | POST | Đăng ký device (payload: rloc16, ml_eid, parent, entity_model) |
+| `/device/register` | POST | Đăng ký device (payload: CBOR, numeric map keys — xem [Payload Format](#payload-format)) |
 | `/device/update` | POST | Cập nhật (cùng handler) |
 | `/device/ping` | GET | Ping (cùng handler) |
 
@@ -152,26 +152,61 @@ static void device_register_handler(void *aContext, otMessage *aMessage,
 
 ## Payload Format
 
-### Text Format (hiện tại)
+Thread-Node gửi POST `/device/register` với payload **CBOR**, dùng **numeric map keys** để giảm băng thông. Backend phải parse map key dạng integer và map theo bảng dưới (cùng giá trị với `cbor_register_keys.h` trong Thread-Node).
+
+### CBOR numeric keys (bắt buộc cho parser)
+
+Định nghĩa đầy đủ: `components/entity/serialization/include/cbor_register_keys.h`.
+
+**Device register — top-level map:**
+
+| Key (số) | Tên logic   | CBOR value type |
+|----------|-------------|------------------|
+| 0        | device_id   | text string      |
+| 1        | device_name | text string      |
+| 2        | device_type | unsigned int     |
+| 3        | manufacturer| text string (optional) |
+| 4        | model       | text string (optional) |
+| 5        | sw_version  | unsigned int     |
+| 6        | hw_version  | unsigned int     |
+| 7        | mac_address | unsigned int (optional) |
+| 8        | network     | map (xem bảng network) |
+| 9        | entities    | array of maps (xem bảng entity) |
+
+**Network sub-map (key 8):**
+
+| Key (số) | Tên logic | CBOR value type |
+|----------|-----------|------------------|
+| 0        | rloc16    | unsigned int     |
+| 1        | role      | text string ("child" / "router" / "leader" / "unknown") |
+| 2        | ipv6_addr | byte string (16 bytes) |
+| 3        | parent    | unsigned int (optional) |
+
+**Entity map (mỗi phần tử trong array key 9):**
+
+| Key (số) | Tên logic   | CBOR value type |
+|----------|-------------|------------------|
+| 0        | entity_id   | text string      |
+| 1        | name        | text string      |
+| 2        | type        | text string ("light", "sensor", …) |
+| 3        | device_class| text string      |
+| 4        | available   | bool             |
+| 5        | last_update | unsigned int     |
+| 6        | state       | bool (light)     |
+| 7        | brightness  | unsigned int (light) |
+| 8        | mode        | text string (light) |
+| 9        | rgb         | array of 3 uint (light, optional) |
+| 10       | color_temp  | unsigned int (light, optional) |
+| 11       | value       | float (sensor)   |
+| 12       | unit        | text string (sensor) |
+
+### Text Format (legacy / tham khảo)
 
 ```
 rloc16=0x7c01
 ml_eid=fd00:db8:a0:0:xxxx:xxxx:xxxx:xxxx
 parent=0x1001
 entity_id=light.0 type=on_off_light name=LED
-```
-
-### JSON Format (có thể chuyển sau)
-
-```json
-{
-  "rloc16": "0x7c01",
-  "ml_eid": "fd00:db8:a0:0:xxxx:xxxx:xxxx:xxxx",
-  "parent": "0x1001",
-  "entities": [
-    { "entity_id": "light.0", "type": "on_off_light", "name": "LED" }
-  ]
-}
 ```
 
 ---

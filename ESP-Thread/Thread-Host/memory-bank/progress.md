@@ -1,6 +1,18 @@
 # Progress — Thread-Host
 
-_Cập nhật: 2026-02-21_
+_Cập nhật: 2026-02-27_
+
+## Release history
+
+| Version | Ngày | Mô tả |
+|---------|------|--------|
+| 0.1.0 | 2025-10 | BR boot, RCP UART (GPIO4/5, 460800), RCP control pins, OpenThread stack, dataset init on boot, Border Agent, Commissioner. |
+| 0.2.0 | 2025-11 | Frame protocol (parser/serializer SOF–EOF), transport USB CDC, queue + dispatch, CMD_STATE, CMD_RESET, CMD_FACTORY, CMD_DATASET_ACTIVE, CMD_IP_ADDR, SET_* (PANID, channel, name, XPANID, key), state watchdog. |
+| 0.5.0 | 2025-12 | CMD_ROUTER_TABLE, CMD_CHILD_TABLE, CMD_JOINER_TABLE, CMD_THREAD_START/STOP/VERSION, CMD_COMMISSIONER_JOINER. Stack monitor (stk_mon), br_config.h centralized. |
+| 0.8.0 | 2026-01 | CoAP Leader Control Client (GET /network/stop), Device Registry Server (/device/register, update, ping). LED status WS2812, boot button (long press factory reset). Bug fixes: task name length, CMD_FACTORY NVS erase, leader_rloc lock. |
+| 0.9.0 | 2026-02-21 | Log suppression (STATE, *_TABLE), Memory Bank + docs, symlink Documents. Các mục chưa làm: Device Registry→backend, CMD_SYS_HEALTH, auto-flash RCP, transport UART. |
+
+_(Ghi phiên bản theo Semantic Versioning MAJOR.MINOR.PATCH, không dùng tiền tố `v`. Nếu chỉ có major/minor thì PATCH = 0.)_
 
 ## Đã hoàn thành ✅
 
