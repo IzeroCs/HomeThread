@@ -23,7 +23,7 @@ Examples                 ████████████░░░░░░�
 | **Status LED** | `status_led.c/.h` | WS2812 via RMT. 6 trạng thái: Boot/NotJoined/Detached/Child/Router/Leader |
 | **Boot Button** | `boot_btn.c/.h` | Long press detection, gọi factory reset |
 | **CoAP Server Manager** | `thread_coap.c/.h` | Idempotent start, resource registration với lock, response helper |
-| **Device Registry** | `device_registry.c/.h` | CoAP POST → `/device/register` tại Leader RLOC; chỉ gửi khi Child/Router; chờ ACK (20s) rồi gửi tiếp; retry 2s khi NACK/timeout; từ chối khi role Leader |
+| **Device Registry** | `device_registry.c/.h` | CoAP POST → `/device/register` tại Leader RLOC; chỉ gửi khi Child/Router; chờ ACK (20s); **one-shot** (dừng sau ACK, gửi lại khi notify); retry 2s khi NACK/timeout; `device_registry_is_registered()`; từ chối khi role Leader |
 | **Network Stop** | `thread_network_stop.c/.h` | CoAP GET `/network/stop`, tạm dừng 120s nếu là Leader |
 | **Custom OT Config** | `openthread_custom_config.h` | Child timeout 60s, supervision 30s/60s, leader weight |
 
@@ -119,7 +119,7 @@ Chỉ có `light_on_off`. Thiếu:
 
 ### Issue 0: NoBufs (đã giảm thiểu)
 
-Trước đây gửi register mỗi 5s không chờ response → tích tụ request → NoBufs. Đã xử lý bằng **device register ACK flow**: chỉ gửi khi Child/Router, chờ ACK (20s) rồi mới gửi tiếp; Leader phải trả ACK/NACK (tài liệu trong `border_router_coap_server.md`).
+Trước đây gửi register mỗi 5s không chờ response → tích tụ request → NoBufs. Đã xử lý bằng **device register ACK flow**: chỉ gửi khi Child/Router, chờ ACK (20s); **one-shot** (gửi 1 lần khi ACK, dừng cho đến khi notify); Leader phải trả ACK/NACK (tài liệu trong `border_router_coap_server.md`).
 
 **NoBufs → partition / "nhảy Leader":** Khi message buffer cạn (nhiều CoAP confirmable cùng lúc), MLE/keep-alive có thể mất → topology thay đổi, mạng dễ partition → node có thể tự trở thành Leader (ref: OpenThread issue #4508). ACK flow giảm số request đồng thời nên test ổn định lâu, không còn nhảy.
 
@@ -154,6 +154,7 @@ Root `Thread-Node/` không buildable như một standalone project. Lập trình
 | 0.5.0 | network/stop handler, /entities CoAP resource skeleton (stub) |
 | 0.6.0 | light_on_off example hoàn chỉnh, custom OT config |
 | 0.7.0 | **Device register ACK flow** (chỉ Child/Router, chờ ACK, retry); **ACK/NACK docs**; Leader check trong device_registry |
-| 0.8.0 (hiện tại) | **Device info numeric** (device_type, sw_version, hw_version = number; Zigbee-style; giảm băng thông register) |
+| 0.8.0 | **Device info numeric** (device_type, sw_version, hw_version = number; Zigbee-style; giảm băng thông register) |
+| 0.8.1 (hiện tại) | **Register one-shot on ACK** (gửi 1 lần rồi dừng; gửi lại khi notify); **device_registry_is_registered()**; bỏ REGISTRY_PERIODIC_MS; TODO re-register từ Leader |
 | **0.9.0 (tiếp theo)** | **entity_coap_server implementation** |
 | 1.0.0 | CBOR cho switch/fan/climate/binary_sensor; main.c template; additional examples |

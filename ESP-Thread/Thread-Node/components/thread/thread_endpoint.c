@@ -38,7 +38,6 @@ static TaskHandle_t s_registry_task_handle = NULL;
 static volatile bool s_registry_last_success = false;
 
 #define REGISTRY_ACK_TIMEOUT_MS  20000
-#define REGISTRY_PERIODIC_MS     5000
 #define REGISTRY_RETRY_DELAY_MS  2000
 
 /* Log Leader Data (partition, leader router id, weight, data version) */
@@ -105,7 +104,6 @@ static void registry_task(void *pvParameters)
 {
     (void)pvParameters;
     bool started_periodic = false;
-    const TickType_t periodic_interval = pdMS_TO_TICKS(REGISTRY_PERIODIC_MS);
     const TickType_t ack_timeout_ticks = pdMS_TO_TICKS(REGISTRY_ACK_TIMEOUT_MS);
     const TickType_t retry_delay_ticks = pdMS_TO_TICKS(REGISTRY_RETRY_DELAY_MS);
 
@@ -137,7 +135,7 @@ static void registry_task(void *pvParameters)
 
         if (!started_periodic) {
             started_periodic = true;
-            ESP_LOGI(TAG, "Starting periodic device registration (every %d s, wait ACK)", REGISTRY_PERIODIC_MS / 1000);
+            ESP_LOGI(TAG, "Starting device registration (one-shot until ACK)");
         }
 
         /* Vòng gửi — chờ ACK rồi mới gửi tiếp hoặc retry */
@@ -179,8 +177,10 @@ static void registry_task(void *pvParameters)
             }
 
             if (success) {
-                /* ACK — chờ periodic interval rồi gửi tiếp */
-                vTaskDelay(periodic_interval);
+                /* ACK — chỉ gửi 1 lần, dừng cho đến khi có notify (role change / re-register request) */
+                started_periodic = false;
+                ESP_LOGI(TAG, "Device registered with Leader, stopping until next notify");
+                break;
             } else {
                 /* NACK hoặc lỗi — gửi lại sau retry delay */
                 ESP_LOGW(TAG, "Registry NACK or error, retry in %d ms", REGISTRY_RETRY_DELAY_MS);

@@ -129,7 +129,7 @@ cbor_close_array()          // Break code (0xFF)
 | Task | Stack | Priority | Mục đích |
 |---|---|---|---|
 | `openthread` | 10240 | 5 | OpenThread stack (do ESP-IDF tạo) |
-| `registry_task` | 4096 | 5 | Gửi CBOR đến Leader; chỉ khi Child/Router; chờ ACK (20s) rồi mới gửi tiếp; retry 2s khi fail |
+| `registry_task` | 4096 | 5 | Gửi CBOR đến Leader; chỉ khi Child/Router; one-shot (dừng sau ACK); retry 2s khi fail |
 | `status_led_task` | 2048 | 2 | Cập nhật WS2812 LED |
 | `boot_btn_task` | 2048 | 2 | Poll GPIO, detect long press |
 | `network_stop_restart_task` | 4096 | 4 | Dừng 120s rồi restart Thread |
@@ -164,9 +164,9 @@ cbor_close_array()          // Break code (0xFF)
 
 **Điều kiện gửi:** Chỉ gọi `device_registry_register()` khi `role == OT_DEVICE_ROLE_CHILD || role == OT_DEVICE_ROLE_ROUTER`. Không gửi khi Detached, Disabled, hoặc Leader (Leader không đăng ký lên chính mình). `device_registry_register()` từ chối khi role là Leader (return `ESP_ERR_INVALID_STATE`).
 
-**Luồng:** (1) Nhận notification (join hoặc role change) → delay 1s → lấy role. (2) Nếu không phải Child/Router → bỏ qua gửi, chờ notify lại. (3) Gửi với callback `on_registry_response`; chờ `ulTaskNotifyTake(..., 20s)`. (4) Nếu ACK (2.01/2.04/2.05) → success, delay 5s rồi gửi tiếp. (5) Nếu NACK hoặc timeout → delay 2s rồi gửi lại. Một request trong flight tại một thời điểm — tránh NoBufs.
+**Luồng:** (1) Nhận notification (join hoặc role change) → delay 1s → lấy role. (2) Nếu không phải Child/Router → bỏ qua gửi, chờ notify lại. (3) Gửi với callback `on_registry_response`; chờ `ulTaskNotifyTake(..., 20s)`. (4) Nếu ACK (2.01/2.04/2.05) → success, **chỉ gửi 1 lần rồi dừng** cho đến khi có notify (role change hoặc sau này re-register request từ Leader). (5) Nếu NACK hoặc timeout → delay 2s rồi gửi lại. Một request trong flight tại một thời điểm — tránh NoBufs.
 
-**Tham số:** `REGISTRY_ACK_TIMEOUT_MS` 20s, `REGISTRY_PERIODIC_MS` 5s, `REGISTRY_RETRY_DELAY_MS` 2s (trong `thread_endpoint.c`).
+**Tham số:** `REGISTRY_ACK_TIMEOUT_MS` 20s, `REGISTRY_RETRY_DELAY_MS` 2s (trong `thread_endpoint.c`). Không còn gửi định kỳ sau ACK.
 
 Khi role thay đổi (child ↔ router), task được notify và gửi lại sau khi check role.
 

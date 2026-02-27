@@ -35,6 +35,14 @@ void device_registry_update_leader_rloc(void);
 bool device_registry_get_leader_rloc(otIp6Address *leader_rloc);
 
 /**
+ * Đã đăng ký thành công với Leader chưa (nhận ACK).
+ * - Boot: false.
+ * - Chỉ lên true khi đã gửi /device/register và Leader trả ACK (2.01/2.04/2.05).
+ * TODO: Sau này lắng nghe từ Leader yêu cầu gửi lại đăng ký (re-register), khi nhận thì trigger gửi lại.
+ */
+bool device_registry_is_registered(void);
+
+/**
  * Khoi tao Device Registry: start CoAP client.
  * Can goi sau khi OpenThread da start va device da join.
  * @return ESP_OK neu thanh cong, ESP_ERR_INVALID_STATE neu CoAP da start roi.

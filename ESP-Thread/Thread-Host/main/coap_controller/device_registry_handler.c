@@ -3,6 +3,7 @@
  */
 
 #include "coap_controller/device_registry_handler.h"
+#include "communicate/communicate_task.h"
 #include "esp_log.h"
 #include "esp_openthread.h"
 #include "openthread/coap.h"
@@ -12,6 +13,8 @@
 #include "freertos/task.h"
 #include <string.h>
 #include <stdlib.h>
+
+#define CMD_DATA_BACKEND_TIMEOUT_MS  2500
 
 static const char *TAG = "device_registry";
 
@@ -82,44 +85,47 @@ esp_err_t device_registry_enqueue_coap_data(const char *payload, uint16_t payloa
 }
 
 /**
- * Output CoAP data qua UART để backend nhận
+ * Forward CoAP payload lên backend qua CMD_DATA và chờ CMD_ACK.
  */
-static void output_coap_data_to_backend(const coap_data_item_t *data_item)
+static esp_err_t output_coap_data_to_backend(const coap_data_item_t *data_item)
 {
     if (!data_item) {
-        return;
+        return ESP_ERR_INVALID_ARG;
     }
-
-    ESP_LOGI(TAG, "Outputting CoAP data to backend - rloc16: 0x%04x, payload_len: %d", 
+    ESP_LOGI(TAG, "Forwarding CoAP data to backend - rloc16: 0x%04x, payload_len: %d",
              data_item->rloc16, data_item->payload_len);
-    ESP_LOGI(TAG, "Payload: %.*s", data_item->payload_len, data_item->payload);
-
-    // TODO: Gửi data qua UART để backend nhận
-    // Có thể dùng printf() nếu UART console đã setup
-    // Hoặc dùng UART driver API để gửi
+    esp_err_t err = communicate_task_send_cmd_data_and_wait_ack(
+        (const uint8_t *)data_item->payload, data_item->payload_len, CMD_DATA_BACKEND_TIMEOUT_MS);
+    if (err != ESP_OK) {
+        ESP_LOGW(TAG, "CMD_DATA backend ack failed: %s (rloc16: 0x%04x)", esp_err_to_name(err), data_item->rloc16);
+        return err;
+    }
+    return ESP_OK;
 }
 
 /**
- * Dequeue và output tất cả CoAP data trong queue, sau đó clear queue
+ * Dequeue, forward từng item qua CMD_DATA (chờ backend ACK), rồi clear queue.
  */
-void device_registry_process_and_clear_queue(void)
+esp_err_t device_registry_process_and_clear_queue(void)
 {
     if (!s_coap_data_queue) {
-        return;
+        return ESP_OK;
     }
-
-    coap_data_item_t data_item;
+    esp_err_t first_error = ESP_OK;
     int data_count = 0;
+    coap_data_item_t data_item;
 
-    // Dequeue và output tất cả data
     while (xQueueReceive(s_coap_data_queue, &data_item, 0) == pdTRUE) {
-        output_coap_data_to_backend(&data_item);
+        esp_err_t err = output_coap_data_to_backend(&data_item);
         data_count++;
+        if (err != ESP_OK && first_error == ESP_OK) {
+            first_error = err;
+        }
     }
-
     if (data_count > 0) {
         ESP_LOGI(TAG, "Processed %d CoAP data items from queue and cleared queue", data_count);
     }
+    return first_error;
 }
 
 void device_registry_handler(void *aContext, otMessage *aMessage,

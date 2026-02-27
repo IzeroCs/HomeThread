@@ -18,8 +18,8 @@ esp_err_t device_registry_handler_init(void);
 /** Enqueue CoAP data từ child device */
 esp_err_t device_registry_enqueue_coap_data(const char *payload, uint16_t payload_len, uint16_t rloc16);
 
-/** Dequeue và xử lý (output) toàn bộ CoAP data trong queue rồi clear queue */
-void device_registry_process_and_clear_queue(void);
+/** Dequeue, forward từng item qua CMD_DATA (chờ backend ACK), rồi clear queue. Trả ESP_OK nếu mọi item đều được backend ACK; ESP_ERR_TIMEOUT hoặc lỗi khác nếu có item thất bại. */
+esp_err_t device_registry_process_and_clear_queue(void);
 
 /** CoAP handler cho /device/register (giữ để tương thích; dùng chung qua device_registry_server) */
 void device_registry_handler(void *aContext, otMessage *aMessage,

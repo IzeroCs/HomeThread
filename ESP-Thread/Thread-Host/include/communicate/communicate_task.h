@@ -27,6 +27,16 @@ void communicate_task_mark_state_received(void);
  */
 void communicate_task_mark_ip_response_pending(uint8_t frame_id);
 
+/**
+ * Gửi CMD_DATA (push) lên backend và chờ CMD_ACK (cùng Frame ID) trong timeout_ms.
+ * Dùng cho forward CoAP device/register|update|ping: BR chỉ trả CoAP ACK cho child khi backend đã ACK.
+ * @param data Payload (CBOR), có thể NULL nếu len == 0.
+ * @param len Độ dài payload (tối đa COMMUNICATE_FRAME_MAX_DATA_LEN).
+ * @param timeout_ms Timeout chờ CMD_ACK (ms). Khuyến nghị 2000–3000.
+ * @return ESP_OK nếu nhận CMD_ACK đúng Frame ID trong thời gian; ESP_ERR_TIMEOUT nếu hết timeout; ESP_ERR_* khác nếu gửi lỗi.
+ */
+esp_err_t communicate_task_send_cmd_data_and_wait_ack(const uint8_t *data, size_t len, uint32_t timeout_ms);
+
 #ifdef __cplusplus
 }
 #endif

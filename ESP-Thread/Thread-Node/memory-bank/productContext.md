@@ -20,7 +20,7 @@ Border Router (Thread-Host) cần biết:
 - Các thuộc tính của từng entity
 - Trạng thái mạng của thiết bị (IP, RLOC, role)
 
-Thread-Node giải quyết bằng cách tự động gửi CBOR-encoded device model lên `/device/register` sau khi join thành công. Chỉ gửi khi role là **Child hoặc Router**; gửi xong **chờ ACK/NACK** (timeout 20s), thành công thì gửi lại sau 5s, thất bại thì retry sau 2s — tránh tích tụ request và NoBufs. Leader (Border Router) phải luôn trả response (ACK/NACK) cho mọi request (xem `docs/coap/border_router_coap_server.md`).
+Thread-Node giải quyết bằng cách tự động gửi CBOR-encoded device model lên `/device/register` sau khi join thành công. Chỉ gửi khi role là **Child hoặc Router**; gửi xong **chờ ACK/NACK** (timeout 20s). **Thành công thì chỉ gửi 1 lần rồi dừng**; chỉ gửi lại khi có notify (role change hoặc Leader yêu cầu re-register). Thất bại thì retry sau 2s — tránh tích tụ request và NoBufs. Leader (Border Router) phải luôn trả response (ACK/NACK) cho mọi request (xem `docs/coap/border_router_coap_server.md`).
 
 ### 3. Quản lý Leader role
 
@@ -45,7 +45,7 @@ main()
                       ├─ thread_coap_start()
                       ├─ thread_network_stop_register()  → /network/stop resource
                       ├─ on_joined_callback()            → App setup entities
-                      └─ device_registry_start()         → Gửi CBOR mỗi 5s
+                      └─ device_registry_start()         → Gửi CBOR một lần (one-shot sau ACK)
 ```
 
 ### Luồng callback của lập trình viên (on_joined)
@@ -75,8 +75,8 @@ void on_joined(void) {
 Thread-Node                           Border Router (Thread-Host)
     │                                         │
     │── POST /device/register (CBOR) ────────►│  Đăng ký device + entities
-    │   [chỉ khi Child/Router; chờ ACK rồi    │
-    │    mới gửi tiếp; Leader trả 2.01/NACK] │
+    │   [chỉ khi Child/Router; one-shot,     │
+    │    dừng sau ACK; Leader trả 2.01/NACK]│
     │   [device_type, sw_version, hw_version  │
     │    = number để giảm băng thông]        │
     │                                         │

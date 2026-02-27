@@ -24,9 +24,36 @@
 static const char *TAG = "device_registry";
 
 /**
+ * Gửi CoAP response cho child: 2.01/2.04/2.05 khi OK, 5.03 khi backend không ACK hoặc lỗi.
+ */
+static void send_coap_response(otInstance *instance, const otMessage *aMessage,
+                               const otMessageInfo *aMessageInfo, const char *uri_path, esp_err_t process_err)
+{
+    otMessage *response = otCoapNewMessage(instance, NULL);
+    if (response == NULL) {
+        ESP_LOGE(TAG, "otCoapNewMessage failed");
+        return;
+    }
+    otCoapCode code = OT_COAP_CODE_SERVICE_UNAVAILABLE;
+    if (process_err == ESP_OK) {
+        if (uri_path && strcmp(uri_path, DEVICE_URI_PATH_UPDATE) == 0) {
+            code = OT_COAP_CODE_CHANGED;
+        } else if (uri_path && strcmp(uri_path, DEVICE_URI_PATH_PING) == 0) {
+            code = OT_COAP_CODE_CONTENT;
+        } else {
+            code = OT_COAP_CODE_CREATED;
+        }
+    }
+    otCoapMessageInitResponse(response, aMessage, OT_COAP_TYPE_ACKNOWLEDGMENT, code);
+    otError err = otCoapSendResponse(instance, response, aMessageInfo);
+    if (err != OT_ERROR_NONE) {
+        ESP_LOGE(TAG, "otCoapSendResponse failed: %d", err);
+    }
+}
+
+/**
  * Handler chung cho cả 3 resource: register, update, ping.
- * Dùng chung logic từ device_registry_handler: đọc payload, enqueue, process & clear queue.
- * aContext = (const char*) uri_path để log phân biệt.
+ * Đọc payload, enqueue, forward qua CMD_DATA (chờ backend ACK), rồi trả CoAP ACK hoặc 5.03.
  */
 static void device_registry_coap_handler(void *aContext, otMessage *aMessage,
                                         const otMessageInfo *aMessageInfo)
@@ -41,8 +68,6 @@ static void device_registry_coap_handler(void *aContext, otMessage *aMessage,
         return;
     }
 
-    uint16_t rloc16 = aMessageInfo->mPeerAddr.mFields.m16[7];
-
     uint16_t offset = otMessageGetOffset(aMessage);
     uint16_t payload_len = otMessageGetLength(aMessage) - offset;
 
@@ -53,12 +78,13 @@ static void device_registry_coap_handler(void *aContext, otMessage *aMessage,
         }
         otMessageRead(aMessage, offset, payload, payload_len);
         payload[payload_len] = '\0';
-
+        uint16_t rloc16 = aMessageInfo->mPeerAddr.mFields.m16[7];
         ESP_LOGI(TAG, "Received CoAP data from rloc16: 0x%04x, payload_len: %d", rloc16, payload_len);
         device_registry_enqueue_coap_data(payload, payload_len, rloc16);
     }
 
-    device_registry_process_and_clear_queue();
+    esp_err_t res = device_registry_process_and_clear_queue();
+    send_coap_response(instance, aMessage, aMessageInfo, uri_path, res);
 }
 
 /**

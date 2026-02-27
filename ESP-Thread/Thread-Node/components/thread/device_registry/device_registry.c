@@ -1,6 +1,10 @@
 /*
  * Device Registry - CoAP client wrapper implementation.
  * Dung OpenThread CoAP API de gui POST request len Leader.
+ *
+ * TODO: Sau này lắng nghe từ Leader yêu cầu gửi lại đăng ký (re-register); khi nhận
+ *       request đó thì trigger gửi lại POST /device/register ngay (vd. resource
+ *       GET /device/reregister từ Leader, handler gọi notify registry task).
  */
 #include <string.h>
 #include "esp_err.h"
@@ -31,6 +35,8 @@ static device_registry_callback_fn s_callback = NULL;
 static void *s_callback_ctx = NULL;
 static otIp6Address s_leader_rloc;
 static bool s_leader_rloc_valid = false;
+/* false at boot; set true when Leader has ACKed at least one /device/register. */
+static volatile bool s_registered_with_leader = false;
 
 /* Helper: Extract RLOC16 từ IPv6 RLOC address (2 bytes cuối) */
 static uint16_t extract_rloc16_from_ip6(const otIp6Address *addr)
@@ -105,6 +111,11 @@ static void coap_response_handler(void *aContext, otMessage *aMessage, const otM
     }
 }
 
+bool device_registry_is_registered(void)
+{
+    return s_registered_with_leader;
+}
+
 /**
  * Update Leader RLOC address (gọi khi join hoặc state change)
  */
@@ -154,6 +165,8 @@ bool device_registry_get_leader_rloc(otIp6Address *leader_rloc)
 
 esp_err_t device_registry_init(void)
 {
+    s_registered_with_leader = false; /* Boot: chưa nhận ACK từ Leader */
+
     otInstance *instance = esp_openthread_get_instance();
     if (!instance) {
         ESP_LOGE(TAG, "OpenThread instance NULL");

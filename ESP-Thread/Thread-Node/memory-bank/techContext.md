@@ -88,8 +88,8 @@ CONFIG_ENTITY_MODEL_MAX_ENTITIES=32  # Số entity tối đa trên một thiết
 
 ```c
 #define REGISTRY_ACK_TIMEOUT_MS  20000   // Timeout chờ ACK từ Leader (20s)
-#define REGISTRY_PERIODIC_MS     5000    // Khoảng cách giữa hai lần gửi thành công (5s)
 #define REGISTRY_RETRY_DELAY_MS  2000    // Delay trước khi retry khi NACK/timeout (2s)
+// Chỉ gửi 1 lần đăng ký khi nhận ACK; dừng cho đến khi notify (role change hoặc re-register request).
 ```
 
 ### Device info (device_model.h)

@@ -15,7 +15,7 @@ CoAP server trên BR (port 5683) nhận đăng ký từ child devices. Resources
 | `/device/update` | POST | Cập nhật (cùng handler) |
 | `/device/ping` | GET | Ping (cùng handler) |
 
-Response: `2.01 Created` hoặc `4.00`/`5.03` khi lỗi.
+Response: `2.01 Created` (register), `2.04 Changed` (update), `2.05 Content` (ping) khi backend đã ACK; `5.03 Service Unavailable` khi backend không ACK trong timeout hoặc lỗi forward.
 
 ---
 
@@ -47,9 +47,9 @@ Response: `2.01 Created` hoặc `4.00`/`5.03` khi lỗi.
 | `5.00 Internal Server Error` | Lỗi nội bộ Leader khi xử lý |
 | `5.03 Service Unavailable` | Tạm thời không xử lý được (ví dụ queue đầy) |
 
-**Implementation:** Trong mọi CoAP resource handler, Leader phải gọi `otCoapSendResponse()` với một trong các mã trên — kể cả khi chỉ enqueue và xử lý sau, vẫn phải gửi ngay response (ví dụ `2.01 Created`) để Node biết request đã được nhận.
+**Implementation:** BR forward payload lên backend qua frame protocol (**CMD_DATA**), chờ backend gửi **CMD_ACK** (cùng Frame ID) trong timeout (vd. 2,5 s). Chỉ khi nhận CMD_ACK thì BR mới trả CoAP `2.01`/`2.04`/`2.05` cho child; nếu timeout hoặc lỗi gửi thì trả `5.03 Service Unavailable`. Handler luôn gọi `otCoapSendResponse()` với một trong các mã trên (thành công hoặc lỗi) để Node không treo đợi.
 
-**Lưu ý NoBufs / partition:** Nếu Node gửi quá nhiều CoAP confirmable mà không chờ ACK, message buffer trên Node có thể cạn (NoBufs). Theo OpenThread issue #4508, buffer exhaustion có thể dẫn tới mất MLE/keep-alive → topology thay đổi, partition → Node có thể tự trở thành Leader. Node nên chỉ gửi request tiếp theo sau khi nhận ACK/NACK hoặc timeout (đã áp dụng trong Thread-Node device register ACK flow).
+**Lưu ý NoBufs / partition:** Nếu Node gửi quá nhiều CoAP confirmable mà không chờ ACK, message buffer trên Node có thể cạn (NoBufs). Theo OpenThread issue #4508, buffer exhaustion có thể dẫn tới mất MLE/keep-alive → topology thay đổi, partition → Node có thể tự trở thành Leader. Thread-Node chỉ gửi request tiếp theo sau khi nhận ACK/NACK hoặc timeout; **sau ACK thì gửi 1 lần rồi dừng** (one-shot), chỉ gửi lại khi có notify (role change hoặc sau này lệnh re-register từ Leader).
 
 ---
 
@@ -75,19 +75,28 @@ CoAP server chạy trên BR; child gửi đến Leader ALOC → message tới Le
 ┌─────────────────────────────────────────┐
 │  Child Device (Endpoint)                │
 │  - device_registry_register()           │
-│  - CoAP POST /device/register           │
-│  - Payload: rloc16, ml_eid, parent,     │
-│             entity_model                │
+│  - CoAP POST /device/register (one-shot  │
+│    sau ACK; gửi lại khi notify)         │
+│  - Payload: CBOR, numeric keys          │
 └──────────────────┬──────────────────────┘
                    │ CoAP POST (Thread mesh)
                    ▼
 ┌─────────────────────────────────────────┐
 │  Border Router (Leader)                 │
 │  - CoAP Server (port 5683)              │
-│  - Resource: /device/register           │
-│  - Handler: parse → enqueue → process  │
-│  - Response: 2.01 Created               │
-└─────────────────────────────────────────┘
+│  - Resource: /device/register|update|  │
+│    ping                                 │
+│  - Handler: parse → enqueue → CMD_DATA  │
+│    → chờ CMD_ACK từ backend → response  │
+│  - Response: 2.01/2.04/2.05 nếu ACK;  │
+│    5.03 nếu timeout/error               │
+└──────────────────┬──────────────────────┘
+                   │ CMD_DATA (USB CDC frame)
+                   ▼
+            [Backend / Node]
+                   │ CMD_ACK (cùng Frame ID)
+                   ▼
+            BR gửi CoAP response cho child
 ```
 
 ---
@@ -215,8 +224,9 @@ entity_id=light.0 type=on_off_light name=LED
 
 | File | Mô tả |
 |------|-------|
-| `main/coap_controller/device_registry_server.c` | Init CoAP, đăng ký resource |
-| `main/coap_controller/device_registry_handler.c` | Queue, enqueue, process_and_clear |
+| `main/coap_controller/device_registry_server.c` | Init CoAP, đăng ký resource; handler gửi CoAP response theo kết quả forward |
+| `main/coap_controller/device_registry_handler.c` | Queue, enqueue, `process_and_clear_queue` forward qua `communicate_task_send_cmd_data_and_wait_ack` (CMD_DATA + chờ CMD_ACK) |
+| `main/communicate/communicate_task.c` | `communicate_task_send_cmd_data_and_wait_ack`: gửi CMD_DATA, chờ CMD_ACK (Node→ESP) trong timeout |
 | `br_custom_config.h` | Bật CoAP API |
 
 ---
@@ -229,6 +239,7 @@ entity_id=light.0 type=on_off_light name=LED
 4. **Re-registration**: Child gửi lại khi role thay đổi (Child → Router).
 5. **Response timeout**: Child retry nếu không nhận được response.
 6. **ACK/NACK bắt buộc**: Leader phải luôn trả response (ACK hoặc NACK) cho mọi request từ Node — xem mục [ACK / NACK](#ack--nack--phản-hồi-bắt-buộc-cho-mọi-message-từ-node) ở trên.
+7. **Kiểm thử end-to-end**: Backend mock gửi CMD_ACK (cùng Frame ID) khi nhận CMD_DATA → BR trả CoAP 2.01/2.04/2.05; không gửi CMD_ACK → BR timeout và trả 5.03. Thread-Node nhận ACK thì dừng, nhận 5.03 thì retry theo logic.
 
 ---
 

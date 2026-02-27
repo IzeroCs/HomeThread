@@ -5,6 +5,7 @@
 
 #include "communicate/communicate_task.h"
 #include "communicate/communicate.h"
+#include "communicate/communicate_config.h"
 #include "communicate/communicate_queue.h"
 #include "communicate/communicate_command.h"
 #include "br_config.h"
@@ -12,6 +13,7 @@
 #include "esp_system.h"
 #include "esp_timer.h"
 #include "freertos/FreeRTOS.h"
+#include "freertos/semphr.h"
 #include "freertos/task.h"
 
 #define TAG "communicate_task"
@@ -25,6 +27,12 @@
 static volatile bool s_state_received = false;
 static uint8_t s_pending_ip_frame_id = 0;         /* đang chờ backend ACK cho response CMD_IP_ADDR */
 static esp_timer_handle_t s_ip_retry_timer = NULL;
+
+/* CMD_DATA push: chờ CMD_ACK (Node→ESP) với cùng Frame ID */
+static SemaphoreHandle_t s_data_ack_sem = NULL;
+static volatile bool s_waiting_data_ack = false;
+static uint8_t s_pending_data_frame_id = 0;
+static uint8_t s_next_push_frame_id = 0;
 
 static void ip_retry_timer_cb(void *arg)
 {
@@ -42,11 +50,20 @@ static void ip_retry_timer_cb(void *arg)
 
 static void communicate_rx_cb(uint8_t frame_id, uint8_t cmd, const uint8_t *data, size_t len, void *ctx)
 {
+    (void)data;
+    (void)len;
     (void)ctx;
     if (cmd == CMD_ACK && s_pending_ip_frame_id != 0 && frame_id == s_pending_ip_frame_id) {
         s_pending_ip_frame_id = 0;
         if (s_ip_retry_timer != NULL) {
             esp_timer_stop(s_ip_retry_timer);
+        }
+        return;
+    }
+    if (cmd == CMD_ACK && s_waiting_data_ack && frame_id == s_pending_data_frame_id) {
+        s_waiting_data_ack = false;
+        if (s_data_ack_sem != NULL) {
+            xSemaphoreGive(s_data_ack_sem);
         }
         return;
     }
@@ -74,6 +91,29 @@ void communicate_task_mark_ip_response_pending(uint8_t frame_id)
     if (s_ip_retry_timer != NULL) {
         esp_timer_start_once(s_ip_retry_timer, STATE_TO_BACKEND_RETRY_MS * 1000);
     }
+}
+
+esp_err_t communicate_task_send_cmd_data_and_wait_ack(const uint8_t *data, size_t len, uint32_t timeout_ms)
+{
+    if (s_data_ack_sem == NULL) {
+        return ESP_ERR_INVALID_STATE;
+    }
+    if (len > COMMUNICATE_FRAME_MAX_DATA_LEN) {
+        return ESP_ERR_INVALID_SIZE;
+    }
+    uint8_t frame_id = s_next_push_frame_id++;
+    s_pending_data_frame_id = frame_id;
+    s_waiting_data_ack = true;
+
+    esp_err_t err = communicate_send_frame(frame_id, CMD_DATA, data, len);
+    if (err != ESP_OK) {
+        s_waiting_data_ack = false;
+        return err;
+    }
+
+    BaseType_t taken = xSemaphoreTake(s_data_ack_sem, pdMS_TO_TICKS(timeout_ms));
+    s_waiting_data_ack = false;
+    return taken == pdTRUE ? ESP_OK : ESP_ERR_TIMEOUT;
 }
 
 static void state_watchdog_task(void *pv)
@@ -105,6 +145,12 @@ esp_err_t communicate_task_start(void)
     err = communicate_init(communicate_rx_cb, NULL);
     if (err != ESP_OK) {
         return err;
+    }
+    if (s_data_ack_sem == NULL) {
+        s_data_ack_sem = xSemaphoreCreateBinary();
+        if (s_data_ack_sem == NULL) {
+            return ESP_ERR_NO_MEM;
+        }
     }
     const esp_timer_create_args_t ip_retry_args = {
         .callback = ip_retry_timer_cb,

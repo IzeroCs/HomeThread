@@ -71,8 +71,9 @@
 
 | CMD | Hướng | DATA Format | Kích thước |
 |-----|-------|-------------|------------|
-| CMD_DATA | ESP32→Node | CBOR từ child/router | Tùy số field |
+| CMD_DATA | ESP32→Node | CBOR từ child/router (vd. /device/register) | Tùy số field |
 | CMD_ACK | ESP32→Node | Data phản hồi (nếu có) | Tùy CMD |
+| CMD_ACK | Node→ESP32 | Ack của push CMD_DATA: 0 byte (OK) hoặc 1 byte status (tương lai) | 0 hoặc 1 |
 | CMD_NACK | ESP32→Node | Error code (1 byte) – xem bảng Error codes | 1 byte |
 | CMD_RESET | Node→ESP32 | Không có | 0 byte |
 | CMD_FACTORY | Node→ESP32 | `0xAA` (confirm byte) | 1 byte |
@@ -149,6 +150,20 @@
 
 - ESP32 gửi **CMD_ACK** hoặc **CMD_NACK** với **cùng Frame ID** như frame request.
 - Node dùng Frame ID để ghép response với request.
+
+---
+
+## 8.1. CMD_DATA push và ACK từ backend (Node→ESP)
+
+Khi ESP32 (BR) **push** dữ liệu lên Node (backend) bằng **CMD_DATA** (ví dụ payload CoAP từ `/device/register`), BR tự sinh **Frame ID push** (counter 0–255) cho mỗi khung CMD_DATA.
+
+- **Luồng:**
+  1. ESP32→Node: `CMD_DATA` (Frame ID = N, DATA = payload CBOR).
+  2. Node xử lý payload (lưu, forward app, …).
+  3. Node→ESP32: **CMD_ACK** với **cùng Frame ID N**, DATA có thể 0 byte (chỉ xác nhận OK). Nếu cần báo lỗi xử lý, Node có thể gửi CMD_NACK với Frame ID N và error code.
+
+- **BR chờ ACK:** BR có thể đợi CMD_ACK (cùng Frame ID) trong timeout (vd. 2–3 s). Nếu nhận CMD_ACK → coi push thành công; nếu timeout hoặc nhận CMD_NACK → coi thất bại (vd. trả CoAP 5.03 cho child device).
+- **Phân biệt:** CMD_ACK từ Node cho **pull** (STATE, IP_ADDR, tables, …) và CMD_ACK cho **push CMD_DATA** đều dùng cùng CMD 0x02; BR phân biệt theo context (frame_id đang chờ cho IP_ADDR vs frame_id đang chờ cho CMD_DATA).
 
 ---
 
