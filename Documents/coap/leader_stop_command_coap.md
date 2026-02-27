@@ -139,7 +139,7 @@ T=~150s   Border Router = Leader mới ✓
 
 ---
 
-## Implementation Location (ThreadEndPoint)
+## Implementation Location (Thread-Node)
 
 | File | Mô tả |
 |------|-------|

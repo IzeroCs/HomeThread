@@ -119,7 +119,7 @@ File này được chỉ định trong `sdkconfig.defaults` qua `CONFIG_OPENTHRE
 
 ```
 Thread-Node/
-├── CMakeLists.txt                    # Root: project "ThreadEndPoint", chip check
+├── CMakeLists.txt                    # Root: project "Thread-Node", chip check
 ├── sdkconfig.defaults                # Default Kconfig values
 ├── openthread_custom_config.h        # OpenThread overrides
 │

@@ -11,7 +11,7 @@
   "clangd.arguments": [
     "--background-index",
     "--query-driver=**",
-    "--compile-commands-dir=/home/izerocs/Documents/GitHub/HomeThread/ESP-Thread/ThreadEndPoint/examples/light_on_off/build"
+    "--compile-commands-dir=/home/izerocs/Documents/GitHub/HomeThread/ESP-Thread/Thread-Node/examples/light_on_off/build"
 ],
 "idf.port": "/dev/ttyACM2",
 "idf.flashType": "UART",
@@ -36,6 +36,6 @@
     "titleBar.inactiveForeground": "#e7e7e799"
 },
 "peacock.color": "#832561",
-"idf.espIdfPath": "/home/izerocs/esp/v5.5.2/esp-idf",
+"idf.espIdfPath": "/home/izerocs/esp/v5.5.3/esp-idf",
 "idf.toolsPath": "/home/izerocs/esp/.espressif"
 }

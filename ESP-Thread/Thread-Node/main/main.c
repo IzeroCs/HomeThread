@@ -1,5 +1,5 @@
 /*
- * ThreadEndPoint - Test entity_model component tại root project.
+ * Thread-Node - Test entity_model component tại root project.
  * 
  * TODO: Migrate to struct-based approach (see MIGRATION_TO_STRUCT_BASED.md)
  */
