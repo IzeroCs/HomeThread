@@ -13,7 +13,7 @@ import "./App.scss";
 
 function App() {
   const [config, setConfig] = useState<BrConnectionConfigFromBackend | null>(null);
-  const [page, setPage] = useState<NavPage>("commissioner");
+  const [page, setPage] = useState<NavPage>("status");
 
   const {
     connected: wsConnected,
@@ -95,7 +95,7 @@ function App() {
       <main className="app-main">
         {page === "status" && (
           <div className="app-container">
-            <Status />
+            <Status onConfigureBr={() => setPage("settings")} />
           </div>
         )}
         {page === "settings" && (

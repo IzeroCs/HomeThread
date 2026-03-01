@@ -46,63 +46,94 @@ export default function TopNav({
         ? "BR đã kết nối, đang chạy Thread"
         : "BR đã kết nối";
   return (
-    <nav className="top-nav">
+    <header className="top-nav">
       <div className="top-nav-inner">
-        <span className="top-nav-brand">Thread Dashboard</span>
-        {!logoOnly && (
-          <div className="top-nav-links">
-            <span
-              className={`top-nav-status-dot ${statusClass}`}
-              title={statusTitle}
-              aria-label={statusTitle}
-            />
-            <button
-              type="button"
-              className={`top-nav-link ${currentPage === "status" ? "active" : ""}`}
-              onClick={() => onNavigate("status")}
-            >
-              Status
-            </button>
-            <button
-              type="button"
-              className={`top-nav-link ${currentPage === "dashboard" ? "active" : ""}`}
-              onClick={() => onNavigate("dashboard")}
-              title={dashboardCount !== undefined && dashboardCount !== null ? `Dashboard (${dashboardCount} thiết bị)` : "Dashboard"}
-            >
-              Dashboard{dashboardCount !== undefined && dashboardCount !== null ? ` (${dashboardCount})` : ""}
-            </button>
-            <button
-              type="button"
-              className={`top-nav-link ${currentPage === "commissioner" ? "active" : ""}`}
-              onClick={() => onNavigate("commissioner")}
-              disabled={currentPage !== "commissioner" && !isCommissionerEnabled}
-              title={
-                isCommissionerEnabled
-                  ? "Commissioner"
-                  : currentPage === "commissioner"
-                    ? "Đang ở Commissioner (cần state leader để dùng)"
-                    : "Chỉ khả dụng khi state là leader"
-              }
-            >
-              Commissioner
-            </button>
-            <button
-              type="button"
-              className={`top-nav-link ${currentPage === "console" ? "active" : ""}`}
-              onClick={() => onNavigate("console")}
-            >
-              Console
-            </button>
-            <button
-              type="button"
-              className={`top-nav-link ${currentPage === "settings" ? "active" : ""}`}
-              onClick={() => onNavigate("settings")}
-            >
-              Settings
-            </button>
+        <div className="top-nav-brand">
+          <div className="top-nav-logo">
+            <span className="material-symbols-outlined">hub</span>
           </div>
+          <span className="top-nav-brand-text">OpenThread</span>
+        </div>
+        {!logoOnly && (
+          <>
+            <nav className="top-nav-links">
+              <span
+                className={`top-nav-status-dot ${statusClass}`}
+                title={statusTitle}
+                aria-label={statusTitle}
+              />
+              <button
+                type="button"
+                className={`top-nav-link ${currentPage === "status" ? "active" : ""}`}
+                onClick={() => onNavigate("status")}
+              >
+                Status
+              </button>
+              <button
+                type="button"
+                className={`top-nav-link ${currentPage === "dashboard" ? "active" : ""}`}
+                onClick={() => onNavigate("dashboard")}
+                title={dashboardCount !== undefined && dashboardCount !== null ? `Devices (${dashboardCount})` : "Devices"}
+              >
+                Devices{dashboardCount !== undefined && dashboardCount !== null ? ` (${dashboardCount})` : ""}
+              </button>
+              <button
+                type="button"
+                className={`top-nav-link ${currentPage === "commissioner" ? "active" : ""}`}
+                onClick={() => onNavigate("commissioner")}
+                disabled={currentPage !== "commissioner" && !isCommissionerEnabled}
+                title={
+                  isCommissionerEnabled
+                    ? "Commissioner"
+                    : currentPage === "commissioner"
+                      ? "Đang ở Commissioner (cần state leader để dùng)"
+                      : "Chỉ khả dụng khi state là leader"
+                }
+              >
+                Topology
+              </button>
+              <button
+                type="button"
+                className={`top-nav-link ${currentPage === "console" ? "active" : ""}`}
+                onClick={() => onNavigate("console")}
+              >
+                Console
+              </button>
+              <button
+                type="button"
+                className={`top-nav-link ${currentPage === "settings" ? "active" : ""}`}
+                onClick={() => onNavigate("settings")}
+              >
+                Settings
+              </button>
+            </nav>
+            <div className="top-nav-actions">
+              <button
+                type="button"
+                className="top-nav-icon-btn"
+                aria-label="Notifications"
+              >
+                <span className="material-symbols-outlined">notifications</span>
+              </button>
+              <button
+                type="button"
+                className="top-nav-icon-btn"
+                aria-label="Settings"
+                onClick={() => onNavigate("settings")}
+              >
+                <span className="material-symbols-outlined">settings</span>
+              </button>
+              <button
+                type="button"
+                className="top-nav-icon-btn"
+                aria-label="Account"
+              >
+                <span className="material-symbols-outlined">account_circle</span>
+              </button>
+            </div>
+          </>
         )}
       </div>
-    </nav>
+    </header>
   );
 }

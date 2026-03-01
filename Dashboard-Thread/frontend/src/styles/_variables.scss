@@ -1,6 +1,7 @@
-// Shared design tokens
+// Shared design tokens (dark theme per mockup)
 $primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-$primary-color: #667eea;
+$primary-color: #2563eb;
+$primary-blue: #2563eb;
 $error-color: #e74c3c;
 $text-primary: #333;
 $text-secondary: #666;
@@ -11,3 +12,14 @@ $shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
 $shadow-hover: 0 4px 12px rgba(102, 126, 234, 0.4);
 $border-radius: 12px;
 $border-radius-small: 8px;
+
+// Dark theme (mockup)
+$bg-dark: #0a0f1c;
+$card-dark: #111827;
+$brand-border: rgba(255, 255, 255, 0.05);
+$text-dark: #e2e8f0;
+$text-dark-muted: #94a3b8;
+$text-dark-subtle: #64748b;
+$connected-badge-bg: #06201b;
+$connected-badge-border: #14463a;
+$connected-badge-text: #10b981;

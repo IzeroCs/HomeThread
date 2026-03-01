@@ -22,7 +22,12 @@ Phase 2 (BR thật) đã xong: backhaul Wi‑Fi + Ethernet W5500 ưu tiên/fallb
 - Đã xóa Device Registry (CoAP server /device/register|update|ping) và CMD_DATA push/wait-ACK. BR không còn forward child→backend; chuyển hướng sang BR thật (child gửi thẳng backend qua IP). Frame protocol chỉ dùng cho quản lý BR (state, dataset, Commissioner…).
 
 ### Frame log suppression — Đã implement
-- `CMD_STATE`, `CMD_ROUTER_TABLE`, `CMD_CHILD_TABLE`, `CMD_JOINER_TABLE` và ACK tương ứng không được log (reduce noise)
+- `CMD_STATE`, `CMD_ROUTER_TABLE`, `CMD_CHILD_TABLE`, `CMD_JOINER_TABLE` và ACK tương ứng không log ở **INFO** (reduce noise); log ở **DEBUG**.
+
+### RX/TX logging — Đã bổ sung
+- **Frame RX/TX** (communicate.c): CMD noisy và ACK tương ứng log bằng `ESP_LOGD`; các CMD khác log `ESP_LOGI`. Để xem mọi frame: set log level **DEBUG** cho tag `communicate`.
+- **Transport TCP** (transport_tcp.c): Mỗi lần `recv`/`send` log `tcp rx N bytes` / `tcp tx N bytes` ở **DEBUG**. Set tag `transport_tcp` sang DEBUG để xem byte stream.
+- Cách bật: menuconfig → Log output → Set log level for component `communicate`, `transport_tcp` = Debug; hoặc runtime `esp_log_level_set("communicate", ESP_LOG_DEBUG)` và tương tự cho `transport_tcp`.
 
 ### Memory Bank — Vừa tạo
 - `.cursor/rules/thread-host-memory-bank.mdc` — entry point rule

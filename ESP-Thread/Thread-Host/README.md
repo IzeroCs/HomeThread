@@ -90,6 +90,10 @@ idf.py -p /dev/ttyUSB0 flash monitor
 idf.py -p /dev/ttyUSB0 -b 460800 flash monitor
 ```
 
+### 4. Debug: log frame RX/TX
+
+Mặc định BR chỉ log frame RX/TX cho các lệnh không polling (STATE, bảng được ẩn ở INFO). Để xem mọi frame và byte stream TCP: set log level **DEBUG** cho component `communicate` và `transport_tcp` (menuconfig → Component config → Log output; hoặc xem [Documents/architecture/real_br_integration.md](../../Documents/architecture/real_br_integration.md) mục 5).
+
 ## Cấu trúc project
 
 ```

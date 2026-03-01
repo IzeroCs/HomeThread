@@ -68,7 +68,15 @@
 
 ---
 
-## 5. Tài liệu liên quan
+## 5. Debug: RX/TX logging (BR)
+
+- Ở level log **INFO** (mặc định), BR không in frame RX/TX cho CMD_STATE và bảng (ROUTER_TABLE, CHILD_TABLE, JOINER_TABLE) để giảm noise.
+- Để xem **mọi frame nhận/gửi** và **byte stream TCP**: set log level **DEBUG** cho component/tag `communicate` và `transport_tcp` (menuconfig: Component config → Log output → Set log level; hoặc runtime `esp_log_level_set("communicate", ESP_LOG_DEBUG)` và tương tự cho `"transport_tcp"`).
+- Khi bật DEBUG: log `frame RX: id=... cmd=... len=...`, `frame TX: ...`, `tcp rx N bytes`, `tcp tx N bytes`.
+
+---
+
+## 6. Tài liệu liên quan
 
 | Tài liệu | Nội dung |
 |----------|----------|

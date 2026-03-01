@@ -4,7 +4,7 @@
   min-height: 100vh;
   display: flex;
   flex-direction: column;
-  background: $primary-gradient;
+  background: $bg-dark;
 
   &--waiting {
     justify-content: center;
@@ -15,19 +15,25 @@
 .app-main {
   flex: 1;
   display: flex;
-  align-items: flex-start;
-  justify-content: center;
-  padding: 20px;
+  flex-direction: column;
+  padding: 24px 24px 40px;
+}
+
+@media (min-width: 1024px) {
+  .app-main {
+    padding-left: 10rem;
+    padding-right: 10rem;
+  }
 }
 
 .app-container {
   width: 100%;
-  max-width: 900px;
+  max-width: 100%;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: center;
-  min-height: 60vh;
-  padding: 20px 0;
+  min-height: 0;
+  padding: 0;
 
   .app-layout--waiting & {
     min-height: auto;
@@ -35,7 +41,7 @@
 }
 
 .loading {
-  color: white;
+  color: $text-dark;
   font-size: 18px;
 }
 
@@ -51,7 +57,7 @@
   width: 12px;
   height: 12px;
   border-radius: 50%;
-  background: white;
+  background: $primary-blue;
   animation: waiting-pulse 1.2s ease-in-out infinite;
 }
 
@@ -71,10 +77,11 @@
   margin: 0;
   font-size: 18px;
   font-weight: 600;
+  color: $text-dark;
 }
 
 .waiting-hint {
   margin: 0;
   font-size: 14px;
-  opacity: 0.9;
+  color: $text-dark-muted;
 }

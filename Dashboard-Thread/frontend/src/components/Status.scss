@@ -1,157 +1,598 @@
 @use "../styles/variables" as *;
 
 .status-page {
-  background: white;
-  border-radius: $border-radius;
-  padding: 32px;
-  box-shadow: $shadow;
-  max-width: 800px;
   width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+}
 
-  h1 {
-    margin: 0 0 24px 0;
-    color: $text-primary;
-    font-size: 32px;
-    font-weight: 600;
-  }
+.status-page-title {
+  margin: 0 0 4px 0;
+  font-size: 30px;
+  font-weight: 700;
+  color: $text-dark;
+  letter-spacing: -0.025em;
+}
+
+.status-page-subtitle {
+  margin: 0 0 32px 0;
+  font-size: 14px;
+  color: $text-dark-muted;
 }
 
 .status-section {
-  margin-bottom: 28px;
+  margin-bottom: 24px;
 
   &:last-child {
     margin-bottom: 0;
   }
-
-  h2 {
-    margin: 0 0 12px 0;
-    color: $text-primary;
-    font-size: 18px;
-    font-weight: 600;
-  }
 }
 
-.status-card {
-  background: $bg-light;
-  border-radius: $border-radius-small;
-  padding: 20px;
-}
-
-.status-row {
+// BR Connection card (connected: large icon + content)
+.status-card-br {
   display: flex;
-  align-items: flex-start;
-  gap: 12px;
-  margin-bottom: 10px;
+  flex-direction: column;
+  background: $card-dark;
+  border: 1px solid $brand-border;
+  border-radius: $border-radius;
+  overflow: hidden;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+}
 
-  &:last-child {
-    margin-bottom: 0;
-  }
-
-  &.status-row-block {
-    flex-direction: column;
+@media (min-width: 640px) {
+  .status-card-br {
+    flex-direction: row;
+    align-items: stretch;
   }
 }
 
-.status-label {
+.status-card-br-icon {
   flex-shrink: 0;
-  font-weight: 500;
-  color: $text-secondary;
-  font-size: 14px;
-  min-width: 120px;
+  width: 100%;
+  min-height: 160px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(30, 41, 59, 0.5);
+  position: relative;
+  overflow: hidden;
+
+  &::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, rgba(37, 99, 235, 0.2) 0%, transparent 60%);
+    pointer-events: none;
+  }
+
+  .material-symbols-outlined {
+    font-size: 60px;
+    color: rgba(37, 99, 235, 0.4);
+    position: relative;
+    z-index: 1;
+  }
 }
 
-.status-value {
-  color: $text-primary;
-  font-size: 14px;
-  word-break: break-all;
+@media (min-width: 640px) {
+  .status-card-br-icon {
+    width: 33.333%;
+    max-width: 280px;
+    min-height: auto;
+  }
+}
 
-  &.status-value-block {
-    white-space: pre-wrap;
+// BR card when disconnected: compact row (icon 48px + label + DISCONNECTED + button)
+.status-card-br--disconnected {
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  padding: 24px;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.status-card-br-disconnected-left {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.status-card-br-icon-small {
+  flex-shrink: 0;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: rgba(239, 68, 68, 0.1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #ef4444;
+
+  .material-symbols-outlined {
+    font-size: 30px;
+  }
+}
+
+.status-card-br-disconnected-text {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.status-card-br-disconnected-label {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 600;
+  color: $text-dark-muted;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.status-card-br-disconnected-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.status-card-br-disconnected-status {
+  margin: 0;
+  font-size: 24px;
+  font-weight: 700;
+  color: $text-dark;
+}
+
+.status-card-br--disconnected .status-btn-refresh {
+  margin: 0;
+  width: 100%;
+}
+
+@media (min-width: 768px) {
+  .status-card-br--disconnected .status-btn-refresh {
+    width: auto;
+  }
+}
+
+.status-card-br-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 16px;
+  padding: 24px;
+}
+
+.status-card-br-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.status-card-br-title {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 700;
+  color: $text-dark;
+}
+
+.status-card-br-fields {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 16px;
+}
+
+@media (min-width: 1024px) {
+  .status-card-br-fields {
+    grid-template-columns: 1fr 1fr;
   }
 }
 
 .status-badge {
-  padding: 4px 12px;
-  border-radius: 6px;
-  font-size: 12px;
-  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  border-radius: 9999px;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  width: fit-content;
 
   &.connected {
-    background: #d4edda;
-    color: #155724;
+    background: $connected-badge-bg;
+    border: 1px solid $connected-badge-border;
+    color: $connected-badge-text;
   }
 
   &.disconnected {
-    background: #f8d7da;
-    color: #721c24;
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid $brand-border;
+    color: $text-dark-muted;
+  }
+}
+
+.status-badge-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: $connected-badge-text;
+  flex-shrink: 0;
+  animation: status-badge-pulse 1.5s ease-in-out infinite;
+
+  &--red {
+    background: #ef4444;
+  }
+}
+
+@keyframes status-badge-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+.status-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+
+  &.status-field-with-action {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+
+    .status-field-value {
+      flex: 1;
+      min-width: 0;
+    }
+  }
+}
+
+.status-field-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: $text-dark-subtle;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.status-field-value {
+  font-size: 14px;
+  color: $text-dark;
+  word-break: break-all;
+
+  &--accent {
+    color: #93c5fd; // blue-300 for host/network name/IP
+  }
+
+  &--mono-small {
+    font-size: 10px;
+    line-height: 1.4;
+    color: $text-dark-muted;
+  }
+}
+
+.status-channel-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.status-channel-badge {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  padding: 2px 8px;
+  border-radius: 4px;
+  background: rgba(37, 99, 235, 0.15);
+  color: #93c5fd;
+  border: 1px solid rgba(37, 99, 235, 0.25);
+}
+
+.status-field-toggle {
+  padding: 4px;
+  border: none;
+  background: transparent;
+  color: $text-dark-muted;
+  cursor: pointer;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  .material-symbols-outlined {
+    font-size: 20px;
+  }
+
+  &:hover {
+    color: $text-dark;
+    background: rgba(255, 255, 255, 0.06);
+  }
+}
+
+.status-btn-refresh {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 18px;
+  margin-top: 4px;
+  border: none;
+  background: $primary-blue;
+  color: white;
+  font-size: 14px;
+  font-weight: 700;
+  border-radius: 8px;
+  cursor: pointer;
+  width: fit-content;
+  box-shadow: 0 4px 14px rgba(37, 99, 235, 0.35);
+  transition: background 0.2s, filter 0.2s;
+
+  .material-symbols-outlined {
+    font-size: 18px;
+  }
+
+  &:hover {
+    background: #3b82f6;
+    filter: brightness(1.05);
+  }
+}
+
+// OpenThread Network section
+.status-section-ot-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.status-section-ot-title {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 700;
+  color: $text-dark;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+
+  .material-symbols-outlined {
+    font-size: 22px;
+    color: $primary-blue;
+  }
+}
+
+.status-section-ot-snapshot {
+  font-size: 12px;
+  font-weight: 500;
+  color: $text-dark-muted;
+  letter-spacing: 0.02em;
+}
+
+.status-card-ot {
+  background: $card-dark;
+  border: 1px solid $brand-border;
+  border-radius: $border-radius;
+  overflow: hidden;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+  position: relative;
+}
+
+// Disconnected: ghost grid + overlay (match mockup)
+.status-ot-ghost {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 16px;
+  padding: 24px;
+  opacity: 0.4;
+  filter: blur(1px);
+  pointer-events: none;
+  user-select: none;
+}
+
+@media (min-width: 768px) {
+  .status-ot-ghost {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (min-width: 1024px) {
+  .status-ot-ghost {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+.status-ot-ghost-item {
+  min-height: 100px;
+  padding: 20px;
+  border-radius: 12px;
+  border: 1px solid $brand-border;
+  background: $card-dark;
+
+  &::before {
+    content: "";
+    display: block;
+    height: 12px;
+    width: 80px;
+    background: rgba(30, 41, 59, 0.9);
+    border-radius: 4px;
+    margin-bottom: 12px;
+  }
+
+  &::after {
+    content: "";
+    display: block;
+    height: 24px;
+    width: 120px;
+    background: rgba(51, 65, 85, 0.5);
+    border-radius: 4px;
+  }
+
+  &--wide::after {
+    width: 100%;
+  }
+}
+
+@media (min-width: 768px) {
+  .status-ot-ghost-item--wide {
+    grid-column: span 2;
+  }
+}
+
+.status-ot-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+  padding: 24px;
+}
+
+.status-ot-overlay-card {
+  background: rgba(17, 24, 39, 0.9);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 16px;
+  padding: 32px;
+  max-width: 28rem;
+  text-align: center;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+}
+
+.status-ot-overlay-icon {
+  width: 64px;
+  height: 64px;
+  margin: 0 auto 16px;
+  border-radius: 50%;
+  background: rgba(37, 99, 235, 0.12);
+  color: $primary-blue;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  .material-symbols-outlined {
+    font-size: 40px;
+  }
+}
+
+.status-ot-overlay-title {
+  margin: 0 0 8px 0;
+  font-size: 20px;
+  font-weight: 700;
+  color: $text-dark;
+}
+
+.status-ot-overlay-text {
+  margin: 0 0 24px 0;
+  font-size: 14px;
+  line-height: 1.5;
+  color: $text-dark-muted;
+}
+
+.status-ot-overlay-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  padding: 10px 20px;
+  border: 1px solid rgba(37, 99, 235, 0.25);
+  background: rgba(37, 99, 235, 0.1);
+  color: $primary-blue;
+  font-size: 14px;
+  font-weight: 600;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.2s, border-color 0.2s;
+
+  .material-symbols-outlined {
+    font-size: 18px;
+  }
+
+  &:hover {
+    background: rgba(37, 99, 235, 0.18);
+    border-color: rgba(37, 99, 235, 0.35);
+  }
+}
+
+// Grid 3×4 (12 cells) so each row has equal height across columns
+.status-ot-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  grid-auto-rows: minmax(100px, auto);
+  border-top: 1px solid $brand-border;
+
+  > .status-field {
+    min-height: 100px;
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 8px;
+    border-top: 1px solid $brand-border;
+
+    &:nth-child(-n+1) {
+      border-top: none;
+    }
+  }
+
+  > .status-field:nth-child(n+2) {
+    border-top: 1px solid $brand-border;
+  }
+}
+
+@media (min-width: 768px) {
+  .status-ot-grid {
+    grid-template-columns: repeat(2, 1fr);
+    grid-template-rows: repeat(4, minmax(100px, 1fr));
+    grid-auto-rows: unset;
+    border-top: none;
+
+    > .status-field {
+      border-top: 1px solid $brand-border;
+      border-left: 1px solid $brand-border;
+
+      &:nth-child(-n+2) {
+        border-top: none;
+      }
+      &:nth-child(2n+1) {
+        border-left: none;
+      }
+    }
+  }
+}
+
+@media (min-width: 1024px) {
+  .status-ot-grid {
+    grid-template-columns: repeat(3, 1fr);
+    grid-template-rows: repeat(4, minmax(100px, 1fr));
+
+    > .status-field {
+      &:nth-child(-n+3) {
+        border-top: none;
+      }
+      &:nth-child(3n+1) {
+        border-left: none;
+      }
+      &:not(:nth-child(3n+1)) {
+        border-left: 1px solid $brand-border;
+      }
+    }
   }
 }
 
 .status-error {
   margin: 0;
-  color: #721c24;
+  color: #f87171;
   font-size: 14px;
 }
 
 .status-muted {
   margin: 0;
-  color: $text-muted;
+  color: $text-dark-muted;
   font-size: 14px;
-}
-
-.status-ipaddr-block {
-  margin-top: 10px;
-
-  .status-label {
-    display: block;
-    margin-bottom: 6px;
-  }
-}
-
-.status-ipaddr-lines {
-  margin-left: 120px;
-  padding: 12px;
-  background: white;
-  border: 1px solid $border-color;
-  border-radius: $border-radius-small;
-  font-size: 13px;
-}
-
-.status-ipaddr-row {
-  display: flex;
-  align-items: baseline;
-  gap: 10px;
-  padding: 4px 0;
-
-  &:not(:last-child) {
-    border-bottom: 1px solid rgba(0, 0, 0, 0.06);
-  }
-}
-
-.status-ipaddr-tag {
-  flex-shrink: 0;
-  font-size: 11px;
-  font-weight: 600;
-  color: $text-muted;
-  min-width: 100px;
-}
-
-.status-ipaddr-value {
-  font-family: ui-monospace, monospace;
-  font-size: 12px;
-  word-break: break-all;
-  color: $text-primary;
-}
-
-.status-card-dataset {
-  margin-top: 16px;
-
-  .status-ipaddr-lines {
-    max-height: 280px;
-    overflow-y: auto;
-  }
-}
-
-.status-ipaddr-lines-empty {
-  color: $text-muted;
 }

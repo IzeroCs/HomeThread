@@ -70,7 +70,7 @@ TCP socket bytes
 Frame format: `[0xAA][FrameID][CMD][LEN_H][LEN_L][DATA×LEN][CRC8][0x55]`
 CRC8/MAXIM: poly=0x31, init=0x00, input=`[FrameID, CMD, LEN_H, LEN_L, DATA...]`
 
-**Log suppression** (high-frequency polls): `CMD_STATE`, `CMD_ROUTER_TABLE`, `CMD_CHILD_TABLE`, `CMD_JOINER_TABLE` và ACK tương ứng không được log.
+**Logging:** CMD noisy (STATE, *_TABLE) và ACK tương ứng: **INFO** không log; **DEBUG** log đầy đủ `frame RX`/`frame TX`. Transport: `transport_tcp` log `tcp rx N bytes` / `tcp tx N bytes` ở DEBUG. Bật DEBUG cho tag `communicate` và `transport_tcp` khi cần debug kênh frame.
 
 ## OpenThread Lock Pattern
 

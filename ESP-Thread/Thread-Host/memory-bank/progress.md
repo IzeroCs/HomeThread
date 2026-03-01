@@ -32,7 +32,7 @@ _(Ghi phiên bản theo Semantic Versioning MAJOR.MINOR.PATCH, không dùng ti�
 - [x] Transport TCP only (BR listen port; dashboard kết nối BR_IP:port)
 - [x] FreeRTOS queue (depth=16, timeout 500ms, warn >2s)
 - [x] State watchdog (5 miss × 15s → esp_restart)
-- [x] Log suppression cho noisy CMDs (STATE, *_TABLE và ACK của chúng)
+- [x] Log suppression cho noisy CMDs (STATE, *_TABLE và ACK): INFO không in; DEBUG in đầy đủ frame RX/TX + tcp rx/tx bytes
 
 ### CMD Handlers (tất cả đã implement)
 - [x] CMD_STATE (0x12) — heartbeat + role

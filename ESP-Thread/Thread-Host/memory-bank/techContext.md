@@ -55,6 +55,10 @@
 - **Ethernet W5500 (SPI):** `backhaul/eth_w5500.c` — ưu tiên khi bật; timeout thì fallback Wi‑Fi. ESP32-S3 không có EMAC (không dùng LAN8720).
 - **Kênh BR↔dashboard:** Chỉ **TCP** (frame protocol trên socket); không USB/UART.
 
+### Logging (frame RX/TX)
+- Mặc định **INFO**: chỉ in frame RX/TX cho CMD không noisy (GET_DATASET, SET_*, COMMISSIONER_JOINER, …); CMD_STATE và *_TABLE không in.
+- Để xem **mọi frame RX/TX** và **byte stream TCP** (tcp rx/tx N bytes): set log level **DEBUG** cho tag `communicate` và `transport_tcp` (menuconfig hoặc `esp_log_level_set`).
+
 ## Cấu hình quan trọng (sdkconfig / sdkconfig.defaults)
 
 - `CONFIG_OPENTHREAD_ENABLED=y`
