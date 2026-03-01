@@ -50,9 +50,10 @@
 - `esp_get_free_heap_size/esp_get_minimum_free_heap_size` — heap monitor
 - `esp_log_level_set` — runtime log level
 
-### USB CDC Transport
-- `usb_serial_jtag_write_bytes` — TX
-- `usb_serial_jtag_read_bytes` — RX (trong `usb_rx` task)
+### Backhaul
+- **Wi‑Fi STA:** `backhaul/wifi_sta.c` — kết nối AP (Kconfig SSID/pass), DHCP, `wifi_sta_get_netif()` cho backbone.
+- **Ethernet W5500 (SPI):** `backhaul/eth_w5500.c` — ưu tiên khi bật; timeout thì fallback Wi‑Fi. ESP32-S3 không có EMAC (không dùng LAN8720).
+- **Kênh BR↔dashboard:** Chỉ **TCP** (frame protocol trên socket); không USB/UART.
 
 ## Cấu hình quan trọng (sdkconfig / sdkconfig.defaults)
 
@@ -80,22 +81,24 @@ web_storage| data | 0x82   | 0x420000| 0x32000
 ```
 Thread-Host/
 ├── main/
-│   ├── br_main.c                    ← app_main, stack_monitor_task
+│   ├── br_main.c                    ← app_main, backhaul chọn backbone, stack_monitor_task
+│   ├── backhaul/
+│   │   ├── wifi_sta.c               ← Wi‑Fi STA, DHCP, wifi_sta_get_netif()
+│   │   └── eth_w5500.c              ← Ethernet W5500 (SPI), ưu tiên, fallback Wi‑Fi
 │   ├── communicate/
 │   │   ├── communicate.c            ← frame parser/builder, log suppression
 │   │   ├── communicate_command.c    ← tất cả CMD handlers
 │   │   ├── communicate_queue.c      ← FreeRTOS queue + dispatch
 │   │   ├── communicate_task.c       ← state watchdog + IP retry
-│   │   └── transport_usb.c          ← USB CDC transport
+│   │   └── transport_tcp.c          ← TCP transport (BR listen, dashboard qua IP)
 │   ├── coap_controller/
-│   │   ├── leader_control_client.c  ← CoAP GET /network/stop
-│   │   ├── device_registry_server.c ← CoAP server resources
-│   │   └── device_registry_handler.c← queue + process payload
+│   │   └── leader_control_client.c  ← CoAP GET /network/stop
 │   └── hardware/
 │       ├── led_status.c             ← WS2812 RMT
 │       └── boot_btn.c               ← GPIO0 poll
 ├── include/
 │   ├── br_config.h                  ← TASK_NAME_*, TASK_STACK_* (centralized)
+│   ├── backhaul/wifi_sta.h, eth_w5500.h
 │   └── communicate/communicate.h   ← CMD defines, frame API
 ├── memory-bank/                     ← Memory Bank files
 ├── .cursor/rules/                   ← Cursor rules

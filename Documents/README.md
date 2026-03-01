@@ -8,8 +8,11 @@ Tài liệu kỹ thuật chung cho toàn bộ project HomeThread (bao gồm **Da
 
 ```
 Documents/
-├── protocol/                    # Giao thức giao tiếp (USB CDC Frame)
-│   ├── usb_cdc_frame_structure.md   # Cấu trúc frame, bảng CMD, CRC8, error codes
+├── architecture/                # Kiến trúc BR thật (Thread-Node & Dashboard tích hợp)
+│   └── real_br_integration.md      # BR thật: Dashboard↔BR qua TCP; Child↔Backend trực tiếp
+│
+├── protocol/                    # Giao thức frame (BR ↔ Dashboard)
+│   ├── usb_cdc_frame_structure.md   # Cấu trúc frame, bảng CMD, CRC8 (transport: TCP)
 │   └── table_data_format.md         # Binary format Router/Child/Joiner Table
 │
 ├── iot-entity-model/            # IoT Entity Model
@@ -29,11 +32,17 @@ Documents/
 
 ## Tài liệu theo chủ đề
 
-### Giao thức USB CDC Frame
+### Kiến trúc BR thật (Phase 2)
 
 | Tài liệu | Mô tả |
 |----------|-------|
-| [protocol/usb_cdc_frame_structure.md](protocol/usb_cdc_frame_structure.md) | Cấu trúc khung SOF/Frame ID/CMD/LEN/DATA/CRC8/EOF; bảng CMD; error codes; ví dụ |
+| [architecture/real_br_integration.md](architecture/real_br_integration.md) | Hướng dẫn tích hợp: Dashboard kết nối BR qua TCP (frame); Thread-Node gửi register/update/ping thẳng Backend |
+
+### Giao thức Frame (BR ↔ Dashboard)
+
+| Tài liệu | Mô tả |
+|----------|-------|
+| [protocol/usb_cdc_frame_structure.md](protocol/usb_cdc_frame_structure.md) | Cấu trúc khung SOF/Frame ID/CMD/LEN/DATA/CRC8/EOF; transport TCP; bảng CMD; error codes |
 | [protocol/table_data_format.md](protocol/table_data_format.md) | Binary format cho Router Table (15B/entry), Child Table (17B/entry), Joiner Table (variable) |
 
 ### IoT Entity Model
@@ -47,7 +56,7 @@ Documents/
 
 | Tài liệu | Mô tả |
 |----------|-------|
-| [coap/border_router_coap_server.md](coap/border_router_coap_server.md) | CoAP server trên BR: device registry, resources /device/register; **ACK/NACK bắt buộc** cho mọi message Node → Leader |
+| [coap/border_router_coap_server.md](coap/border_router_coap_server.md) | Device registry (legacy trên BR; **hiện Backend** nhận register từ Child). Payload format, ACK/NACK. |
 | [coap/leader_stop_command_coap.md](coap/leader_stop_command_coap.md) | Leader Control: GET /network, response copy token, gửi response trước khi stop |
 | [coap/coap_client_snippet.md](coap/coap_client_snippet.md) | Snippet CoAP client thuần: NON-CONFIRMABLE GET /ping đến Leader RLOC |
 
@@ -55,4 +64,4 @@ Documents/
 
 | Tài liệu | Mô tả |
 |----------|-------|
-| [dashboard/migration_to_frame_protocol.md](dashboard/migration_to_frame_protocol.md) | Migration từ CLI sang Frame Protocol: tiến độ, kiến trúc, các bước còn lại |
+| [dashboard/migration_to_frame_protocol.md](dashboard/migration_to_frame_protocol.md) | Migration từ CLI sang Frame Protocol; **kết nối TCP tới BR** (BR_IP:port); CMD_DATA bỏ (child→backend) |

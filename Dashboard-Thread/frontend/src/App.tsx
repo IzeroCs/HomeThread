@@ -1,8 +1,8 @@
 import { useState, useEffect } from "react";
-import type { SerialConfigFromBackend } from "./types/websocket";
+import type { BrConnectionConfigFromBackend } from "./types/websocket";
 import { useWebSocketContext } from "./hooks/useWebSocketContext";
 import Settings from "./components/Settings";
-import SerialConfigForm from "./components/Settings/SerialConfigForm";
+import BrConnectionForm from "./components/Settings/BrConnectionForm";
 import Status from "./components/Status";
 import Dashboard from "./components/Dashboard";
 import Commissioner from "./components/Commissioner";
@@ -12,7 +12,7 @@ import ToastContainer from "./components/common/ToastContainer";
 import "./App.scss";
 
 function App() {
-  const [config, setConfig] = useState<SerialConfigFromBackend | null>(null);
+  const [config, setConfig] = useState<BrConnectionConfigFromBackend | null>(null);
   const [page, setPage] = useState<NavPage>("commissioner");
 
   const {
@@ -20,7 +20,7 @@ function App() {
     serialStatus,
     config: backendConfig,
     saveConfig: wsSaveConfig,
-    testSerialConnect,
+    testBrConnect,
     threadState,
     threadRunOnConnect,
     routerTable,
@@ -37,12 +37,14 @@ function App() {
   // Thread state do backend poll (interval 4s) và broadcast ot:threadState; frontend chỉ lắng nghe, không gọi lệnh.
 
   const handleConfigSave = (newConfig: {
-    serialPort: string;
-    baudRate: number;
+    brHost: string;
+    brPort: number;
+    useMdns?: boolean;
   }) => {
     wsSaveConfig({
-      serialPort: newConfig.serialPort,
-      baudRate: newConfig.baudRate,
+      brHost: newConfig.brHost,
+      brPort: newConfig.brPort,
+      useMdns: newConfig.useMdns,
     });
     setPage("dashboard");
   };
@@ -61,17 +63,17 @@ function App() {
     );
   }
 
-  // Chưa cấu hình serial → TopNav chỉ logo + form cấu hình
+  // Chưa cấu hình BR → TopNav chỉ logo + form cấu hình
   if (!config) {
     return (
       <div className="app-layout">
         <TopNav logoOnly />
         <main className="app-main">
           <div className="app-container">
-            <SerialConfigForm
+            <BrConnectionForm
               initialConfig={null}
               onSave={handleConfigSave}
-              onTestConnect={testSerialConnect}
+              onTestConnect={testBrConnect}
             />
           </div>
         </main>
@@ -99,9 +101,9 @@ function App() {
         {page === "settings" && (
           <div className="app-container">
             <Settings
-              serialConfig={config ?? null}
-              onSaveSerialConfig={handleConfigSave}
-              onTestConnect={testSerialConnect}
+              brConfig={config ?? null}
+              onSaveBrConfig={handleConfigSave}
+              onTestBrConnect={testBrConnect}
             />
           </div>
         )}

@@ -1,8 +1,8 @@
-# USB CDC Frame Structure
+# Frame Structure (BR ↔ Dashboard)
 
-> Tài liệu chung — dùng cho cả **ESP-Thread** (firmware) và **Dashboard-Thread** (backend/frontend).
+> Tài liệu chung — dùng cho **Thread-Host** (BR firmware) và **Dashboard-Thread** (backend/frontend).
 
-**Transport:** Frame chạy trên **USB CDC** (transport_usb, USB Serial/JTAG). **Transport UART** sẽ phát triển tiếp; cấu hình trong `include/communicate/communicate_config.h` (`COMMUNICATE_FRAME_PORT_IS_UART`).
+**Transport:** Frame chạy trên **TCP**. BR listen một port (mặc định 5000); Dashboard kết nối tới **BR_IP:port** và gửi/nhận byte stream (cùng cấu trúc khung bên dưới). Không dùng USB/serial. Xem [architecture/real_br_integration.md](../architecture/real_br_integration.md) cho kiến trúc BR thật và hướng dẫn tích hợp.
 
 ---
 

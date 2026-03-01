@@ -1,6 +1,6 @@
 # Dashboard-Thread
 
-Backend + Frontend điều khiển **OpenThread qua UART** (ESP32-H2 ot-br), dùng **frame protocol USB CDC** — không còn CLI. Một project chung cho cả API và giao diện web.
+Backend + Frontend điều khiển **OpenThread Border Router** qua **TCP** (frame protocol). Kết nối tới BR tại BR_IP:port (mặc định Thread-Host.local:5000, mDNS). Một project chung cho cả API và giao diện web.
 
 ## Stack
 
@@ -17,7 +17,7 @@ Backend + Frontend điều khiển **OpenThread qua UART** (ESP32-H2 ot-br), dù
 - **Commissioner**: Thêm joiner (EUI64, PSKd, timeout 30–500s); danh sách joiner với cột Expiration đếm ngược. Giao tiếp qua CMD_COMMISSIONER_JOINER (frame protocol).
 - **Console**: Xem dữ liệu serial realtime (hex).
 - **Settings**:
-  - *Serial*: Cấu hình port, baud rate, test connect trước khi lưu.
+  - *BR Connection*: Cấu hình host (vd. Thread-Host.local), port (5000), test connect trước khi lưu.
   - *OpenThread*: PAN ID, Channel, Network Name, Extended PAN ID, Network Key; toggle khởi động/dừng Thread; nút "Lấy lại" fetch config từ thiết bị.
   - *System*: Nút Reset và Factory Reset với modal xác nhận + đếm ngược 5 giây.
 
@@ -28,17 +28,17 @@ Component dùng chung: **Modal**, **ConfirmModal**, **TopNav**, **ToastContainer
 - 🟣 **Tím** — router
 - 🔵 **Xanh dương** — child
 - 🟠 **Cam** — disabled/detached hoặc chưa bật "tự chạy Thread"
-- ⚪ **Xám** — chưa kết nối serial
+- ⚪ **Xám** — chưa kết nối BR
 
 ## Cấu trúc project
 
 ```
 Dashboard-Thread/
 ├── package.json          # Root: workspaces, scripts chạy cả BE + FE
-├── backend/              # Node.js + TypeScript (WebSocket, Serial frame protocol)
+├── backend/              # Node.js + TypeScript (WebSocket, TCP frame protocol)
 │   ├── src/
 │   │   ├── server/       # WebSocketServer (chỉ emit, lấy data từ CommunicateManager)
-│   │   ├── communicate/ # SerialPort, SerialConfig, frame (parser/builder/crc8), CommunicateManager, OtConfigManager, PollingManager
+│   │   ├── communicate/ # TransportTcp, BrConnectionConfigService, frame (parser/builder/crc8), CommunicateManager, OtConfigManager, PollingManager
 │   │   ├── database/     # SQLite (Database, migrations)
 │   │   ├── services/     # AppSettings
 │   │   └── utils/        # logger
@@ -87,14 +87,14 @@ Dashboard-Thread/
 
 ## Cấu hình
 
-- **Backend**: `backend/.env.example` — cổng serial, baud rate. Cấu hình serial lưu SQLite qua Settings.
+- **Backend**: `backend/.env.example` — PORT. Cấu hình BR (host, port) lưu SQLite qua Settings.
 - **Frontend**: Proxy trong `vite.config.ts` (`/api`, `/socket.io` → backend). Có thể set `VITE_WS_URL` nếu cần URL backend khác.
 
-## Backend – Serial & frame protocol
+## Backend – TCP & frame protocol
 
-- **Giao tiếp:** Frame protocol (USB CDC) qua serial — không còn CLI. Cấu trúc frame: SOF, Frame ID, CMD, LEN, DATA, CRC8, EOF (xem `Documents/protocol/usb_cdc_frame_structure.md` ở thư mục gốc HomeThread).
-- **Kiến trúc:** `CommunicateManager` điều phối serial + frame; `CommandManager` gửi/nhận frame, quản lý pending theo Frame ID + timeout; `OtConfigManager` lưu config; `PollingManager` poll table định kỳ. `WebSocketServer` chỉ relay event — không chứa logic serial/frame.
-- **Khi mở serial:** Pull state định kỳ (CMD_STATE, 5s). Dataset active + IP chỉ fetch khi state thay đổi hoặc lần đầu. Thread version (CMD_THREAD_VERSION) fetch một lần sau lần đầu nhận ACK state. Nếu `thread_run_on_connect` bật và state = disabled → tự gửi CMD_THREAD_START.
+- **Giao tiếp:** Frame protocol qua **TCP** tới BR (host:port, mặc định Thread-Host.local:5000). Cấu trúc frame: SOF, Frame ID, CMD, LEN, DATA, CRC8, EOF (xem `Documents/protocol/usb_cdc_frame_structure.md` ở thư mục gốc HomeThread).
+- **Kiến trúc:** `CommunicateManager` điều phối TransportTcp + frame; `CommandManager` gửi/nhận frame, quản lý pending theo Frame ID + timeout; `BrConnectionConfigService` lưu cấu hình BR; `PollingManager` poll table định kỳ. `WebSocketServer` chỉ relay event.
+- **Khi kết nối BR:** Pull state định kỳ (CMD_STATE, 5s). Dataset active + IP chỉ fetch khi state thay đổi hoặc lần đầu. Thread version (CMD_THREAD_VERSION) fetch một lần sau lần đầu nhận ACK state. Nếu `thread_run_on_connect` bật và state = disabled → tự gửi CMD_THREAD_START.
 - **Polling tables:** Router/Child/Joiner table poll mỗi 6s (child delay 1.5s) — chỉ khi có frontend kết nối và state là leader/router/child.
 - **CMD hỗ trợ:**
 

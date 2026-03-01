@@ -1,12 +1,12 @@
-# Thread Border Router — ESP32-S3 (Host) + ESP32-H2 (RCP) qua UART
+# Thread Border Router — ESP32-S3 (Host) + ESP32-H2 (RCP)
 
-Project cấu hình **Basic Thread Border Router** chạy trên **ESP32-S3** (Host), giao tiếp với **ESP32-H2** (RCP) **chỉ qua UART**. Không dùng WiFi hay BLE trên BR.
+Project **Thread Border Router thật** chạy trên **ESP32-S3** (Host), giao tiếp với **ESP32-H2** (RCP) qua UART. BR có **backhaul** (Wi‑Fi STA mặc định hoặc Ethernet W5500 ưu tiên), **border routing + prefix**, kênh quản lý BR↔dashboard qua **TCP** (frame protocol).
 
-## Basic Thread Border Router là gì?
+## BR thật là gì?
 
-- **Thread Border Router (BR)** là thiết bị nối mạng Thread (802.15.4) với mạng backbone (Ethernet/Wi‑Fi), cung cấp IPv6, NAT64, service discovery, multicast…
-- **Kiến trúc Host + RCP**: Host (ESP32-S3) chạy stack OpenThread + ứng dụng BR; RCP (ESP32-H2) chỉ làm radio 802.15.4. Hai chip giao tiếp qua **UART** (mặc định 460800 baud) hoặc SPI.
-- Trong project này: **chỉ dùng UART** giữa Host và RCP, **không bật WiFi/BLE**; backhaul dùng **Ethernet** (ví dụ W5500) nếu cần kết nối mạng.
+- **Thread Border Router (BR)** nối mạng Thread (802.15.4) với backbone (Ethernet/Wi‑Fi), cung cấp IPv6 routable, prefix delegation, service discovery…
+- **Kiến trúc Host + RCP**: Host (ESP32-S3) chạy OpenThread + ứng dụng BR; RCP (ESP32-H2) làm radio. Giao tiếp Host–RCP qua **UART** (460800 baud).
+- **Backhaul:** Wi‑Fi STA (Kconfig) hoặc **Ethernet W5500 (SPI)** ưu tiên — nếu cắm dây và link up thì dùng Ethernet, không thì fallback Wi‑Fi. Kênh quản lý **chỉ qua TCP** (BR listen port; dashboard kết nối BR_IP:port).
 
 ## Phần cứng
 
@@ -38,10 +38,9 @@ Project cấu hình **Basic Thread Border Router** chạy trên **ESP32-S3** (Ho
 - ESP32-S3 có thể control RESET/BOOT của RCP để đưa vào download mode khi cần flash firmware (xem [TODO.md](TODO.md)).
 - Code đã sẵn sàng trong `br_rcp_ctrl.c`, tự động reset RCP khi boot.
 
-**USB CDC (cho custom frames):**
-- USB port trên ESP32-S3 DevKit dùng cho custom frames (không dùng cho console).
-- Giao tiếp với Node/backend theo cấu trúc khung: SOF 0xAA, Frame ID, CMD, LEN, DATA, CRC8, EOF 0x55 (xem [Documents/protocol/usb_cdc_frame_structure.md](../../Documents/protocol/usb_cdc_frame_structure.md)).
-- **Transport USB CDC** đã có: module `communicate` + `transport_usb` (USB Serial/JTAG); frame mặc định chạy trên USB CDC, log trên UART. **Transport UART** (frame trên UART) sẽ phát triển tiếp — xem [TODO.md](TODO.md).
+**Kênh frame (BR ↔ dashboard):**
+- Giao tiếp với dashboard theo cấu trúc khung: SOF 0xAA, Frame ID, CMD, LEN, DATA, CRC8, EOF 0x55 (xem [Documents/protocol/usb_cdc_frame_structure.md](../../Documents/protocol/usb_cdc_frame_structure.md)).
+- **Transport TCP:** BR listen port (menuconfig, mặc định 5000); dashboard kết nối tới BR_IP:port để gửi/nhận frame. Không dùng USB/UART cho kênh này.
 
 ## Yêu cầu
 
@@ -71,12 +70,12 @@ idf.py build
 ```
 
 - **sdkconfig.defaults** đã cấu hình:
-  - Target ESP32-S3, OpenThread BR, RCP qua UART, **không WiFi**
+  - Target ESP32-S3, OpenThread BR, RCP qua UART
   - UART 460800, pin **GPIO4 (RX)** / **GPIO5 (TX)** cho Host–RCP
-  - Console/Log qua **UART0** (không dùng USB CDC)
+  - Console/Log qua **UART0**
   - Flash baud rate **921600**
   - RCP control pins: GPIO7 (RESET), GPIO8 (BOOT)
-- Nếu dùng board khác hoặc pin khác: `idf.py menuconfig` → mục **ESP Thread Border Router Example** để đổi pin.
+- **Backhaul:** `idf.py menuconfig` → **ESP Thread Border Router** — bật **Wi‑Fi STA** (mặc định, SSID/pass), hoặc **Ethernet W5500** (ưu tiên, SPI pins). Cả hai bật thì Ethernet thử trước, timeout thì Wi‑Fi.
 
 ### 3. Flash và chạy
 
@@ -104,16 +103,16 @@ Thread-Host/
 │   ├── hardware/
 │   │   └── led_status.c             # LED status indicator (WS2812)
 │   ├── coap_controller/
-│   │   ├── leader_control_client.c      # CoAP client để gửi lệnh stop đến Leader
-│   │   ├── device_registry_server.c    # CoAP server để nhận device registration
-│   │   └── device_registry_handler.c   # Handler chung cho register/update/ping
+│   │   └── leader_control_client.c      # CoAP client để gửi lệnh stop đến Leader
+│   ├── backhaul/
+│   │   ├── wifi_sta.c                  # Wi‑Fi STA, DHCP, backbone netif
+│   │   └── eth_w5500.c                 # Ethernet W5500 (SPI), ưu tiên / fallback Wi‑Fi
 │   ├── communicate/
 │   │   ├── communicate.c               # Parse/serialize frame, gọi transport
 │   │   ├── communicate_task.c          # RX callback + state watchdog (backend pull định kỳ)
 │   │   ├── communicate_queue.c         # Queue frame, process task gọi handler; timeout gửi, log khi chờ lâu
 │   │   ├── communicate_command.c      # Handler CMD STATE, DATASET_ACTIVE, IP_ADDR, SET_*, ROUTER/CHILD/JOINER_TABLE, THREAD_START/STOP/VERSION
-│   │   ├── transport_uart.c            # Transport UART (sẽ phát triển tiếp)
-│   │   └── transport_usb.c             # Transport USB CDC (USB Serial/JTAG)
+│   │   └── transport_tcp.c             # Transport TCP (BR listen, dashboard kết nối qua IP)
 │   ├── include/
 │   │   ├── br_config.h              # UART config, pin definitions
 │   │   ├── br_launch.h
@@ -127,16 +126,13 @@ Thread-Host/
 │   │   └── led_status.h             # LED status header
 │   ├── communicate/
 │   │   ├── communicate.h            # Communicate API, CMD defines
-│   │   ├── communicate_config.h     # FRAME_PORT_IS_UART, UART/CDC config
+│   │   ├── communicate_config.h     # COMMUNICATE_FRAME_MAX_DATA_LEN
 │   │   ├── communicate_task.h       # communicate_task_start(), mark_state_received, mark_ip_response_pending
 │   │   ├── communicate_queue.h      # communicate_queue_init(), post
 │   │   ├── communicate_command.h    # Command handler API
-│   │   ├── transport_uart.h         # Transport UART API
-│   │   └── transport_usb.h          # Transport USB CDC API
+│   │   └── transport_tcp.h          # Transport TCP API
 │   └── coap_controller/
-│       ├── leader_control_client.h      # Leader control client header
-│       ├── device_registry_server.h     # Device registry server header
-│       └── device_registry_handler.h   # Device registry handler header
+│       └── leader_control_client.h      # Leader control client header
 ├── components/
 │   └── cmd_system/                  # System console commands (version, restart, free, heap...)
 ├── docs -> ../../Documents/         # Symlink → HomeThread/Documents/
@@ -162,7 +158,7 @@ Thread-Host/
 - **RCP Control pins**: GPIO7 (RESET), GPIO8 (BOOT) trên ESP32-S3 (tùy chọn, để auto-flash RCP)
 - **LED Status**: GPIO48 (onboard WS2812) hoặc GPIO5 (external WS2812), config qua menuconfig
 - **Console/Log**: **UART0** (GPIO43/44 trên ESP32-S3 DevKit, hoặc GPIO17/18 tùy board)
-- **Custom frames**: **USB CDC** (mặc định, qua `communicate` + `transport_usb`). Có thể đổi sang UART trong `include/communicate/communicate_config.h` (transport UART sẽ phát triển tiếp).
+- **Kênh frame**: **TCP** (BR listen port, mặc định 5000; dashboard kết nối BR_IP:port).
 - **Flash baud rate**: 921600 (có thể giảm xuống nếu gặp lỗi kết nối)
 - **Partition**: custom (ota, nvs, web_storage) theo `partitions.csv`  
 - **RCP**: ESP32-H2, firmware từ `$IDF_PATH/examples/openthread/ot_rcp`
@@ -191,13 +187,8 @@ Thread-Host/
   - Task chạy suốt vòng đời, check mỗi 5 giây; timeout response 5 giây
   - Lock quản lý đúng: acquire/release bên trong `send_coap_stop_command_once`; caller release trước khi gọi
   - Chi tiết format, flow, leader election timing: xem [Documents/coap/leader_stop_command_coap.md](../../Documents/coap/leader_stop_command_coap.md)
-- ✅ **Device Registry Server (CoAP)** - Nhận đăng ký từ child devices
-  - CoAP server với 3 resources: `/device/register`, `/device/update`, `/device/ping`; khởi động trong `app_main`
-  - Handler chung dùng logic từ `device_registry_handler` cho cả 3 resource
-  - Queue-based processing: enqueue CoAP data (payload + RLOC16) từ child devices, log payload nhận được
-  - Hỗ trợ tối đa 10 items trong queue, payload tối đa 768 bytes
-  - Chưa forward lên backend qua frame protocol và chưa gửi CoAP response về cho child — xem [TODO.md](TODO.md)
-- ✅ **Communicate (frame protocol)** — Parse/serialize khung SOF/Frame ID/CMD/LEN/DATA/CRC8/EOF; **transport USB CDC** (transport_usb) đã dùng; **transport UART** (transport_uart) sẽ phát triển tiếp. **communicate_task**: init + queue (timeout 500 ms, log khi chờ &gt; 2 s) + state watchdog. **Handlers:** CMD_STATE, DATASET_ACTIVE, IP_ADDR (ACK + data), SET_PANID/CHANNEL/NETWORK_NAME/EXTENDED_PANID/NETWORK_KEY, ROUTER/CHILD/JOINER_TABLE (ACK + table data), THREAD_START, THREAD_STOP, THREAD_VERSION (ACK + version string), CMD_RESET (ACK + restart sau 2s), CMD_FACTORY (ACK + NVS erase + restart sau 2s); xem [Documents/protocol/usb_cdc_frame_structure.md](../../Documents/protocol/usb_cdc_frame_structure.md) và [Documents/protocol/table_data_format.md](../../Documents/protocol/table_data_format.md). **Stack & heap monitor:** task `stk_mon` log mỗi 30 s — stack high water mark của tất cả task + heap free/min_free; tên task và stack size tập trung tại `include/br_config.h` (`TASK_NAME_*`, `TASK_STACK_*`).
+- **Device Registry:** Đã bỏ (Phase 1). BR chuyển sang mô hình BR thật: child gửi register/update/ping **trực tiếp tới backend** (CoAP/HTTP tới IP backend); BR chỉ quản lý (state, dataset, Commissioner) qua frame protocol với backend — xem plan Real BR migration.
+- ✅ **Communicate (frame protocol)** — Parse/serialize khung SOF/Frame ID/CMD/LEN/DATA/CRC8/EOF; **transport TCP** (BR listen, dashboard kết nối qua IP). **communicate_task**: init + queue (timeout 500 ms, log khi chờ &gt; 2 s) + state watchdog. **Handlers:** CMD_STATE, DATASET_ACTIVE, IP_ADDR (ACK + data), SET_PANID/CHANNEL/NETWORK_NAME/EXTENDED_PANID/NETWORK_KEY, ROUTER/CHILD/JOINER_TABLE (ACK + table data), THREAD_START, THREAD_STOP, THREAD_VERSION (ACK + version string), CMD_RESET (ACK + restart sau 2s), CMD_FACTORY (ACK + NVS erase + restart sau 2s); xem [Documents/protocol/usb_cdc_frame_structure.md](../../Documents/protocol/usb_cdc_frame_structure.md) và [Documents/protocol/table_data_format.md](../../Documents/protocol/table_data_format.md). **Stack & heap monitor:** task `stk_mon` log mỗi 30 s — stack high water mark của tất cả task + heap free/min_free; tên task và stack size tập trung tại `include/br_config.h` (`TASK_NAME_*`, `TASK_STACK_*`).
 - ❌ **Auto-flash RCP khi boot** — xem [TODO.md](TODO.md)
 - ❌ RCP update/firmware management (đã loại bỏ)
 - ✅ **Xử lý CMD** — STATE, DATASET_ACTIVE, IP_ADDR, SET_* (PANID, CHANNEL, NETWORK_NAME, EXTENDED_PANID, NETWORK_KEY), ROUTER/CHILD/JOINER_TABLE, THREAD_START, THREAD_STOP, THREAD_VERSION, RESET, FACTORY, COMMISSIONER_JOINER; BR trả ACK (+ data khi có) hoặc NACK; xem [Documents/protocol/usb_cdc_frame_structure.md](../../Documents/protocol/usb_cdc_frame_structure.md) và [Documents/protocol/table_data_format.md](../../Documents/protocol/table_data_format.md).

@@ -64,7 +64,7 @@
 #define TASK_NAME_COMM_TASK     "comm_task"
 #define TASK_NAME_BOOT_BTN      "boot_btn"
 #define TASK_NAME_LED_STATUS    "led_status"
-#define TASK_NAME_USB_RX        "usb_rx"
+#define TASK_NAME_TCP_RX        "tcp_rx"
 #define TASK_NAME_LEADER_RLOC   "leader_rloc"
 #define TASK_NAME_STK_MON       "stk_mon"
 
@@ -74,6 +74,6 @@
 #define TASK_STACK_COMM_TASK    4096
 #define TASK_STACK_BOOT_BTN     4096
 #define TASK_STACK_LED_STATUS   2048
-#define TASK_STACK_USB_RX       2048
+#define TASK_STACK_TCP_RX       4096
 #define TASK_STACK_LEADER_RLOC  4096
 #define TASK_STACK_STK_MON      3072

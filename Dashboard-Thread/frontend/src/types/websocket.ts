@@ -1,12 +1,12 @@
 /**
- * Types cho WebSocket (backend serial config và status)
+ * Types cho WebSocket (backend BR connection config và status)
  * Một số types đã được move sang shared package
  */
 
-// Re-export từ shared để backward compatibility
+// Re-export từ shared
 export type {
-  SerialConfig as SerialConfigFromBackend,
-  SerialStatus,
+  BrConnectionConfig as BrConnectionConfigFromBackend,
+  ConnectionStatus,
   OtConfig,
   OtThreadState,
   OtTableData,

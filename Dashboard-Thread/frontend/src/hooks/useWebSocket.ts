@@ -5,8 +5,8 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { io, Socket } from "socket.io-client";
 import type {
-  SerialConfigFromBackend,
-  SerialStatus,
+  BrConnectionConfigFromBackend,
+  ConnectionStatus,
   OtConfig,
   OtThreadState,
   OtTableData,
@@ -21,23 +21,17 @@ const WS_URL =
 
 export interface UseWebSocketReturn {
   connected: boolean;
-  serialStatus: SerialStatus | null;
-  config: SerialConfigFromBackend | null;
+  serialStatus: ConnectionStatus | null;
+  config: BrConnectionConfigFromBackend | null;
   configError: string | null;
   serialError: string | null;
   connect: () => void;
   disconnect: () => void;
   getConfig: () => void;
-  saveConfig: (data: {
-    serialPort: string;
-    baudRate: number;
-  }) => void;
+  saveConfig: (data: { brHost: string; brPort: number; useMdns?: boolean }) => void;
   connectSerial: () => void;
   disconnectSerial: () => void;
-  testSerialConnect: (data: {
-    serialPort: string;
-    baudRate: number;
-  }) => Promise<{ success: boolean; error?: string }>;
+  testBrConnect: (data: { brHost: string; brPort: number }) => Promise<{ success: boolean; error?: string }>;
   otConfig: OtConfig | null;
   /** Gửi request lấy OT config từ thiết bị; resolve khi nhận OT_CONFIG hoặc sau timeout 6s. */
   getOtConfig: () => Promise<OtConfig | null>;
@@ -67,8 +61,8 @@ export interface UseWebSocketReturn {
 export function useWebSocket(): UseWebSocketReturn {
   const socketRef = useRef<Socket | null>(null);
   const [connected, setConnected] = useState(false);
-  const [serialStatus, setSerialStatus] = useState<SerialStatus | null>(null);
-  const [config, setConfig] = useState<SerialConfigFromBackend | null>(null);
+  const [serialStatus, setSerialStatus] = useState<ConnectionStatus | null>(null);
+  const [config, setConfig] = useState<BrConnectionConfigFromBackend | null>(null);
   const [configError, setConfigError] = useState<string | null>(null);
   const [serialError, setSerialError] = useState<string | null>(null);
   const [otConfig, setOtConfigState] = useState<OtConfig | null>(null);
@@ -114,17 +108,17 @@ export function useWebSocket(): UseWebSocketReturn {
       setSerialError(err.message);
     });
 
-    socket.on(EVENTS.CONFIG_CURRENT, (data: SerialConfigFromBackend | null) => {
+    socket.on(EVENTS.CONFIG_CURRENT, (data: BrConnectionConfigFromBackend | null) => {
       setConfig(data);
       setConfigError(null);
     });
 
-    socket.on(EVENTS.CONFIG_SAVED, (data: SerialConfigFromBackend) => {
+    socket.on(EVENTS.CONFIG_SAVED, (data: BrConnectionConfigFromBackend) => {
       setConfig(data);
       setConfigError(null);
     });
 
-    socket.on(EVENTS.CONFIG_UPDATED, (data: SerialConfigFromBackend) => {
+    socket.on(EVENTS.CONFIG_UPDATED, (data: BrConnectionConfigFromBackend) => {
       setConfig(data);
       setConfigError(null);
     });
@@ -133,12 +127,12 @@ export function useWebSocket(): UseWebSocketReturn {
       setConfigError(data?.error ?? "Config error");
     });
 
-    socket.on(EVENTS.SERIAL_STATUS, (data: SerialStatus) => {
+    socket.on(EVENTS.SERIAL_STATUS, (data: ConnectionStatus) => {
       setSerialStatus(data);
       setSerialError(null);
     });
 
-    socket.on(EVENTS.SERIAL_CONNECTED, (data: { success: boolean; status?: SerialStatus }) => {
+    socket.on(EVENTS.SERIAL_CONNECTED, (data: { success: boolean; status?: ConnectionStatus }) => {
       if (data.status) {
         setSerialStatus(data.status);
       }
@@ -207,7 +201,7 @@ export function useWebSocket(): UseWebSocketReturn {
   }, []);
 
   const saveConfig = useCallback(
-    (data: { serialPort: string; baudRate: number }) => {
+    (data: { brHost: string; brPort: number; useMdns?: boolean }) => {
       socketRef.current?.emit(EVENTS.CONFIG_SAVE, data);
     },
     []
@@ -221,11 +215,8 @@ export function useWebSocket(): UseWebSocketReturn {
     socketRef.current?.emit(EVENTS.SERIAL_DISCONNECT);
   }, []);
 
-  const testSerialConnect = useCallback(
-    (data: {
-      serialPort: string;
-      baudRate: number;
-    }): Promise<{ success: boolean; error?: string }> =>
+  const testBrConnect = useCallback(
+    (data: { brHost: string; brPort: number }): Promise<{ success: boolean; error?: string }> =>
       new Promise((resolve) => {
         if (!socketRef.current) {
           resolve({ success: false, error: "Not connected" });
@@ -447,7 +438,7 @@ export function useWebSocket(): UseWebSocketReturn {
     saveConfig,
     connectSerial,
     disconnectSerial,
-    testSerialConnect,
+    testBrConnect,
     otConfig,
     getOtConfig,
     setOtConfig,

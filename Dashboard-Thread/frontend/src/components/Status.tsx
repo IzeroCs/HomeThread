@@ -51,7 +51,7 @@ export default function Status() {
     <div className="status-page">
       <h1>Status</h1>
       <section className="status-section">
-        <h2>Serial</h2>
+        <h2>BR Connection</h2>
         <div className="status-card">
           <div className="status-row">
             <span className="status-label">Trạng thái:</span>
@@ -59,17 +59,11 @@ export default function Status() {
               {serialStatus?.isConnected ? "Đã kết nối" : "Chưa kết nối"}
             </span>
           </div>
-          {serialStatus?.isConnected && (
-            <>
-              <div className="status-row">
-                <span className="status-label">Port:</span>
-                <span className="status-value">{serialStatus.path || "—"}</span>
-              </div>
-              <div className="status-row">
-                <span className="status-label">Baud rate:</span>
-                <span className="status-value">{serialStatus.baudRate ?? "—"}</span>
-              </div>
-            </>
+          {serialStatus?.isConnected && serialStatus?.host != null && (
+            <div className="status-row">
+              <span className="status-label">BR:</span>
+              <span className="status-value">{serialStatus.host}:{serialStatus.port ?? "—"}</span>
+            </div>
           )}
         </div>
       </section>

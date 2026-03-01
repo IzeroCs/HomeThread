@@ -8,7 +8,7 @@ import { createServer } from "http";
 import { Server } from "socket.io";
 import { getDatabase, closeDatabase } from "./database/Database";
 import { runMigrations } from "./database/migrations";
-import { SerialConfigService, CommunicateManager } from "./communicate";
+import { BrConnectionConfigService, CommunicateManager } from "./communicate";
 import { AppSettingsService } from "./services/AppSettingsService";
 import { WebSocketServer } from "./server/WebSocketServer";
 import { logger } from "./utils/logger";
@@ -20,7 +20,7 @@ const PORT = process.env.PORT ?? 3000;
 getDatabase();
 runMigrations();
 
-const serialConfigService = new SerialConfigService();
+const brConnectionConfigService = new BrConnectionConfigService();
 const appSettingsService = new AppSettingsService();
 
 const httpServer = createServer();
@@ -39,12 +39,12 @@ const io = new Server(httpServer, {
 });
 
 const communicateManager = new CommunicateManager(
-  serialConfigService,
+  brConnectionConfigService,
   appSettingsService,
   (event, data) => io.emit(event, data)
 );
 
-const wsServer = new WebSocketServer(io, serialConfigService, appSettingsService, communicateManager);
+const wsServer = new WebSocketServer(io, brConnectionConfigService, appSettingsService, communicateManager);
 
 httpServer.listen(PORT, () => {
   serverLog.info("=".repeat(50));
@@ -52,16 +52,16 @@ httpServer.listen(PORT, () => {
   serverLog.info(`Listening on ws://localhost:${PORT}`);
   serverLog.info("=".repeat(50));
 
-  const config = serialConfigService.getLatest();
+  const config = brConnectionConfigService.getLatest();
   if (config) {
-    serverLog.info("Current serial config:");
-    serverLog.info(`  Serial Port: ${config.serialPort}`);
-    serverLog.info(`  Baud Rate: ${config.baudRate}`);
+    serverLog.info("Current BR connection config:");
+    serverLog.info(`  Host: ${config.brHost}`);
+    serverLog.info(`  Port: ${config.brPort}`);
     communicateManager.connectIfConfigured().catch((err) => {
-      serverLog.error(`Serial auto-connect failed: ${err?.message ?? err}`);
+      serverLog.error(`BR auto-connect failed: ${err?.message ?? err}`);
     });
   } else {
-    serverLog.info("No serial config. Configure via frontend WebSocket.");
+    serverLog.info("No BR config. Configure via frontend WebSocket.");
   }
 
   serverLog.info("=".repeat(50));

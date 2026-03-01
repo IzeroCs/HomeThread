@@ -11,6 +11,15 @@ export const SERIAL_CONFIG = {
 } as const;
 
 /**
+ * BR connection (TCP) constants
+ */
+export const BR_CONNECTION = {
+  DEFAULT_PORT: 5000,
+  MIN_PORT: 1,
+  MAX_PORT: 65535,
+} as const;
+
+/**
  * OpenThread configuration constants
  */
 export const OT_CONFIG = {

@@ -84,6 +84,31 @@ const migrations: Migration[] = [
       `);
     },
   },
+  {
+    name: "005_create_br_connection_config",
+    up: (db) => {
+      db.exec(`
+        CREATE TABLE IF NOT EXISTS br_connection_config (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          br_host TEXT NOT NULL,
+          br_port INTEGER NOT NULL,
+          use_mdns INTEGER NOT NULL DEFAULT 0,
+          created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+          updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+      `);
+      db.exec(`
+        CREATE INDEX IF NOT EXISTS idx_br_connection_config_created_at
+        ON br_connection_config(created_at)
+      `);
+      // Mặc định 1 record nếu bảng rỗng: Thread-Host.local:5000, use_mdns=1
+      db.exec(`
+        INSERT INTO br_connection_config (br_host, br_port, use_mdns)
+        SELECT 'Thread-Host.local', 5000, 1
+        WHERE (SELECT COUNT(*) FROM br_connection_config) = 0
+      `);
+    },
+  },
 ];
 
 /**

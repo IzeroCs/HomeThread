@@ -1,42 +1,34 @@
 import { useState } from "react";
-import SerialConfigForm from "./SerialConfigForm";
+import BrConnectionForm from "./BrConnectionForm";
 import OpenThreadConfigForm from "./OpenThreadConfigForm";
 import SystemTab from "./SystemTab";
 import "./Settings.scss";
+import type { BrConnectionConfigFromBackend } from "../../types/websocket";
 
-export type SettingsTab = "serial" | "openthread" | "system";
+export type SettingsTab = "br" | "openthread" | "system";
 
 interface SettingsProps {
-  serialConfig: {
-    serialPort: string;
-    baudRate: number;
-  } | null;
-  onSaveSerialConfig: (config: {
-    serialPort: string;
-    baudRate: number;
-  }) => void;
-  onTestConnect: (config: {
-    serialPort: string;
-    baudRate: number;
-  }) => Promise<{ success: boolean; error?: string }>;
+  brConfig: BrConnectionConfigFromBackend | null;
+  onSaveBrConfig: (config: { brHost: string; brPort: number; useMdns?: boolean }) => void;
+  onTestBrConnect: (config: { brHost: string; brPort: number }) => Promise<{ success: boolean; error?: string }>;
 }
 
 export default function Settings({
-  serialConfig,
-  onSaveSerialConfig,
-  onTestConnect,
+  brConfig,
+  onSaveBrConfig,
+  onTestBrConnect,
 }: SettingsProps) {
-  const [activeTab, setActiveTab] = useState<SettingsTab>("serial");
+  const [activeTab, setActiveTab] = useState<SettingsTab>("br");
 
   return (
     <div className="settings-page">
       <div className="settings-tabs">
         <button
           type="button"
-          className={`settings-tab ${activeTab === "serial" ? "active" : ""}`}
-          onClick={() => setActiveTab("serial")}
+          className={`settings-tab ${activeTab === "br" ? "active" : ""}`}
+          onClick={() => setActiveTab("br")}
         >
-          Serial Port
+          BR Connection
         </button>
         <button
           type="button"
@@ -54,11 +46,11 @@ export default function Settings({
         </button>
       </div>
       <div className="settings-tab-content">
-        {activeTab === "serial" && (
-          <SerialConfigForm
-            initialConfig={serialConfig}
-            onSave={onSaveSerialConfig}
-            onTestConnect={onTestConnect}
+        {activeTab === "br" && (
+          <BrConnectionForm
+            initialConfig={brConfig}
+            onSave={onSaveBrConfig}
+            onTestConnect={onTestBrConnect}
           />
         )}
         {activeTab === "openthread" && <OpenThreadConfigForm />}

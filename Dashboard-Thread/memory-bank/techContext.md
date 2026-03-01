@@ -21,10 +21,11 @@ Dashboard-Thread/          # npm workspaces root
 | TypeScript | ^5.7.2 | Language |
 | tsx | ^4.19.2 | Dev runner (watch mode) |
 | socket.io | ^4.7.5 | WebSocket server |
-| serialport | ^12.0.0 | USB CDC serial |
 | better-sqlite3 | ^11.7.0 | SQLite (WAL mode) |
 | pino | ^9.5.0 | Structured logging |
 | pino-pretty | latest | Pretty console output |
+
+Transport: TCP only (net.Socket). Khong con serialport.
 
 ### Frontend
 
@@ -104,13 +105,14 @@ npm run build         # backend then frontend
 
 ## Database
 
-SQLite (`better-sqlite3`, WAL mode). 4 migrations:
-- `serial_config` table: luu port + baud rate
-- `app_settings` table: key-value (hien tai: `thread_run_on_connect`)
+SQLite (`better-sqlite3`, WAL mode). 5 migrations:
+- `serial_config` (legacy, co the khong dung)
+- `app_settings`: key-value (thread_run_on_connect)
+- `br_connection_config`: br_host, br_port, use_mdns (mac dinh Thread-Host.local:5000)
 
 ## Configuration
 
-- **Backend**: `.env` hoac `.env.example` — PORT, serial defaults
+- **Backend**: `.env` — PORT. Cau hinh BR (brHost, brPort) luu SQLite qua Settings.
 - **Frontend**: `vite.config.ts` proxy `/api` + `/socket.io` → backend. Override WS URL bang `VITE_WS_URL`
 
 ## Styling Convention
@@ -122,7 +124,7 @@ SQLite (`better-sqlite3`, WAL mode). 4 migrations:
 ## Logging (pino)
 
 Backend dung pino voi child loggers:
-- `serialLogger` — serial port events
+- `serialLogger` — transport/TCP events (ten file giu de tranh doi ref)
 - `frameLogger` — frame TX/RX (TABLE commands bi filter khoi console)
 - `wsLogger` — WebSocket events
 
@@ -135,5 +137,5 @@ Frontend dev server: `host: true` → lang nghe `0.0.0.0:5173`. Tu may khac: `ht
 ## Known Technical Constraints
 
 - React Strict Mode → double mount → double WS connection trong dev (expected, khong phai bug)
-- Serial port KHONG duoc dong khi server shutdown — firmware can con chay
+- TCP socket KHONG duoc dong khi server shutdown — BR van chay
 - FrameID tu dong tang, wrap 0-0xFF; pending map giu Promise cho moi frameId

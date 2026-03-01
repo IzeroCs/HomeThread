@@ -11,7 +11,8 @@ Version notation in this file uses Semantic Versioning `MAJOR.MINOR.PATCH` (no l
 | 0.1.0   | Thời CLI: giao tiếp OpenThread qua CLI text (trước migration frame). |
 | 0.5.0   | Frame protocol: bỏ CLI, raw serial, parser/builder/CRC8, CMD_ACK/NACK, pull state, dataset parse, set config cơ bản. |
 | 0.8.0   | Tables + Commissioner: CMD_ROUTER_TABLE/CHILD_TABLE/JOINER_TABLE, CMD_COMMISSIONER_JOINER, Reset/Factory, leader highlight, age/expiration countdown, Thread start/stop. |
-| 0.9.0   | Current: shared package, Memory Bank, polish. CMD_DATA (CBOR) và shortcut/history/live terminal còn pending. |
+| 0.9.0   | Shared package, Memory Bank, polish. |
+| 1.0.0   | Migration BR: chi TCP, bo Serial. TransportTcp, BrConnectionConfigService, BrConnectionForm, Settings BR Connection. CMD_DATA da bo (child gui thang backend). |
 
 
 ## What Works (Completed)
@@ -19,7 +20,7 @@ Version notation in this file uses Semantic Versioning `MAJOR.MINOR.PATCH` (no l
 ### Infrastructure
 
 - npm workspaces monorepo (backend + frontend + shared)
-- SQLite database (WAL mode, 4 migrations)
+- SQLite database (WAL mode, 5 migrations: serial_config legacy, app_settings, br_connection_config)
 - Shared package: types, events, constants, validation
 - pino logging voi child loggers (serialLogger, frameLogger, wsLogger)
 - Table log filtering (ROUTER/CHILD/JOINER TX + ACK bi an)
@@ -31,11 +32,13 @@ Version notation in this file uses Semantic Versioning `MAJOR.MINOR.PATCH` (no l
 - Frame parser (state machine, streaming)
 - Frame builder + CRC8-Maxim
 - CommandManager: pending map, frameId rotation, timeout, ACK/NACK routing
-- CommunicateManager: orchestrates all hardware logic
+- CommunicateManager: orchestrates TransportTcp + frame (khong con Serial)
+- TransportTcp: TCP client (open/close/writeRaw/onRawData/setOnDisconnect)
+- BrConnectionConfigService: SQLite br_host, br_port, use_mdns
 - PollingManager: poll 6s (chi khi frontend connected + state active)
-- Serial auto-reconnect (3s interval)
+- BR auto-reconnect (3s interval)
 - Consecutive failure guard (5 lan → close + reconnect)
-- Serial port KHONG dong khi server shutdown
+- TCP KHONG dong khi server shutdown
 
 ### Backend — Commands
 
@@ -59,11 +62,11 @@ Version notation in this file uses Semantic Versioning `MAJOR.MINOR.PATCH` (no l
 
 ### Frontend — Pages
 
-- Status: serial status, OT config day du, thread state
+- Status: BR connection status (host:port), OT config day du, thread state
 - Dashboard: Router Table + Child Table, modal chi tiet, leader highlight, age counter
 - Commissioner: them joiner form, danh sach joiner + expiration countdown
-- Console: raw hex serial data
-- Settings / Serial: port + baud rate + test connect
+- Console: raw hex frame data tu BR
+- Settings / BR Connection: host (vd. Thread-Host.local) + port (5000) + test connect
 - Settings / OpenThread: cau hinh network + toggle Thread + nut "Lay lai"
 - Settings / System: Reset + Factory Reset + ConfirmModal countdown 5s
 
@@ -85,7 +88,7 @@ Version notation in this file uses Semantic Versioning `MAJOR.MINOR.PATCH` (no l
 
 ### Frame Protocol
 
-- **CMD_DATA (CBOR)**: Firmware push data → parse CBOR → update state/tables. Hien tai firmware co the gui nhung backend chua xu ly.
+- **CMD_DATA (CBOR)**: Da bo — child gui register/update/ping thang backend (CoAP/HTTP). BR chi route IP.
 
 ### Backend
 
@@ -99,13 +102,13 @@ Version notation in this file uses Semantic Versioning `MAJOR.MINOR.PATCH` (no l
 
 ### Integration & Operations
 
-- **Quyen cong serial (Linux)**: Them user vao group `dialout` hoac tao udev rule cho ESP32-H2
+- **mDNS browse** *(tuy chon)*: Backend browse `_thread-frame._tcp`, frontend nut "Tim BR" chon instance
 - **Docker**: Build backend + frontend thanh rieng docker image (chua thuc hien)
 
 ## Known Issues / Notes
 
 - **React Strict Mode double mount**: Dev mode → double WebSocket connection → backend log "Client connected" 2 lan. Expected behavior, khong phai bug.
-- **CMD_DATA chua xu ly**: Neu firmware push CMD_DATA, backend nhan nhung khong lam gi.
+- **CMD_DATA da bo**: Child gui thang backend; BR khong con push CMD_DATA.
 - **Log filter**: TABLE commands bi filter khoi console. Can xem log file de debug table data.
 - **Channel la uint8_t**: 1 byte (11-26), KHONG phai 3 byte. Da sua trong CommandManager.
 

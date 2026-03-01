@@ -1,11 +1,5 @@
 # TODO - Thread Border Router
 
-## Transport UART (communicate)
-
-**Ghi chú:** Transport UART (frame trên UART) **sẽ phát triển tiếp sau**. Hiện tại frame mặc định chạy trên **USB CDC** (transport_usb). Khi cần frame trên UART: đặt `COMMUNICATE_FRAME_PORT_IS_UART = 1` trong `include/communicate/communicate_config.h` và cấu hình UART (số UART, GPIO, baud). Code transport_uart.c đã có, có thể mở rộng (ví dụ menuconfig, board khác).
-
----
-
 ## Auto-flash RCP firmware khi boot
 
 Tính năng: Tự động flash firmware RCP khi BR boot nếu RCP chưa có firmware.
@@ -49,15 +43,14 @@ Tính năng: Tự động flash firmware RCP khi BR boot nếu RCP chưa có fir
 
 ---
 
-## USB CDC Frame (Custom frames qua USB)
+## Frame protocol (BR ↔ dashboard qua TCP)
 
-Tính năng: Giao tiếp với Node/backend qua USB CDC (hoặc UART) theo cấu trúc khung định nghĩa trong [Documents/protocol/usb_cdc_frame_structure.md](../../Documents/protocol/usb_cdc_frame_structure.md).
+Tính năng: Giao tiếp với dashboard qua **TCP** (BR listen port, dashboard kết nối BR_IP:port) theo cấu trúc khung định nghĩa trong [Documents/protocol/usb_cdc_frame_structure.md](../../Documents/protocol/usb_cdc_frame_structure.md).
 
 ### Đã có
 
-- **Transport USB CDC** (transport_usb.c): USB Serial/JTAG, init/send/deinit, RX task gọi callback.
+- **Transport TCP** (transport_tcp.c): BR listen port (menuconfig), accept 1 client, init/send/deinit, RX task gọi callback.
 - **Parser/Serializer khung** (communicate.c): parse SOF…EOF, CRC8/MAXIM, `communicate_init()`, `communicate_send_frame()`.
-- **Transport UART** (transport_uart.c): code đã có; **sẽ phát triển tiếp sau** (xem mục Transport UART trên).
 - **communicate_task** (communicate_task.c): `communicate_task_start()` — init communicate + queue + RX callback; RX: STATE từ backend → ACK + 1 byte role, lệnh khác → NACK (0x01); state watchdog: mỗi 15s check, không nhận state trong 5 lần → esp_restart(). Backend pull định kỳ; BR không push.
 - **communicate_queue** (communicate_queue.c): queue frame, process task **comm_proc** gọi command handler; stack **4096** bytes (`PROCESS_TASK_STACK`); gửi vào queue timeout 500 ms (queue đầy thì trả ESP_ERR_TIMEOUT, RX gửi NACK 0x05 Busy); log cảnh báo khi item chờ xử lý &gt; 2 s. **Stack monitor:** mỗi 30 s log high water mark (bytes còn lại tối thiểu) và ước lượng stack đã dùng — xem serial monitor tag `communicate_queue`.
 - **communicate_task** (communicate_task.c): state watchdog task **state_wdg**, stack **4069** bytes (`STATE_WATCHDOG_TASK_STACK`); **stack monitor:** mỗi ~30 s log high water mark — tag `communicate_task`. RX callback + state watchdog (15s, 5 lần miss → restart) như trên.
@@ -89,11 +82,9 @@ Tính năng: Giao tiếp với Node/backend qua USB CDC (hoặc UART) theo cấu
    - CMD_NACK: DATA = 1 byte error code (Invalid CMD 0x01, Not ready 0x02, Timeout 0x03, Invalid param 0x04, Busy 0x05).
 
 3. **Push (ESP32 → Node)**
-   - **CMD_DATA (0x01):** Gửi CBOR từ child/router lên Node; tăng Frame ID cho mỗi khung.
+   - **CMD_DATA (0x01):** Mã CMD vẫn trong protocol; **đã bỏ** logic BR gửi CMD_DATA và chờ ACK (Phase 1). Child gửi thẳng backend trong mô hình BR thật.
 
-   **Device Registry (CoAP → USB frame)** ❌ Chưa làm
-   - Forward payload nhận từ `/device/register`, `/device/update`, `/device/ping` lên backend qua `CMD_DATA` frame.
-   - Gửi CoAP response (ACK/CHANGED) về cho child device sau khi enqueue thành công.
+   ~~**Device Registry (CoAP → USB frame)**~~ **Đã bỏ (Phase 1)** — BR không còn CoAP server /device/register|update|ping; không forward lên backend. Child gửi trực tiếp tới backend (CoAP/HTTP tới IP).
 
 4. **Push system health (ESP32 → Node)** ❌ Chưa làm
    - **CMD_SYS_HEALTH (TBD):** Push định kỳ (hoặc khi backend pull) thông tin sức khoẻ hệ thống để backend/Node monitor từ xa.

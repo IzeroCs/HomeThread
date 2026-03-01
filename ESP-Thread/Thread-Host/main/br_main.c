@@ -3,6 +3,8 @@
 #include "esp_log_level.h"
 #include "esp_netif.h"
 #include "mdns.h"
+#include "esp_openthread_border_router.h"
+#include "esp_openthread_lock.h"
 #include "esp_openthread_netif_glue.h"
 #include "esp_openthread_types.h"
 #include "br_config.h"
@@ -18,8 +20,9 @@
 #include "openthread/dataset_init.h"
 #include "hardware/led_status.h"
 #include "hardware/boot_btn.h"
+#include "backhaul/wifi_sta.h"
+#include "backhaul/eth_w5500.h"
 #include "coap_controller/leader_control_client.h"
-#include "coap_controller/device_registry_server.h"
 #include "communicate/communicate_task.h"
 #include "esp_log.h"
 #include "esp_system.h"
@@ -43,7 +46,7 @@ static const task_stack_info_t k_tasks[] = {
     { TASK_NAME_COMM_TASK,    TASK_STACK_COMM_TASK    },
     { TASK_NAME_BOOT_BTN,     TASK_STACK_BOOT_BTN     },
     { TASK_NAME_LED_STATUS,   TASK_STACK_LED_STATUS   },
-    { TASK_NAME_USB_RX,       TASK_STACK_USB_RX       },
+    { TASK_NAME_TCP_RX,       TASK_STACK_TCP_RX       },
     { TASK_NAME_LEADER_RLOC,  TASK_STACK_LEADER_RLOC  },
     { TASK_NAME_STK_MON,      TASK_STACK_STK_MON      },
 };
@@ -114,8 +117,25 @@ void app_main(void)
     ESP_ERROR_CHECK(esp_netif_init());
     ESP_ERROR_CHECK(esp_event_loop_create_default());
 
+    /* Phase 2.6: Backhaul — Ethernet ưu tiên, Wi-Fi fallback */
+    esp_netif_t *backbone = NULL;
+#if CONFIG_BR_ETH_W5500_ENABLE
+    if (eth_w5500_init() == ESP_OK) {
+        backbone = eth_w5500_get_netif();
+    }
+#endif
+    if (backbone == NULL && CONFIG_BR_WIFI_STA_ENABLE) {
+        ESP_ERROR_CHECK(wifi_sta_init());
+        backbone = wifi_sta_get_netif();
+    }
+    if (backbone != NULL) {
+        esp_openthread_set_backbone_netif(backbone);
+    }
+
     ESP_ERROR_CHECK(mdns_init());
     ESP_ERROR_CHECK(mdns_hostname_set("Thread-Host"));
+    /* Quảng bá port frame qua mDNS để backend dò được BR_IP:port */
+    ESP_ERROR_CHECK(mdns_service_add(NULL, "_thread-frame", "_tcp", CONFIG_BR_FRAME_TCP_PORT, NULL, 0));
 
     // Initialize RCP control pins (RESET/BOOT) and reset RCP to ensure clean state
     ESP_ERROR_CHECK(br_rcp_ctrl_init());
@@ -128,6 +148,18 @@ void app_main(void)
     /* Nếu chưa có active dataset thì tạo mới (ESP-BR-<MAC>) và set active */
     openthread_dataset_init_on_boot();
 
+    /* Phase 2.5: bật border routing + prefix delegation (sau OT start) */
+    if (backbone != NULL) {
+        esp_openthread_lock_acquire(portMAX_DELAY);
+        esp_err_t br_err = esp_openthread_border_router_init();
+        esp_openthread_lock_release();
+        if (br_err != ESP_OK) {
+            ESP_LOGE(TAG, "esp_openthread_border_router_init %s", esp_err_to_name(br_err));
+        } else {
+            ESP_LOGI(TAG, "border router init OK (routing + prefix)");
+        }
+    }
+
     // Communicate task: frame protocol (USB CDC hoặc UART) + state watchdog
     ESP_ERROR_CHECK(communicate_task_start());
 
@@ -138,9 +170,6 @@ void app_main(void)
 
     // Initialize Leader Control Client (CoAP client để gửi lệnh stop đến Leader)
     ESP_ERROR_CHECK(leader_control_client_init());
-
-    // Initialize Device Registry CoAP server (nhận register/update/ping từ child devices)
-    ESP_ERROR_CHECK(device_registry_server_init());
 
     // Boot button: long press ~3s → factory reset (erase NVS) và restart
     boot_btn_config_t btn_cfg = {

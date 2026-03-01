@@ -2,7 +2,7 @@
 
 ## Why This Project Exists
 
-OpenThread Border Router trên ESP32-H2 cần được điều khiển và giám sát từ xa. CLI text qua serial không đủ linh hoạt và khó tích hợp vào giao diện web. Project này thay thế hoàn toàn CLI bằng **binary frame protocol** qua USB CDC, cung cấp giao diện web trực quan để quản lý Thread network.
+OpenThread Border Router (BR) cần được điều khiển và giám sát từ xa. Project này kết nối tới BR qua **TCP** (frame protocol), cung cấp giao diện web trực quan để quản lý Thread network. BR có thể là hostname (vd. Thread-Host.local) hoặc IP, port mặc định 5000.
 
 ## Problems Solved
 
@@ -19,8 +19,8 @@ OpenThread Border Router trên ESP32-H2 cần được điều khiển và giám
 ### User Journey
 
 1. Người dùng mở web app từ LAN (port 5173 dev / 3000 prod)
-2. Vào Settings → Serial → nhập port + baud rate → Test Connect → Save
-3. Backend tự động kết nối serial và bắt đầu poll CMD_STATE mỗi 5s
+2. Vào Settings → BR Connection → nhập host (vd. Thread-Host.local) + port (5000) → Test Connect → Save
+3. Backend tự động kết nối TCP tới BR và bắt đầu poll CMD_STATE mỗi 5s
 4. Nếu `thread_run_on_connect = true` và state = disabled → tự khởi động Thread
 5. Xem trạng thái real-time ở tab Status
 6. Xem Router/Child Table ở Dashboard (tự poll 6s khi đang active)
@@ -40,10 +40,10 @@ OpenThread Border Router trên ESP32-H2 cần được điều khiển và giám
 
 | Tab | Nội dung |
 |---|---|
-| Status | Serial status, OT config đầy đủ (PAN ID, Channel, Network Name, Ext PAN ID, Mesh Local Prefix, Network Key, IP addr, Thread Version), thread state |
+| Status | BR connection (host:port), OT config đầy đủ (PAN ID, Channel, Network Name, …), thread state |
 | Dashboard | Router Table + Child Table với modal chi tiết, leader highlight, age counter |
 | Commissioner | Form thêm joiner (EUI64/PSKd/timeout), danh sách joiner + countdown expiration |
-| Console | Raw hex data từ serial |
-| Settings / Serial | Port, baud rate, test connect |
+| Console | Raw hex frame data từ BR |
+| Settings / BR Connection | Host, port, test connect |
 | Settings / OpenThread | Cấu hình network + toggle khởi động Thread |
 | Settings / System | Reset + Factory Reset với countdown |

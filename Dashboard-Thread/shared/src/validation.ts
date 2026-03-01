@@ -2,7 +2,7 @@
  * Shared validation functions - dùng chung cho cả backend và frontend
  */
 
-import { SERIAL_CONFIG, OT_CONFIG } from "./constants";
+import { SERIAL_CONFIG, OT_CONFIG, BR_CONNECTION } from "./constants";
 
 /**
  * Validate serial port configuration
@@ -25,6 +25,32 @@ export function validateSerialConfig(data: {
       n > SERIAL_CONFIG.MAX_BAUD_RATE
     ) {
       return `Baud rate must be an integer between ${SERIAL_CONFIG.MIN_BAUD_RATE} and ${SERIAL_CONFIG.MAX_BAUD_RATE}`;
+    }
+  }
+  return null;
+}
+
+/**
+ * Validate BR connection config (host + port, TCP)
+ * @returns Error message string if invalid, null if valid
+ */
+export function validateBrConnectionConfig(data: {
+  brHost?: string;
+  brPort?: number;
+}): string | null {
+  if (data.brHost !== undefined) {
+    if (typeof data.brHost !== "string" || !data.brHost.trim()) {
+      return "BR host is required";
+    }
+  }
+  if (data.brPort !== undefined) {
+    const n = Number(data.brPort);
+    if (
+      !Number.isInteger(n) ||
+      n < BR_CONNECTION.MIN_PORT ||
+      n > BR_CONNECTION.MAX_PORT
+    ) {
+      return `BR port must be an integer between ${BR_CONNECTION.MIN_PORT} and ${BR_CONNECTION.MAX_PORT}`;
     }
   }
   return null;

@@ -4,34 +4,34 @@
  */
 
 import { Server, Socket } from "socket.io";
-import type { SerialConfigService, CommunicateManager } from "../communicate";
+import type { BrConnectionConfigService, CommunicateManager } from "../communicate";
 import { AppSettingsService } from "../services/AppSettingsService";
 import { logger } from "../utils/logger";
 import { EVENTS } from "shared/src/events";
-import { validateSerialConfig, validateOtSetConfig } from "shared/src/validation";
+import { validateBrConnectionConfig, validateOtSetConfig } from "shared/src/validation";
 
 const wsLog = logger.child("WS");
 
 export class WebSocketServer {
   private io: Server;
-  private serialConfigService: SerialConfigService;
+  private brConnectionConfigService: BrConnectionConfigService;
   private appSettingsService: AppSettingsService;
   private communicate: CommunicateManager;
 
   constructor(
     io: Server,
-    serialConfigService: SerialConfigService,
+    brConnectionConfigService: BrConnectionConfigService,
     appSettingsService: AppSettingsService,
     communicate: CommunicateManager
   ) {
     this.io = io;
-    this.serialConfigService = serialConfigService;
+    this.brConnectionConfigService = brConnectionConfigService;
     this.appSettingsService = appSettingsService;
     this.communicate = communicate;
     this.setupEventHandlers();
   }
 
-  /** Gọi khi server khởi động: nếu đã có config thì tự kết nối serial (ở main). */
+  /** Gọi khi server khởi động: nếu đã có config thì tự kết nối BR (ở main). */
   async connectSerialIfConfigured(): Promise<void> {
     await this.communicate.connectIfConfigured();
   }
@@ -62,18 +62,18 @@ export class WebSocketServer {
       if (lastJoinerTable != null) socket.emit(EVENTS.OT_JOINER_TABLE, lastJoinerTable);
 
       socket.on(EVENTS.CONFIG_GET, () => this.sendCurrentConfig(socket));
-      socket.on(EVENTS.CONFIG_SAVE, (data: { serialPort: string; baudRate: number }) =>
+      socket.on(EVENTS.CONFIG_SAVE, (data: { brHost: string; brPort: number; useMdns?: boolean }) =>
         this.handleConfigSave(socket, data)
       );
-      socket.on(EVENTS.CONFIG_UPDATE, (data: { id: number; serialPort?: string; baudRate?: number }) =>
+      socket.on(EVENTS.CONFIG_UPDATE, (data: { id: number; brHost?: string; brPort?: number; useMdns?: boolean }) =>
         this.handleConfigUpdate(socket, data)
       );
 
       socket.on(EVENTS.SERIAL_CONNECT, () => this.handleSerialConnect(socket));
       socket.on(EVENTS.SERIAL_DISCONNECT, () => this.handleSerialDisconnect(socket));
       socket.on(EVENTS.SERIAL_STATUS, () => this.sendSerialStatus(socket));
-      socket.on(EVENTS.SERIAL_TEST, (data: { serialPort: string; baudRate: number }) =>
-        this.handleSerialTest(socket, data)
+      socket.on(EVENTS.SERIAL_TEST, (data: { brHost: string; brPort: number }) =>
+        this.handleBrTest(socket, data)
       );
 
       socket.on(EVENTS.OT_GET_CONFIG, () => this.handleOtGetConfig(socket));
@@ -110,18 +110,18 @@ export class WebSocketServer {
   }
 
   private sendCurrentConfig(socket: Socket): void {
-    socket.emit(EVENTS.CONFIG_CURRENT, this.serialConfigService.getLatest());
+    socket.emit(EVENTS.CONFIG_CURRENT, this.brConnectionConfigService.getLatest());
   }
 
   private sendSerialStatus(socket: Socket): void {
     socket.emit(EVENTS.SERIAL_STATUS, this.communicate.getStatus());
   }
 
-  private validateConfig = validateSerialConfig;
+  private validateConfig = validateBrConnectionConfig;
 
   private async handleConfigSave(
     socket: Socket,
-    data: { serialPort: string; baudRate: number }
+    data: { brHost: string; brPort: number; useMdns?: boolean }
   ): Promise<void> {
     const err = this.validateConfig(data);
     if (err) {
@@ -129,10 +129,11 @@ export class WebSocketServer {
       return;
     }
     try {
-      await this.communicate.resetSerialPort();
-      const config = this.serialConfigService.saveOrUpdate({
-        serialPort: data.serialPort.trim(),
-        baudRate: Number(data.baudRate),
+      await this.communicate.resetTransport();
+      const config = this.brConnectionConfigService.saveOrUpdate({
+        brHost: data.brHost.trim(),
+        brPort: Number(data.brPort),
+        useMdns: data.useMdns,
       });
       socket.emit(EVENTS.CONFIG_SAVED, config);
       this.io.emit(EVENTS.CONFIG_CURRENT, config);
@@ -145,24 +146,25 @@ export class WebSocketServer {
 
   private async handleConfigUpdate(
     socket: Socket,
-    data: { id: number; serialPort?: string; baudRate?: number }
+    data: { id: number; brHost?: string; brPort?: number; useMdns?: boolean }
   ): Promise<void> {
     if (typeof data.id !== "number" || !Number.isInteger(data.id) || data.id < 1) {
-      socket.emit("config:error", { error: "Invalid config id" });
+      socket.emit(EVENTS.CONFIG_ERROR, { error: "Invalid config id" });
       return;
     }
     const err = this.validateConfig(data);
     if (err) {
-      socket.emit("config:error", { error: err });
+      socket.emit(EVENTS.CONFIG_ERROR, { error: err });
       return;
     }
     try {
-      const updates: { serialPort?: string; baudRate?: number } = {};
-      if (data.serialPort !== undefined) updates.serialPort = data.serialPort.trim();
-      if (data.baudRate !== undefined) updates.baudRate = Number(data.baudRate);
-      const config = this.serialConfigService.update(data.id, updates);
+      const updates: { brHost?: string; brPort?: number; useMdns?: boolean } = {};
+      if (data.brHost !== undefined) updates.brHost = data.brHost.trim();
+      if (data.brPort !== undefined) updates.brPort = Number(data.brPort);
+      if (data.useMdns !== undefined) updates.useMdns = data.useMdns;
+      const config = this.brConnectionConfigService.update(data.id, updates);
       if (config) {
-        await this.communicate.resetSerialPort();
+        await this.communicate.resetTransport();
         socket.emit(EVENTS.CONFIG_UPDATED, config);
         this.io.emit(EVENTS.CONFIG_CURRENT, config);
       } else {
@@ -199,19 +201,19 @@ export class WebSocketServer {
     }
   }
 
-  private async handleSerialTest(
+  private async handleBrTest(
     socket: Socket,
-    data: { serialPort: string; baudRate: number }
+    data: { brHost: string; brPort: number }
   ): Promise<void> {
     const err = this.validateConfig(data);
     if (err) {
       socket.emit(EVENTS.SERIAL_TEST_RESULT, { success: false, error: err });
       return;
     }
-    const path = data.serialPort.trim();
-    const baudRate = Number(data.baudRate);
+    const host = data.brHost.trim();
+    const port = Number(data.brPort);
     try {
-      const result = await this.communicate.testConnection(path, baudRate);
+      const result = await this.communicate.testConnection(host, port);
       socket.emit(EVENTS.SERIAL_TEST_RESULT, result);
     } catch (error) {
       socket.emit(EVENTS.SERIAL_TEST_RESULT, {
@@ -224,7 +226,7 @@ export class WebSocketServer {
   private async handleOtGetConfig(socket: Socket): Promise<void> {
     const status = this.communicate.getStatus();
     if (!status.isConnected) {
-      socket.emit(EVENTS.OT_CONFIG, { error: "Serial not connected. Connect serial first." });
+      socket.emit(EVENTS.OT_CONFIG, { error: "BR not connected. Connect to BR first." });
       return;
     }
     try {
@@ -242,7 +244,7 @@ export class WebSocketServer {
     data: { panid?: string; channel?: number; networkName?: string; extendedPanId?: string; networkKey?: string }
   ): Promise<void> {
     if (!this.communicate.getStatus().isConnected) {
-      socket.emit(EVENTS.OT_SET_CONFIG_RESULT, { success: false, error: "Serial not connected." });
+      socket.emit(EVENTS.OT_SET_CONFIG_RESULT, { success: false, error: "BR not connected." });
       return;
     }
     const err = this.validateOtSetConfigMethod(data);
@@ -336,7 +338,7 @@ export class WebSocketServer {
 
   private async handleOtGetThreadState(socket: Socket): Promise<void> {
     if (!this.communicate.getStatus().isConnected) {
-      socket.emit(EVENTS.OT_THREAD_STATE, { error: "Serial not connected. Connect serial first." });
+      socket.emit(EVENTS.OT_THREAD_STATE, { error: "BR not connected. Connect to BR first." });
       return;
     }
     const state = this.communicate.getLastThreadState();
@@ -349,7 +351,7 @@ export class WebSocketServer {
 
   private async handleOtSetThreadRunning(socket: Socket, _data: { running: boolean }): Promise<void> {
     if (!this.communicate.getStatus().isConnected) {
-      socket.emit(EVENTS.OT_SET_THREAD_RUNNING_RESULT, { success: false, error: "Serial not connected." });
+      socket.emit(EVENTS.OT_SET_THREAD_RUNNING_RESULT, { success: false, error: "BR not connected." });
       return;
     }
     socket.emit(EVENTS.OT_SET_THREAD_RUNNING_RESULT, { success: false, error: "Use frame protocol." });
@@ -357,7 +359,7 @@ export class WebSocketServer {
 
   private async handleOtStartThread(socket: Socket): Promise<void> {
     if (!this.communicate.getStatus().isConnected) {
-      socket.emit(EVENTS.OT_START_THREAD_RESULT, { success: false, error: "Serial not connected." });
+      socket.emit(EVENTS.OT_START_THREAD_RESULT, { success: false, error: "BR not connected." });
       return;
     }
     try {
@@ -378,7 +380,7 @@ export class WebSocketServer {
 
   private async handleOtStopThread(socket: Socket): Promise<void> {
     if (!this.communicate.getStatus().isConnected) {
-      socket.emit(EVENTS.OT_STOP_THREAD_RESULT, { success: false, error: "Serial not connected." });
+      socket.emit(EVENTS.OT_STOP_THREAD_RESULT, { success: false, error: "BR not connected." });
       return;
     }
     try {
@@ -399,7 +401,7 @@ export class WebSocketServer {
 
   private async handleOtGetRouterTable(socket: Socket): Promise<void> {
     if (!this.communicate.getStatus().isConnected) {
-      socket.emit(EVENTS.OT_ROUTER_TABLE, { error: "Serial not connected. Connect serial first." });
+      socket.emit(EVENTS.OT_ROUTER_TABLE, { error: "BR not connected. Connect to BR first." });
       return;
     }
     const table = this.communicate.getLastRouterTable();
@@ -408,7 +410,7 @@ export class WebSocketServer {
 
   private async handleOtGetChildTable(socket: Socket): Promise<void> {
     if (!this.communicate.getStatus().isConnected) {
-      socket.emit(EVENTS.OT_CHILD_TABLE, { error: "Serial not connected. Connect serial first." });
+      socket.emit(EVENTS.OT_CHILD_TABLE, { error: "BR not connected. Connect to BR first." });
       return;
     }
     const table = this.communicate.getLastChildTable();
@@ -417,7 +419,7 @@ export class WebSocketServer {
 
   private async handleCommissionerGetJoinerTable(socket: Socket): Promise<void> {
     if (!this.communicate.getStatus().isConnected) {
-      socket.emit(EVENTS.OT_JOINER_TABLE, { error: "Serial not connected. Connect serial first." });
+      socket.emit(EVENTS.OT_JOINER_TABLE, { error: "BR not connected. Connect to BR first." });
       return;
     }
     const table = this.communicate.getLastJoinerTable();
@@ -429,7 +431,7 @@ export class WebSocketServer {
     data: { eui64?: string; psk?: string; timeout?: number }
   ): Promise<void> {
     if (!this.communicate.getStatus().isConnected) {
-      socket.emit(EVENTS.COMMISSIONER_CONNECT_RESULT, { success: false, error: "Serial not connected. Connect serial first." });
+      socket.emit(EVENTS.COMMISSIONER_CONNECT_RESULT, { success: false, error: "BR not connected. Connect to BR first." });
       return;
     }
     const eui64 = (data.eui64 ?? "").trim();
@@ -464,7 +466,7 @@ export class WebSocketServer {
 
   private async handleDeviceReset(socket: Socket): Promise<void> {
     if (!this.communicate.getStatus().isConnected) {
-      socket.emit(EVENTS.DEVICE_RESET_RESULT, { success: false, error: "Serial not connected." });
+      socket.emit(EVENTS.DEVICE_RESET_RESULT, { success: false, error: "BR not connected." });
       return;
     }
     try {
@@ -485,7 +487,7 @@ export class WebSocketServer {
 
   private async handleDeviceFactoryReset(socket: Socket): Promise<void> {
     if (!this.communicate.getStatus().isConnected) {
-      socket.emit(EVENTS.DEVICE_FACTORY_RESET_RESULT, { success: false, error: "Serial not connected." });
+      socket.emit(EVENTS.DEVICE_FACTORY_RESET_RESULT, { success: false, error: "BR not connected." });
       return;
     }
     try {

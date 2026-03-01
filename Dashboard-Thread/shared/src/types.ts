@@ -23,6 +23,29 @@ export interface SerialStatus {
 }
 
 /**
+ * BR connection configuration (TCP, thay Serial)
+ * host: hostname (vd. Thread-Host.local) hoặc IP; port mặc định 5000
+ */
+export interface BrConnectionConfig {
+  id?: number;
+  brHost: string;
+  brPort: number;
+  /** Dùng mDNS resolve hostname hoặc browse _thread-frame._tcp để lấy IP + port */
+  useMdns?: boolean;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+/**
+ * BR connection status (thay SerialStatus khi chỉ dùng TCP)
+ */
+export interface ConnectionStatus {
+  isConnected: boolean;
+  host?: string;
+  port?: number;
+}
+
+/**
  * OpenThread configuration (dataset fields + additional)
  */
 export interface OtConfig {

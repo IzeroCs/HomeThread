@@ -1,14 +1,10 @@
 /*
- * Communicate: build/parse frame, init transport (UART hoặc USB CDC).
+ * Communicate: build/parse frame, init transport TCP (BR listen, dashboard kết nối qua IP).
  */
 
 #include "communicate/communicate.h"
 #include "communicate/communicate_config.h"
-#if COMMUNICATE_FRAME_PORT_IS_UART
-#include "communicate/transport_uart.h"
-#else
-#include "communicate/transport_usb.h"
-#endif
+#include "communicate/transport_tcp.h"
 #include "esp_log.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -107,6 +103,7 @@ static void on_transport_rx(uint8_t *data, size_t len, void *ctx)
         if (is_noisy_cmd(cmd)) {
             s_suppress_ack_frame_id = frame_id;
             s_suppress_ack_active   = true;
+            ESP_LOGD(TAG, "frame RX: id=%u cmd=%s len=%u", (unsigned)frame_id, communicate_cmd_name(cmd), (unsigned)data_len);
         } else {
             s_suppress_ack_active = false;
             ESP_LOGI(TAG, "frame RX: id=%u cmd=%s len=%u", (unsigned)frame_id, communicate_cmd_name(cmd), (unsigned)data_len);
@@ -125,21 +122,12 @@ esp_err_t communicate_init(communicate_rx_frame_cb_t rx_cb, void *rx_ctx)
     s_rx_ctx = rx_ctx;
     s_rx_len = 0;
 
-#if COMMUNICATE_FRAME_PORT_IS_UART
-    esp_err_t err = transport_uart_init(on_transport_rx, NULL);
+    esp_err_t err = transport_tcp_init(on_transport_rx, NULL);
     if (err != ESP_OK) {
-        ESP_LOGE(TAG, "transport_uart_init failed %s", esp_err_to_name(err));
+        ESP_LOGE(TAG, "transport_tcp_init failed %s", esp_err_to_name(err));
         return err;
     }
-    ESP_LOGI(TAG, "communicate init OK (frame on UART)");
-#else
-    esp_err_t err = transport_usb_init(on_transport_rx, NULL);
-    if (err != ESP_OK) {
-        ESP_LOGE(TAG, "transport_usb_init failed %s", esp_err_to_name(err));
-        return err;
-    }
-    ESP_LOGI(TAG, "communicate init OK (frame on USB CDC)");
-#endif
+    ESP_LOGI(TAG, "communicate init OK (frame on TCP)");
     return ESP_OK;
 }
 
@@ -181,7 +169,9 @@ esp_err_t communicate_send_frame(uint8_t frame_id, uint8_t cmd, const uint8_t *d
     bool suppress_tx = s_suppress_ack_active
                     && cmd == CMD_ACK
                     && frame_id == s_suppress_ack_frame_id;
-    if (!suppress_tx) {
+    if (suppress_tx) {
+        ESP_LOGD(TAG, "frame TX: id=%u cmd=%s len=%u", (unsigned)frame_id, communicate_cmd_name(cmd), (unsigned)len);
+    } else {
         ESP_LOGI(TAG, "frame TX: id=%u cmd=%s len=%u", (unsigned)frame_id, communicate_cmd_name(cmd), (unsigned)len);
     }
     uint8_t header[FRAME_HEADER_LEN];
@@ -205,24 +195,12 @@ esp_err_t communicate_send_frame(uint8_t frame_id, uint8_t cmd, const uint8_t *d
     uint8_t crc = crc8_maxim(crc_buf, crc_len);
     free(crc_buf);
 
-#if COMMUNICATE_FRAME_PORT_IS_UART
-    esp_err_t err = transport_uart_send(header, sizeof(header));
-#else
-    esp_err_t err = transport_usb_send(header, sizeof(header));
-#endif
+    esp_err_t err = transport_tcp_send(header, sizeof(header));
     if (err != ESP_OK) return err;
     if (len > 0 && data) {
-#if COMMUNICATE_FRAME_PORT_IS_UART
-        err = transport_uart_send(data, len);
-#else
-        err = transport_usb_send(data, len);
-#endif
+        err = transport_tcp_send(data, len);
         if (err != ESP_OK) return err;
     }
     uint8_t tail[2] = { crc, EOF_MARK };
-#if COMMUNICATE_FRAME_PORT_IS_UART
-    return transport_uart_send(tail, 2);
-#else
-    return transport_usb_send(tail, 2);
-#endif
+    return transport_tcp_send(tail, 2);
 }

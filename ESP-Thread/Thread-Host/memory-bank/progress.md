@@ -11,13 +11,15 @@ _Cập nhật: 2026-02-27_
 | 0.5.0 | 2025-12 | CMD_ROUTER_TABLE, CMD_CHILD_TABLE, CMD_JOINER_TABLE, CMD_THREAD_START/STOP/VERSION, CMD_COMMISSIONER_JOINER. Stack monitor (stk_mon), br_config.h centralized. |
 | 0.8.0 | 2026-01 | CoAP Leader Control Client (GET /network/stop), Device Registry Server (/device/register, update, ping). LED status WS2812, boot button (long press factory reset). Bug fixes: task name length, CMD_FACTORY NVS erase, leader_rloc lock. |
 | 0.9.0 | 2026-02-21 | Log suppression (STATE, *_TABLE), Memory Bank + docs, symlink Documents. Các mục chưa làm: Device Registry→backend, CMD_SYS_HEALTH, auto-flash RCP, transport UART. |
+| 0.10.0 | 2026-02-27 | Phase 1: Xóa Device Registry (CoAP server/handler) và CMD_DATA push/wait-ACK; frame protocol chỉ cho quản lý BR. Hướng BR thật (child gửi thẳng backend). |
+| 0.11.0 | 2026-02-27 | Phase 2: Wi‑Fi STA backhaul, transport TCP (frame qua socket), bỏ USB/UART; border routing + prefix; Ethernet W5500 ưu tiên, Wi‑Fi fallback. |
 
 _(Ghi phiên bản theo Semantic Versioning MAJOR.MINOR.PATCH, không dùng tiền tố `v`. Nếu chỉ có major/minor thì PATCH = 0.)_
 
 ## Đã hoàn thành ✅
 
 ### Core Infrastructure
-- [x] OpenThread Border Router (không WiFi/BLE)
+- [x] OpenThread Border Router với border routing + prefix delegation
 - [x] RCP giao tiếp qua UART1 (GPIO4/5, 460800 baud)
 - [x] RCP control pins (RESET GPIO7, BOOT GPIO8) — tự reset RCP khi boot
 - [x] Dataset init on boot — tạo dataset "ESP-BR-<MAC>" nếu chưa có
@@ -27,8 +29,7 @@ _(Ghi phiên bản theo Semantic Versioning MAJOR.MINOR.PATCH, không dùng ti�
 
 ### Frame Protocol (communicate)
 - [x] Parser/serializer frame (SOF/FrameID/CMD/LEN/DATA/CRC8/EOF)
-- [x] Transport USB CDC (default)
-- [x] Transport UART (code sẵn, chưa dùng)
+- [x] Transport TCP only (BR listen port; dashboard kết nối BR_IP:port)
 - [x] FreeRTOS queue (depth=16, timeout 500ms, warn >2s)
 - [x] State watchdog (5 miss × 15s → esp_restart)
 - [x] Log suppression cho noisy CMDs (STATE, *_TABLE và ACK của chúng)
@@ -56,9 +57,13 @@ _(Ghi phiên bản theo Semantic Versioning MAJOR.MINOR.PATCH, không dùng ti�
 - [x] LED Status WS2812 (GPIO48) — 5 trạng thái theo OT role
 - [x] Boot button (GPIO0) — long press 3s → factory reset
 
+### Backhaul
+- [x] Wi‑Fi STA (Kconfig SSID/pass), DHCP; dùng làm backbone hoặc fallback
+- [x] Ethernet W5500 (SPI) — ưu tiên khi bật; timeout thì fallback Wi‑Fi
+
 ### CoAP
 - [x] Leader Control Client — task gửi GET /network/stop đến Leader mỗi khi cần
-- [x] Device Registry Server — CoAP server /device/register|update|ping đang chạy, nhận payload và log
+- [x] Device Registry — đã bỏ (Phase 1); child gửi thẳng backend qua IP
 
 ### Monitoring
 - [x] Stack monitor task (stk_mon, 3072 bytes) — log HWM + heap mỗi 30s
@@ -72,9 +77,8 @@ _(Ghi phiên bản theo Semantic Versioning MAJOR.MINOR.PATCH, không dùng ti�
 
 ## Chưa làm ❌
 
-### Device Registry → Backend
-- [ ] Forward CoAP payload lên backend qua `CMD_DATA` frame
-- [ ] Gửi CoAP response (ACK/CHANGED) về cho child device
+### Docs & triển khai ngoài Thread-Host
+- [ ] Cập nhật/tạo doc Thread-Node và Dashboard-Thread (child gửi thẳng backend, backend listen IP)
 
 ### System Health Push
 - [ ] `CMD_SYS_HEALTH` (TBD): gửi stack HWM + heap size cho backend
@@ -86,9 +90,6 @@ _(Ghi phiên bản theo Semantic Versioning MAJOR.MINOR.PATCH, không dùng ti�
 - [ ] Flash RCP qua UART (esptool protocol hoặc `esp-serial-flasher`)
 - [ ] Tích hợp vào `app_main` trước khi khởi động OT
 - [ ] Kconfig option `CONFIG_AUTO_FLASH_RCP_ON_BOOT`
-
-### Transport UART (Frame)
-- [ ] Hoàn thiện transport UART cho frame protocol (code đã có, cần test + menuconfig)
 
 ## Known Issues
 

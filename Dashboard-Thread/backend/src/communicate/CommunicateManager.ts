@@ -1,27 +1,27 @@
 /**
- * CommunicateManager - Khởi tạo và quản lý giao tiếp phần cứng (Serial + frame protocol).
- * Điều phối serial + frame; dữ liệu OT/Thread lưu ở OtConfigManager và ThreadDataManager, lấy qua getter.
+ * CommunicateManager - Khởi tạo và quản lý giao tiếp BR qua TCP (frame protocol).
+ * Điều phối TransportTcp + frame; dữ liệu OT/Thread lưu ở OtConfigManager và ThreadDataManager.
  * Có thể đăng ký onBroadcast để push event (serial:data, serial:status, ot:config, ...) ra ngoài.
  */
 
-import { SerialConfigService } from "./SerialConfigService";
-import { SerialPortService } from "./SerialPort";
+import { BrConnectionConfigService } from "./BrConnectionConfigService";
+import { TransportTcp } from "./TransportTcp";
 import { CommandManager } from "./CommandManager";
 import { OtConfigManager, type OtConfig } from "./OtConfigManager";
 import { ThreadDataManager, type ThreadState, type TableData } from "./ThreadDataManager";
 import { PollingManager } from "./PollingManager";
 import { FrameParser, type ParsedFrame } from "./frame";
 import { AppSettingsService } from "../services/AppSettingsService";
-import { serialLogger, frameLogger } from "../utils/logger";
+import { serialLogger } from "../utils/logger";
 import { DEVICE_ROLE, DEVICE_ROLE_NAMES } from "../openthread/deviceRole";
 import type { DeviceRole } from "../openthread/deviceRole";
 import { EVENTS, type EventName } from "shared/src/events";
-import type { SerialStatus } from "shared/src/types";
+import type { ConnectionStatus } from "shared/src/types";
 import { parseRouterTable, parseChildTable, parseJoinerTable } from "./frame";
 
 export type { OtConfig } from "./OtConfigManager";
 export type { ThreadState, TableData } from "./ThreadDataManager";
-export type { SerialStatus };
+export type { ConnectionStatus };
 
 const RECONNECT_INTERVAL_MS = 3000;
 /** STATE 5 lần không có phản hồi (bất kỳ frame từ leader) thì đóng port và reconnect. */
@@ -30,15 +30,15 @@ const STATE_WITHOUT_RESPONSE_LIMIT = 5;
 export type OnBroadcast = (event: EventName, data?: unknown) => void;
 
 export class CommunicateManager {
-  private serialConfigService: SerialConfigService;
+  private brConnectionConfigService: BrConnectionConfigService;
   private appSettingsService: AppSettingsService;
   private onBroadcast: OnBroadcast | null = null;
 
-  private serialPort: SerialPortService | null = null;
+  private transportTcp: TransportTcp | null = null;
   private frameUnsubscribe: (() => void) | null = null;
   private autoReconnectEnabled = true;
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
-  /** Số lần STATE liên tiếp không nhận được bất kỳ frame nào từ leader; đạt 5 thì đóng port và reconnect. */
+  /** Số lần STATE liên tiếp không nhận được bất kỳ frame nào từ BR; đạt 5 thì đóng và reconnect. */
   private stateWithoutResponseCount = 0;
 
   private otConfigManager = new OtConfigManager();
@@ -63,11 +63,11 @@ export class CommunicateManager {
   private lastRoleByte: number | null = null;
 
   constructor(
-    serialConfigService: SerialConfigService,
+    brConnectionConfigService: BrConnectionConfigService,
     appSettingsService: AppSettingsService,
     onBroadcast?: OnBroadcast
   ) {
-    this.serialConfigService = serialConfigService;
+    this.brConnectionConfigService = brConnectionConfigService;
     this.appSettingsService = appSettingsService;
     this.onBroadcast = onBroadcast ?? null;
   }
@@ -80,9 +80,9 @@ export class CommunicateManager {
     this.onBroadcast?.(event, data);
   }
 
-  getStatus(): SerialStatus {
-    if (this.serialPort) return this.serialPort.getStatus();
-    return { isConnected: false, path: "", baudRate: 0 };
+  getStatus(): ConnectionStatus {
+    if (this.transportTcp) return this.transportTcp.getStatus();
+    return { isConnected: false };
   }
 
   getLastThreadState(): ThreadState {
@@ -188,28 +188,28 @@ export class CommunicateManager {
 
   async connect(): Promise<void> {
     this.autoReconnectEnabled = true;
-    await this.connectSerialInternal();
+    await this.connectInternal();
   }
 
   async disconnect(): Promise<void> {
     this.autoReconnectEnabled = false;
     this.clearReconnectTimer();
     this.stopAllPolling();
-    if (this.serialPort) {
-      await this.serialPort.close();
-      this.serialPort = null;
+    if (this.transportTcp) {
+      await this.transportTcp.close();
+      this.transportTcp = null;
       this.frameUnsubscribe = null;
       this.clearPendingFrames();
       this.frameParser.reset();
-      this.broadcast(EVENTS.SERIAL_STATUS, { isConnected: false, path: "", baudRate: 0 });
+      this.broadcast(EVENTS.SERIAL_STATUS, { isConnected: false });
     }
   }
 
   async connectIfConfigured(): Promise<void> {
-    await this.connectSerialInternal();
+    await this.connectInternal();
   }
 
-  async resetSerialPort(): Promise<void> {
+  async resetTransport(): Promise<void> {
     this.clearReconnectTimer();
     if (this.frameUnsubscribe) {
       this.frameUnsubscribe();
@@ -217,21 +217,21 @@ export class CommunicateManager {
     }
     this.clearPendingFrames();
     this.frameParser.reset();
-    if (this.serialPort) {
-      await this.serialPort.close();
-      this.serialPort = null;
-      this.broadcast(EVENTS.SERIAL_STATUS, { isConnected: false, path: "", baudRate: 0 });
+    if (this.transportTcp) {
+      await this.transportTcp.close();
+      this.transportTcp = null;
+      this.broadcast(EVENTS.SERIAL_STATUS, { isConnected: false });
     }
   }
 
-  async testConnection(path: string, baudRate: number): Promise<{ success: boolean; error?: string }> {
-    const status = this.serialPort?.getStatus();
-    if (status?.isConnected && status.path === path) {
+  async testConnection(host: string, port: number): Promise<{ success: boolean; error?: string }> {
+    const status = this.transportTcp?.getStatus();
+    if (status?.isConnected && status.host === host && status.port === port) {
       return { success: true };
     }
-    const tempPort = new SerialPortService({ path, baudRate });
+    const temp = new TransportTcp();
     try {
-      await tempPort.open();
+      await temp.open({ host, port });
       return { success: true };
     } catch (error) {
       return {
@@ -239,14 +239,14 @@ export class CommunicateManager {
         error: error instanceof Error ? error.message : "Unknown error",
       };
     } finally {
-      await tempPort.close();
+      await temp.close();
     }
   }
 
   /** Fetch một lần OT config (dataset active + IP). Gọi khi cần (vd. frontend refresh); dataset+IP còn được gọi khi state đổi / lần đầu có ACK state trong pullState. */
   async fetchOtConfig(): Promise<OtConfig> {
-    if (!this.serialPort?.getStatus().isConnected) {
-      return { error: "Serial not connected. Connect serial first." };
+    if (!this.transportTcp?.getStatus().isConnected) {
+      return { error: "BR not connected. Connect to BR first." };
     }
     // Dataset active: fetch khi được gọi từ frontend (manual refresh)
     // Lưu ý: trong pullState, dataset active chỉ fetch khi state thay đổi
@@ -385,28 +385,22 @@ export class CommunicateManager {
     }
   }
 
-  private initializeSerialPort(config: {
-    serialPort: string;
-    baudRate: number;
-  }): void {
+  private initializeTransportTcp(config: { brHost: string; brPort: number }): void {
     if (this.frameUnsubscribe) {
       this.frameUnsubscribe();
       this.frameUnsubscribe = null;
     }
-    if (this.serialPort) {
-      this.serialPort.close().catch((err) => serialLogger.error(String(err?.message ?? err)));
-      this.serialPort = null;
+    if (this.transportTcp) {
+      this.transportTcp.close().catch((err) => serialLogger.error(String(err?.message ?? err)));
+      this.transportTcp = null;
     }
     this.clearPendingFrames();
     this.frameParser.reset();
 
-    this.serialPort = new SerialPortService({
-      path: config.serialPort,
-      baudRate: config.baudRate,
-    });
+    this.transportTcp = new TransportTcp();
 
     this.commandManager = new CommandManager({
-      writeRaw: (buf) => this.serialPort!.writeRaw(buf),
+      writeRaw: (buf) => this.transportTcp!.writeRaw(buf),
       broadcast: (event, data) => this.broadcast(event, data),
       onAckDataToConfig: (partial) => {
         this.otConfigManager.update(partial);
@@ -414,9 +408,9 @@ export class CommunicateManager {
       },
     });
 
-    this.serialPort.setOnDisconnect(() => this.onSerialDisconnected());
+    this.transportTcp.setOnDisconnect(() => this.onTransportDisconnected());
 
-    this.frameUnsubscribe = this.serialPort.onRawData((chunk: Buffer) => {
+    this.frameUnsubscribe = this.transportTcp.onRawData((chunk: Buffer) => {
       this.broadcast(EVENTS.SERIAL_DATA, chunk.toString("hex"));
       this.frameParser.push(
         chunk,
@@ -439,20 +433,20 @@ export class CommunicateManager {
   /** Bật pull state định kỳ (ngay 1 lần + mỗi STATE_INTERVAL_MS). Backend tự gửi CMD_STATE, nhận ACK (1 byte role) rồi cập nhật thread state + fetch ipaddr nếu cần. */
   private startStateInterval(): void {
     if (this.stateIntervalId != null) return;
-    if (!this.serialPort?.getStatus().isConnected) return;
+    if (!this.transportTcp?.getStatus().isConnected) return;
     this.pullState();
     this.stateIntervalId = setInterval(() => {
       this.pullState();
     }, CommunicateManager.STATE_INTERVAL_MS);
   }
 
-  /** Pull state: gửi CMD_STATE, nhận ACK (1 byte role). Cập nhật thread state, reset đếm; nếu state thay đổi thì fetch dataset active (trước), nếu leader/router/child thì fetch ipaddr. Thất bại thì tăng đếm, đủ 5 lần thì đóng port. */
+  /** Pull state: gửi CMD_STATE, nhận ACK (1 byte role). Cập nhật thread state, reset đếm; nếu state thay đổi thì fetch dataset active (trước), nếu leader/router/child thì fetch ipaddr. Thất bại thì tăng đếm, đủ 5 lần thì đóng và reconnect. */
   private pullState(): void {
-    if (!this.serialPort?.getStatus().isConnected || !this.commandManager) return;
+    if (!this.transportTcp?.getStatus().isConnected || !this.commandManager) return;
     if (this.stateWithoutResponseCount >= STATE_WITHOUT_RESPONSE_LIMIT) {
-      serialLogger.warn("STATE " + STATE_WITHOUT_RESPONSE_LIMIT + " lần không có phản hồi — đóng port và reconnect.");
-      const port = this.serialPort;
-      port.close().then(() => this.onSerialDisconnected()).catch(() => this.onSerialDisconnected());
+      serialLogger.warn("STATE " + STATE_WITHOUT_RESPONSE_LIMIT + " lần không có phản hồi — đóng và reconnect.");
+      const transport = this.transportTcp;
+      transport.close().then(() => this.onTransportDisconnected()).catch(() => this.onTransportDisconnected());
       return;
     }
 
@@ -544,7 +538,7 @@ export class CommunicateManager {
     return this.commandManager!.sendRequest(cmd, data);
   }
 
-  private onSerialDisconnected(): void {
+  private onTransportDisconnected(): void {
     this.leaderReady = false;
     this.lastRoleByte = null;
     this.stateWithoutResponseCount = 0;
@@ -553,8 +547,8 @@ export class CommunicateManager {
     this.clearPendingFrames();
     this.frameParser.reset();
     this.commandManager = null;
-    this.serialPort = null;
-    this.broadcast(EVENTS.SERIAL_STATUS, { isConnected: false, path: "", baudRate: 0 });
+    this.transportTcp = null;
+    this.broadcast(EVENTS.SERIAL_STATUS, { isConnected: false });
     this.scheduleReconnect();
   }
 
@@ -568,38 +562,39 @@ export class CommunicateManager {
   private scheduleReconnect(): void {
     this.clearReconnectTimer();
     if (!this.autoReconnectEnabled) return;
-    const config = this.serialConfigService.getLatest();
+    const config = this.brConnectionConfigService.getLatest();
     if (!config) return;
-    serialLogger.info(`Will retry connection in ${RECONNECT_INTERVAL_MS}ms...`);
+    serialLogger.info(`Will retry BR connection in ${RECONNECT_INTERVAL_MS}ms...`);
     this.reconnectTimer = setTimeout(() => {
       this.reconnectTimer = null;
-      this.connectSerialInternal();
+      this.connectInternal();
     }, RECONNECT_INTERVAL_MS);
   }
 
-  private async connectSerialInternal(): Promise<void> {
-    const config = this.serialConfigService.getLatest();
+  private async connectInternal(): Promise<void> {
+    const config = this.brConnectionConfigService.getLatest();
     if (!config) return;
     try {
-      if (!this.serialPort) {
-        this.initializeSerialPort(config);
+      if (!this.transportTcp) {
+        this.initializeTransportTcp({ brHost: config.brHost, brPort: config.brPort });
       }
-      await this.serialPort!.open();
+      await this.transportTcp!.open({ host: config.brHost, port: config.brPort });
 
       this.clearReconnectTimer();
       this.stateWithoutResponseCount = 0;
-      this.broadcast(EVENTS.SERIAL_CONNECTED, { success: true, status: this.serialPort!.getStatus() });
-      this.broadcast(EVENTS.SERIAL_STATUS, this.serialPort!.getStatus());
-      serialLogger.info(`Connected: ${config.serialPort}`);
+      const status = this.transportTcp!.getStatus();
+      this.broadcast(EVENTS.SERIAL_CONNECTED, { success: true, status });
+      this.broadcast(EVENTS.SERIAL_STATUS, status);
+      serialLogger.info(`Connected to BR: ${config.brHost}:${config.brPort}`);
       this.startStateInterval();
     } catch (error) {
-      serialLogger.error(`Connection failed: ${error}`);
-      this.broadcast(EVENTS.SERIAL_STATUS, { isConnected: false, path: config.serialPort, baudRate: config.baudRate });
+      serialLogger.error(`BR connection failed: ${error}`);
+      this.broadcast(EVENTS.SERIAL_STATUS, { isConnected: false, host: config.brHost, port: config.brPort });
       this.scheduleReconnect();
     }
   }
 
-  /** Đóng toàn bộ: dừng polling, clear pending frames, đóng serial port. Dùng khi disconnect serial từ frontend. */
+  /** Đóng toàn bộ: dừng polling, clear pending frames, đóng TCP. Dùng khi disconnect từ frontend. */
   async close(): Promise<void> {
     this.autoReconnectEnabled = false;
     this.clearReconnectTimer();
@@ -609,13 +604,13 @@ export class CommunicateManager {
     }
     this.clearPendingFrames();
     this.frameParser.reset();
-    if (this.serialPort) {
-      await this.serialPort.close();
-      this.serialPort = null;
+    if (this.transportTcp) {
+      await this.transportTcp.close();
+      this.transportTcp = null;
     }
   }
 
-  /** Shutdown khi server tắt: dừng polling, clear pending frames, bỏ listener — nhưng KHÔNG đóng serial port để thiết bị tiếp tục chạy. */
+  /** Shutdown khi server tắt: dừng polling, clear pending frames, bỏ listener — KHÔNG đóng TCP để BR tiếp tục chạy. */
   shutdown(): void {
     this.autoReconnectEnabled = false;
     this.clearReconnectTimer();
@@ -626,6 +621,6 @@ export class CommunicateManager {
       this.frameUnsubscribe = null;
     }
     this.frameParser.reset();
-    serialLogger.info("Server shutdown: serial port left open (device continues running).");
+    serialLogger.info("Server shutdown: BR connection left open.");
   }
 }

@@ -112,7 +112,7 @@ function TableSection({
       </div>
       <div className="dashboard-table-wrap">
         {!isConnected ? (
-          <p className="dashboard-muted">Kết nối serial để xem bảng.</p>
+          <p className="dashboard-muted">Kết nối BR để xem bảng.</p>
         ) : data?.error ? (
           <p className="dashboard-error">{data.error}</p>
         ) : loading && !hasData ? (

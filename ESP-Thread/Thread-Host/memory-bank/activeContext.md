@@ -1,10 +1,10 @@
 # Active Context — Thread-Host
 
-_Cập nhật: 2026-02-21_
+_Cập nhật: 2026-02-27_
 
 ## Công việc hiện tại
 
-Vừa hoàn thành việc thiết lập Memory Bank và stabilize các tính năng core.
+Phase 2 (BR thật) đã xong: backhaul Wi‑Fi + Ethernet W5500 ưu tiên/fallback, transport TCP, border routing + prefix. Phase 2.7 docs (Memory Bank, README) đã cập nhật.
 
 ## Thay đổi gần đây
 
@@ -18,9 +18,8 @@ Vừa hoàn thành việc thiết lập Memory Bank và stabilize các tính nă
 - **Bug:** `esp_openthread_task_switching_lock_release` assert khi `send_coap_stop_command_once` gọi OT API mà không giữ lock
 - **Fix:** `send_coap_stop_command_once` tự acquire/release lock bên trong; caller release trước khi gọi và dùng `goto next_iteration` để skip `lock_release()` bên dưới
 
-### Device Registry Server — Đã khởi động
-- `device_registry_server_init()` đã được gọi trong `app_main` (sau `leader_control_client_init`)
-- CoAP server `/device/register`, `/device/update`, `/device/ping` đang chạy
+### Phase 1 cleanup (BR thật) — Đã thực hiện
+- Đã xóa Device Registry (CoAP server /device/register|update|ping) và CMD_DATA push/wait-ACK. BR không còn forward child→backend; chuyển hướng sang BR thật (child gửi thẳng backend qua IP). Frame protocol chỉ dùng cho quản lý BR (state, dataset, Commissioner…).
 
 ### Frame log suppression — Đã implement
 - `CMD_STATE`, `CMD_ROUTER_TABLE`, `CMD_CHILD_TABLE`, `CMD_JOINER_TABLE` và ACK tương ứng không được log (reduce noise)
@@ -36,16 +35,15 @@ Vừa hoàn thành việc thiết lập Memory Bank và stabilize các tính nă
 ## Decisions đang active
 
 - **Factory reset:** Dùng raw `esp_partition_erase_range` + KHÔNG stop OT trước (để tránh OT write-back dataset)
-- **Frame transport:** USB CDC mặc định; UART sẽ làm sau
-- **Stack monitor:** Task `stk_mon` 3072 bytes, log mỗi 30s; `main` task luôn hiện "used full" sau `app_main()` exit — bình thường, không phải lỗi
+- **Frame transport:** Chỉ TCP (BR listen port); đã bỏ USB/UART cho kênh BR↔dashboard
+- **Backhaul:** Ethernet W5500 ưu tiên (nếu bật), Wi‑Fi STA fallback
+- **Stack monitor:** Task `stk_mon` 3072 bytes, log mỗi 30s; `main` task luôn hiện "used full" sau `app_main()` exit — bình thường
 
 ## Bước tiếp theo
 
-1. **Device Registry → forward lên backend:** Implement gửi payload từ CoAP (`/device/register|update|ping`) lên backend qua `CMD_DATA` frame
-2. **CoAP response:** Gửi CoAP ACK/CHANGED về cho child device sau khi enqueue thành công
-3. **CMD_SYS_HEALTH:** Handler gửi stack HWM + heap size cho backend monitor
-4. **Auto-flash RCP:** Tính năng flash firmware RCP khi boot (xem TODO.md chi tiết)
-5. **Transport UART:** Phát triển tiếp frame trên UART (đã có transport_uart.c)
+1. **Docs Thread-Node / Dashboard-Thread:** Cập nhật hoặc tạo doc (child gửi thẳng backend qua IP, backend listen IP)
+2. **CMD_SYS_HEALTH:** Handler gửi stack HWM + heap size cho backend monitor
+3. **Auto-flash RCP:** Tính năng flash firmware RCP khi boot (xem TODO.md)
 
 ## Known Issues đang theo dõi
 

@@ -4,29 +4,27 @@
 
 Thread-Host là firmware cho Border Router trong hệ thống **HomeThread** — một hệ thống IoT dùng Thread mesh network. BR là cầu nối giữa:
 - **Thread network** (các child/router devices 802.15.4)
-- **Backend/Node** (chạy trên máy tính hoặc gateway, kết nối qua USB CDC)
+- **Backbone** (Wi‑Fi hoặc Ethernet) — BR có IP; **dashboard/backend** kết nối tới BR qua **TCP** (frame protocol), không qua USB/serial.
 
 ## Vấn đề giải quyết
 
-- **Quản lý network từ xa:** Backend cần đọc network state (role, dataset, IP, tables) mà không cần CLI
-- **Commissioning:** Backend add joiner vào network qua lệnh
-- **Nhận dữ liệu từ child devices:** CoAP server trên BR nhận payload từ child và relay lên backend
-- **Resilience:** State watchdog tự restart BR nếu mất kết nối backend; factory reset qua lệnh hoặc nút bấm
+- **Quản lý network từ xa:** Dashboard đọc network state (role, dataset, IP, tables) qua frame protocol trên TCP
+- **Commissioning:** Dashboard add joiner qua CMD_COMMISSIONER_JOINER
+- **Resilience:** State watchdog tự restart BR nếu mất kết nối; factory reset qua lệnh hoặc nút bấm
+- **Child ↔ Backend:** Child gửi register/update/ping **trực tiếp tới backend** qua IP (CoAP/HTTP); BR chỉ **route** (border routing, prefix) và **quản lý** (dataset, Commissioner), không forward CMD_DATA.
 
 ## Cách hoạt động
 
-### Backend → BR (Pull model)
-Backend định kỳ gửi `CMD_STATE` như heartbeat. BR trả role. Backend pull data khi cần (dataset, tables, IP...). BR không tự push trừ khi có IP addr pending retry.
+### Dashboard ↔ BR (kênh quản lý — frame protocol trên TCP)
+Dashboard kết nối tới **BR_IP:port** (mặc định 5000). Gửi/nhận frame (SOF/CMD/DATA/EOF). Dashboard pull state, dataset, tables; BR trả ACK/data. **Chỉ** quản lý BR — không push child data.
 
-### BR → Backend (Push — chưa hoàn thiện)
-`CMD_DATA` dự kiến gửi CBOR từ child/router. CoAP device registry nhận payload từ child nhưng chưa forward qua frame.
-
-### Child devices → BR (CoAP)
-Child gửi POST đến `/device/register`, `/device/update`, `/device/ping`. BR nhận, log, enqueue — chưa forward lên backend.
+### Child ↔ Backend
+Child (Thread-Node) sau khi join và có IPv6 routable gửi register/update/ping **trực tiếp** tới backend (IP:port). Backend listen trên IP; BR không làm proxy.
 
 ## UX Goals
 
-- Backend có thể control hoàn toàn BR qua USB (không cần SSH/CLI)
+- Dashboard control BR qua TCP (cùng mạng với BR)
 - BR tự phục hồi khi mất kết nối (watchdog)
-- Factory reset an toàn qua lệnh hoặc nút bấm vật lý
-- LED hiển thị trực quan trạng thái network
+- Factory reset an toàn qua lệnh hoặc nút bấm
+- LED hiển thị trạng thái network
+- Backhaul: Ethernet ưu tiên (cắm dây), không cable thì fallback Wi‑Fi

@@ -39,7 +39,7 @@ export default function SystemTab() {
 
         {!isConnected && (
           <div className="form-page-alert form-page-alert-warn">
-            Chưa kết nối serial. Vào Dashboard → Connect Serial rồi quay lại đây.
+            Chưa kết nối BR. Vào tab BR Connection để kết nối.
           </div>
         )}
 

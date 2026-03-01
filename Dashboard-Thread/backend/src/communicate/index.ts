@@ -1,11 +1,11 @@
 /**
- * Communicate - Giao tiếp phần cứng (Serial, frame protocol)
+ * Communicate - Giao tiếp BR qua TCP (frame protocol)
  */
 
-export { SerialPortService, type SerialPortConfig } from "./SerialPort";
-export { SerialConfigService, type SerialConfig } from "./SerialConfigService";
+export { TransportTcp, type TransportTcpConfig } from "./TransportTcp";
+export { BrConnectionConfigService, type BrConnectionConfig } from "./BrConnectionConfigService";
 export { CommunicateManager } from "./CommunicateManager";
-export type { SerialStatus, OtConfig, ThreadState, TableData, OnBroadcast } from "./CommunicateManager";
+export type { ConnectionStatus, OtConfig, ThreadState, TableData, OnBroadcast } from "./CommunicateManager";
 export { EVENTS, type EventName } from "shared/src/events";
 export {
   buildFrame,

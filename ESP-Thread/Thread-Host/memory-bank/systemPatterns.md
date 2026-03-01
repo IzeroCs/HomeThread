@@ -7,28 +7,32 @@
                                         |
                               [OpenThread Stack]
                                         |
+         [Backhaul: Ethernet W5500 ưu tiên / Wi-Fi STA fallback] → backbone netif
+                                        |
                     +-----------+-------+--------+-----------+
                     |           |                |           |
-              [CoAP Client] [CoAP Server]  [Frame Protocol] [LED/Button]
-              leader_rloc  device_registry  communicate     hardware
+              [CoAP Client]  [Frame Protocol] [LED/Button]
+              leader_rloc    communicate     hardware
                     |           |                |
-              Thread net   Thread net      [USB CDC]
-                                               |
-                                          [Backend/Node]
+              Thread net   TCP listen       [Backbone IP]
+                    |           |                |
+              Border routing   [Dashboard kết nối BR_IP:port]
+              + prefix
 ```
 
 ## app_main — Thứ tự khởi động
 
 ```
-nvs_flash_init → esp_netif_init → esp_event_loop → mdns("Thread-Host")
+nvs_flash_init → esp_netif_init → esp_event_loop
+→ Backhaul: eth_w5500_init() (nếu bật); nếu timeout/không bật → wifi_sta_init()
+→ set_backbone_netif(backbone)   (trước OT start)
+→ mdns("Thread-Host")
 → br_rcp_ctrl_init + br_rcp_reset + delay 500ms
 → launch_openthread_border_router   (OT main task, max leader weight)
 → openthread_dataset_init_on_boot   (tạo dataset "ESP-BR-<MAC>" nếu chưa có)
-→ communicate_task_start            (queue + watchdog + transport USB CDC)
-→ led_status_start                  (WS2812 RMT task)
-→ leader_control_client_init        (CoAP client task)
-→ device_registry_server_init       (CoAP server /device/register|update|ping)
-→ boot_btn_start                    (GPIO0 poll task)
+→ esp_openthread_border_router_init()   (routing + prefix)
+→ communicate_task_start            (queue + watchdog + transport TCP)
+→ led_status_start, leader_control_client_init, boot_btn_start
 → xTaskCreate(stack_monitor_task)   (log HWM mỗi 30s)
 ```
 
@@ -39,7 +43,7 @@ nvs_flash_init → esp_netif_init → esp_event_loop → mdns("Thread-Host")
 | `main` | `TASK_NAME_MAIN` | `TASK_STACK_MAIN` | default | OT main loop |
 | `comm_queue` | `TASK_NAME_COMM_QUEUE` | 10240 | 5 | Dispatch frame → handler |
 | `comm_task` | `TASK_NAME_COMM_TASK` | 4096 | 5 | State watchdog |
-| `usb_rx` | `TASK_NAME_USB_RX` | 2048 | 5 | Đọc byte USB CDC |
+| `tcp_rx` | `TASK_NAME_TCP_RX` | 4096 | 5 | Đọc byte từ socket TCP (frame từ dashboard) |
 | `led_status` | `TASK_NAME_LED_STATUS` | 2048 | 5 | WS2812 theo OT role |
 | `boot_btn` | `TASK_NAME_BOOT_BTN` | 4096 | 0 | Poll GPIO0 |
 | `leader_rloc` | `TASK_NAME_LEADER_RLOC` | 4096 | 5 | CoAP GET /network/stop |
@@ -53,14 +57,14 @@ nvs_flash_init → esp_netif_init → esp_event_loop → mdns("Thread-Host")
 ## Frame Protocol Pipeline
 
 ```
-USB CDC bytes
-  → usb_rx task → on_transport_rx() [communicate.c — parser]
+TCP socket bytes
+  → tcp_rx task → on_transport_rx() [communicate.c — parser]
       → rx_cb [communicate_task.c]
           ├── CMD_ACK cho IP pending → clear retry timer
           └── else → communicate_queue_post() [queue depth=16, timeout 500ms]
                         → process_task (comm_queue, prio 5)
                             → communicate_command_handle_*()
-                                → communicate_send_frame() → USB CDC
+                                → communicate_send_frame() → transport_tcp (socket)
 ```
 
 Frame format: `[0xAA][FrameID][CMD][LEN_H][LEN_L][DATA×LEN][CRC8][0x55]`

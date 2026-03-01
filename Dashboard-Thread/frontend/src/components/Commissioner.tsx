@@ -240,7 +240,7 @@ export default function Commissioner() {
             </div>
             <div className="commissioner-joiner-table-wrap">
               {!isSerialConnected ? (
-                <p className="commissioner-joiner-muted">Kết nối serial để xem danh sách joiner.</p>
+                <p className="commissioner-joiner-muted">Kết nối BR để xem danh sách joiner.</p>
               ) : joinerTable?.error ? (
                 <p className="commissioner-joiner-error">{joinerTable.error}</p>
               ) : joinerTable == null || (!(joinerTable.headers?.length) && !(joinerTable.rows?.length)) ? (

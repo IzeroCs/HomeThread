@@ -1,6 +1,8 @@
-# Migration sang Frame Protocol (USB CDC)
+# Migration sang Frame Protocol (TCP)
 
-> Tài liệu này liệt kê các bước / lệnh để chuyển Dashboard-Thread từ giao tiếp CLI sang **frame protocol** theo [USB CDC Frame Structure](../protocol/usb_cdc_frame_structure.md).
+> Tài liệu này liệt kê các bước / lệnh để chuyển Dashboard-Thread từ giao tiếp CLI sang **frame protocol** theo [Frame Structure](../protocol/usb_cdc_frame_structure.md).
+>
+> **BR thật (Phase 2):** Kết nối tới BR qua **TCP** (BR_IP:port, mặc định 5000), không qua serial/USB. Xem [architecture/real_br_integration.md](../architecture/real_br_integration.md).
 
 ---
 
@@ -29,13 +31,16 @@
 | Age đếm lên realtime (Router/Child Table) | ✅ Xong | Frontend `setInterval` 1s tăng offset; reset offset khi backend cập nhật bảng mới; hiển thị `base + offset` |
 | Joiner Expiration đếm ngược realtime | ✅ Xong | Backend gửi `expirationTime` dạng ms (số nguyên); frontend chia 1000 → giây rồi đếm ngược; header cột là `Expiration` để frontend match đúng |
 | CMD_DATA (CBOR) → parse, cập nhật state/tables | ⏳ Chưa | Tạm emit `serial:frame:data` (hex) |
+| **Kết nối TCP tới BR** | ✅ Xong | Backend dùng TransportTcp, cấu hình brHost/brPort (mặc định Thread-Host.local:5000). mDNS: resolve hostname hoặc browse _thread-frame._tcp. |
+| **Loại bỏ Serial/USB/UART** | ✅ Xong | Xóa SerialPort.ts, SerialConfigService; chỉ còn TCP. Frontend: BrConnectionForm (host + port), Status hiển thị BR host:port. |
 
 ---
 
-## 1. Tổng quan kiến trúc hiện tại
+## 1. Tổng quan kiến trúc
 
-- **Serial:** Raw mode (`useFrameProtocol: true`), buffer tích lũy → frame parser.
-- **CommunicateManager:** Orchestrate serial/frame, pull state định kỳ (`CMD_STATE`), dataset active và IP chỉ khi state đổi, broadcast events qua `EVENTS` constants.
+- **Kết nối BR (sau Phase 2):** **TCP** tới BR_IP:port (vd. 5000). Gửi/nhận frame (byte stream) trên socket; không dùng Serial/USB. Xem [real_br_integration.md](../architecture/real_br_integration.md).
+- **Transport:** Chỉ **TCP** (TransportTcp). Cấu hình BR: brHost (vd. Thread-Host.local), brPort (5000), useMdns. Không còn Serial/USB/UART.
+- **CommunicateManager:** Điều phối TransportTcp + frame, pull state định kỳ (`CMD_STATE`), dataset active và IP chỉ khi state đổi, broadcast events qua `EVENTS` constants.
 - **PollingManager:** Poll router/child/joiner table khi có frontend kết nối và state = child/router/leader.
 - **CommandManager:** Frame TX/RX, pending theo Frame ID, timeout, validation.
 - **WebSocketServer:** Relay events frontend ↔ CommunicateManager.
@@ -47,20 +52,15 @@
 
 **Commissioner Joiner:** CMD_COMMISSIONER_JOINER (0x43). Backend build `EUI64(8) + PSKd_len(1) + PSKd(variable) + Timeout(4 uint32 BE)`; validate EUI64 (16 hex chars), PSKd (auto uppercase, `[A-HJ-NPR-Y0-9]`, 6–32 chars), timeout (integer > 0). Frontend chỉ check rỗng — backend trả error message chi tiết qua `commissioner:connect:result`.
 
-**Còn lại:** Parse CMD_DATA (CBOR).
+**Đã xong:** Kết nối TCP tới BR (thay Serial); loại bỏ hoàn toàn Serial/USB/UART. CMD_DATA không còn (child gửi thẳng backend).
 
 ---
 
 ## 2. Backend – Các việc cần làm (còn lại)
 
-### 2.1. CMD_DATA (CBOR)
+### 2.1. CMD_DATA — Đã bỏ
 
-DATA của CMD_DATA là CBOR từ child/router. Parse CBOR, cập nhật state/tables rồi emit:
-- `ot:threadState` cho state
-- `ot:config` cho OtConfig
-- `ot:routerTable` / `ot:childTable` cho tables
-
-Hiện tại tạm emit `serial:frame:data` (hex) để debug.
+BR không còn gửi CMD_DATA (CBOR từ child). Child gửi register/update/ping **trực tiếp tới Backend** (CoAP/HTTP). Dashboard lấy device list / state từ **Backend API** (Backend nhận request từ Child), không từ frame BR.
 
 ---
 
@@ -103,5 +103,6 @@ Phần lớn không đổi — các events (`ot:threadState`, `ot:config`, `ot:r
 
 ## 5. Tài liệu tham chiếu
 
-- **[../protocol/usb_cdc_frame_structure.md](../protocol/usb_cdc_frame_structure.md)** — Cấu trúc frame, CMD, DATA format, CRC8, error codes.
+- **[../architecture/real_br_integration.md](../architecture/real_br_integration.md)** — BR thật: Dashboard kết nối TCP, child gửi thẳng backend.
+- **[../protocol/usb_cdc_frame_structure.md](../protocol/usb_cdc_frame_structure.md)** — Cấu trúc frame, CMD, DATA format, CRC8, error codes (transport: TCP).
 - **[../protocol/table_data_format.md](../protocol/table_data_format.md)** — Binary format Router/Child/Joiner Table.

@@ -5,7 +5,7 @@ export type NavPage = "dashboard" | "status" | "commissioner" | "console" | "set
 interface TopNavProps {
   /** Chỉ hiện logo, ẩn Dashboard/Settings */
   logoOnly?: boolean;
-  /** Trạng thái serial: false = xám; true = cam/tím/xanh lá/xanh dương theo state (xem threadState) */
+  /** Trạng thái BR: false = xám; true = cam/tím/xanh lá/xanh dương theo state (xem threadState) */
   serialConnected?: boolean;
   /** State Thread: leader → xanh lá, router → tím, child → xanh dương; detached/disabled → cam */
   threadState?: string | null;
@@ -39,12 +39,12 @@ export default function TopNav({
           ? "status-thread-green"
           : "status-serial"; // Cam cho detached/disabled/null hoặc chưa bật tự chạy
   const statusTitle = !serialConnected
-    ? "Chưa kết nối serial"
+    ? "Chưa kết nối BR"
     : threadState
-      ? `Serial đã kết nối, Thread: ${threadState}`
+      ? `BR đã kết nối, Thread: ${threadState}`
       : threadRunOnConnect
-        ? "Serial đã kết nối, đang chạy Thread"
-        : "Serial đã kết nối";
+        ? "BR đã kết nối, đang chạy Thread"
+        : "BR đã kết nối";
   return (
     <nav className="top-nav">
       <div className="top-nav-inner">

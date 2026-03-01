@@ -6,20 +6,18 @@ Memory Bank vua duoc tao va cau truc lai theo chuan Cursor Memory Bank. Project 
 
 ## Recent Significant Changes
 
-### Documentation
-- Tao `HomeThread/Documents/` lam thu muc tap trung cho toan bo tai lieu
-- Chuyen cac file MD tu `Dashboard-Thread/docs/` va `ESP-Thread/Thread-Host/docs/` vao day
-- Tao symlink `docs` trong `Dashboard-Thread/` va `ESP-Thread/Thread-Host/` tro toi `HomeThread/Documents/`
-- Tao Cursor Memory Bank trong `Dashboard-Thread/memory-bank/`
+### Migration BR — Chi TCP, bo Serial (plan br_backend_communication)
+- **Backend:** Loai bo hoan toan Serial/USB/UART. Chi dung **TransportTcp** ket noi BR (host:port). Cau hinh: **BrConnectionConfigService** (brHost, brPort, useMdns) luu SQLite; migration 005 tao bang `br_connection_config`. Xoa SerialPort.ts, SerialConfigService.ts; go dependency serialport.
+- **CommunicateManager:** Chi TransportTcp + BrConnectionConfig; connectInternal(), onTransportDisconnected(), reconnect 3s. Status tra ve ConnectionStatus (isConnected, host, port).
+- **WebSocketServer:** CONFIG_GET/SAVE/UPDATE payload brHost/brPort; handleBrTest(host, port); message loi "BR not connected".
+- **Frontend:** BrConnectionForm (host + port, default Thread-Host.local:5000); Settings tab "BR Connection"; types BrConnectionConfigFromBackend, ConnectionStatus; useWebSocket saveConfig(brHost, brPort), testBrConnect. TopNav/Status/Commissioner/Console/Dashboard/SystemTab: message "BR" thay "Serial".
+- **Docs:** migration_to_frame_protocol.md, README.md da cap nhat.
 
-### Backend
-- Them `shared/` package (types, events, constants, validation) — dung chung cho backend va frontend
-- Them cac command: CMD_SET_PANID, SET_CHANNEL, SET_NETWORK_NAME, SET_EXTENDED_PANID, SET_NETWORK_KEY
-- Them CMD_THREAD_START, CMD_THREAD_STOP, CMD_THREAD_VERSION, CMD_RESET, CMD_FACTORY, CMD_COMMISSIONER_JOINER
-- Them leaderRloc16 extraction tu CMD_IP_ADDR (byte 14-15 cua 16-byte IPv6)
-- Auto-start Thread: check trong pullState(), dung flag portClosedWhileRunning
-- Khong dong serial port khi server shutdown
-- Filter log cho ROUTER/CHILD/JOINER TABLE (qua nhieu)
+### Documentation (truoc do)
+- Tao `HomeThread/Documents/`, symlink docs, Memory Bank
+
+### Backend (truoc do)
+- shared/, CMD_*, leaderRloc16, auto-start Thread, filter log TABLE
 
 ### Frontend
 - Them `shared` package — dung EVENTS const, khong dung string literal
@@ -49,16 +47,16 @@ ROUTER_TABLE, CHILD_TABLE, JOINER_TABLE TX va ACK bi filter ra khoi console log 
 
 ## Next Steps (theo thu tu uu tien)
 
-1. **CMD_DATA (CBOR)** — xu ly firmware push data, parse CBOR, route den handler tuong ung
-2. **Shortcut commands** — nut nhanh trong Console tab
-3. **Command history** — localStorage
-4. **Live terminal** — hien thi raw UART bytes
-5. **Security** — auth WS, HTTPS (neu can)
+1. **mDNS browse** *(tuy chon)* — Backend endpoint browse `_thread-frame._tcp`, frontend nut "Tim BR (mDNS)" chon instance
+2. **CMD_DATA (CBOR)** — da bo (child gui thang backend); neu can xu ly push khac thi lam rieng
+3. **Shortcut commands / Command history / Live terminal** — Console tab (neu can)
+4. **Security** — auth WS, HTTPS (neu can)
 
 ## Files to Watch
 
-- `backend/src/communicate/CommunicateManager.ts` — logic chinh
+- `backend/src/communicate/CommunicateManager.ts` — logic chinh (TransportTcp, BrConnectionConfig)
 - `backend/src/communicate/CommandManager.ts` — frame handling
-- `shared/src/events.ts` — them event moi phai cap nhat day
-- `shared/src/types.ts` — them field moi vao OtConfig phai cap nhat day
+- `backend/src/communicate/TransportTcp.ts` — TCP client
+- `backend/src/communicate/BrConnectionConfigService.ts` — config BR
+- `shared/src/events.ts`, `shared/src/types.ts` — them field/event phai cap nhat day
 - `memory-bank/progress.md` — cap nhat khi hoan thanh task

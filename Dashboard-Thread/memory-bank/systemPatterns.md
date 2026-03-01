@@ -3,9 +3,9 @@
 ## High-Level Data Flow
 
 ```
-ESP32-H2 Firmware
-    ↓ USB CDC Serial (binary frame protocol)
-SerialPortService  (backend/src/communicate/SerialPort.ts)
+BR (Thread-Host)   listen TCP port 5000
+    ↓ TCP (binary frame protocol)
+TransportTcp       (backend/src/communicate/TransportTcp.ts)
     ↓ raw bytes stream
 FrameParser        (backend/src/communicate/frame/frameParser.ts)
     ↓ parsed Frame { frameId, cmd, data }
@@ -24,12 +24,13 @@ UI Components      (frontend/src/components/)
 
 | Module | File | Vai tro — TUYET DOI KHONG vi pham |
 |---|---|---|
-| `WebSocketServer` | `backend/src/server/WebSocketServer.ts` | CHI relay socket events ↔ CommunicateManager. KHONG chua business logic hay serial logic |
-| `CommunicateManager` | `backend/src/communicate/CommunicateManager.ts` | Owner cua toan bo hardware logic. Dieu phoi serial, polling, broadcast |
+| `WebSocketServer` | `backend/src/server/WebSocketServer.ts` | CHI relay socket events ↔ CommunicateManager. KHONG chua business logic hay transport logic |
+| `CommunicateManager` | `backend/src/communicate/CommunicateManager.ts` | Owner cua toan bo transport + frame. Dieu phoi TransportTcp, polling, broadcast |
+| `TransportTcp` | `backend/src/communicate/TransportTcp.ts` | TCP client: open(host, port), writeRaw, onRawData, setOnDisconnect |
+| `BrConnectionConfigService` | `backend/src/communicate/BrConnectionConfigService.ts` | SQLite CRUD cho cau hinh BR (brHost, brPort, useMdns) |
 | `CommandManager` | `backend/src/communicate/CommandManager.ts` | Frame TX/RX. Pending map (frameId → resolve/reject). ACK/NACK routing. Timeout |
 | `OtConfigManager` | `backend/src/communicate/OtConfigManager.ts` | In-memory store. `.update(partial)` de merge, `.get()` de doc, `.clear()` khi disconnect |
 | `PollingManager` | `backend/src/communicate/PollingManager.ts` | Poll table 6s (child +1.5s delay). CHI khi frontend connected + state = leader/router/child |
-| `SerialConfigService` | `backend/src/communicate/SerialConfigService.ts` | SQLite CRUD cho cau hinh serial |
 | `AppSettingsService` | `backend/src/services/AppSettingsService.ts` | SQLite key-value cho app settings (thread_run_on_connect) |
 
 ## Frame Protocol
@@ -75,13 +76,13 @@ UI Components      (frontend/src/components/)
 
 Khong check lien tuc — tich hop vao pullState(). Khi port dong: set flag `portClosedWhileRunning`. Khi reconnect: pullState() check auto-start theo co do.
 
-### Serial Reconnect
+### BR Reconnect
 
-Mat serial → tu dong thu lai sau **3 giay**. Khi server dong: KHONG dong serial port (firmware van chay).
+Mat ket noi BR (TCP) → tu dong thu lai sau **3 giay**. Khi server dong: KHONG dong TCP (BR van chay).
 
 ### Consecutive Failure Guard
 
-CMD_STATE that bai **5 lan lien tiep** → dong port + bat dau reconnect.
+CMD_STATE that bai **5 lan lien tiep** → dong transport + bat dau reconnect.
 
 ## Frontend Patterns
 
