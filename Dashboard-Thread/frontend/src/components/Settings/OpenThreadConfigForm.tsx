@@ -85,7 +85,7 @@ export default function OpenThreadConfigForm() {
 
         {!isConnected && (
           <div className="form-page-alert form-page-alert-warn">
-            Chưa kết nối serial. Vào Dashboard → Connect Serial rồi quay lại đây.
+            Chưa kết nối serial. Vào Nodes → Connect Serial rồi quay lại đây.
           </div>
         )}
 

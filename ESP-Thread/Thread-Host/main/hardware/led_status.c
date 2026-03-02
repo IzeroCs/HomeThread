@@ -17,6 +17,7 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "openthread/thread.h"
+#include <stdbool.h>
 
 static const char *TAG = "led_status";
 
@@ -77,13 +78,20 @@ static void led_status_task(void *arg)
 {
     (void)arg;
     uint32_t tick = 0;
+    static otDeviceRole s_last_role = OT_DEVICE_ROLE_DISABLED;
+    static bool s_role_valid = false;
 
     while (1) {
         otDeviceRole role = OT_DEVICE_ROLE_DISABLED;
         otInstance *instance = esp_openthread_get_instance();
         if (instance && esp_openthread_lock_acquire(pdMS_TO_TICKS(200))) {
             role = otThreadGetDeviceRole(instance);
+            s_last_role = role;
+            s_role_valid = true;
             esp_openthread_lock_release();
+        } else {
+            /* Lock timeout (e.g. during joiner MLE): keep last known role to avoid red blink */
+            role = s_role_valid ? s_last_role : OT_DEVICE_ROLE_DISABLED;
         }
 
         bool blink_on = (tick / (BLINK_MS / TASK_MS)) % 2;

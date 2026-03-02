@@ -1,9 +1,9 @@
 import "./TopNav.scss";
 
-export type NavPage = "dashboard" | "status" | "commissioner" | "console" | "settings";
+export type NavPage = "nodes" | "status" | "settings";
 
 interface TopNavProps {
-  /** Chỉ hiện logo, ẩn Dashboard/Settings */
+  /** Chỉ hiện logo, ẩn Nodes/Settings */
   logoOnly?: boolean;
   /** Trạng thái BR: false = xám; true = cam/tím/xanh lá/xanh dương theo state (xem threadState) */
   serialConnected?: boolean;
@@ -11,8 +11,8 @@ interface TopNavProps {
   threadState?: string | null;
   /** Đã bật "tự chạy Thread" → màu theo state; chưa bật thì cam */
   threadRunOnConnect?: boolean;
-  /** Tổng router + child (hiển thị bên cạnh "Dashboard" khi có) */
-  dashboardCount?: number | null;
+  /** Tổng router + child (hiển thị bên cạnh "Nodes" khi có) */
+  nodesCount?: number | null;
   currentPage?: NavPage;
   onNavigate?: (page: NavPage) => void;
 }
@@ -22,11 +22,10 @@ export default function TopNav({
   serialConnected = false,
   threadState = null,
   threadRunOnConnect = false,
-  dashboardCount = null,
-  currentPage = "dashboard",
+  nodesCount = null,
+  currentPage = "nodes",
   onNavigate = () => {},
 }: TopNavProps) {
-  const isCommissionerEnabled = threadState?.toLowerCase() === "leader";
   const stateLower = threadState?.toLowerCase();
   // child → xanh dương, router → tím, leader → xanh lá; detached/disabled/null → cam. Chưa kết nối serial → xám.
   const statusClass = !serialConnected
@@ -71,40 +70,11 @@ export default function TopNav({
               </button>
               <button
                 type="button"
-                className={`top-nav-link ${currentPage === "dashboard" ? "active" : ""}`}
-                onClick={() => onNavigate("dashboard")}
-                title={dashboardCount !== undefined && dashboardCount !== null ? `Devices (${dashboardCount})` : "Devices"}
+                className={`top-nav-link ${currentPage === "nodes" ? "active" : ""}`}
+                onClick={() => onNavigate("nodes")}
+                title={nodesCount !== undefined && nodesCount !== null ? `Nodes (${nodesCount})` : "Nodes"}
               >
-                Devices{dashboardCount !== undefined && dashboardCount !== null ? ` (${dashboardCount})` : ""}
-              </button>
-              <button
-                type="button"
-                className={`top-nav-link ${currentPage === "commissioner" ? "active" : ""}`}
-                onClick={() => onNavigate("commissioner")}
-                disabled={currentPage !== "commissioner" && !isCommissionerEnabled}
-                title={
-                  isCommissionerEnabled
-                    ? "Commissioner"
-                    : currentPage === "commissioner"
-                      ? "Đang ở Commissioner (cần state leader để dùng)"
-                      : "Chỉ khả dụng khi state là leader"
-                }
-              >
-                Topology
-              </button>
-              <button
-                type="button"
-                className={`top-nav-link ${currentPage === "console" ? "active" : ""}`}
-                onClick={() => onNavigate("console")}
-              >
-                Console
-              </button>
-              <button
-                type="button"
-                className={`top-nav-link ${currentPage === "settings" ? "active" : ""}`}
-                onClick={() => onNavigate("settings")}
-              >
-                Settings
+                Nodes{nodesCount !== undefined && nodesCount !== null ? ` (${nodesCount})` : ""}
               </button>
             </nav>
             <div className="top-nav-actions">

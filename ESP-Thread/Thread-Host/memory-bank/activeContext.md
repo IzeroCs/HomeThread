@@ -29,6 +29,11 @@ Phase 2 (BR thật) đã xong: backhaul Wi‑Fi + Ethernet W5500 ưu tiên/fallb
 - **Transport TCP** (transport_tcp.c): Mỗi lần `recv`/`send` log `tcp rx N bytes` / `tcp tx N bytes` ở **DEBUG**. Set tag `transport_tcp` sang DEBUG để xem byte stream.
 - Cách bật: menuconfig → Log output → Set log level for component `communicate`, `transport_tcp` = Debug; hoặc runtime `esp_log_level_set("communicate", ESP_LOG_DEBUG)` và tương tự cho `transport_tcp`.
 
+### LED status — Fix nháy đỏ khi joiner join
+- **Hiện tượng:** Sau khi commissioner joiner và node join, LED nháy đỏ (disabled) rồi xanh (Leader). BR vẫn Leader.
+- **Nguyên nhân:** Task LED poll `otThreadGetDeviceRole()` với lock 200ms; khi OT bận (MLE/child table lúc join) lock timeout → code mặc định role = DISABLED → đỏ.
+- **Fix:** Khi không lấy được lock: dùng **last-known role** (`s_last_role` / `s_role_valid`) thay vì mặc định DISABLED. Trong lúc joiner join, LED giữ màu Leader (xanh) thay vì nháy đỏ.
+
 ### Memory Bank — Vừa tạo
 - `.cursor/rules/thread-host-memory-bank.mdc` — entry point rule
 - `memory-bank/` — 6 core files theo chuẩn Memory Bank

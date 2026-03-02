@@ -41,10 +41,10 @@ OpenThread Border Router (BR) cần được điều khiển và giám sát từ
 
 | Tab | Nội dung |
 |---|---|
-| Status | BR connection (host:port), OT config đầy đủ (PAN ID, Channel, Network Name, …), thread state |
-| Dashboard | Router Table + Child Table với modal chi tiết, leader highlight, age counter |
-| Commissioner | Form thêm joiner (EUI64/PSKd/timeout), danh sách joiner + countdown expiration |
-| Console | Raw hex frame data từ BR |
+| Status | BR connection (host:port), OT config đầy đủ (PAN ID, Channel, Network Name, …), thread state, version từ package.json |
+| Nodes | Router Table + Child Table + Joiner List (thiết bị đang chờ join); nút "Commission Node" mở modal thêm joiner (EUI64/PSKd/timeout); leader badge, age counter, empty states |
 | Settings / BR Connection | Host, port, test connect |
 | Settings / OpenThread | Cấu hình network + toggle khởi động Thread |
 | Settings / System | Reset + Factory Reset với countdown |
+
+Console đã bỏ. Commissioner gộp vào Nodes (modal Commission Node + Joiner List).

@@ -17,7 +17,7 @@ Cung cấp giao diện web quản lý Thread network:
 
 ### In Scope
 - Backend Node.js: TCP client (BR host:port), frame protocol, WebSocket relay
-- Frontend React: dashboard, settings, commissioner, console
+- Frontend React: Status, Nodes (Router/Child/Joiner List + Commission Node modal), Settings
 - Shared package: types, events, validation, constants
 - SQLite: lưu BR connection config và app settings
 - Real-time polling: table data, thread state

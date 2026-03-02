@@ -44,7 +44,7 @@ nvs_flash_init → esp_netif_init → esp_event_loop
 | `comm_queue` | `TASK_NAME_COMM_QUEUE` | 10240 | 5 | Dispatch frame → handler |
 | `comm_task` | `TASK_NAME_COMM_TASK` | 4096 | 5 | State watchdog |
 | `tcp_rx` | `TASK_NAME_TCP_RX` | 4096 | 5 | Đọc byte từ socket TCP (frame từ dashboard) |
-| `led_status` | `TASK_NAME_LED_STATUS` | 2048 | 5 | WS2812 theo OT role |
+| `led_status` | `TASK_NAME_LED_STATUS` | 2048 | 5 | WS2812 theo OT role (dùng last-known role khi lock timeout) |
 | `boot_btn` | `TASK_NAME_BOOT_BTN` | 4096 | 0 | Poll GPIO0 |
 | `leader_rloc` | `TASK_NAME_LEADER_RLOC` | 4096 | 5 | CoAP GET /network/stop |
 | `stk_mon` | `TASK_NAME_STK_MON` | 3072 | 2 | Log HWM + heap mỗi 30s |
@@ -53,6 +53,8 @@ nvs_flash_init → esp_netif_init → esp_event_loop
 
 **CRITICAL:** FreeRTOS `configMAX_TASK_NAME_LEN = 16` → task name tối đa **15 ký tự**.
 `xTaskGetHandle` sẽ assert nếu tên > 15 ký tự.
+
+**LED status:** Task poll `otThreadGetDeviceRole()` mỗi 300ms với lock 200ms. Khi lock timeout (vd. OT bận lúc joiner join), dùng **last-known role** thay vì mặc định DISABLED để tránh nháy đỏ sai.
 
 ## Frame Protocol Pipeline
 

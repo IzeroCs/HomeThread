@@ -81,74 +81,17 @@
   }
 }
 
-// BR card when disconnected: compact row (icon 48px + label + DISCONNECTED + button)
-.status-card-br--disconnected {
-  flex-direction: row;
-  align-items: center;
-  justify-content: space-between;
-  padding: 24px;
-  gap: 16px;
-  flex-wrap: wrap;
-}
+// BR card when disconnected: same layout, left panel red + signal_disconnected
+.status-card-br-icon--disconnected {
+  background: rgba(127, 29, 29, 0.15);
 
-.status-card-br-disconnected-left {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-}
-
-.status-card-br-icon-small {
-  flex-shrink: 0;
-  width: 48px;
-  height: 48px;
-  border-radius: 50%;
-  background: rgba(239, 68, 68, 0.1);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #ef4444;
+  &::before {
+    background: linear-gradient(135deg, rgba(239, 68, 68, 0.1) 0%, transparent 60%);
+  }
 
   .material-symbols-outlined {
-    font-size: 30px;
-  }
-}
-
-.status-card-br-disconnected-text {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.status-card-br-disconnected-label {
-  margin: 0;
-  font-size: 12px;
-  font-weight: 600;
-  color: $text-dark-muted;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-}
-
-.status-card-br-disconnected-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.status-card-br-disconnected-status {
-  margin: 0;
-  font-size: 24px;
-  font-weight: 700;
-  color: $text-dark;
-}
-
-.status-card-br--disconnected .status-btn-refresh {
-  margin: 0;
-  width: 100%;
-}
-
-@media (min-width: 768px) {
-  .status-card-br--disconnected .status-btn-refresh {
-    width: auto;
+    font-size: 60px;
+    color: rgba(239, 68, 68, 0.5);
   }
 }
 
@@ -211,6 +154,12 @@
     border: 1px solid $brand-border;
     color: $text-dark-muted;
   }
+
+  &--disconnected {
+    background: rgba(127, 0, 0, 0.2);
+    border: 1px solid rgba(185, 28, 28, 0.5);
+    color: #f87171;
+  }
 }
 
 .status-badge-dot {
@@ -263,7 +212,11 @@
   word-break: break-all;
 
   &--accent {
-    color: #93c5fd; // blue-300 for host/network name/IP
+    color: #93c5fd;
+  }
+
+  &--muted {
+    color: $text-dark-subtle;
   }
 
   &--mono-small {
@@ -372,6 +325,10 @@
   letter-spacing: 0.02em;
 }
 
+.status-section-ot-header--faded {
+  opacity: 0.5;
+}
+
 .status-card-ot {
   background: $card-dark;
   border: 1px solid $brand-border;
@@ -381,65 +338,12 @@
   position: relative;
 }
 
-// Disconnected: ghost grid + overlay (match mockup)
-.status-ot-ghost {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 16px;
-  padding: 24px;
-  opacity: 0.4;
-  filter: blur(1px);
+// Disconnected: same grid with placeholder values, dimmed + grayscale
+.status-ot-grid--placeholder {
+  opacity: 0.3;
+  filter: grayscale(1);
   pointer-events: none;
   user-select: none;
-}
-
-@media (min-width: 768px) {
-  .status-ot-ghost {
-    grid-template-columns: repeat(2, 1fr);
-  }
-}
-
-@media (min-width: 1024px) {
-  .status-ot-ghost {
-    grid-template-columns: repeat(4, 1fr);
-  }
-}
-
-.status-ot-ghost-item {
-  min-height: 100px;
-  padding: 20px;
-  border-radius: 12px;
-  border: 1px solid $brand-border;
-  background: $card-dark;
-
-  &::before {
-    content: "";
-    display: block;
-    height: 12px;
-    width: 80px;
-    background: rgba(30, 41, 59, 0.9);
-    border-radius: 4px;
-    margin-bottom: 12px;
-  }
-
-  &::after {
-    content: "";
-    display: block;
-    height: 24px;
-    width: 120px;
-    background: rgba(51, 65, 85, 0.5);
-    border-radius: 4px;
-  }
-
-  &--wide::after {
-    width: 100%;
-  }
-}
-
-@media (min-width: 768px) {
-  .status-ot-ghost-item--wide {
-    grid-column: span 2;
-  }
 }
 
 .status-ot-overlay {
@@ -452,15 +356,28 @@
   padding: 24px;
 }
 
+.status-ot-overlay {
+  background: rgba(10, 15, 28, 0.6);
+  backdrop-filter: blur(1px);
+}
+
 .status-ot-overlay-card {
-  background: rgba(17, 24, 39, 0.9);
-  backdrop-filter: blur(12px);
+  background: rgba(17, 24, 39, 0.95);
+  backdrop-filter: blur(8px);
   border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 16px;
+  border-radius: 12px;
   padding: 32px;
   max-width: 28rem;
   text-align: center;
   box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+
+  &--compact {
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+  }
 }
 
 .status-ot-overlay-icon {
@@ -477,6 +394,25 @@
   .material-symbols-outlined {
     font-size: 40px;
   }
+
+  &--muted {
+    background: rgba(100, 116, 139, 0.15);
+    color: $text-dark-subtle;
+
+    .material-symbols-outlined {
+      font-size: 40px;
+    }
+  }
+}
+
+.status-ot-overlay-card--compact .status-ot-overlay-icon--muted {
+  margin: 0;
+}
+
+.status-ot-overlay-text-only {
+  font-size: 14px;
+  font-weight: 500;
+  color: $text-dark-muted;
 }
 
 .status-ot-overlay-title {

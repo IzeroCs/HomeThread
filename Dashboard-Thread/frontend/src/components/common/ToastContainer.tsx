@@ -1,6 +1,14 @@
 import { useState } from "react";
 import { useToast } from "../../contexts/ToastContext";
+import type { ToastType } from "../../contexts/ToastContext";
 import "./ToastContainer.scss";
+
+const TOAST_TITLES: Record<ToastType, string> = {
+  success: "Thành công",
+  error: "Lỗi",
+  warning: "Cảnh báo",
+  info: "Trợ giúp",
+};
 
 export default function ToastContainer() {
   const { toasts, removeToast } = useToast();
@@ -29,15 +37,17 @@ export default function ToastContainer() {
           role="alert"
           onClick={() => handleRemove(toast.id)}
         >
-          <div className="toast-content">
-            <span className="toast-message">{toast.message}</span>
+          <div className="toast-bar" aria-hidden />
+          <div className="toast-body">
+            <p className="toast-title">{TOAST_TITLES[toast.type]}</p>
+            <p className="toast-message">{toast.message}</p>
             <button
               className="toast-close"
               onClick={(e) => {
                 e.stopPropagation();
                 handleRemove(toast.id);
               }}
-              aria-label="Close"
+              aria-label="Đóng"
             >
               ×
             </button>

@@ -7,12 +7,7 @@ function formatPanId(panid: string | null | undefined): string {
   return panid.startsWith("0x") || panid.startsWith("0X") ? panid : `0x${panid}`;
 }
 
-interface StatusProps {
-  /** Gọi khi user bấm "Configure Border Router" (trạng thái disconnected) */
-  onConfigureBr?: () => void;
-}
-
-export default function Status({ onConfigureBr }: StatusProps) {
+export default function Status() {
   const { serialStatus, otConfig, config: brConfig, testBrConnect } = useWebSocketContext();
   const [networkKeyVisible, setNetworkKeyVisible] = useState(false);
   const isConnected = serialStatus?.isConnected ?? false;
@@ -64,71 +59,73 @@ export default function Status({ onConfigureBr }: StatusProps) {
             </div>
           </div>
         ) : (
-          <div className="status-card status-card-br status-card-br--disconnected">
-            <div className="status-card-br-disconnected-left">
-              <div className="status-card-br-icon-small">
-                <span className="material-symbols-outlined">link_off</span>
-              </div>
-              <div className="status-card-br-disconnected-text">
-                <p className="status-card-br-disconnected-label">BR Connection Status</p>
-                <div className="status-card-br-disconnected-row">
-                  <h3 className="status-card-br-disconnected-status">DISCONNECTED</h3>
+          <div className="status-card status-card-br">
+            <div className="status-card-br-icon status-card-br-icon--disconnected">
+              <span className="material-symbols-outlined">signal_disconnected</span>
+            </div>
+            <div className="status-card-br-content">
+              <div className="status-card-br-heading">
+                <h2 className="status-card-br-title">BR Connection Status</h2>
+                <span className="status-badge status-badge--disconnected">
                   <span className="status-badge-dot status-badge-dot--red" />
+                  Disconnected
+                </span>
+              </div>
+              <div className="status-card-br-fields">
+                <div className="status-field">
+                  <span className="status-field-label">Host Address</span>
+                  <span className="status-field-value mono-text status-field-value--muted">---</span>
+                </div>
+                <div className="status-field">
+                  <span className="status-field-label">Uptime</span>
+                  <span className="status-field-value status-field-value--muted">N/A</span>
                 </div>
               </div>
+              <button
+                type="button"
+                className="status-btn-refresh"
+                onClick={() => brConfig && testBrConnect({ brHost: brConfig.brHost, brPort: brConfig.brPort })}
+              >
+                <span className="material-symbols-outlined">sync</span>
+                Try Reconnecting
+              </button>
             </div>
-            <button
-              type="button"
-              className="status-btn-refresh"
-              onClick={() => brConfig && testBrConnect({ brHost: brConfig.brHost, brPort: brConfig.brPort })}
-            >
-              <span className="material-symbols-outlined">refresh</span>
-              Refresh Connection
-            </button>
           </div>
         )}
       </section>
 
       <section className="status-section status-section-ot">
-        <div className="status-section-ot-header">
+        <div className={`status-section-ot-header ${!isConnected ? "status-section-ot-header--faded" : ""}`}>
           <h2 className="status-section-ot-title">
             <span className="material-symbols-outlined">lan</span>
             OpenThread Network
           </h2>
-          {!isConnected && (
-            <span className="status-section-ot-snapshot">Snapshot: Last seen — ago</span>
-          )}
         </div>
         <div className="status-card status-card-ot">
           {otConfig?.error ? (
             <p className="status-error">{otConfig.error}</p>
           ) : !isConnected ? (
             <>
-              <div className="status-ot-ghost" aria-hidden>
-                <div className="status-ot-ghost-item" />
-                <div className="status-ot-ghost-item" />
-                <div className="status-ot-ghost-item" />
-                <div className="status-ot-ghost-item" />
-                <div className="status-ot-ghost-item status-ot-ghost-item--wide" />
-                <div className="status-ot-ghost-item status-ot-ghost-item--grid" />
+              <div className="status-ot-grid status-ot-grid--placeholder" aria-hidden>
+                <div className="status-field"><span className="status-field-label">Network Name</span><span className="status-field-value status-field-value--muted">Not Available</span></div>
+                <div className="status-field"><span className="status-field-label">IP Address</span><span className="status-field-value mono-text status-field-value--muted">Not Available</span></div>
+                <div className="status-field status-field-with-action"><span className="status-field-label">Network Key</span><span className="status-field-value mono-text status-field-value--muted">--------------------------------</span><button type="button" className="status-field-toggle" disabled aria-hidden><span className="material-symbols-outlined">visibility_off</span></button></div>
+                <div className="status-field"><span className="status-field-label">PAN ID</span><span className="status-field-value mono-text status-field-value--muted">----</span></div>
+                <div className="status-field"><span className="status-field-label">Mesh Local Prefix</span><span className="status-field-value mono-text status-field-value--muted">----:----:----:----::/--</span></div>
+                <div className="status-field"><span className="status-field-label">PSKc</span><span className="status-field-value mono-text status-field-value--muted">--------------------------------</span></div>
+                <div className="status-field"><span className="status-field-label">Channel</span><span className="status-field-value mono-text status-field-value--muted">--</span></div>
+                <div className="status-field"><span className="status-field-label">Channel Mask</span><span className="status-field-value mono-text status-field-value--muted">--------------</span></div>
+                <div className="status-field"><span className="status-field-label">Security Policy</span><span className="status-field-value mono-text status-field-value--muted">---</span></div>
+                <div className="status-field"><span className="status-field-label">Extended PAN ID</span><span className="status-field-value mono-text status-field-value--muted">----------------</span></div>
+                <div className="status-field"><span className="status-field-label">Active Timestamp</span><span className="status-field-value status-field-value--muted">-----</span></div>
+                <div className="status-field status-field-version"><span className="status-field-label">Thread Version</span><span className="status-field-value status-field-value--muted status-field-value--mono-small">Unknown</span></div>
               </div>
               <div className="status-ot-overlay">
-                <div className="status-ot-overlay-card">
-                  <div className="status-ot-overlay-icon">
-                    <span className="material-symbols-outlined">signal_disconnected</span>
+                <div className="status-ot-overlay-card status-ot-overlay-card--compact">
+                  <div className="status-ot-overlay-icon status-ot-overlay-icon--muted">
+                    <span className="material-symbols-outlined">cloud_off</span>
                   </div>
-                  <h4 className="status-ot-overlay-title">No Network Data Available</h4>
-                  <p className="status-ot-overlay-text">
-                    Connect to the Border Router to view real-time network topology, traffic metrics, and node status.
-                  </p>
-                  <button
-                    type="button"
-                    className="status-ot-overlay-btn"
-                    onClick={() => onConfigureBr?.()}
-                  >
-                    <span className="material-symbols-outlined">link</span>
-                    Configure Border Router
-                  </button>
+                  <span className="status-ot-overlay-text-only">Network data unavailable</span>
                 </div>
               </div>
             </>

@@ -2,15 +2,15 @@
 
 ## Current Work Focus
 
-Memory Bank vua duoc tao va cau truc lai theo chuan Cursor Memory Bank. Project hien tai da co day du tinh nang chinh; tap trung vao cac viec con lai trong TODO.
+Project da on dinh voi BR qua TCP, trang Nodes (Router/Child/Joiner List), Toast dark theme, stable React keys. Tiep theo: bao tri, optional mDNS, security neu can.
 
 ## Recent Significant Changes
 
-### UI Redesign — Status + TopNav (SCSS only, no Tailwind)
-- **Branding:** TopNav hien thi "ThreadDash"; nav: Status, Devices, Topology, Console, Settings; icon buttons: notifications, settings, account_circle.
-- **Status page — Connected:** Card BR voi icon router (vung icon 1/3), badge "Connected (Đã kết nối)", Host Address, Uptime, nut Refresh; OpenThread Network grid 3x4 (can deu theo hang), label UPPERCASE, gia tri accent (Network Name, IP), badge "2.4 GHz" cho Channel, nut show/hide Network Key.
-- **Status page — Disconnected:** Card BR compact: icon tron 48px do (link_off) + label "BR Connection Status" + "DISCONNECTED" + cham do pulse + nut Refresh. OpenThread: header "OpenThread Network" + "Snapshot: Last seen — ago"; ghost grid (opacity 0.4, blur); overlay card "No Network Data Available" + nut "Configure Border Router" (goi onConfigureBr → chuyen Settings). Khong dung Tailwind — chi SCSS.
-- **Version:** Subtitle Status lay version tu `frontend/package.json` qua Vite `define __APP_VERSION__`; dong bo voi memory-bank/progress.md (1.0.0).
+### Navigation & Pages (SCSS only, no Tailwind)
+- **TopNav:** Brand "ThreadDash"; nav chi **Status**, **Nodes**, **Settings**; icon settings + account; khong con Console, Topology, Commissioner tab rieng.
+- **Nodes page:** Router Table + Child Table + **Joiner List** (ben duoi Child Table). Nut "Commission Node" mo **CommissionNodeModal** (khong con trang Commissioner rieng). Khi BR disconnect: overlay full main (blur), khong boc content; cung layout nhu khi connect. Bang trong: empty state "No routers found" / "No child nodes connected".
+- **Leader row:** Chi badge "LEADER" trong cell, khong highlight nen xanh la.
+- **Version:** Subtitle Status lay tu `frontend/package.json` qua Vite `__APP_VERSION__`; dong bo voi progress.md (1.0.0).
 
 ### Migration BR — Chi TCP, bo Serial (plan br_backend_communication)
 - **Backend:** Loai bo hoan toan Serial/USB/UART. Chi dung **TransportTcp** ket noi BR (host:port). Cau hinh: **BrConnectionConfigService** (brHost, brPort, useMdns) luu SQLite; migration 005 tao bang `br_connection_config`. Xoa SerialPort.ts, SerialConfigService.ts; go dependency serialport.
@@ -26,16 +26,10 @@ Memory Bank vua duoc tao va cau truc lai theo chuan Cursor Memory Bank. Project 
 - shared/, CMD_*, leaderRloc16, auto-start Thread, filter log TABLE
 
 ### Frontend
-- Them `shared` package — dung EVENTS const, khong dung string literal
-- Them Toast notification global (goc phai tren, fade + slide)
-- Them ConfirmModal dung chung (countdown 5s cho Reset/Factory)
-- Dashboard: Leader row highlight mau xanh la
-- Dashboard: Age counter dem len realtime theo giay
-- Commissioner: Expiration countdown (ms / 1000 = s)
-- Settings/OpenThread: Toggle switch "Khoi dong Thread"
-- Settings/System: Tab moi voi Reset + Factory Reset
-- Status: Hien thi threadVersion, ipaddr, datasetActive (da parse TLV)
-- Status/TopNav: Symbol doi mau theo thread state
+- **Toast:** Dark theme; thanh doc trai mau theo type (success/error/warning/info); title tu type (Thanh cong/Loi/Canh bao/Tro giup), message muted; nut dong goc phai; slide-in tu phai, fade-out khi exit.
+- **Nodes:** Router Table, Child Table, Joiner List (EUI64, TIMEOUT MM:SS countdown local tu initialSeconds khi co data moi), Commission Node modal. Stable keys: joiner `joiner-${sharedId}-${expirationMs}`; router/child row RLOC16 hoac ExtAddress; modal list fieldKey; LqBarsCell `lq-bar-${i}`.
+- **Joiner countdown:** Khi nhan bang joiner: tinh initialSeconds = expirationMs/1000, luu receivedAt; dem nguoc local moi giay; co data moi thi reset snapshot.
+- ConfirmModal (countdown 5s), TopNav state dot, Settings/OpenThread + System; Status: threadVersion, ipaddr, datasetActive.
 
 ## Active Decisions & Considerations
 
@@ -53,16 +47,16 @@ ROUTER_TABLE, CHILD_TABLE, JOINER_TABLE TX va ACK bi filter ra khoi console log 
 
 ## Next Steps (theo thu tu uu tien)
 
-1. **mDNS browse** *(tuy chon)* — Backend endpoint browse `_thread-frame._tcp`, frontend nut "Tim BR (mDNS)" chon instance
-2. **CMD_DATA (CBOR)** — da bo (child gui thang backend); neu can xu ly push khac thi lam rieng
-3. **Shortcut commands / Command history / Live terminal** — Console tab (neu can)
-4. **Security** — auth WS, HTTPS (neu can)
+1. **mDNS browse** *(tuy chon)* — Backend browse `_thread-frame._tcp`, frontend nut "Tim BR (mDNS)"
+2. **TCP keepalive** — Da co the bat de phat hien mat ket noi BR nhanh hon (backend TransportTcp)
+3. **Security** *(neu can)* — auth WS, HTTPS
 
 ## Files to Watch
 
-- `backend/src/communicate/CommunicateManager.ts` — logic chinh (TransportTcp, BrConnectionConfig)
+- `backend/src/communicate/CommunicateManager.ts`, `TransportTcp.ts`, `BrConnectionConfigService.ts`
 - `backend/src/communicate/CommandManager.ts` — frame handling
-- `backend/src/communicate/TransportTcp.ts` — TCP client
-- `backend/src/communicate/BrConnectionConfigService.ts` — config BR
-- `shared/src/events.ts`, `shared/src/types.ts` — them field/event phai cap nhat day
-- `memory-bank/progress.md` — cap nhat khi hoan thanh task
+- `frontend/src/components/Nodes/Nodes.tsx` — Router/Child table, JoinerList, CommissionNodeModal
+- `frontend/src/components/Nodes/JoinerList.tsx` — joiner cards, countdown (snapshot + now)
+- `frontend/src/components/common/ToastContainer.tsx` + `ToastContainer.scss` — toast dark, left bar, title/message
+- `shared/src/events.ts`, `shared/src/types.ts` — thêm field/event cập nhật cả hai
+- `memory-bank/progress.md` — cập nhật khi hoàn thành task

@@ -4,9 +4,7 @@ import { useWebSocketContext } from "./hooks/useWebSocketContext";
 import Settings from "./components/Settings";
 import BrConnectionForm from "./components/Settings/BrConnectionForm";
 import Status from "./components/Status";
-import Dashboard from "./components/Dashboard";
-import Commissioner from "./components/Commissioner";
-import Console from "./components/Console";
+import Nodes from "./components/Nodes/Nodes";
 import TopNav, { type NavPage } from "./components/common/TopNav";
 import ToastContainer from "./components/common/ToastContainer";
 import "./App.scss";
@@ -27,7 +25,7 @@ function App() {
     childTable,
   } = useWebSocketContext();
 
-  const dashboardCount = (routerTable?.rows?.length ?? 0) + (childTable?.rows?.length ?? 0);
+  const nodesCount = (routerTable?.rows?.length ?? 0) + (childTable?.rows?.length ?? 0);
 
   // Config chỉ lấy từ backend qua WebSocket
   useEffect(() => {
@@ -46,7 +44,7 @@ function App() {
       brPort: newConfig.brPort,
       useMdns: newConfig.useMdns,
     });
-    setPage("dashboard");
+    setPage("nodes");
   };
 
   if (!wsConnected) {
@@ -89,13 +87,13 @@ function App() {
         serialConnected={serialStatus?.isConnected ?? false}
         threadState={threadState}
         threadRunOnConnect={threadRunOnConnect}
-        dashboardCount={dashboardCount}
+        nodesCount={nodesCount}
       />
       <ToastContainer />
       <main className="app-main">
         {page === "status" && (
           <div className="app-container">
-            <Status onConfigureBr={() => setPage("settings")} />
+            <Status />
           </div>
         )}
         {page === "settings" && (
@@ -107,19 +105,9 @@ function App() {
             />
           </div>
         )}
-        {page === "dashboard" && (
+        {page === "nodes" && (
           <div className="app-container">
-            <Dashboard />
-          </div>
-        )}
-        {page === "commissioner" && (
-          <div className="app-container">
-            <Commissioner />
-          </div>
-        )}
-        {page === "console" && (
-          <div className="app-container">
-            <Console />
+            <Nodes />
           </div>
         )}
       </main>

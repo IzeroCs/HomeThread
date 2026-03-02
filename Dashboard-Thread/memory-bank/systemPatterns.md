@@ -112,7 +112,7 @@ socket.emit("ot:setConfig", payload); // string literal
 - **Backend**: Toan bo validation chi tiet (EUI64 format, PSKd alphabet, channel range...)
 - **Error display**: Frontend hien thi message tu backend via WebSocket event result
 
-### Age Counter Pattern (Dashboard)
+### Age Counter Pattern (Nodes)
 
 ```typescript
 const [ageOffsets, setAgeOffsets] = useState<number[]>([]);
@@ -133,19 +133,18 @@ useEffect(() => {
 
 ### Leader Row Highlight
 
-```typescript
-const isLeaderRow = leaderRloc16 != null &&
-  row[rloc16ColIndex]?.toLowerCase() === leaderRloc16.toLowerCase();
-// CSS class: dashboard-table-row-leader → background rgba(34,197,94,0.15)
-```
+- So sánh RLOC16 với `otConfig?.leaderRloc16`. Chỉ hiển thị badge "LEADER" trong cell (không nền xanh lá cả dòng).
+
+### Nodes Page Structure
+
+- Trang Nodes: header (title + subtitle + nút Commission Node), Router Table, Child Table, Joiner List (pending commissioning). Khi BR disconnect: overlay phủ main (backdrop blur), card "Border Router Disconnected" + Try Reconnecting; nội dung phía sau giống layout khi connect (ghost), không bọc trong box riêng.
+- React list keys: joiner card `joiner-${sharedId}-${expirationMs}`; router row `rloc16` (fallback router-…); child row RLOC16 hoặc ExtAddress; modal detail `fieldKey` (tên cột).
 
 ### Toast Notifications
 
-```typescript
-import { useToast } from "../contexts/ToastContext";
-const { showToast } = useToast();
-showToast("message", "success" | "error" | "info" | "warning");
-```
+- API: `showToast(type, message, duration?)` — type = success | error | warning | info.
+- Title suy từ type (Thành công / Lỗi / Cảnh báo / Trợ giúp). Dark theme: card `$card-dark`, thanh dọc trái màu theo type, message muted, nút đóng góc trên-phải; slide-in từ phải, fade-out khi exit.
+- Không dùng thư viện bên thứ ba — ToastContainer + ToastContext + SCSS.
 
 ### TopNav State Colors
 

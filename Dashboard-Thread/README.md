@@ -12,16 +12,14 @@ Backend + Frontend điều khiển **OpenThread Border Router** qua **TCP** (fra
 
 ## Tính năng chính
 
-- **Status**: Trạng thái kết nối BR (host:port), OpenThread (PAN ID, Channel, Network Name, Version, IP Address, dataset đầy đủ), thread state. Khi chưa kết nối BR: card compact (icon đỏ + DISCONNECTED), OpenThread hiển thị ghost grid + overlay "No Network Data Available" và nút "Configure Border Router". Phiên bản hiển thị lấy từ `frontend/package.json`.
-- **Dashboard**: Router Table & Child Table (số lượng trong nhãn). Click một dòng → Modal chi tiết theo RLOC16. Row của leader được highlight xanh lá. Cột Age đếm lên realtime theo giây (reset về giá trị mới khi bảng cập nhật).
-- **Commissioner**: Thêm joiner (EUI64, PSKd, timeout 30–500s); danh sách joiner với cột Expiration đếm ngược. Giao tiếp qua CMD_COMMISSIONER_JOINER (frame protocol).
-- **Console**: Xem dữ liệu serial realtime (hex).
+- **Status**: Trạng thái kết nối BR (host:port), OpenThread (PAN ID, Channel, Network Name, Version, IP Address, dataset đầy đủ), thread state. Khi chưa kết nối BR: card compact (icon đỏ + DISCONNECTED), OpenThread ghost grid + overlay "No Network Data Available" và nút "Configure Border Router". Phiên bản hiển thị lấy từ `frontend/package.json`.
+- **Nodes**: Router Table & Child Table; **Joiner List** (thiết bị đang chờ join, bên dưới Child Table) với TIMEOUT đếm ngược MM:SS (local countdown từ dữ liệu mới). Nút "Commission Node" mở modal thêm joiner (EUI64, PSKd, timeout). Click một dòng bảng → Modal chi tiết theo RLOC16. Dòng leader có badge "LEADER". Cột Age đếm lên realtime.
 - **Settings**:
   - *BR Connection*: Cấu hình host (vd. Thread-Host.local), port (5000), test connect trước khi lưu.
   - *OpenThread*: PAN ID, Channel, Network Name, Extended PAN ID, Network Key; toggle khởi động/dừng Thread; nút "Lấy lại" fetch config từ thiết bị.
   - *System*: Nút Reset và Factory Reset với modal xác nhận + đếm ngược 5 giây.
 
-Giao diện: dark theme, SCSS only (không Tailwind). Brand **ThreadDash** trên TopNav. Component dùng chung: **Modal**, **ConfirmModal**, **TopNav**, **ToastContainer** trong `frontend/src/components/common/`.
+Giao diện: dark theme, SCSS only (không Tailwind). Brand **ThreadDash** trên TopNav. Nav: Status, Nodes, Settings (icon settings + account). Toast: dark card, thanh dọc trái màu theo type (success/error/warning/info), title + message, nút đóng. Component dùng chung: **Modal**, **ConfirmModal**, **TopNav**, **ToastContainer** trong `frontend/src/components/common/`.
 
 **TopNav symbol màu sắc**: Symbol trạng thái trên TopNav đổi màu theo thread state:
 - 🟢 **Xanh lá** — leader
@@ -45,8 +43,8 @@ Dashboard-Thread/
 │   └── package.json
 ├── frontend/
 │   ├── src/
-│   │   ├── components/   # Status, Dashboard, Commissioner, Console, Settings
-│   │   │   └── common/   # Modal, TopNav
+│   │   ├── components/   # Status, Nodes (Router/Child/JoinerList, CommissionNodeModal), Settings
+│   │   │   └── common/   # Modal, ConfirmModal, TopNav, ToastContainer
 │   │   └── hooks/        # useWebSocket, useWebSocketContext
 │   └── package.json
 ├── docs/                 # (đã chuyển sang HomeThread/Documents/)

@@ -12,7 +12,7 @@ Version notation in this file uses Semantic Versioning `MAJOR.MINOR.PATCH` (no l
 | 0.5.0   | Frame protocol: bỏ CLI, raw serial, parser/builder/CRC8, CMD_ACK/NACK, pull state, dataset parse, set config cơ bản. |
 | 0.8.0   | Tables + Commissioner: CMD_ROUTER_TABLE/CHILD_TABLE/JOINER_TABLE, CMD_COMMISSIONER_JOINER, Reset/Factory, leader highlight, age/expiration countdown, Thread start/stop. |
 | 0.9.0   | Shared package, Memory Bank, polish. |
-| 1.0.0   | Migration BR: chi TCP, bo Serial. TransportTcp, BrConnectionConfigService, BrConnectionForm, Settings BR Connection. CMD_DATA da bo (child gui thang backend). UI: dark theme, ThreadDash branding, Status connected/disconnected (ghost grid + overlay), version tu frontend/package.json. |
+| 1.0.0   | Migration BR: chi TCP, bo Serial. TransportTcp, BrConnectionConfigService, BrConnectionForm, Settings BR Connection. CMD_DATA da bo. UI: dark theme, ThreadDash; Status connected/disconnected (ghost grid + overlay); version tu frontend/package.json. Nav: Status, Nodes, Settings (bo Console, Topology). Trang Nodes: Router Table + Child Table + Joiner List; Commission Node modal (khong con trang Commissioner rieng). Toast dark (thanh doc trai, title theo type). Stable React keys (joiner, router/child row, modal, LqBarsCell). Joiner countdown local (initialSeconds + receivedAt). |
 
 
 ## What Works (Completed)
@@ -62,20 +62,20 @@ Version notation in this file uses Semantic Versioning `MAJOR.MINOR.PATCH` (no l
 
 ### Frontend — Pages
 
-- Status: BR connection status (host:port), OT config day du, thread state
-- Dashboard: Router Table + Child Table, modal chi tiet, leader highlight, age counter
-- Commissioner: them joiner form, danh sach joiner + expiration countdown
-- Console: raw hex frame data tu BR
-- Settings / BR Connection: host (vd. Thread-Host.local) + port (5000) + test connect
+- Status: BR connection (host:port), OT config, thread state, version (package.json)
+- Nodes: Router Table + Child Table + Joiner List (pending commissioning); nut "Commission Node" mo CommissionNodeModal; leader badge, age counter, empty states; overlay khi BR disconnect (blur, khong boc box)
+- Settings / BR Connection: host + port + test connect
 - Settings / OpenThread: cau hinh network + toggle Thread + nut "Lay lai"
 - Settings / System: Reset + Factory Reset + ConfirmModal countdown 5s
 
+Console da bo. Commissioner gop vao Nodes (modal + Joiner List).
+
 ### Frontend — Common Components
 
-- Toast notification (global, goc phai tren, fade + slide)
-- ConfirmModal (countdown)
-- TopNav: brand "ThreadDash", nav Status / Devices / Topology / Console / Settings, state dot mau theo thread, active link co border-bottom xanh
-- Toggle switch custom (thay the checkbox)
+- Toast: dark theme, thanh doc trai theo type, title (Thanh cong/Loi/Canh bao/Tro giup), message muted, nut dong; slide-in phai, fade-out exit
+- ConfirmModal (countdown 5s)
+- TopNav: "ThreadDash", nav Status / Nodes / Settings, state dot theo thread, icon settings + account
+- Toggle switch custom
 
 ### Documentation
 
@@ -96,9 +96,7 @@ Version notation in this file uses Semantic Versioning `MAJOR.MINOR.PATCH` (no l
 
 ### Frontend
 
-- **Shortcut commands**: Nut nhanh trong Console (state, scan, ...)
-- **Command history**: Luu va chon lai lenh da gui (localStorage)
-- **Live terminal**: Hien thi moi byte UART realtime
+- **Optional**: Shortcut commands, command history (neu lam lai Console hoac terminal)
 
 ### Integration & Operations
 

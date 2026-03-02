@@ -41,6 +41,7 @@ export class TransportTcp {
         { host: config.host, port: config.port },
         () => {
           this.isConnected = true;
+          sock.setKeepAlive(true, 10_000);
           serialLogger.info(`TCP connected: ${config.host}:${config.port}`);
           resolve();
         }
