@@ -117,9 +117,11 @@ SQLite (`better-sqlite3`, WAL mode). 5 migrations:
 
 ## Styling Convention
 
-- SCSS co-located voi component (VD: `Dashboard.tsx` + `Dashboard.scss`)
+- **SCSS only** — khong dung Tailwind. Design dua theo mockup (ThreadDash / Stitch) nhung implement bang SCSS.
+- SCSS co-located voi component (VD: `Dashboard.tsx` + `Dashboard.scss`); bien dung chung trong `frontend/src/styles/_variables.scss` (dark theme: $bg-dark, $card-dark, $primary-blue, $brand-border, $text-dark, $connected-badge-*).
 - Import truc tiep: `import "./Dashboard.scss"`
-- KHONG dung CSS modules hay styled-components — plain SCSS voi BEM-style class names
+- KHONG dung CSS modules hay styled-components — plain SCSS voi BEM-style class names.
+- Version app: `frontend/package.json` field `version`; Vite inject `__APP_VERSION__` (vite.config.ts doc package.json, define). Hien thi tren Status subtitle; khi release tang version o package.json.
 
 ## Logging (pino)
 

@@ -6,6 +6,12 @@ Memory Bank vua duoc tao va cau truc lai theo chuan Cursor Memory Bank. Project 
 
 ## Recent Significant Changes
 
+### UI Redesign — Status + TopNav (SCSS only, no Tailwind)
+- **Branding:** TopNav hien thi "ThreadDash"; nav: Status, Devices, Topology, Console, Settings; icon buttons: notifications, settings, account_circle.
+- **Status page — Connected:** Card BR voi icon router (vung icon 1/3), badge "Connected (Đã kết nối)", Host Address, Uptime, nut Refresh; OpenThread Network grid 3x4 (can deu theo hang), label UPPERCASE, gia tri accent (Network Name, IP), badge "2.4 GHz" cho Channel, nut show/hide Network Key.
+- **Status page — Disconnected:** Card BR compact: icon tron 48px do (link_off) + label "BR Connection Status" + "DISCONNECTED" + cham do pulse + nut Refresh. OpenThread: header "OpenThread Network" + "Snapshot: Last seen — ago"; ghost grid (opacity 0.4, blur); overlay card "No Network Data Available" + nut "Configure Border Router" (goi onConfigureBr → chuyen Settings). Khong dung Tailwind — chi SCSS.
+- **Version:** Subtitle Status lay version tu `frontend/package.json` qua Vite `define __APP_VERSION__`; dong bo voi memory-bank/progress.md (1.0.0).
+
 ### Migration BR — Chi TCP, bo Serial (plan br_backend_communication)
 - **Backend:** Loai bo hoan toan Serial/USB/UART. Chi dung **TransportTcp** ket noi BR (host:port). Cau hinh: **BrConnectionConfigService** (brHost, brPort, useMdns) luu SQLite; migration 005 tao bang `br_connection_config`. Xoa SerialPort.ts, SerialConfigService.ts; go dependency serialport.
 - **CommunicateManager:** Chi TransportTcp + BrConnectionConfig; connectInternal(), onTransportDisconnected(), reconnect 3s. Status tra ve ConnectionStatus (isConnected, host, port).

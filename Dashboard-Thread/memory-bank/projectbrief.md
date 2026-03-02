@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-Dashboard-Thread là backend + frontend để **điều khiển OpenThread Border Router qua UART** (ESP32-H2), sử dụng **frame protocol USB CDC** — không còn CLI text. Là một monorepo npm workspaces gồm `backend/`, `frontend/`, và `shared/`.
+Dashboard-Thread là backend + frontend để **điều khiển OpenThread Border Router qua TCP** (frame protocol) — không còn CLI text, không dùng Serial/UART. BR kết nối tại host:port (vd. Thread-Host.local:5000). Monorepo npm workspaces: `backend/`, `frontend/`, `shared/`.
 
 ## Core Goal
 
@@ -16,10 +16,10 @@ Cung cấp giao diện web quản lý Thread network:
 ## Scope
 
 ### In Scope
-- Backend Node.js: serial port, frame protocol, WebSocket relay
+- Backend Node.js: TCP client (BR host:port), frame protocol, WebSocket relay
 - Frontend React: dashboard, settings, commissioner, console
 - Shared package: types, events, validation, constants
-- SQLite: lưu serial config và app settings
+- SQLite: lưu BR connection config và app settings
 - Real-time polling: table data, thread state
 
 ### Out of Scope (hiện tại)
@@ -30,14 +30,14 @@ Cung cấp giao diện web quản lý Thread network:
 
 ## Target Device
 
-**ESP32-H2** chạy OpenThread Border Router firmware, giao tiếp qua USB CDC serial.
+OpenThread Border Router (vd. ESP32-H2 hoặc thiết bị chạy BR firmware), giao tiếp qua **TCP** (frame protocol), listen port 5000.
 
 ## Key Constraints
 
 - Giao tiếp HOÀN TOÀN qua frame protocol — không dùng CLI OpenThread
 - Frame ID phải unique per request, wrap 0–0xFF
 - Frontend phải hoạt động từ LAN (Vite host: true)
-- Không được đóng serial port khi server restart — firmware vẫn chạy
+- Không đóng TCP khi server restart — BR vẫn chạy
 
 ## Documents
 

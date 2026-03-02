@@ -12,7 +12,7 @@ Version notation in this file uses Semantic Versioning `MAJOR.MINOR.PATCH` (no l
 | 0.5.0   | Frame protocol: bỏ CLI, raw serial, parser/builder/CRC8, CMD_ACK/NACK, pull state, dataset parse, set config cơ bản. |
 | 0.8.0   | Tables + Commissioner: CMD_ROUTER_TABLE/CHILD_TABLE/JOINER_TABLE, CMD_COMMISSIONER_JOINER, Reset/Factory, leader highlight, age/expiration countdown, Thread start/stop. |
 | 0.9.0   | Shared package, Memory Bank, polish. |
-| 1.0.0   | Migration BR: chi TCP, bo Serial. TransportTcp, BrConnectionConfigService, BrConnectionForm, Settings BR Connection. CMD_DATA da bo (child gui thang backend). |
+| 1.0.0   | Migration BR: chi TCP, bo Serial. TransportTcp, BrConnectionConfigService, BrConnectionForm, Settings BR Connection. CMD_DATA da bo (child gui thang backend). UI: dark theme, ThreadDash branding, Status connected/disconnected (ghost grid + overlay), version tu frontend/package.json. |
 
 
 ## What Works (Completed)
@@ -74,7 +74,7 @@ Version notation in this file uses Semantic Versioning `MAJOR.MINOR.PATCH` (no l
 
 - Toast notification (global, goc phai tren, fade + slide)
 - ConfirmModal (countdown)
-- TopNav (state color symbol)
+- TopNav: brand "ThreadDash", nav Status / Devices / Topology / Console / Settings, state dot mau theo thread, active link co border-bottom xanh
 - Toggle switch custom (thay the checkbox)
 
 ### Documentation

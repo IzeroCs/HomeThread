@@ -32,7 +32,8 @@ OpenThread Border Router (BR) cần được điều khiển và giám sát từ
 - **Không cần reload** — tất cả data đến qua WebSocket
 - **Feedback ngay lập tức** — Toast notification cho mọi action (success/error)
 - **Modal xác nhận** — cho các action nguy hiểm (Reset, Factory Reset) với countdown 5s
-- **Trực quan** — TopNav symbol đổi màu theo thread state (xanh/tím/xanh dương/cam/xám)
+- **Trực quan** — TopNav symbol đổi màu theo thread state (xanh/tím/xanh dương/cam/xám); brand "ThreadDash"
+- **Status khi mất kết nối BR** — Card BR compact (icon đỏ + DISCONNECTED), OpenThread hiển thị ghost grid + overlay "No Network Data Available" và nút "Configure Border Router" dẫn tới Settings
 - **Leader highlight** — Row của leader trong Router Table nổi bật màu xanh lá
 - **Age counter** — Cột Age đếm lên realtime không cần backend poll liên tục
 
