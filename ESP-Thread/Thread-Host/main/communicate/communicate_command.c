@@ -780,10 +780,16 @@ int communicate_command_handle_srp_register(uint8_t frame_id, const uint8_t *dat
         return -1;
     }
 
-    ESP_LOGI(TAG, "SRP register from backend: host=%s port=%u AAAA=%02x%02x:%02x%02x:...",
-             hostname, (unsigned)port,
-             backend_addr.mFields.m8[0], backend_addr.mFields.m8[1],
-             backend_addr.mFields.m8[2], backend_addr.mFields.m8[3]);
+    {
+        char ip6_str[44];
+        const uint8_t *a = backend_addr.mFields.m8;
+        snprintf(ip6_str, sizeof(ip6_str),
+                 "%02x%02x:%02x%02x:%02x%02x:%02x%02x:%02x%02x:%02x%02x:%02x%02x:%02x%02x",
+                 a[0], a[1], a[2], a[3], a[4], a[5], a[6], a[7],
+                 a[8], a[9], a[10], a[11], a[12], a[13], a[14], a[15]);
+        ESP_LOGI(TAG, "SRP register from backend: host=%s port=%u ipv6=%s",
+                 hostname, (unsigned)port, ip6_str);
+    }
 
     otInstance *instance = esp_openthread_get_instance();
     if (instance == NULL) {

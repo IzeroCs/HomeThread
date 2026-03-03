@@ -535,7 +535,9 @@ export class CommunicateManager {
             if (backendIPv6) {
               const hostname = process.env.SRP_HOSTNAME?.trim() || "dashboard";
               const port = process.env.SRP_PORT ? parseInt(process.env.SRP_PORT, 10) : 5683;
-              this.srpRegister(hostname, backendIPv6, Number.isInteger(port) && port >= 1 && port <= 65535 ? port : 5683)
+              const srpPort = Number.isInteger(port) && port >= 1 && port <= 65535 ? port : 5683;
+              serialLogger.info(`SRP register: IPv6=${backendIPv6} hostname=${hostname} port=${srpPort}`);
+              this.srpRegister(hostname, backendIPv6, srpPort)
                 .then((result) => {
                   if (result.ack) {
                     serialLogger.info("SRP register sent (BR is leader).");
