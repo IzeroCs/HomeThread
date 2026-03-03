@@ -7,7 +7,7 @@
                                         |
                               [OpenThread Stack]
                                         |
-         [Backhaul: Ethernet W5500 ưu tiên / Wi-Fi STA fallback] → backbone netif
+         [Backhaul: Ethernet W5500 only (Wi‑Fi fallback tắt)] → backbone netif
                                         |
                     +-----------+-------+--------+-----------+
                     |           |                |           |
@@ -24,7 +24,7 @@
 
 ```
 nvs_flash_init → esp_netif_init → esp_event_loop
-→ Backhaul: eth_w5500_init() (nếu bật); nếu timeout/không bật → wifi_sta_init()
+→ Backhaul: eth_w5500_init() (nếu CONFIG_BR_ETH_W5500_ENABLE); timeout thì không backbone (Wi‑Fi fallback đã tắt)
 → set_backbone_netif(backbone)   (trước OT start)
 → mdns("Thread-Host")
 → br_rcp_ctrl_init + br_rcp_reset + delay 500ms

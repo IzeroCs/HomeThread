@@ -17,11 +17,11 @@ Backend + Frontend điều khiển **OpenThread Border Router** qua **TCP** (fra
 - **Settings**:
   - *BR Connection*: Cấu hình host (vd. Thread-Host.local), port (5000), test connect trước khi lưu.
   - *OpenThread*: PAN ID, Channel, Network Name, Extended PAN ID, Network Key; toggle khởi động/dừng Thread; nút "Lấy lại" fetch config từ thiết bị.
-  - *System*: Nút Reset và Factory Reset với modal xác nhận + đếm ngược 5 giây.
+  - *System*: Hai action cards (Khởi động lại, Factory Reset) với image panel và nút Reset/Factory Reset; divider "Vùng nguy hiểm"; modal xác nhận + đếm ngược 5 giây.
 
-Giao diện: dark theme, SCSS only (không Tailwind). Brand **ThreadDash** trên TopNav. Nav: Status, Nodes, Settings (icon settings + account). Toast: dark card, thanh dọc trái màu theo type (success/error/warning/info), title + message, nút đóng. Component dùng chung: **Modal**, **ConfirmModal**, **TopNav**, **ToastContainer** trong `frontend/src/components/common/`.
+Giao diện: **dark navy** theme, SCSS only (không Tailwind). Sidebar trái brand **OpenThread** với chấm trạng thái BR/Thread. Nav: Status, Nodes, Settings (icon `speed`, `account_tree`, `settings`); dropdown Settings có 3 mục con với icon: BR Connection `lan`, OpenThread `device_hub`, System `warning`. Toast: dark card, thanh dọc trái màu theo type. **Modal / ConfirmModal**: dark navy (overlay blur, nền card-dark, nút Cancel ghost, Confirm danger/warning với hover glow). Component dùng chung: **Modal**, **ConfirmModal**, **Sidebar**, **ToastContainer** trong `frontend/src/components/common/`.
 
-**TopNav symbol màu sắc**: Symbol trạng thái trên TopNav đổi màu theo thread state:
+**Sidebar status dot màu sắc**: Chấm trạng thái trên Sidebar đổi màu theo thread state:
 - 🟢 **Xanh lá** — leader
 - 🟣 **Tím** — router
 - 🔵 **Xanh dương** — child
@@ -44,7 +44,7 @@ Dashboard-Thread/
 ├── frontend/
 │   ├── src/
 │   │   ├── components/   # Status, Nodes (Router/Child/JoinerList, CommissionNodeModal), Settings
-│   │   │   └── common/   # Modal, ConfirmModal, TopNav, ToastContainer
+│   │   │   └── common/   # Modal, ConfirmModal, Sidebar, ToastContainer
 │   │   └── hooks/        # useWebSocket, useWebSocketContext
 │   └── package.json
 ├── docs/                 # (đã chuyển sang HomeThread/Documents/)

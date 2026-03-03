@@ -32,7 +32,7 @@ OpenThread Border Router (BR) cần được điều khiển và giám sát từ
 - **Không cần reload** — tất cả data đến qua WebSocket
 - **Feedback ngay lập tức** — Toast notification cho mọi action (success/error)
 - **Modal xác nhận** — cho các action nguy hiểm (Reset, Factory Reset) với countdown 5s
-- **Trực quan** — TopNav symbol đổi màu theo thread state (xanh/tím/xanh dương/cam/xám); brand "ThreadDash"
+- **Trực quan** — Sidebar trái với brand "OpenThread" và status dot đổi màu theo thread state (xanh/tím/xanh dương/cam/xám)
 - **Status khi mất kết nối BR** — Card BR compact (icon đỏ + DISCONNECTED), OpenThread hiển thị ghost grid + overlay "No Network Data Available" và nút "Configure Border Router" dẫn tới Settings
 - **Leader highlight** — Row của leader trong Router Table nổi bật màu xanh lá
 - **Age counter** — Cột Age đếm lên realtime không cần backend poll liên tục
@@ -45,6 +45,6 @@ OpenThread Border Router (BR) cần được điều khiển và giám sát từ
 | Nodes | Router Table + Child Table + Joiner List (thiết bị đang chờ join); nút "Commission Node" mở modal thêm joiner (EUI64/PSKd/timeout); leader badge, age counter, empty states |
 | Settings / BR Connection | Host, port, test connect |
 | Settings / OpenThread | Cấu hình network + toggle khởi động Thread |
-| Settings / System | Reset + Factory Reset với countdown |
+| Settings / System | Action cards (Khởi động lại, Factory Reset) + danger divider; modal xác nhận countdown 5s |
 
 Console đã bỏ. Commissioner gộp vào Nodes (modal Commission Node + Joiner List).

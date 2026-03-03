@@ -30,8 +30,16 @@ static esp_eth_netif_glue_handle_t s_glue = NULL;
 static void eth_event_handler(void *arg, esp_event_base_t event_base,
                               int32_t event_id, void *event_data)
 {
+    esp_netif_t *netif = (esp_netif_t *)arg;
+
     if (event_base == ETH_EVENT && event_id == ETHERNET_EVENT_CONNECTED) {
         ESP_LOGI(TAG, "Ethernet link up");
+        if (netif != NULL) {
+            esp_err_t err = esp_netif_create_ip6_linklocal(netif);
+            if (err != ESP_OK) {
+                ESP_LOGW(TAG, "failed to create IPv6 link-local address: %s", esp_err_to_name(err));
+            }
+        }
     } else if (event_base == ETH_EVENT && event_id == ETHERNET_EVENT_DISCONNECTED) {
         ESP_LOGW(TAG, "Ethernet link down");
     }
@@ -44,6 +52,11 @@ static void got_ip_handler(void *arg, esp_event_base_t event_base,
         ip_event_got_ip_t *event = (ip_event_got_ip_t *)event_data;
         ESP_LOGI(TAG, "Ethernet got IP: " IPSTR, IP2STR(&event->ip_info.ip));
         xEventGroupSetBits(s_eth_event_group, ETH_GOT_IP_BIT);
+    } else if (event_base == IP_EVENT && event_id == IP_EVENT_GOT_IP6) {
+        ip_event_got_ip6_t *event = (ip_event_got_ip6_t *)event_data;
+        if (event->esp_netif == s_eth_netif) {
+            ESP_LOGI(TAG, "Ethernet got IPv6: " IPV6STR, IPV62STR(event->ip6_info.ip));
+        }
     }
 }
 
@@ -157,7 +170,7 @@ esp_err_t eth_w5500_init(void)
         return err;
     }
 
-    err = esp_event_handler_register(ETH_EVENT, ESP_EVENT_ANY_ID, &eth_event_handler, NULL);
+    err = esp_event_handler_register(ETH_EVENT, ESP_EVENT_ANY_ID, &eth_event_handler, s_eth_netif);
     if (err != ESP_OK) {
         ESP_LOGE(TAG, "register ETH_EVENT %s", esp_err_to_name(err));
         goto fail;
@@ -168,9 +181,17 @@ esp_err_t eth_w5500_init(void)
         goto fail;
     }
 
+    err = esp_event_handler_register(IP_EVENT, IP_EVENT_GOT_IP6, &got_ip_handler, NULL);
+    if (err != ESP_OK) {
+        esp_event_handler_unregister(IP_EVENT, IP_EVENT_ETH_GOT_IP, got_ip_handler);
+        esp_event_handler_unregister(ETH_EVENT, ESP_EVENT_ANY_ID, eth_event_handler);
+        goto fail;
+    }
+
     err = esp_eth_start(s_eth_handle);
     if (err != ESP_OK) {
         ESP_LOGE(TAG, "esp_eth_start %s", esp_err_to_name(err));
+        esp_event_handler_unregister(IP_EVENT, IP_EVENT_GOT_IP6, got_ip_handler);
         esp_event_handler_unregister(IP_EVENT, IP_EVENT_ETH_GOT_IP, got_ip_handler);
         esp_event_handler_unregister(ETH_EVENT, ESP_EVENT_ANY_ID, eth_event_handler);
         goto fail;
@@ -188,6 +209,7 @@ esp_err_t eth_w5500_init(void)
     ESP_LOGW(TAG, "Ethernet IP timeout, fallback to Wi-Fi if enabled");
     /* Deinit Ethernet so Wi-Fi can be used; caller will use wifi_sta as backbone */
     esp_eth_stop(s_eth_handle);
+    esp_event_handler_unregister(IP_EVENT, IP_EVENT_GOT_IP6, got_ip_handler);
     esp_event_handler_unregister(IP_EVENT, IP_EVENT_ETH_GOT_IP, got_ip_handler);
     esp_event_handler_unregister(ETH_EVENT, ESP_EVENT_ANY_ID, eth_event_handler);
     esp_eth_del_netif_glue(s_glue);

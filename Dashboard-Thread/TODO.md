@@ -1,4 +1,4 @@
-# TODO – Điều khiển OpenThread qua UART (ESP32-H2, frame protocol)
+# TODO – Điều khiển OpenThread qua TCP (frame protocol)
 
 Phần đã triển khai được mô tả trong [README.md](./README.md). Dưới đây chỉ liệt kê **việc còn lại**.
 
@@ -26,7 +26,7 @@ Phần đã triển khai được mô tả trong [README.md](./README.md). Dư�
 
 ## Tích hợp & vận hành
 
-- [ ] **Quyền cổng serial (Linux)**: Thêm user vào group `dialout` hoặc tạo udev rule cho USB serial ESP32-H2.
+- [ ] **mDNS browse** *(tùy chọn)*: Backend browse `_thread-frame._tcp`, frontend nút "Tìm BR (mDNS)".
 - [ ] **WebSocket log 2 lần khi dev**: Do React Strict Mode mount 2 lần — không phải lỗi, nhưng cần lưu ý khi debug.
 
 ---

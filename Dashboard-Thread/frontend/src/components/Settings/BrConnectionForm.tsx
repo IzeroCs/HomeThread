@@ -3,7 +3,7 @@ import { DEFAULT_BR_CONFIG, type BrConnectionConfigForm } from "../../utils/BrCo
 import { useToast } from "../../contexts/ToastContext";
 import { BR_CONNECTION } from "shared/src/constants";
 import { validateBrConnectionConfig } from "shared/src/validation";
-import "./SerialConfigForm.scss";
+import "./BrConnectionForm.scss";
 
 interface BrConnectionConfigFromBackend extends BrConnectionConfigForm {
   id?: number;
@@ -89,91 +89,98 @@ export default function BrConnectionForm({ initialConfig, onSave, onTestConnect 
 
   const canSave = !onTestConnect || testSucceeded;
   const alertMessage =
-    testStatus.type === "success"
+    testStatus.type === "error"
       ? testStatus.message
-      : testStatus.type === "error"
-        ? testStatus.message
-        : Object.keys(errors).length > 0
-          ? errors.brHost || errors.brPort || "Please check the fields below."
-          : null;
-  const alertType =
-    testStatus.type === "success"
-      ? "success"
-      : testStatus.type === "error" || Object.keys(errors).length > 0
-        ? "error"
+      : Object.keys(errors).length > 0
+        ? errors.brHost || errors.brPort || "Please check the fields below."
         : null;
+  const alertType = testStatus.type === "error" || Object.keys(errors).length > 0 ? "error" : null;
 
   return (
     <div className="form-page">
-      <div className="form-card">
+      <div className="form-page-header">
         <h2 className="form-page-title">BR Connection (TCP)</h2>
         <p className="form-page-description">
-          Configure Border Router host and port (mDNS: Thread-Host.local or IP)
+          Configure your Border Router TCP connection settings and network parameters.
         </p>
+      </div>
 
-        {alertMessage && alertType && (
-          <div
-            className={`form-page-alert form-page-alert-${alertType}`}
-            role="alert"
-          >
-            {alertMessage}
-          </div>
-        )}
+      {alertMessage && alertType === "error" && (
+        <div className="form-page-alert form-page-alert-error" role="alert">
+          {alertMessage}
+        </div>
+      )}
 
+      <div className="form-card br-connection-card">
         <form onSubmit={handleSubmit} className="form-page-form">
-          <div className="form-group">
-            <label htmlFor="brHost">BR Host</label>
-            <input
-              type="text"
-              id="brHost"
-              value={formData.brHost}
-              onChange={(e) => handleFieldChange("brHost", e.target.value)}
-              placeholder="Thread-Host.local"
-              className={errors.brHost ? "error" : ""}
-            />
-            {errors.brHost && (
-              <span className="error-message">{errors.brHost}</span>
-            )}
-            <small className="form-hint">
-              Hostname (e.g. Thread-Host.local) or IP address
-            </small>
+          <div className="form-row-2 br-fields-row">
+            <div className="form-group">
+              <label htmlFor="brHost">BR Host</label>
+              <input
+                type="text"
+                id="brHost"
+                value={formData.brHost}
+                onChange={(e) => handleFieldChange("brHost", e.target.value)}
+                placeholder="Thread-Host.local"
+                className={errors.brHost ? "error" : ""}
+              />
+              {errors.brHost && (
+                <span className="error-message">{errors.brHost}</span>
+              )}
+              <small className="form-hint">
+                DNS name or static IPv6 address of the Border Router.
+              </small>
+            </div>
+
+            <div className="form-group">
+              <label htmlFor="brPort">Port</label>
+              <input
+                type="number"
+                id="brPort"
+                value={formData.brPort}
+                onChange={(e) =>
+                  handleFieldChange("brPort", parseInt(e.target.value, 10) || BR_CONNECTION.DEFAULT_PORT)
+                }
+                min={BR_CONNECTION.MIN_PORT}
+                max={BR_CONNECTION.MAX_PORT}
+                className={errors.brPort ? "error" : ""}
+              />
+              {errors.brPort && (
+                <span className="error-message">{errors.brPort}</span>
+              )}
+              <small className="form-hint">
+                Standard TCP port for OpenThread management (default: {BR_CONNECTION.DEFAULT_PORT}).
+              </small>
+            </div>
           </div>
 
-          <div className="form-group">
-            <label htmlFor="brPort">Port</label>
-            <input
-              type="number"
-              id="brPort"
-              value={formData.brPort}
-              onChange={(e) =>
-                handleFieldChange("brPort", parseInt(e.target.value, 10) || BR_CONNECTION.DEFAULT_PORT)
-              }
-              min={BR_CONNECTION.MIN_PORT}
-              max={BR_CONNECTION.MAX_PORT}
-              className={errors.brPort ? "error" : ""}
-            />
-            {errors.brPort && (
-              <span className="error-message">{errors.brPort}</span>
-            )}
-            <small className="form-hint">
-              Default: {BR_CONNECTION.DEFAULT_PORT}
-            </small>
+          <div className="br-divider" />
+
+          <div className="br-connection-note">
+            <div className="br-connection-note-icon" aria-hidden="true">
+              <span className="material-symbols-outlined">info</span>
+            </div>
+            <p className="br-connection-note-text">
+              Changing these settings will restart the monitoring service. Ensure the Border Router is accessible from
+              this network before saving.
+            </p>
           </div>
 
-          <div className="form-actions">
+          <div className="br-connection-actions">
             {onTestConnect && (
               <button
                 type="button"
-                className="test-connect-button"
+                className="form-btn form-btn--ghost br-test-connect"
                 onClick={handleTestConnect}
                 disabled={testStatus.type === "loading"}
               >
-                {testStatus.type === "loading" ? "Testing…" : "Test Connect"}
+                <span className="test-status-dot" aria-hidden="true" />
+                {testStatus.type === "loading" ? "Testing…" : "Test Connection"}
               </button>
             )}
             <button
               type="submit"
-              className="btn-primary submit-button"
+              className="form-btn form-btn--primary br-submit"
               disabled={onTestConnect ? !canSave : false}
             >
               Save Configuration

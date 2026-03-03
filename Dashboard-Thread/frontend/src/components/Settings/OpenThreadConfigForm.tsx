@@ -24,6 +24,7 @@ export default function OpenThreadConfigForm() {
   const [loading, setLoading] = useState(false);
   const [applying, setApplying] = useState(false);
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
+  const [showNetworkKey, setShowNetworkKey] = useState(false);
 
   const isConnected = serialStatus?.isConnected ?? false;
 
@@ -77,156 +78,171 @@ export default function OpenThreadConfigForm() {
 
   return (
     <div className="form-page">
-      <div className="form-card">
-        <h2 className="form-page-title">OpenThread / Thread</h2>
+      <div className="form-page-header">
+        <h2 className="form-page-title">Cấu hình mạng Thread</h2>
         <p className="form-page-description">
-          Cấu hình Panid, Channel, Network Name, Extended PAN ID, Network Key trên thiết bị
+          Quản lý thông số kỹ thuật và trạng thái hoạt động của mạng Mesh trong môi trường OpenThread.
         </p>
+      </div>
 
-        {!isConnected && (
-          <div className="form-page-alert form-page-alert-warn">
-            Chưa kết nối serial. Vào Nodes → Connect Serial rồi quay lại đây.
-          </div>
-        )}
+      {!isConnected && (
+        <div className="form-page-alert form-page-alert-warn">
+          Chưa kết nối BR. Vào Status/Nodes để kết nối rồi quay lại đây.
+        </div>
+      )}
 
-        {message && (
-          <div className={`form-page-alert form-page-alert-${message.type}`}>
-            {message.text}
-          </div>
-        )}
+      {message && (
+        <div className={`form-page-alert form-page-alert-${message.type}`}>
+          {message.text}
+        </div>
+      )}
 
-        <div className="form-page-form">
-          <div className="form-group">
-            <label htmlFor="ot-panid">PAN ID</label>
-            <input
-              id="ot-panid"
-              type="text"
-              value={panid}
-              onChange={(e) => setPanid(e.target.value)}
-              placeholder="0x1234"
-              disabled={!isConnected}
-            />
-            <small className="form-hint">Ví dụ: 0x5938</small>
+      <div className="form-card ot-card">
+        <div className="ot-card-header">
+          <div className="ot-card-title">
+            <span className="ot-card-title-icon" aria-hidden="true">
+              <span className="material-symbols-outlined">device_hub</span>
+            </span>
+            <span>Thông số mạng</span>
           </div>
-          <div className="form-group">
-            <label htmlFor="ot-channel">Channel</label>
-            <input
-              id="ot-channel"
-              type="number"
-              min={11}
-              max={26}
-              value={channel}
-              onChange={(e) => setChannel(parseInt(e.target.value, 10) || 11)}
-              disabled={!isConnected}
-            />
-            <small className="form-hint">11–26 (IEEE 802.15.4)</small>
-          </div>
-          <div className="form-group">
-            <label htmlFor="ot-networkname">Network Name</label>
-            <input
-              id="ot-networkname"
-              type="text"
-              value={networkName}
-              onChange={(e) => setNetworkName(e.target.value)}
-              placeholder="OpenThread-5938"
-              disabled={!isConnected}
-            />
-          </div>
-          <div className="form-group">
-            <label htmlFor="ot-extendedpanid">Extended PAN ID</label>
-            <input
-              id="ot-extendedpanid"
-              type="text"
-              value={extendedPanId}
-              onChange={(e) => setExtendedPanId(e.target.value)}
-              placeholder="0x1234567890abcdef"
-              disabled={!isConnected}
-            />
-            <small className="form-hint">16 ký tự hex (8 bytes), ví dụ: 0x1234567890abcdef</small>
-          </div>
-          <div className="form-group">
-            <label htmlFor="ot-networkkey">Network Key</label>
-            <input
-              id="ot-networkkey"
-              type="text"
-              value={networkKey}
-              onChange={(e) => setNetworkKey(e.target.value)}
-              placeholder="0x1234567890abcdef1234567890abcdef"
-              disabled={!isConnected}
-            />
-            <small className="form-hint">32 ký tự hex (16 bytes), ví dụ: 0x1234567890abcdef1234567890abcdef</small>
-          </div>
-          <div className="form-group ot-config-switch">
-            <label className="ot-config-toggle-label">
-              <div className="ot-config-toggle-wrapper">
-                <input
-                  type="checkbox"
-                  className="ot-config-toggle-input"
-                  checked={threadRunOnConnect}
-                  onChange={async (e) => {
-                    const newValue = e.target.checked;
-                    setThreadRunOnConnect(newValue);
-                    
-                    // Gọi startThread hoặc stopThread khi toggle
-                    if (newValue) {
-                      const result = await startThread();
-                      if (result.success) {
-                        showToast("success", "Đã khởi động Thread.");
-                      } else {
-                        showToast("error", result.error ?? "Không thể khởi động Thread.");
-                        // Revert toggle nếu thất bại
-                        setThreadRunOnConnect(false);
-                      }
+          <div className="ot-toggle-group">
+            <span className="ot-toggle-label">Khởi động Thread</span>
+            <label className="ot-toggle">
+              <input
+                type="checkbox"
+                checked={threadRunOnConnect}
+                onChange={async (e) => {
+                  const newValue = e.target.checked;
+                  setThreadRunOnConnect(newValue);
+
+                  if (newValue) {
+                    const result = await startThread();
+                    if (result.success) {
+                      showToast("success", "Đã khởi động Thread.");
                     } else {
-                      const result = await stopThread();
-                      if (result.success) {
-                        showToast("success", "Đã dừng Thread.");
-                      } else {
-                        showToast("error", result.error ?? "Không thể dừng Thread.");
-                        // Revert toggle nếu thất bại
-                        setThreadRunOnConnect(true);
-                      }
+                      showToast("error", result.error ?? "Không thể khởi động Thread.");
+                      setThreadRunOnConnect(false);
                     }
-                  }}
-                />
-                <span className="ot-config-toggle-slider">
-                  <span className="ot-config-toggle-text-inner">
-                    {threadRunOnConnect ? "ON" : "OFF"}
-                  </span>
-                </span>
-              </div>
-              <span className="ot-config-toggle-text">Khởi động Thread</span>
+                  } else {
+                    const result = await stopThread();
+                    if (result.success) {
+                      showToast("success", "Đã dừng Thread.");
+                    } else {
+                      showToast("error", result.error ?? "Không thể dừng Thread.");
+                      setThreadRunOnConnect(true);
+                    }
+                  }
+                }}
+                disabled={!isConnected}
+              />
+              <span className="ot-toggle-track" />
+              <span className="ot-toggle-thumb" />
             </label>
           </div>
-          <div className="form-actions">
-            <button
-              type="button"
-              className="ot-config-btn load"
-              onClick={handleLoad}
-              disabled={!isConnected || loading}
-            >
-              {loading ? "Đang tải…" : "Lấy lại"}
-            </button>
-            <button
-              type="button"
-              className="ot-config-btn apply"
-              onClick={handleApply}
-              disabled={!isConnected || applying}
-            >
-              {applying ? (
-                <>
-                  Đang áp dụng
-                  <span className="apply-dots" aria-hidden="true">
-                    <span>.</span>
-                    <span>.</span>
-                    <span>.</span>
-                  </span>
-                </>
-              ) : (
-                "Áp dụng"
-              )}
-            </button>
+        </div>
+
+        <div className="ot-card-body form-page-form">
+          <div className="form-row-2">
+            <div className="form-group ot-field-group">
+              <label htmlFor="ot-panid">PAN ID</label>
+              <div className="ot-input-wrap">
+                <input
+                  id="ot-panid"
+                  type="text"
+                  value={panid}
+                  onChange={(e) => setPanid(e.target.value)}
+                  placeholder="0x1986"
+                  disabled={!isConnected}
+                />
+              </div>
+            </div>
+            <div className="form-group ot-field-group">
+              <label htmlFor="ot-channel">Kênh (Channel)</label>
+              <div className="ot-input-wrap">
+                <input
+                  id="ot-channel"
+                  type="number"
+                  min={11}
+                  max={26}
+                  value={channel}
+                  onChange={(e) => setChannel(parseInt(e.target.value, 10) || 11)}
+                  disabled={!isConnected}
+                />
+              </div>
+            </div>
           </div>
+
+          <div className="form-group ot-field-group">
+            <label htmlFor="ot-networkname">Tên mạng (Network Name)</label>
+            <div className="ot-input-wrap">
+              <input
+                id="ot-networkname"
+                type="text"
+                value={networkName}
+                onChange={(e) => setNetworkName(e.target.value)}
+                placeholder="OpenThread-Mesh"
+                disabled={!isConnected}
+              />
+            </div>
+          </div>
+
+          <div className="form-group ot-field-group">
+            <label htmlFor="ot-extendedpanid">Extended PAN ID</label>
+            <div className="ot-input-wrap">
+              <input
+                id="ot-extendedpanid"
+                type="text"
+                value={extendedPanId}
+                onChange={(e) => setExtendedPanId(e.target.value)}
+                placeholder="DEADBEEF00112233"
+                disabled={!isConnected}
+              />
+            </div>
+          </div>
+
+          <div className="form-group ot-field-group">
+            <label htmlFor="ot-networkkey">Khóa mạng (Network Key)</label>
+            <div className="ot-input-wrap">
+              <input
+                id="ot-networkkey"
+                type={showNetworkKey ? "text" : "password"}
+                value={networkKey}
+                onChange={(e) => setNetworkKey(e.target.value)}
+                placeholder="00112233445566778899AABBCCDDEEFF"
+                disabled={!isConnected}
+              />
+              <button
+                type="button"
+                className="ot-eye-btn"
+                onClick={() => setShowNetworkKey((prev) => !prev)}
+                title={showNetworkKey ? "Ẩn khóa" : "Hiện khóa"}
+              >
+                <span className="material-symbols-outlined">
+                  {showNetworkKey ? "visibility_off" : "visibility"}
+                </span>
+              </button>
+            </div>
+            <span className="ot-field-hint">Khóa mạng được mã hóa để đảm bảo an toàn.</span>
+          </div>
+        </div>
+
+        <div className="ot-card-footer">
+          <button
+            type="button"
+            className="form-btn form-btn--ghost"
+            onClick={handleLoad}
+            disabled={!isConnected || loading}
+          >
+            {loading ? "Đang tải…" : "Lấy lại"}
+          </button>
+          <button
+            type="button"
+            className="form-btn form-btn--primary"
+            onClick={handleApply}
+            disabled={!isConnected || applying}
+          >
+            {applying ? "Đang áp dụng…" : "Áp dụng"}
+          </button>
         </div>
       </div>
     </div>

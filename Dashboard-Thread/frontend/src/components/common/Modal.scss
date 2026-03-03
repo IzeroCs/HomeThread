@@ -8,7 +8,8 @@
   align-items: center;
   justify-content: center;
   padding: 24px;
-  background: rgba(0, 0, 0, 0.45);
+  background: rgba(6, 11, 25, 0.78);
+  backdrop-filter: blur(6px);
   animation: modal-overlay-in 0.2s ease-out;
 }
 
@@ -22,15 +23,16 @@
 }
 
 .modal-box {
-  background: white;
+  background: $card-dark;
   border-radius: $border-radius;
-  box-shadow: $shadow;
+  box-shadow: 0 26px 80px rgba(15, 23, 42, 0.95);
   max-width: 480px;
   width: 100%;
   max-height: calc(100vh - 48px);
   display: flex;
   flex-direction: column;
   animation: modal-box-in 0.2s ease-out;
+  border: 1px solid $brand-border;
 }
 
 @keyframes modal-box-in {
@@ -49,15 +51,15 @@
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  padding: 16px 20px;
-  border-bottom: 1px solid $border-color;
+  padding: 16px 20px 12px;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.16);
 }
 
 .modal-title {
   margin: 0;
   font-size: 18px;
   font-weight: 600;
-  color: $text-primary;
+  color: $text-dark;
 }
 
 .modal-close {
@@ -68,18 +70,18 @@
   background: transparent;
   font-size: 24px;
   line-height: 1;
-  color: $text-secondary;
+  color: $text-dark-subtle;
   cursor: pointer;
   border-radius: $border-radius-small;
 
   &:hover {
-    background: $bg-light;
-    color: $text-primary;
+    background: rgba(15, 23, 42, 0.85);
+    color: $text-dark;
   }
 }
 
 .modal-body {
-  padding: 20px;
+  padding: 18px 20px 20px;
   overflow-y: auto;
   flex: 1;
   min-height: 0;
@@ -106,13 +108,13 @@
 .modal-detail-key {
   flex: 0 0 120px;
   font-weight: 600;
-  color: $text-secondary;
+  color: $text-dark-subtle;
   font-size: 13px;
 }
 
 .modal-detail-value {
   flex: 1;
-  color: $text-primary;
+  color: $text-dark;
   font-size: 14px;
   font-family: ui-monospace, monospace;
   word-break: break-all;

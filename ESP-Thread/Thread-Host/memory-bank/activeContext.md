@@ -1,14 +1,25 @@
 # Active Context — Thread-Host
 
-_Cập nhật: 2026-02-27_
+_Cập nhật: 2026-03-03_
 
 ## Công việc hiện tại
 
-Phase 2 (BR thật) đã xong: backhaul Wi‑Fi + Ethernet W5500 ưu tiên/fallback, transport TCP, border routing + prefix. Phase 2.7 docs (Memory Bank, README) đã cập nhật.
+Backhaul Ethernet W5500 đã có IPv6 trên backbone (link-local + ULA/global khi router gửi RA). Wi‑Fi fallback đã tắt trong code: chỉ dùng Ethernet khi bật. Child↔backend test: ping/CoAP từ child tới IPv6 backend qua BR.
 
 ## Thay đổi gần đây
 
-### CMD_COMMISSIONER_JOINER (0x43) — Vừa implement
+### Ethernet IPv6 (Preferred: link-local) — Đã implement
+- **Vấn đề:** Gọi `esp_netif_create_ip6_linklocal(s_eth_netif)` ngay sau `esp_netif_attach` trả `ESP_FAIL` (netif chưa link up).
+- **Cách làm theo esp-thread-br / protocol_examples_common:** Trong `eth_event_handler`, khi `ETHERNET_EVENT_CONNECTED` mới gọi `esp_netif_create_ip6_linklocal(netif)`; đăng ký handler với `s_eth_netif` làm `arg`.
+- Kết quả: BR có ít nhất link-local `fe80::` trên W5500; nếu MikroTik gửi RA thì có thêm ULA/global. Log: `Ethernet link up`, `Ethernet got IPv6: ...`; sau BR init: `backbone global IPv6` / `backbone link-local IPv6` trong `br_main.c`.
+
+### Backhaul: Wi‑Fi fallback tắt trong code
+- `br_main.c` không còn gọi `wifi_sta_init()`; bỏ `#include "backhaul/wifi_sta.h"`. Chỉ dùng Ethernet W5500 khi `CONFIG_BR_ETH_W5500_ENABLE=y`. Nếu Ethernet timeout thì không backbone (không fallback Wi‑Fi).
+
+### CMD_IP_ADDR và Dashboard reply ACK
+- BR gửi ACK + 16 byte Leader RLOC; spec yêu cầu backend gửi lại **một ACK trống cùng frameId** để BR dừng retry. Dashboard-Thread hiện chỉ gọi `replyAck(ipRes.frameId)` trong `CommunicateManager.pullState()` khi `stateChangedOrFirst` → các lần fetch IP_ADDR khác (vd. fetchOtConfig, refresh) không gửi reply ACK → BR retry mãi. **Khuyến nghị:** Trong Dashboard-Thread, `CommandManager.handle()` khi nhận ACK của CMD_IP_ADDR (frameId trong ipAddrFrameIds, data.length === 16) tự gọi `replyAck(frame.frameId)` để mọi nguồn gọi fetchIpAddr đều trả ACK cho BR.
+
+### CMD_COMMISSIONER_JOINER (0x43) — Đã implement
 - Handler trong `communicate_command.c`: parse EUI64(8) + PSKd_len(1) + PSKd(1–32) + Timeout(4 BE)
 - Tự động start commissioner nếu chưa active, wait ACTIVE tối đa 1s (poll 200ms)
 - EUI64 all-zero = wildcard → `NULL` vào `otCommissionerAddJoiner`
@@ -46,16 +57,21 @@ Phase 2 (BR thật) đã xong: backhaul Wi‑Fi + Ethernet W5500 ưu tiên/fallb
 
 - **Factory reset:** Dùng raw `esp_partition_erase_range` + KHÔNG stop OT trước (để tránh OT write-back dataset)
 - **Frame transport:** Chỉ TCP (BR listen port); đã bỏ USB/UART cho kênh BR↔dashboard
-- **Backhaul:** Ethernet W5500 ưu tiên (nếu bật), Wi‑Fi STA fallback
+- **Backhaul:** Chỉ Ethernet W5500 khi bật (`CONFIG_BR_ETH_W5500_ENABLE`); Wi‑Fi fallback đã tắt trong code
 - **Stack monitor:** Task `stk_mon` 3072 bytes, log mỗi 30s; `main` task luôn hiện "used full" sau `app_main()` exit — bình thường
+- **Backbone LAN:** Khi router (vd. MikroTik) gửi RA và BR tạo được IPv6 link-local (trên ETHERNET_EVENT_CONNECTED), BR có IPv6 backbone → ít log ND/RS fail. Nếu backbone không có RA thì vẫn có thể thấy `Failed to send ND6 message` / `RsSender: Failed to send RS`; khi đó BR vẫn có link-local `fe80::` nếu đã gọi `esp_netif_create_ip6_linklocal` đúng lúc.
+- **Backend ↔ child:** Mô hình ưu tiên là backend bật IPv6 (ít nhất link-local/ULA trên máy backend, không phụ thuộc ISP) để child nói chuyện trực tiếp bằng IPv6 qua BR. Nếu backend chỉ IPv4 thì cần NAT64 hoặc proxy ở BR (chưa implement, chỉ ghi nhận như hướng mở rộng).
 
 ## Bước tiếp theo
 
-1. **Docs Thread-Node / Dashboard-Thread:** Cập nhật hoặc tạo doc (child gửi thẳng backend qua IP, backend listen IP)
-2. **CMD_SYS_HEALTH:** Handler gửi stack HWM + heap size cho backend monitor
-3. **Auto-flash RCP:** Tính năng flash firmware RCP khi boot (xem TODO.md)
+1. **Dashboard-Thread:** Sửa reply ACK cho CMD_IP_ADDR — trong `CommandManager.handle()` khi nhận ACK (frameId ∈ ipAddrFrameIds, data.length === 16) gọi `replyAck(frame.frameId)` để BR không retry vô hạn.
+2. **Test child↔backend:** Trên child (hoặc ot-cli join mạng) chạy `ping <IPv6_backend>` hoặc CoAP/HTTP tới backend; BR chỉ route. Sanity check: từ backend ping IPv6 BR; từ BR CLI ping IPv6 backend.
+3. **Docs Thread-Node / Dashboard-Thread:** Cập nhật hoặc tạo doc (child gửi thẳng backend qua IP, backend listen IP)
+4. **CMD_SYS_HEALTH:** Handler gửi stack HWM + heap size cho backend monitor
+5. **Auto-flash RCP:** Tính năng flash firmware RCP khi boot (xem TODO.md)
 
 ## Known Issues đang theo dõi
 
 - `main` task hiện "used full" trong stack monitor — đây là artifact của task đã exit, không phải overflow
 - Leader Control Client gửi `GET /network/stop` nhưng chưa biết Leader phía kia xử lý thế nào
+- **Dashboard-Thread:** IP_ADDR response no ACK retry — backend chỉ gửi reply ACK khi `stateChangedOrFirst` trong pullState; các lần fetch IP_ADDR khác không reply → BR retry. Fix: gọi replyAck trong `CommandManager.handle()` cho mọi ACK CMD_IP_ADDR (16 byte).

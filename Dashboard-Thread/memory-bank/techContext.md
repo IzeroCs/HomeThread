@@ -117,9 +117,11 @@ SQLite (`better-sqlite3`, WAL mode). 5 migrations:
 
 ## Styling Convention
 
-- **SCSS only** — không dùng Tailwind. Design theo mockup (ThreadDash) implement bằng SCSS.
+- **SCSS only** — không dùng Tailwind. Design theo mockup (ThreadDash) implement bằng SCSS; theme **dark navy** (card-dark, brand-border, text-dark).
 - SCSS co-located với component (VD: `Nodes/Nodes.scss`, `Status.scss`); biến chung `frontend/src/styles/_variables.scss` (dark: $bg-dark, $card-dark, $primary-blue, $brand-border, $text-dark, $lq-good, $lq-warn).
-- Font: Inter (local hoặc Google Fonts link trong index.html); `_fonts.scss` nếu dùng local.
+- **Modal/ConfirmModal:** Dark navy — overlay blur, box $card-dark, nút Cancel ghost, Confirm danger/warning với hover glow.
+- **Icons:** Material Symbols (Google Fonts); Sidebar nav dùng `speed`, `account_tree`, `settings`; Settings sub-items `lan`, `device_hub`, `warning`.
+- Font: Inter hoặc IBM Plex Sans (Google Fonts link trong index.html); `_fonts.scss` nếu dùng local.
 - Version: `frontend/package.json` → Vite `__APP_VERSION__`; hiển thị Status subtitle; khi release cập nhật package.json và progress.md.
 
 ## Logging (pino)

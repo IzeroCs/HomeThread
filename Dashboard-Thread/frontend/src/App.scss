@@ -3,10 +3,11 @@
 .app-layout {
   min-height: 100vh;
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   background: $bg-dark;
 
   &--waiting {
+    flex-direction: column;
     justify-content: center;
     align-items: center;
   }
@@ -14,16 +15,11 @@
 
 .app-main {
   flex: 1;
+  min-width: 0;
   display: flex;
   flex-direction: column;
-  padding: 24px 24px 40px;
-}
-
-@media (min-width: 1024px) {
-  .app-main {
-    padding-left: 10rem;
-    padding-right: 10rem;
-  }
+  padding: 24px;
+  padding-left: 304px; // 260px sidebar + 44px spacing
 }
 
 .app-container {

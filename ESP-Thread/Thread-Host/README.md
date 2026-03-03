@@ -1,12 +1,12 @@
 # Thread Border Router — ESP32-S3 (Host) + ESP32-H2 (RCP)
 
-Project **Thread Border Router thật** chạy trên **ESP32-S3** (Host), giao tiếp với **ESP32-H2** (RCP) qua UART. BR có **backhaul** (Wi‑Fi STA mặc định hoặc Ethernet W5500 ưu tiên), **border routing + prefix**, kênh quản lý BR↔dashboard qua **TCP** (frame protocol).
+Project **Thread Border Router thật** chạy trên **ESP32-S3** (Host), giao tiếp với **ESP32-H2** (RCP) qua UART. BR có **backhaul Ethernet W5500** (khi bật; Wi‑Fi fallback đã tắt), **border routing + prefix**, IPv6 trên backbone (link-local tạo khi Ethernet link up), kênh quản lý BR↔dashboard qua **TCP** (frame protocol).
 
 ## BR thật là gì?
 
 - **Thread Border Router (BR)** nối mạng Thread (802.15.4) với backbone (Ethernet/Wi‑Fi), cung cấp IPv6 routable, prefix delegation, service discovery…
 - **Kiến trúc Host + RCP**: Host (ESP32-S3) chạy OpenThread + ứng dụng BR; RCP (ESP32-H2) làm radio. Giao tiếp Host–RCP qua **UART** (460800 baud).
-- **Backhaul:** Wi‑Fi STA (Kconfig) hoặc **Ethernet W5500 (SPI)** ưu tiên — nếu cắm dây và link up thì dùng Ethernet, không thì fallback Wi‑Fi. Kênh quản lý **chỉ qua TCP** (BR listen port; dashboard kết nối BR_IP:port).
+- **Backhaul:** **Ethernet W5500 (SPI)** khi bật — IPv6 link-local được tạo khi Ethernet link up (sự kiện ETHERNET_EVENT_CONNECTED). Wi‑Fi fallback không dùng trong code hiện tại. Kênh quản lý **chỉ qua TCP** (BR listen port; dashboard kết nối BR_IP:port).
 
 ## Phần cứng
 
@@ -75,7 +75,7 @@ idf.py build
   - Console/Log qua **UART0**
   - Flash baud rate **921600**
   - RCP control pins: GPIO7 (RESET), GPIO8 (BOOT)
-- **Backhaul:** `idf.py menuconfig` → **ESP Thread Border Router** — bật **Wi‑Fi STA** (mặc định, SSID/pass), hoặc **Ethernet W5500** (ưu tiên, SPI pins). Cả hai bật thì Ethernet thử trước, timeout thì Wi‑Fi.
+- **Backhaul:** `idf.py menuconfig` → **ESP Thread Border Router** — bật **Ethernet W5500** (SPI pins). Backhaul hiện chỉ dùng Ethernet; Wi‑Fi fallback đã tắt. IPv6 trên backbone: link-local tự tạo khi link up; global/ULA nếu router gửi RA.
 
 ### 3. Flash và chạy
 

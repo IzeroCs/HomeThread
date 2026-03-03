@@ -6,7 +6,7 @@
 
 ## 1. Tổng quan kiến trúc
 
-- **BR (Thread-Host):** Border Router thật: backhaul Wi‑Fi hoặc Ethernet W5500, border routing + prefix. Child có IPv6 routable.
+- **BR (Thread-Host):** Border Router thật: backhaul **Ethernet W5500** (khi bật; Wi‑Fi fallback đã tắt), border routing + prefix. IPv6 trên backbone: link-local tạo khi Ethernet link up; global/ULA nếu router gửi RA. Child có IPv6 routable.
 - **Kênh quản lý BR ↔ Dashboard:** Chỉ qua **TCP** (frame protocol). BR listen một port (mặc định 5000); Dashboard kết nối tới **BR_IP:port**. Không dùng USB/serial.
 - **Child ↔ Backend:** Child (Thread-Node) gửi register/update/ping **trực tiếp tới Backend** (IP:port). BR **không** làm proxy; BR chỉ route IP.
 
@@ -15,7 +15,7 @@
                          | TCP (frame protocol)
                          v
   [Child] --Thread mesh--> [BR] ----backhaul----> [Backend]
-     |                          (Wi‑Fi / Ethernet)     ^
+     |                          (Ethernet W5500)        ^
      |                                                 |
      +------------------ IPv6 (CoAP/HTTP) -------------+
               register / update / ping
@@ -57,6 +57,15 @@
 ### 3.3. IPv6 routable
 
 - Sau khi BR bật border routing + prefix, child có IPv6 từ prefix BR quảng bá. Child dùng địa chỉ đó để gửi request ra backbone tới Backend.
+
+### 3.4. LAN chỉ IPv4 thì sao?
+
+- Router trong nhà (MikroTik/Deco) hiện chỉ cấp **IPv4** trên LAN; điều này **không ngăn** BR làm Border Router cho Thread:
+  - BR vẫn nhận IPv4 (DHCP hoặc static) để Dashboard/backend kết nối BR qua TCP.
+  - BR vẫn cấp prefix IPv6 cho child trong mạng Thread.
+- Để child nói chuyện được với backend theo mô hình “BR thật” (BR chỉ route, không proxy):
+  - **Khuyến nghị:** Bật **IPv6 local** (link-local/ULA) trên chính máy Backend, không phụ thuộc ISP hay router. Backend listen CoAP/HTTP trên IPv6 đó; BR route giữa prefix Thread và IPv6 của backend.
+  - Nếu backend chỉ IPv4: cần thêm NAT64 hoặc proxy trên BR (chưa implement trong thiết kế hiện tại; nếu dùng, cần cập nhật thêm docs riêng cho mô hình proxy).
 
 ---
 

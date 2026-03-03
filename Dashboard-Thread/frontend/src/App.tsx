@@ -1,11 +1,11 @@
 import { useState, useEffect } from "react";
 import type { BrConnectionConfigFromBackend } from "./types/websocket";
 import { useWebSocketContext } from "./hooks/useWebSocketContext";
-import Settings from "./components/Settings";
+import Settings, { type SettingsSection } from "./components/Settings";
 import BrConnectionForm from "./components/Settings/BrConnectionForm";
 import Status from "./components/Status";
 import Nodes from "./components/Nodes/Nodes";
-import TopNav, { type NavPage } from "./components/common/TopNav";
+import Sidebar, { type NavPage } from "./components/common/Sidebar";
 import ToastContainer from "./components/common/ToastContainer";
 import "./App.scss";
 
@@ -61,11 +61,11 @@ function App() {
     );
   }
 
-  // Chưa cấu hình BR → TopNav chỉ logo + form cấu hình
+  // Chưa cấu hình BR → Sidebar chỉ logo, main = form cấu hình
   if (!config) {
     return (
       <div className="app-layout">
-        <TopNav logoOnly />
+        <Sidebar logoOnly />
         <main className="app-main">
           <div className="app-container">
             <BrConnectionForm
@@ -79,9 +79,18 @@ function App() {
     );
   }
 
+  const isSettingsPage =
+    page === "settings" ||
+    page === "settings-br" ||
+    page === "settings-openthread" ||
+    page === "settings-system";
+
+  const settingsSection: SettingsSection =
+    page === "settings-openthread" ? "openthread" : page === "settings-system" ? "system" : "br";
+
   return (
     <div className="app-layout">
-      <TopNav
+      <Sidebar
         currentPage={page}
         onNavigate={setPage}
         serialConnected={serialStatus?.isConnected ?? false}
@@ -96,12 +105,13 @@ function App() {
             <Status />
           </div>
         )}
-        {page === "settings" && (
+        {isSettingsPage && (
           <div className="app-container">
             <Settings
               brConfig={config ?? null}
               onSaveBrConfig={handleConfigSave}
               onTestBrConnect={testBrConnect}
+              activeSection={settingsSection}
             />
           </div>
         )}

@@ -1,31 +1,36 @@
 /**
  * Form chung: container, card, tiêu đề, mô tả, alert, form, nhóm ô nhập, nút.
- * Dùng cho Commissioner, Settings (SerialConfigForm, OpenThreadConfigForm), v.v.
+ * Dùng cho Commissioner, Settings (BrConnectionForm, OpenThreadConfigForm), v.v.
  */
 @use "variables" as *;
 
 // --- Container & card (thống nhất config-container, ot-config-container, commissioner-page) ---
 .form-page {
   width: 100%;
-  max-width: 640px;
+  max-width: 860px;
+}
+
+.form-page-header {
+  margin-bottom: 50px;
 }
 
 .form-card {
-  background: white;
+  background: $card-dark;
   border-radius: $border-radius;
   padding: 32px;
-  box-shadow: $shadow;
+  box-shadow: 0 18px 60px rgba(15, 23, 42, 0.8);
+  border: 1px solid $brand-border;
 }
 
 .form-page-title {
   margin: 0 0 8px 0;
-  color: $text-primary;
+  color: $text-dark;
   font-size: 28px;
   font-weight: 600;
 }
 
 .form-page-description {
-  color: $text-secondary;
+  color: $text-dark-muted;
   margin: 0 0 30px 0;
   font-size: 14px;
 }
@@ -38,18 +43,18 @@
   font-weight: 500;
 
   &.form-page-alert-warn {
-    background: #fff3cd;
-    color: #856404;
+    background: rgba(234, 179, 8, 0.12);
+    color: #facc15;
   }
 
   &.form-page-alert-success {
-    background: #d4edda;
-    color: #155724;
+    background: rgba(34, 197, 94, 0.1);
+    color: #4ade80;
   }
 
   &.form-page-alert-error {
-    background: #f8d7da;
-    color: #721c24;
+    background: rgba(239, 68, 68, 0.14);
+    color: #fca5a5;
   }
 }
 
@@ -57,6 +62,17 @@
   display: flex;
   flex-direction: column;
   gap: 24px;
+}
+
+// Hàng 2 cột cho field (dùng chung cho BR/OT)
+.form-row-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.25rem;
+
+  @media (max-width: 720px) {
+    grid-template-columns: 1fr;
+  }
 }
 
 // --- Form group, input, actions, buttons ---
@@ -71,28 +87,28 @@
 
   label {
     font-weight: 600;
-    color: $text-primary;
+    color: $text-dark;
     font-size: 14px;
   }
 
   input {
     width: 100%;
     padding: 12px 16px;
-    border: 2px solid $border-color;
+    border: 1px solid $brand-border;
     border-radius: $border-radius-small;
     font-size: 16px;
-    color: $text-primary;
-    background: white;
+    color: $text-dark;
+    background: transparent;
     font-family: inherit;
     transition: border-color 0.2s;
 
     &::placeholder {
-      color: $text-muted;
+      color: $text-dark-subtle;
     }
 
     &:focus {
       outline: none;
-      border-color: $primary-color;
+      border-color: $primary-blue;
     }
 
     &.error {
@@ -100,7 +116,7 @@
     }
 
     &:disabled {
-      background: $bg-light;
+      background: rgba(15, 23, 42, 0.8);
       cursor: not-allowed;
     }
   }
@@ -115,35 +131,73 @@
   margin-top: 8px;
 }
 
-.btn-primary {
-  padding: 12px 24px;
-  background: $primary-color;
-  color: white;
-  border: none;
-  border-radius: $border-radius-small;
+// --- Buttons base (dùng chung cho mọi form) ---
+.form-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  font-family: inherit;
   font-size: 14px;
   font-weight: 600;
+  padding: 0.6rem 1.25rem;
+  border-radius: 8px;
+  border: 1px solid transparent;
   cursor: pointer;
-  transition: opacity 0.2s;
+  transition:
+    background 0.2s,
+    box-shadow 0.2s,
+    color 0.2s,
+    border-color 0.2s,
+    transform 0.1s;
 
-  &:hover:not(:disabled) {
-    opacity: 0.9;
+  &:active:not(:disabled) {
+    transform: scale(0.97);
   }
 
   &:disabled {
-    opacity: 0.5;
+    opacity: 0.6;
     cursor: not-allowed;
   }
 }
 
+.form-btn--primary {
+  background: $primary-blue;
+  color: #fff;
+  border-color: transparent;
+
+  &:hover:not(:disabled) {
+    background: #1d4ed8;
+    box-shadow: 0 0 16px rgba(37, 99, 235, 0.4);
+  }
+}
+
+.form-btn--ghost {
+  background: transparent;
+  border-color: #2d3748;
+  color: #cbd5e1;
+
+  &:hover:not(:disabled) {
+    background: #1a2236;
+    border-color: #3d4f6b;
+    color: $text-dark;
+  }
+}
+
+// Backwards-compat alias cho code cũ nếu còn dùng
+.btn-primary {
+  @extend .form-btn;
+  @extend .form-btn--primary;
+}
+
 .form-hint {
-  color: $text-muted;
+  color: $text-dark-subtle;
   font-size: 12px;
   margin-top: -4px;
 }
 
 .error-message {
-  color: $error-color;
+  color: #fca5a5;
   font-size: 12px;
   margin-top: -4px;
 }

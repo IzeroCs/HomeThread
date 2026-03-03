@@ -32,42 +32,87 @@ export default function SystemTab() {
   };
 
   return (
-    <div className="form-page">
-      <div className="form-card">
-        <h2 className="form-page-title">Hệ thống</h2>
-        <p className="form-page-description">Quản lý thiết bị: khởi động lại hoặc xoá toàn bộ cấu hình.</p>
-
+    <div className="form-page system-page">
+      <div className="system-page-header">
+        <h2 className="system-page-title">Hệ thống</h2>
+        <p className="system-page-description">
+          Quản lý trạng thái vận hành và thiết lập gốc của thiết bị Border Router.
+        </p>
         {!isConnected && (
-          <div className="form-page-alert form-page-alert-warn">
-            Chưa kết nối BR. Vào tab BR Connection để kết nối.
-          </div>
+          <p className="system-page-hint">Chưa kết nối BR. Vào tab BR Connection để thiết lập kết nối.</p>
         )}
+      </div>
 
-        <div className="system-action-list">
-          <div className="system-action-item">
-            <div className="system-action-info">
-              <span className="system-action-title">Khởi động lại</span>
-              <span className="system-action-desc">Reset thiết bị, giữ nguyên toàn bộ cấu hình Thread.</span>
-            </div>
+      <div className="system-action-card system-card-restart">
+        <div className="system-card-image">
+          <div className="bg-img" />
+          <div className="icon">
+            <svg
+              width="40"
+              height="40"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.8"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
+              <path d="M3 3v5h5" />
+            </svg>
+          </div>
+          <div className="dot-indicator">
+            <div className="dot active" />
+            <div className="dot" />
+            <div className="dot" />
+          </div>
+        </div>
+
+        <div className="system-card-content">
+          <div className="system-card-info">
+            <h3>Khởi động lại</h3>
+            <p>Thực hiện khởi động lại phần mềm của thiết bị. Kết nối của tất cả các node sẽ bị gián đoạn tạm thời.</p>
+          </div>
+          <div className="system-card-action">
             <button
               type="button"
-              className="system-action-btn warning"
-              disabled={!isConnected}
+              className="system-btn system-btn-orange"
+              disabled={!isConnected || loading}
               onClick={() => setConfirmAction("reset")}
             >
               Reset
             </button>
           </div>
+        </div>
+      </div>
 
-          <div className="system-action-item">
-            <div className="system-action-info">
-              <span className="system-action-title">Factory Reset</span>
-              <span className="system-action-desc">Xoá toàn bộ cấu hình Thread và khởi động lại thiết bị.</span>
-            </div>
+      <div className="system-danger-divider">
+        <span>Vùng nguy hiểm</span>
+      </div>
+
+      <div className="system-action-card system-card-factory">
+        <div className="system-card-image">
+          <div className="bg-img" />
+          <div className="icon">
+            <svg width="40" height="40" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M19 3H5c-1.1 0-2 .9-2 2v4c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 3c-.55 0-1-.45-1-1s.45-1 1-1 1 .45 1 1-.45 1-1 1zm4 0c-.55 0-1-.45-1-1s.45-1 1-1 1 .45 1 1-.45 1-1 1zM5 13h14c1.1 0 2 .9 2 2v4c0 1.1-.9 2-2 2H5c-1.1 0-2-.9-2-2v-4c0-1.1.9-2 2-2zm7 5c-.55 0-1-.45-1-1s.45-1 1-1 1 .45 1 1-.45 1-1 1zm4 0c-.55 0-1-.45-1-1s.45-1 1-1 1 .45 1 1-.45 1-1 1z" />
+            </svg>
+          </div>
+        </div>
+
+        <div className="system-card-content">
+          <div className="system-card-info">
+            <h3>Factory Reset</h3>
+            <p>
+              Xóa toàn bộ cấu hình, dữ liệu mạng, thông tin định danh và đưa thiết bị về trạng thái xuất xưởng.{" "}
+              <span className="warning-inline">Hành động này không thể hoàn tác.</span>
+            </p>
+          </div>
+          <div className="system-card-action">
             <button
               type="button"
-              className="system-action-btn danger"
-              disabled={!isConnected}
+              className="system-btn system-btn-red"
+              disabled={!isConnected || loading}
               onClick={() => setConfirmAction("factory")}
             >
               Factory Reset

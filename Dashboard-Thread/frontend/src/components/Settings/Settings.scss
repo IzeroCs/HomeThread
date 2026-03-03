@@ -2,51 +2,16 @@
 
 .settings-page {
   width: 100%;
-  max-width: 640px;
+  max-width: 860px;
   display: flex;
   flex-direction: column;
   gap: 0;
 }
 
-.settings-tabs {
-  display: flex;
-  gap: 4px;
-  margin-bottom: 0;
-  border-bottom: 2px solid $border-color;
-}
-
-.settings-tab {
-  padding: 12px 24px;
-  border: none;
-  background: transparent;
-  color: $text-secondary;
-  font-size: 15px;
-  font-weight: 500;
-  cursor: pointer;
-  border-radius: $border-radius-small $border-radius-small 0 0;
-  margin-bottom: -2px;
-  transition: color 0.2s, background 0.2s;
-
-  &:hover {
-    color: $text-primary;
-    background: $bg-light;
-  }
-
-  &.active {
-    color: $primary-color;
-    font-weight: 600;
-    border-bottom: 2px solid $primary-color;
-    background: white;
-  }
-}
-
 .settings-tab-content {
   width: 100%;
 
-  // Nối liền với tab bar phía trên
   .form-card {
-    border-top-left-radius: 0;
-    border-top-right-radius: 0;
     box-shadow: 0 10px 40px rgba(0, 0, 0, 0.12);
   }
 }

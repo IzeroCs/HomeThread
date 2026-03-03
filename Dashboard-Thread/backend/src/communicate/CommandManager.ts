@@ -61,7 +61,7 @@ export class CommandManager {
 
   /**
    * Xử lý frame nhận từ leader. Chỉ có DATA (broadcast) và ACK/NACK (resolve pending + merge config).
-   * Backend gửi CMD (STATE, IP_ADDR, ...) thì leader trả ACK kèm data, không có leader gửi CMD_STATE/IP_ADDR.
+   * Log giống behavior ban đầu: ẩn bớt ACK noisy (STATE/TABLE), thu gọn log ACK dataset/IP, còn lại log đầy đủ.
    */
   handle(frame: ParsedFrame): void {
     // Filter: không log ACK của STATE command và TABLE commands
@@ -90,6 +90,8 @@ export class CommandManager {
     if (frame.cmd === CMD.ACK) {
       const pending = this.pendingFrames.get(frame.frameId);
       if (pending) {
+        const isIpAddrAck =
+          this.ipAddrFrameIds.has(frame.frameId) && frame.data.length === 16;
         clearTimeout(pending.timeoutId);
         this.pendingFrames.delete(frame.frameId);
         // Chỉ merge vào config khi ACK là của CMD_IP_ADDR hoặc CMD_DATASET_ACTIVE
@@ -108,6 +110,10 @@ export class CommandManager {
         });
         if (isConfigAck) {
           this.applyAckDataToConfig(frame.data);
+        }
+        // BR mong đợi dashboard gửi reply ACK để xác nhận đã nhận IP; gửi ngay để BR dừng retry.
+        if (isIpAddrAck) {
+          this.replyAck(frame.frameId);
         }
       }
       return;
@@ -342,7 +348,7 @@ export class CommandManager {
         const frame = buildFrame(frameId, cmd, data);
         const cmdName = CMD_NAMES[cmd] ?? `0x${cmd.toString(16)}`;
         const dataLen = data?.length ?? 0;
-        // Filter: không log STATE command và TABLE commands
+        // Filter: không log STATE command và TABLE commands để giảm noise
         const isSilentCmd = cmd === CMD.STATE || cmd === CMD.ROUTER_TABLE || cmd === CMD.CHILD_TABLE || cmd === CMD.JOINER_TABLE;
         if (!isSilentCmd) {
           frameLogger.log(

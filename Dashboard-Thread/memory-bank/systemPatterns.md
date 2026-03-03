@@ -146,8 +146,9 @@ useEffect(() => {
 - Title suy từ type (Thành công / Lỗi / Cảnh báo / Trợ giúp). Dark theme: card `$card-dark`, thanh dọc trái màu theo type, message muted, nút đóng góc trên-phải; slide-in từ phải, fade-out khi exit.
 - Không dùng thư viện bên thứ ba — ToastContainer + ToastContext + SCSS.
 
-### TopNav State Colors
+### Sidebar Status Dot Colors
 
+Status dot tren Sidebar (header) dung chung mapping mau:
 `leader=green | router=purple | child=blue | disabled/detached=orange | disconnected=gray`
 
 ### Status Page — Connected vs Disconnected
@@ -158,3 +159,20 @@ useEffect(() => {
 ### Version Display
 
 Version hiển thị trên Status subtitle lấy từ `frontend/package.json`: Vite `define { __APP_VERSION__: JSON.stringify(pkg.version) }`, `src/vite-env.d.ts` declare `__APP_VERSION__`. Cập nhật version khi release tại `frontend/package.json` (đồng bộ với progress.md).
+
+### Modal & ConfirmModal (dark navy)
+
+- **Modal (Modal.scss):** Overlay dark navy `rgba(6,11,25,0.78)` + `backdrop-filter: blur(6px)`; box `$card-dark`, border `$brand-border`, shadow đậm; header border-bottom subtle; title/close dùng `$text-dark` / `$text-dark-subtle`; body padding; detail list key/value dùng dark tokens.
+- **ConfirmModal (ConfirmModal.scss):** Message `$text-dark`; nút Cancel: transparent, border muted, hover nền navy; nút Confirm danger `#ef4444` / warning `#f97316` với hover glow. Dùng chung Modal; countdown 5s không đổi.
+
+### Sidebar Settings sub-items
+
+- Dropdown Settings có 3 mục con với icon Material Symbols trước label: **BR Connection** `lan`, **OpenThread** `device_hub`, **System** `warning`. Class `sidebar-nav-nested-icon` font-size 16px.
+
+### Settings / System page
+
+- Layout: `form-page system-page`; header (title "Hệ thống", mô tả, hint khi chưa kết nối BR); hai **action cards** (image panel trái + content phải), danger divider giữa, ConfirmModal cho Reset và Factory Reset. Card Restart: nền #111827, icon cam; Card Factory: nền tối đỏ, border #3d1a1a, title đỏ. Nút dùng `.system-btn-orange` / `.system-btn-red`.
+
+### OpenThread form card layout
+
+- `.form-card.ot-card`: `padding: 0`, `overflow: hidden` để footer không lồi góc. `.ot-card-header` full-bleed (padding riêng). `.ot-card-footer` margin `20px 1.75rem 1.75rem` (cùng width với body), border-radius, nền #111722.

@@ -27,4 +27,4 @@ Child (Thread-Node) sau khi join và có IPv6 routable gửi register/update/pin
 - BR tự phục hồi khi mất kết nối (watchdog)
 - Factory reset an toàn qua lệnh hoặc nút bấm
 - LED hiển thị trạng thái network
-- Backhaul: Ethernet ưu tiên (cắm dây), không cable thì fallback Wi‑Fi
+- Backhaul: Chỉ Ethernet W5500 khi bật (Wi‑Fi fallback đã tắt trong code)

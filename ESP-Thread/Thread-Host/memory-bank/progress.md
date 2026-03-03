@@ -1,6 +1,6 @@
 # Progress — Thread-Host
 
-_Cập nhật: 2026-02-27_
+_Cập nhật: 2026-03-03_
 
 ## Release history
 
@@ -13,6 +13,7 @@ _Cập nhật: 2026-02-27_
 | 0.9.0 | 2026-02-21 | Log suppression (STATE, *_TABLE), Memory Bank + docs, symlink Documents. Các mục chưa làm: Device Registry→backend, CMD_SYS_HEALTH, auto-flash RCP, transport UART. |
 | 0.10.0 | 2026-02-27 | Phase 1: Xóa Device Registry (CoAP server/handler) và CMD_DATA push/wait-ACK; frame protocol chỉ cho quản lý BR. Hướng BR thật (child gửi thẳng backend). |
 | 0.11.0 | 2026-02-27 | Phase 2: Wi‑Fi STA backhaul, transport TCP (frame qua socket), bỏ USB/UART; border routing + prefix; Ethernet W5500 ưu tiên, Wi‑Fi fallback. |
+| 0.12.0 | 2026-03-03 | Ethernet IPv6: tạo link-local trên ETHERNET_EVENT_CONNECTED trong eth_w5500.c; br_main log backbone global/link-local IPv6 sau BR init; backhaul chỉ Ethernet (Wi‑Fi fallback tắt trong code). |
 
 _(Ghi phiên bản theo Semantic Versioning MAJOR.MINOR.PATCH, không dùng tiền tố `v`. Nếu chỉ có major/minor thì PATCH = 0.)_
 
@@ -58,8 +59,8 @@ _(Ghi phiên bản theo Semantic Versioning MAJOR.MINOR.PATCH, không dùng ti�
 - [x] Boot button (GPIO0) — long press 3s → factory reset
 
 ### Backhaul
-- [x] Wi‑Fi STA (Kconfig SSID/pass), DHCP; dùng làm backbone hoặc fallback
-- [x] Ethernet W5500 (SPI) — ưu tiên khi bật; timeout thì fallback Wi‑Fi
+- [x] Ethernet W5500 (SPI) — backbone khi bật; IPv6 link-local tạo trong ETHERNET_EVENT_CONNECTED (`eth_w5500.c`); br_main log backbone IPv6 (global + link-local) sau BR init
+- [x] Wi‑Fi STA (Kconfig) — code đã tắt fallback trong br_main; có thể bật lại nếu cần
 
 ### CoAP
 - [x] Leader Control Client — task gửi GET /network/stop đến Leader mỗi khi cần
@@ -97,6 +98,7 @@ _(Ghi phiên bản theo Semantic Versioning MAJOR.MINOR.PATCH, không dùng ti�
 |-------|-----------|---------|
 | `main` task "used full" trong stack monitor | Bình thường | Task đã exit sau `app_main()`, `uxTaskGetStackHighWaterMark` trả 0 → hiển thị "full" |
 | Leader CoAP response không được xử lý | Chưa fix | Leader cần implement GET /network/stop handler |
+| Dashboard reply ACK cho CMD_IP_ADDR | Dashboard-Thread | Chỉ pullState gửi replyAck khi stateChangedOrFirst; BR retry vô hạn nếu fetch IP từ nơi khác. Fix: CommandManager.handle() gửi replyAck cho mọi ACK IP_ADDR (16 byte). |
 
 ## Bug Fixes đã làm
 

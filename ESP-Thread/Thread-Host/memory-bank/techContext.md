@@ -4,7 +4,7 @@
 
 - **SoC Host:** ESP32-S3 (dual-core Xtensa LX7, 160MHz)
 - **SoC RCP:** ESP32-H2 (IEEE 802.15.4 radio)
-- **SDK:** ESP-IDF v5.5.x (`esp/v5.5.2/esp-idf`)
+- **SDK:** ESP-IDF v5.5.x (vd. `esp/v5.5.3/esp-idf`)
 - **OpenThread:** bundled trong ESP-IDF `components/openthread`
 - **Build system:** CMake + idf.py
 
@@ -51,9 +51,27 @@
 - `esp_log_level_set` — runtime log level
 
 ### Backhaul
-- **Wi‑Fi STA:** `backhaul/wifi_sta.c` — kết nối AP (Kconfig SSID/pass), DHCP, `wifi_sta_get_netif()` cho backbone.
-- **Ethernet W5500 (SPI):** `backhaul/eth_w5500.c` — ưu tiên khi bật; timeout thì fallback Wi‑Fi. ESP32-S3 không có EMAC (không dùng LAN8720).
+- **Ethernet W5500 (SPI):** `backhaul/eth_w5500.c` — backbone khi `CONFIG_BR_ETH_W5500_ENABLE=y`. IPv6 link-local: gọi `esp_netif_create_ip6_linklocal(netif)` trong **ETHERNET_EVENT_CONNECTED** (không gọi ngay sau attach — netif chưa link up sẽ ESP_FAIL). Handler đăng ký với `s_eth_netif` làm `arg`. ESP32-S3 không có EMAC (không dùng LAN8720).
+- **Wi‑Fi STA:** `backhaul/wifi_sta.c` — hiện **không** được gọi trong `br_main.c` (fallback đã tắt); có thể bật lại nếu cần dual backhaul.
+- **br_main:** Sau border router init, log backbone IPv6 qua `esp_netif_get_ip6_global()` và `esp_netif_get_ip6_linklocal()` (tag `br_main`).
 - **Kênh BR↔dashboard:** Chỉ **TCP** (frame protocol trên socket); không USB/UART.
+
+#### Backbone IPv4-only vs IPv6
+- Mạng LAN nhà hiện tại chỉ cấp **IPv4** (router không cấp IPv6 từ ISP). Điều này **không cản trở** BR làm Border Router cho Thread:
+  - BR vẫn có IPv4 trên backbone (DHCP hoặc static) để Dashboard/backend kết nối `BR_IP:port`.
+  - BR vẫn bật border routing + prefix cho Thread; child có IPv6 trong prefix BR quảng bá.
+- Khi backbone **không có router IPv6** gửi RA, OpenThread có thể log:
+  - `Failed to send ND6 message`, `RsSender: Failed to send RS 1/3: Failed`
+  - `Failed to remove backbone multicast listener`
+  Các log này phản ánh việc BR không nhận/cập nhật cấu hình IPv6 từ backbone, nhưng không nhất thiết phá vỡ luồng BR↔Dashboard (IPv4/TCP) hay Thread nội bộ.
+
+#### Backend kết nối thế nào khi LAN chỉ IPv4
+- **Model ưu tiên:** Backend (PC/server) bật **IPv6 local** (link-local hoặc ULA) trên interface nối với BR, ngay cả khi ISP/router không hỗ trợ IPv6. Khi đó:
+  - Child (IPv6 trong prefix Thread) ↔ Backend (IPv6 local) đi qua BR theo đúng mô hình “BR thật” (BR chỉ route, không proxy app-layer).
+  - Border router chỉ cần route giữa prefix Thread và prefix/IPv6 local của backend, không cần IPv6 uplink.
+- **Model thay thế (chưa implement):**
+  - **Proxy trên BR:** Child gửi CoAP/HTTP tới BR; BR forward payload sang backend qua IPv4 rồi trả response lại cho child.
+  - **NAT64:** BR (hoặc gateway khác) dịch IPv6 (child) ↔ IPv4 (backend), cho phép backend thuần IPv4. Đây là hướng mở rộng, chưa có trong Thread-Host hiện tại.
 
 ### Logging (frame RX/TX)
 - Mặc định **INFO**: chỉ in frame RX/TX cho CMD không noisy (GET_DATASET, SET_*, COMMISSIONER_JOINER, …); CMD_STATE và *_TABLE không in.

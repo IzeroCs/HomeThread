@@ -13,6 +13,7 @@ Version notation in this file uses Semantic Versioning `MAJOR.MINOR.PATCH` (no l
 | 0.8.0   | Tables + Commissioner: CMD_ROUTER_TABLE/CHILD_TABLE/JOINER_TABLE, CMD_COMMISSIONER_JOINER, Reset/Factory, leader highlight, age/expiration countdown, Thread start/stop. |
 | 0.9.0   | Shared package, Memory Bank, polish. |
 | 1.0.0   | Migration BR: chi TCP, bo Serial. TransportTcp, BrConnectionConfigService, BrConnectionForm, Settings BR Connection. CMD_DATA da bo. UI: dark theme, ThreadDash; Status connected/disconnected (ghost grid + overlay); version tu frontend/package.json. Nav: Status, Nodes, Settings (bo Console, Topology). Trang Nodes: Router Table + Child Table + Joiner List; Commission Node modal (khong con trang Commissioner rieng). Toast dark (thanh doc trai, title theo type). Stable React keys (joiner, router/child row, modal, LqBarsCell). Joiner countdown local (initialSeconds + receivedAt). |
+| 1.1.0   | UI dark navy: Modal/ConfirmModal dark theme (overlay blur, card-dark, ghost cancel, danger/warning buttons + glow). Settings/System: action cards (Restart + Factory Reset), image panel, danger divider "Vung nguy hiem". Sidebar Settings sub-items: icons `lan`, `device_hub`, `warning`. OpenThread card: header full-bleed, footer same width as body, overflow hidden. |
 
 
 ## What Works (Completed)
@@ -66,15 +67,15 @@ Version notation in this file uses Semantic Versioning `MAJOR.MINOR.PATCH` (no l
 - Nodes: Router Table + Child Table + Joiner List (pending commissioning); nut "Commission Node" mo CommissionNodeModal; leader badge, age counter, empty states; overlay khi BR disconnect (blur, khong boc box)
 - Settings / BR Connection: host + port + test connect
 - Settings / OpenThread: cau hinh network + toggle Thread + nut "Lay lai"
-- Settings / System: Reset + Factory Reset + ConfirmModal countdown 5s
+- Settings / System: action cards (Khoi dong lai, Factory Reset) voi image panel, danger divider "Vung nguy hiem"; nut Reset/Factory Reset; ConfirmModal countdown 5s
 
 Console da bo. Commissioner gop vao Nodes (modal + Joiner List).
 
 ### Frontend — Common Components
 
 - Toast: dark theme, thanh doc trai theo type, title (Thanh cong/Loi/Canh bao/Tro giup), message muted, nut dong; slide-in phai, fade-out exit
-- ConfirmModal (countdown 5s)
-- TopNav: "ThreadDash", nav Status / Nodes / Settings, state dot theo thread, icon settings + account
+- Modal / ConfirmModal: dark navy (overlay blur, card-dark, border brand-border; Cancel ghost, Confirm danger/warning voi hover glow); ConfirmModal countdown 5s
+- Sidebar: brand "OpenThread", nav Status / Nodes / Settings (icon `speed` / `account_tree` / `settings`); Settings dropdown sub-items voi icon `lan` (BR Connection), `device_hub` (OpenThread), `warning` (System); status dot mau theo thread state + BR connection
 - Toggle switch custom
 
 ### Documentation

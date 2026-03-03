@@ -510,11 +510,6 @@ export class CommunicateManager {
           if (isLeaderRouterOrChild && stateChangedOrFirst) {
             cmdMgr
               .fetchIpAddr()
-              .then((ipRes) => {
-                if (ipRes.ack && ipRes.data?.length === 16 && ipRes.frameId != null) {
-                  cmdMgr.replyAck(ipRes.frameId);
-                }
-              })
               .catch((err) =>
                 serialLogger.warn(`fetchIpAddr failed: ${(err as Error)?.message ?? err}`)
               );

@@ -45,6 +45,9 @@ static void wifi_event_handler(void *arg, esp_event_base_t event_base,
         ESP_LOGI(TAG, "got IP: " IPSTR, IP2STR(&event->ip_info.ip));
         s_retry_count = 0;
         xEventGroupSetBits(s_wifi_event_group, WIFI_CONNECTED_BIT);
+    } else if (event_base == IP_EVENT && event_id == IP_EVENT_GOT_IP6) {
+        ip_event_got_ip6_t *event = (ip_event_got_ip6_t *)event_data;
+        ESP_LOGI(TAG, "got IPv6: " IPV6STR, IPV62STR(event->ip6_info.ip));
     }
 }
 
@@ -90,6 +93,18 @@ esp_err_t wifi_sta_init(void)
                                               NULL, NULL);
     if (err != ESP_OK) {
         esp_event_handler_instance_unregister(WIFI_EVENT, ESP_EVENT_ANY_ID, NULL);
+        esp_wifi_deinit();
+        vEventGroupDelete(s_wifi_event_group);
+        return err;
+    }
+
+    err = esp_event_handler_instance_register(IP_EVENT,
+                                              IP_EVENT_GOT_IP6,
+                                              &wifi_event_handler,
+                                              NULL, NULL);
+    if (err != ESP_OK) {
+        esp_event_handler_instance_unregister(WIFI_EVENT, ESP_EVENT_ANY_ID, NULL);
+        esp_event_handler_instance_unregister(IP_EVENT, IP_EVENT_STA_GOT_IP, NULL);
         esp_wifi_deinit();
         vEventGroupDelete(s_wifi_event_group);
         return err;

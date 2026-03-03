@@ -1,0 +1,73 @@
+@use "../../styles/form";
+@use "../../styles/variables" as *;
+
+.br-connection-card {
+  padding-bottom: 0;
+}
+
+.br-divider {
+  height: 1px;
+  background: $brand-border;
+  margin: 1.5rem 0;
+}
+
+.br-connection-note {
+  margin-top: 8px;
+  padding: 14px 16px;
+  border-radius: $border-radius-small;
+  background: rgba(15, 23, 42, 0.9);
+  border: 1px solid rgba(148, 163, 184, 0.4);
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.br-connection-note-icon {
+  width: 24px;
+  height: 24px;
+  border-radius: 999px;
+  border: 1px solid rgba(148, 163, 184, 0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: $text-dark-muted;
+  flex-shrink: 0;
+
+  .material-symbols-outlined {
+    font-size: 16px;
+  }
+}
+
+.br-connection-note-text {
+  margin: 0;
+  font-size: 13px;
+  color: $text-dark-subtle;
+}
+
+.br-connection-actions {
+  margin: 20px -32px -32px;
+  padding: 1.75rem;
+  border-top: 1px solid $brand-border;
+  background: #111722;
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 12px;
+  border-bottom-left-radius: $border-radius;
+  border-bottom-right-radius: $border-radius;
+}
+
+.test-status-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  background: $text-dark-muted;
+  transition:
+    background 0.3s,
+    box-shadow 0.3s;
+}
+
+.test-connect-button:hover:not(:disabled) .test-status-dot {
+  background: #22c55e;
+  box-shadow: 0 0 6px #22c55e;
+}

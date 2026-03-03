@@ -20,7 +20,6 @@
 #include "openthread/dataset_init.h"
 #include "hardware/led_status.h"
 #include "hardware/boot_btn.h"
-#include "backhaul/wifi_sta.h"
 #include "backhaul/eth_w5500.h"
 #include "coap_controller/leader_control_client.h"
 #include "communicate/communicate_task.h"
@@ -55,17 +54,14 @@ static void stack_monitor_task(void *pv)
 {
     (void)pv;
     const int n = (int)(sizeof(k_tasks) / sizeof(k_tasks[0]));
-    TaskHandle_t handles[sizeof(k_tasks) / sizeof(k_tasks[0])];
-    for (int i = 0; i < n; i++) {
-        handles[i] = xTaskGetHandle(k_tasks[i].name);
-    }
     for (;;) {
         vTaskDelay(pdMS_TO_TICKS(STACK_MONITOR_INTERVAL_MS));
         for (int i = 0; i < n; i++) {
-            if (handles[i] == NULL) {
+            TaskHandle_t h = xTaskGetHandle(k_tasks[i].name);
+            if (h == NULL) {
                 continue;
             }
-            UBaseType_t hwm  = uxTaskGetStackHighWaterMark(handles[i]);
+            UBaseType_t hwm  = uxTaskGetStackHighWaterMark(h);
             uint32_t    used = k_tasks[i].total > (uint32_t)hwm ? k_tasks[i].total - (uint32_t)hwm : 0;
             ESP_LOGI(TAG, "stack hwm | %-22s high_water_mark=%4u bytes (used ~%4u / %u)",
                      k_tasks[i].name, (unsigned)hwm, (unsigned)used, (unsigned)k_tasks[i].total);
@@ -117,17 +113,13 @@ void app_main(void)
     ESP_ERROR_CHECK(esp_netif_init());
     ESP_ERROR_CHECK(esp_event_loop_create_default());
 
-    /* Phase 2.6: Backhaul — Ethernet ưu tiên, Wi-Fi fallback */
+    /* Backhaul: chỉ dùng Ethernet W5500 (không fallback Wi-Fi) */
     esp_netif_t *backbone = NULL;
 #if CONFIG_BR_ETH_W5500_ENABLE
     if (eth_w5500_init() == ESP_OK) {
         backbone = eth_w5500_get_netif();
     }
 #endif
-    if (backbone == NULL && CONFIG_BR_WIFI_STA_ENABLE) {
-        ESP_ERROR_CHECK(wifi_sta_init());
-        backbone = wifi_sta_get_netif();
-    }
     if (backbone != NULL) {
         esp_openthread_set_backbone_netif(backbone);
     }

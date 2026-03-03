@@ -37,7 +37,7 @@ export interface UseWebSocketReturn {
   getOtConfig: () => Promise<OtConfig | null>;
   setOtConfig: (data: { panid?: string; channel?: number; networkName?: string; extendedPanId?: string; networkKey?: string }) => Promise<{ success: boolean; error?: string }>;
   threadRunning: boolean | null;
-  /** Raw state: leader, router, child, detached, disabled — dùng để đổi màu dot TopNav */
+  /** Raw state: leader, router, child, detached, disabled — dùng để đổi màu dot Sidebar */
   threadState: string | null;
   getThreadState: () => void;
   setThreadRunning: (running: boolean) => Promise<{ success: boolean; error?: string }>;
