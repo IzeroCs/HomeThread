@@ -3,10 +3,12 @@
 #include "esp_log_level.h"
 #include "esp_netif.h"
 #include "mdns.h"
+#include "esp_openthread.h"
 #include "esp_openthread_border_router.h"
 #include "esp_openthread_lock.h"
 #include "esp_openthread_netif_glue.h"
 #include "esp_openthread_types.h"
+#include "openthread/srp_server.h"
 #include "br_config.h"
 #include "esp_vfs_eventfd.h"
 #include "esp_partition.h"
@@ -149,6 +151,16 @@ void app_main(void)
             ESP_LOGE(TAG, "esp_openthread_border_router_init %s", esp_err_to_name(br_err));
         } else {
             ESP_LOGI(TAG, "border router init OK (routing + prefix)");
+        }
+
+        /* Bật SRP server để Thread node (SRP client) đăng ký service, DNS-based discovery */
+        otInstance *instance = esp_openthread_get_instance();
+        if (instance != NULL && esp_openthread_lock_acquire(pdMS_TO_TICKS(1000))) {
+            otSrpServerSetEnabled(instance, true);
+            esp_openthread_lock_release();
+            ESP_LOGI(TAG, "SRP server enabled");
+        } else {
+            ESP_LOGW(TAG, "SRP server not started (instance or lock failed)");
         }
     }
 

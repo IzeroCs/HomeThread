@@ -122,6 +122,23 @@ int communicate_command_handle_factory(uint8_t frame_id);
  */
 int communicate_command_handle_commissioner_joiner(uint8_t frame_id, const uint8_t *data, size_t len);
 
+/**
+ * Xử lý CMD_SRP_REGISTER (0x44): BR dùng SRP client để đăng ký backend `_dashboard._udp`.
+ * DATA format (đơn giản, TXT dùng mặc định trong firmware):
+ *   - hostname_len(1)  : số byte hostname (1–63)
+ *   - hostname(N)      : UTF-8 hostname (không null-terminated)
+ *   - backend_ipv6(16) : IPv6 AAAA của backend (network-order)
+ *   - port(2)          : uint16 big-endian (CoAP port backend, ví dụ 5683)
+ * Tổng độ dài = 1 + hostname_len + 16 + 2.
+ * Firmware sẽ:
+ *   - Clear SRP host + services hiện tại
+ *   - Set host name + host AAAA
+ *   - Đăng ký 1 service `_dashboard._udp` với instance fixed "dashboard"
+ * TXT hiện được cố định trong firmware: ["ver=1", "proto=coap+cbor", "path=/child"].
+ * Trả CMD_ACK (DATA rỗng) nếu submit OK vào SRP client, CMD_NACK nếu invalid param / not ready / timeout.
+ */
+int communicate_command_handle_srp_register(uint8_t frame_id, const uint8_t *data, size_t len);
+
 #ifdef __cplusplus
 }
 #endif

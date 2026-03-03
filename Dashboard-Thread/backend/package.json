@@ -12,6 +12,8 @@
   },
   "dependencies": {
     "better-sqlite3": "^11.7.0",
+    "coap": "^1.0.1",
+    "cbor2": "^1.0.0",
     "dotenv": "^16.4.7",
     "pino": "^9.5.0",
     "pino-pretty": "^13.0.0",

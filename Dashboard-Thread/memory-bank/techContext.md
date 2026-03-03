@@ -25,7 +25,7 @@ Dashboard-Thread/          # npm workspaces root
 | pino | ^9.5.0 | Structured logging |
 | pino-pretty | latest | Pretty console output |
 
-Transport: TCP only (net.Socket). Khong con serialport.
+Transport: TCP (net.Socket) to BR; CoAP (UDP 5683) from Thread-Node. Dependencies: `coap`, `cbor2` cho child data. Khong con serialport.
 
 ### Frontend
 
@@ -42,8 +42,8 @@ Transport: TCP only (net.Socket). Khong con serialport.
 ```
 shared/src/
 ├── index.ts        # Re-exports
-├── types.ts        # SerialConfig, SerialStatus, OtConfig, OtThreadState, OtTableData
-├── events.ts       # EVENTS const (all WebSocket event name strings)
+├── types.ts        # SerialConfig, ConnectionStatus, OtConfig, OtThreadState, OtTableData, ChildDataPayload
+├── events.ts       # EVENTS (CHILD_DATA, SRP_REGISTER, SRP_REGISTER_RESULT, SYSTEM_INFO, ...)
 ├── constants.ts    # Validation limits (channel 11-26, PAN ID 0x0000-0xFFFE, etc.)
 └── validation.ts   # validateSerialConfig(), validateOtSetConfig()
 ```
@@ -112,7 +112,7 @@ SQLite (`better-sqlite3`, WAL mode). 5 migrations:
 
 ## Configuration
 
-- **Backend**: `.env` — PORT. Cau hinh BR (brHost, brPort) luu SQLite qua Settings.
+- **Backend**: `.env` — PORT; BACKEND_IPV6 (tuy chon, cho SRP register; neu khong set thi tu lay IPv6 qua getPreferredBackendIPv6()). Cau hinh BR (brHost, brPort) luu SQLite qua Settings.
 - **Frontend**: `vite.config.ts` proxy `/api` + `/socket.io` → backend. Override WS URL bang `VITE_WS_URL`
 
 ## Styling Convention

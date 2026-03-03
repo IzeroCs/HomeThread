@@ -12,7 +12,7 @@ Backend + Frontend điều khiển **OpenThread Border Router** qua **TCP** (fra
 
 ## Tính năng chính
 
-- **Status**: Trạng thái kết nối BR (host:port), OpenThread (PAN ID, Channel, Network Name, Version, IP Address, dataset đầy đủ), thread state. Khi chưa kết nối BR: card compact (icon đỏ + DISCONNECTED), OpenThread ghost grid + overlay "No Network Data Available" và nút "Configure Border Router". Phiên bản hiển thị lấy từ `frontend/package.json`.
+- **Status**: Trạng thái kết nối BR (host:port), OpenThread (PAN ID, Channel, Network Name, Version, IP Address, dataset đầy đủ), thread state; **System**: IPv4 và IPv6 của backend (từ backend, dùng cho SRP/Thread-Node). Khi chưa kết nối BR: card compact (icon đỏ + DISCONNECTED), OpenThread ghost grid + overlay "No Network Data Available" và nút "Configure Border Router". Phiên bản hiển thị lấy từ `frontend/package.json`. Backend tự gửi SRP register (CMD 0x44) khi BR là leader để Thread-Node có thể discovery `_dashboard._udp`.
 - **Nodes**: Router Table & Child Table; **Joiner List** (thiết bị đang chờ join, bên dưới Child Table) với TIMEOUT đếm ngược MM:SS (local countdown từ dữ liệu mới). Nút "Commission Node" mở modal thêm joiner (EUI64, PSKd, timeout). Click một dòng bảng → Modal chi tiết theo RLOC16. Dòng leader có badge "LEADER". Cột Age đếm lên realtime.
 - **Settings**:
   - *BR Connection*: Cấu hình host (vd. Thread-Host.local), port (5000), test connect trước khi lưu.
@@ -35,11 +35,11 @@ Dashboard-Thread/
 ├── package.json          # Root: workspaces, scripts chạy cả BE + FE
 ├── backend/              # Node.js + TypeScript (WebSocket, TCP frame protocol)
 │   ├── src/
-│   │   ├── server/       # WebSocketServer (chỉ emit, lấy data từ CommunicateManager)
-│   │   ├── communicate/ # TransportTcp, BrConnectionConfigService, frame (parser/builder/crc8), CommunicateManager, OtConfigManager, PollingManager
+│   │   ├── server/       # WebSocketServer, CoapChildDataServer (UDP 5683, child CoAP+CBOR)
+│   │   ├── communicate/ # TransportTcp, BrConnectionConfigService, frame (parser/builder/crc8), CommandManager (incl. sendSrpRegister), CommunicateManager, OtConfigManager, PollingManager
 │   │   ├── database/     # SQLite (Database, migrations)
 │   │   ├── services/     # AppSettings
-│   │   └── utils/        # logger
+│   │   └── utils/        # logger, ipv6 (getPreferredBackendIPv6, getBackendAddresses)
 │   └── package.json
 ├── frontend/
 │   ├── src/
@@ -47,7 +47,7 @@ Dashboard-Thread/
 │   │   │   └── common/   # Modal, ConfirmModal, Sidebar, ToastContainer
 │   │   └── hooks/        # useWebSocket, useWebSocketContext
 │   └── package.json
-├── docs/                 # (đã chuyển sang HomeThread/Documents/)
+├── docs/                 # coap/thread_node_coap.md (hướng dẫn Thread-Node gửi dữ liệu CoAP+CBOR)
 ├── TODO.md
 └── README.md
 ```
@@ -106,5 +106,7 @@ Dashboard-Thread/
 | Hệ thống | CMD_RESET, CMD_FACTORY |
 
 - **Database:** SQLite lưu cấu hình serial và app settings (`thread_run_on_connect`).
+
+**Thread-Node (child) gửi dữ liệu:** CoAP UDP port 5683, payload CBOR. Resources: `/child/register`, `/child/update`, `/child/ping`. Backend chỉ gửi subset lên frontend. Xem [docs/coap/thread_node_coap.md](./docs/coap/thread_node_coap.md).
 
 Chi tiết: [Documents/protocol/usb_cdc_frame_structure.md](../Documents/protocol/usb_cdc_frame_structure.md) · [Documents/dashboard/migration_to_frame_protocol.md](../Documents/dashboard/migration_to_frame_protocol.md) · Việc còn lại: [TODO.md](./TODO.md).

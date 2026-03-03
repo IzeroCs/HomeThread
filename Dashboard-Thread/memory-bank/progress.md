@@ -14,6 +14,8 @@ Version notation in this file uses Semantic Versioning `MAJOR.MINOR.PATCH` (no l
 | 0.9.0   | Shared package, Memory Bank, polish. |
 | 1.0.0   | Migration BR: chi TCP, bo Serial. TransportTcp, BrConnectionConfigService, BrConnectionForm, Settings BR Connection. CMD_DATA da bo. UI: dark theme, ThreadDash; Status connected/disconnected (ghost grid + overlay); version tu frontend/package.json. Nav: Status, Nodes, Settings (bo Console, Topology). Trang Nodes: Router Table + Child Table + Joiner List; Commission Node modal (khong con trang Commissioner rieng). Toast dark (thanh doc trai, title theo type). Stable React keys (joiner, router/child row, modal, LqBarsCell). Joiner countdown local (initialSeconds + receivedAt). |
 | 1.1.0   | UI dark navy: Modal/ConfirmModal dark theme (overlay blur, card-dark, ghost cancel, danger/warning buttons + glow). Settings/System: action cards (Restart + Factory Reset), image panel, danger divider "Vung nguy hiem". Sidebar Settings sub-items: icons `lan`, `device_hub`, `warning`. OpenThread card: header full-bleed, footer same width as body, overflow hidden. |
+| 1.2.0   | Child data (CoAP): Backend CoAP server UDP 5683 (CoapChildDataServer), resources /child/register, /child/update, /child/ping; nhan full CBOR, parse, emit subset (CHILD_DATA) len frontend. Frontend Status section "Child data (CoAP)". Shared CHILD_DATA, ChildDataPayload. Doc Thread-Node: docs/coap/thread_node_coap.md. |
+| 1.3.0   | SRP register qua frame: CMD_SRP_REGISTER (0x44), DATA hostname_len+hostname+backend_ipv6(16)+port(2 BE). Backend tu dong gui khi BR la leader (pullState); IPv6 tu env hoac getPreferredBackendIPv6(). Status: bo "Child data (CoAP)"; them section **System** (bang giong OpenThread): IPv4/IPv6 backend tu SYSTEM_INFO (getBackendAddresses()). Events SRP_REGISTER, SRP_REGISTER_RESULT, SYSTEM_INFO. Bo STATE_FAKE_PAYLOAD; sendState(undefined) = payload rong. |
 
 
 ## What Works (Completed)
@@ -51,8 +53,10 @@ Version notation in this file uses Semantic Versioning `MAJOR.MINOR.PATCH` (no l
 - CMD_THREAD_START, CMD_THREAD_STOP
 - CMD_ROUTER_TABLE, CMD_CHILD_TABLE, CMD_JOINER_TABLE (binary parse)
 - CMD_COMMISSIONER_JOINER (EUI64 + PSKd Thread Base32 + timeout)
+- CMD_SRP_REGISTER (0x44) — dang ky _dashboard._udp len SRP server qua BR (hostname, backend IPv6, port)
 - CMD_RESET, CMD_FACTORY
 - Auto-start Thread (thread_run_on_connect + portClosedWhileRunning flag)
+- SRP register khi BR chuyen sang leader (BACKEND_IPV6 hoac getPreferredBackendIPv6())
 
 ### Backend — WebSocket
 
@@ -61,9 +65,14 @@ Version notation in this file uses Semantic Versioning `MAJOR.MINOR.PATCH` (no l
 - Handle set config commands tu frontend
 - Commissioner joiner command
 
+### Backend — Child data (CoAP) & System
+
+- CoapChildDataServer: listen UDP 5683, path /child/register, /child/update, /child/ping; nhan CBOR, emit CHILD_DATA (subset). Frontend khong con section Child data tren Status.
+- System info: getBackendAddresses() (utils/ipv6); gui SYSTEM_INFO khi CONFIG_GET/CONFIG_CURRENT. Frontend Status section System (IPv4/IPv6).
+
 ### Frontend — Pages
 
-- Status: BR connection (host:port), OT config, thread state, version (package.json)
+- Status: BR connection (host:port), OT config, thread state, version (package.json); section **System** (IPv4/IPv6 backend tu systemInfo)
 - Nodes: Router Table + Child Table + Joiner List (pending commissioning); nut "Commission Node" mo CommissionNodeModal; leader badge, age counter, empty states; overlay khi BR disconnect (blur, khong boc box)
 - Settings / BR Connection: host + port + test connect
 - Settings / OpenThread: cau hinh network + toggle Thread + nut "Lay lai"
@@ -83,13 +92,14 @@ Console da bo. Commissioner gop vao Nodes (modal + Joiner List).
 - HomeThread/Documents/protocol/usb_cdc_frame_structure.md
 - HomeThread/Documents/protocol/table_data_format.md
 - HomeThread/Documents/dashboard/migration_to_frame_protocol.md
+- docs/coap/thread_node_coap.md — huong dan Thread-Node gui du lieu (CoAP + CBOR) len backend
 - README.md + TODO.md cap nhat
 
 ## What's Left to Build
 
 ### Frame Protocol
 
-- **CMD_DATA (CBOR)**: Da bo — child gui register/update/ping thang backend (CoAP/HTTP). BR chi route IP.
+- **CMD_DATA**: Da bo. Child gui register/update/ping thang backend qua **CoAP** (UDP 5683, payload CBOR). BR chi route IP. Xem docs/coap/thread_node_coap.md.
 
 ### Backend
 
@@ -107,7 +117,7 @@ Console da bo. Commissioner gop vao Nodes (modal + Joiner List).
 ## Known Issues / Notes
 
 - **React Strict Mode double mount**: Dev mode → double WebSocket connection → backend log "Client connected" 2 lan. Expected behavior, khong phai bug.
-- **CMD_DATA da bo**: Child gui thang backend; BR khong con push CMD_DATA.
+- **CMD_DATA da bo**: Child gui thang backend qua CoAP (port 5683, CBOR). BR chi route IP. Thread-Node doc: docs/coap/thread_node_coap.md.
 - **Log filter**: TABLE commands bi filter khoi console. Can xem log file de debug table data.
 - **Channel la uint8_t**: 1 byte (11-26), KHONG phai 3 byte. Da sua trong CommandManager.
 

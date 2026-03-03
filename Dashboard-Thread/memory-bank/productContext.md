@@ -41,10 +41,14 @@ OpenThread Border Router (BR) cần được điều khiển và giám sát từ
 
 | Tab | Nội dung |
 |---|---|
-| Status | BR connection (host:port), OT config đầy đủ (PAN ID, Channel, Network Name, …), thread state, version từ package.json |
+| Status | BR connection (host:port), OT config đầy đủ (PAN ID, Channel, Network Name, …), thread state, version từ package.json; **System**: IPv4 và IPv6 của backend (để Thread-Node/SRP tham chiếu). |
 | Nodes | Router Table + Child Table + Joiner List (thiết bị đang chờ join); nút "Commission Node" mở modal thêm joiner (EUI64/PSKd/timeout); leader badge, age counter, empty states |
 | Settings / BR Connection | Host, port, test connect |
 | Settings / OpenThread | Cấu hình network + toggle khởi động Thread |
 | Settings / System | Action cards (Khởi động lại, Factory Reset) + danger divider; modal xác nhận countdown 5s |
 
 Console đã bỏ. Commissioner gộp vào Nodes (modal Commission Node + Joiner List).
+
+## Thread-Node (child) gửi dữ liệu
+
+Thiết bị child/endpoint (**Thread-Node**) gửi dữ liệu **trực tiếp tới backend** qua IP: **CoAP** (UDP 5683), payload **CBOR**. BR chỉ route IP. Backend parse CBOR, chỉ gửi subset (type, rloc16, timestamp, summary) lên frontend. Hướng dẫn cho firmware: [docs/coap/thread_node_coap.md](../docs/coap/thread_node_coap.md).

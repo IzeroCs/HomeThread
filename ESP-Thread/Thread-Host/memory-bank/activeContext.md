@@ -4,9 +4,16 @@ _Cập nhật: 2026-03-03_
 
 ## Công việc hiện tại
 
-Backhaul Ethernet W5500 đã có IPv6 trên backbone (link-local + ULA/global khi router gửi RA). Wi‑Fi fallback đã tắt trong code: chỉ dùng Ethernet khi bật. Child↔backend test: ping/CoAP từ child tới IPv6 backend qua BR.
+Backhaul Ethernet W5500 đã có IPv6 trên backbone (link-local + ULA/global khi router gửi RA). SRP server + SRP client (CMD_SRP_REGISTER) đã bật: backend đăng ký `_dashboard._udp` qua frame TCP; child discovery service qua SRP. Child↔backend test: ping/CoAP từ child tới IPv6 backend qua BR.
 
 ## Thay đổi gần đây
+
+### SRP (Service Registration Protocol) — Đã implement
+- **SRP server:** Bật trong `br_custom_config.h` (`OPENTHREAD_CONFIG_SRP_SERVER_ENABLE 1`); `br_main.c` gọi `otSrpServerSetEnabled(instance, true)` sau border router init (khi có backbone). SRP server chỉ lắng nghe trên giao diện Thread (mesh), **không** lắng nghe trên backbone: backend **không** gửi UDP tới BR:53535 được.
+- **SRP client trên BR:** Backend gửi **CMD_SRP_REGISTER (0x44)** qua TCP (frame). DATA: hostname_len(1) + hostname(N) + backend_ipv6(16) + port(2 BE). BR dùng SRP client (auto-start mode) đăng ký host + service `_dashboard._udp` (instance "dashboard") lên chính SRP server của BR; child discovery `_dashboard._udp` qua SRP/DNS. Build: `CONFIG_OPENTHREAD_SRP_CLIENT=y`, `CONFIG_OPENTHREAD_SRP_CLIENT_MAX_SERVICES=5` trong `sdkconfig.defaults`.
+- **Không gọi `otSrpClientStart(instance, NULL)`** — API dereference server addr → LoadProhibited crash; chỉ dùng auto-start sau khi set host + address + add service.
+- **Log khi đăng ký:** Handler log `SRP register from backend: host=... port=... AAAA=...` và `SRP register OK: _dashboard._udp -> ... (ACK sent)`.
+- **Nhiều lần gửi CMD_SRP_REGISTER:** Mỗi lần clear host+services rồi đăng ký lại → một bản ghi mới nhất (dashboard restart gửi lại là OK).
 
 ### Ethernet IPv6 (Preferred: link-local) — Đã implement
 - **Vấn đề:** Gọi `esp_netif_create_ip6_linklocal(s_eth_netif)` ngay sau `esp_netif_attach` trả `ESP_FAIL` (netif chưa link up).
@@ -75,3 +82,4 @@ Backhaul Ethernet W5500 đã có IPv6 trên backbone (link-local + ULA/global kh
 - `main` task hiện "used full" trong stack monitor — đây là artifact của task đã exit, không phải overflow
 - Leader Control Client gửi `GET /network/stop` nhưng chưa biết Leader phía kia xử lý thế nào
 - **Dashboard-Thread:** IP_ADDR response no ACK retry — backend chỉ gửi reply ACK khi `stateChangedOrFirst` trong pullState; các lần fetch IP_ADDR khác không reply → BR retry. Fix: gọi replyAck trong `CommandManager.handle()` cho mọi ACK CMD_IP_ADDR (16 byte).
+- **SRP server:** Log OpenThread `Failed to process DNS Additional section` / `Send fail response: 5` (RCODE Refused) — SRP client gửi update tới SRP server nhưng server từ chối khi xử lý Additional section (lease/key lease hoặc OPT). Đã thử set `mLease`/`mKeyLease` = 60 trong service struct; nếu vẫn lỗi cần xem source OpenThread SRP server (điều kiện từ chối).

@@ -32,7 +32,8 @@ export const CMD = {
   THREAD_START: 0x40,
   THREAD_STOP: 0x41,
   THREAD_VERSION: 0x42,
-  COMMISSIONER_JOINER: 0x43
+  COMMISSIONER_JOINER: 0x43,
+  SRP_REGISTER: 0x44,
 } as const;
 
 export type CmdCode = (typeof CMD)[keyof typeof CMD];
@@ -59,6 +60,7 @@ export const CMD_NAMES: Record<number, string> = {
   [CMD.THREAD_STOP]: "THREAD_STOP",
   [CMD.THREAD_VERSION]: "THREAD_VERSION",
   [CMD.COMMISSIONER_JOINER]: "COMMISSIONER_JOINER",
+  [CMD.SRP_REGISTER]: "SRP_REGISTER",
 };
 
 /** Max DATA length (bytes) */

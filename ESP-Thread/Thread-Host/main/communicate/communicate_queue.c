@@ -85,6 +85,8 @@ static void process_task(void *pv)
             (void)communicate_command_handle_thread_version(item.frame_id);
         } else if (item.cmd == CMD_COMMISSIONER_JOINER) {
             (void)communicate_command_handle_commissioner_joiner(item.frame_id, item.data, item.len);
+        } else if (item.cmd == CMD_SRP_REGISTER) {
+            (void)communicate_command_handle_srp_register(item.frame_id, item.data, item.len);
         } else {
             uint8_t err = 0x01; /* Invalid CMD */
             (void)communicate_send_frame(item.frame_id, CMD_NACK, &err, 1);

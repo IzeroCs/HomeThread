@@ -14,6 +14,7 @@ _Cập nhật: 2026-03-03_
 | 0.10.0 | 2026-02-27 | Phase 1: Xóa Device Registry (CoAP server/handler) và CMD_DATA push/wait-ACK; frame protocol chỉ cho quản lý BR. Hướng BR thật (child gửi thẳng backend). |
 | 0.11.0 | 2026-02-27 | Phase 2: Wi‑Fi STA backhaul, transport TCP (frame qua socket), bỏ USB/UART; border routing + prefix; Ethernet W5500 ưu tiên, Wi‑Fi fallback. |
 | 0.12.0 | 2026-03-03 | Ethernet IPv6: tạo link-local trên ETHERNET_EVENT_CONNECTED trong eth_w5500.c; br_main log backbone global/link-local IPv6 sau BR init; backhaul chỉ Ethernet (Wi‑Fi fallback tắt trong code). |
+| 0.13.0 | 2026-03-03 | SRP server bật (br_custom_config.h + otSrpServerSetEnabled trong br_main); CMD_SRP_REGISTER (0x44) — backend đăng ký _dashboard._udp qua SRP client trên BR (hostname + AAAA + port); sdkconfig.defaults SRP client; log khi nhận đăng ký; fix crash otSrpClientStart(instance, NULL) (bỏ gọi, dùng auto-start). |
 
 _(Ghi phiên bản theo Semantic Versioning MAJOR.MINOR.PATCH, không dùng tiền tố `v`. Nếu chỉ có major/minor thì PATCH = 0.)_
 
@@ -108,3 +109,4 @@ _(Ghi phiên bản theo Semantic Versioning MAJOR.MINOR.PATCH, không dùng ti�
 | Stack overflow trong `stk_mon` task | Tăng `TASK_STACK_STK_MON` từ 1536 → 3072 |
 | `CMD_FACTORY` không xóa được NVS | Đổi sang raw `esp_partition_erase_range`, bỏ `thread_graceful_shutdown` trước erase |
 | `assert: esp_openthread_task_switching_lock_release` trong leader_rloc task | `send_coap_stop_command_once` tự quản lý lock; caller dùng `goto next_iteration` |
+| LoadProhibited khi gọi `otSrpClientStart(instance, NULL)` | OpenThread dereference server addr; bỏ gọi Start, chỉ dùng SRP client auto-start sau set host+address+add service |

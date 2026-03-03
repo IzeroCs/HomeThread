@@ -8,7 +8,7 @@ function formatPanId(panid: string | null | undefined): string {
 }
 
 export default function Status() {
-  const { serialStatus, otConfig, config: brConfig, testBrConnect } = useWebSocketContext();
+  const { serialStatus, otConfig, config: brConfig, testBrConnect, systemInfo } = useWebSocketContext();
   const [networkKeyVisible, setNetworkKeyVisible] = useState(false);
   const isConnected = serialStatus?.isConnected ?? false;
   const ipaddr = otConfig?.ipaddr?.trim() || null;
@@ -17,7 +17,7 @@ export default function Status() {
     <div className="status-page">
       <h1 className="status-page-title">System Status</h1>
       <p className="status-page-subtitle">
-        OpenThread Border Router v{__APP_VERSION__} - Network health and configuration overview
+        Network health and configuration overview
       </p>
 
       <section className="status-section status-section-br">
@@ -198,6 +198,31 @@ export default function Status() {
               </div>
             </div>
           )}
+        </div>
+      </section>
+
+      <section className="status-section status-section-system">
+        <div className="status-section-ot-header">
+          <h2 className="status-section-ot-title">
+            <span className="material-symbols-outlined">computer</span>
+            System
+          </h2>
+        </div>
+        <div className="status-card status-card-ot">
+          <div className="status-ot-grid status-ot-grid--system">
+            <div className="status-field">
+              <span className="status-field-label">IPv4 (backend)</span>
+              <span className="status-field-value status-field-value--accent mono-text">
+                {systemInfo?.ipv4?.length ? systemInfo.ipv4.join(", ") : "—"}
+              </span>
+            </div>
+            <div className="status-field">
+              <span className="status-field-label">IPv6 (backend)</span>
+              <span className="status-field-value status-field-value--accent mono-text status-field-value--wrap">
+                {systemInfo?.ipv6?.length ? systemInfo.ipv6.join(", ") : "—"}
+              </span>
+            </div>
+          </div>
         </div>
       </section>
     </div>

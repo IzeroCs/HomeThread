@@ -35,6 +35,8 @@
 - Commissioner: `otCommissionerGetState`, `otCommissionerStart`, `otCommissionerAddJoiner`, `otCommissionerGetNextJoinerInfo`
 - CoAP: `otCoapStart`, `otCoapAddResource`, `otCoapNewMessage`, `otCoapSendRequest`, `otCoapMessageInit`, `otCoapMessageAppendUriPathOptions`
 - Network: `otThreadGetLeaderRloc`, `otThreadGetLeaderData`
+- SRP server: `otSrpServerSetEnabled` (br_main sau border router init). SRP server chỉ listen trên Thread mesh, không trên backbone.
+- SRP client: `otSrpClientEnableAutoStartMode`, `otSrpClientClearHostAndServices`, `otSrpClientSetHostName`, `otSrpClientSetHostAddresses`, `otSrpClientAddService`. Không gọi `otSrpClientStart(instance, NULL)` — crash (dereference). Dùng auto-start sau khi set host + address + add service.
 
 ### FreeRTOS
 - `xTaskCreate` / `xQueueCreate` / `xQueueSend` / `xQueueReceive`

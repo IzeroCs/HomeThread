@@ -7,7 +7,7 @@ import { buildFrame, CMD, type ParsedFrame } from "./frame";
 import { CMD_NAMES } from "./frame/constants";
 import { serialLogger, frameLogger } from "../utils/logger";
 import { DEVICE_ROLE } from "../openthread/deviceRole";
-import { bytes16ToIPv6String } from "../utils/ipv6";
+import { bytes16ToIPv6String, ipv6StringToBytes } from "../utils/ipv6";
 import { parseDatasetActive, type ParsedDataset } from "./frame";
 import { EVENTS, type EventName } from "shared/src/events";
 
@@ -129,13 +129,9 @@ export class CommandManager {
     }
   }
 
-  /** Dữ liệu fake mặc định cho STATE (vài byte, tạm dùng keepalive). */
-  private static readonly STATE_FAKE_PAYLOAD = Buffer.from([0x01, 0x02, 0x03]);
-
-  /** Gửi frame STATE kèm payload (vài byte). Không truyền data thì dùng STATE_FAKE_PAYLOAD. */
+  /** Gửi frame STATE (pull state). Có thể kèm data hoặc không. */
   sendState(frameId: number, data?: Buffer): Buffer {
-    const payload = data && data.length > 0 ? data : CommandManager.STATE_FAKE_PAYLOAD;
-    return buildFrame(frameId, CMD.STATE, payload);
+    return buildFrame(frameId, CMD.STATE, data && data.length > 0 ? data : undefined);
   }
 
   /** Gửi request CMD_STATE (pull state), leader trả ACK với 1 byte role. Không merge 1-byte vào config. */
@@ -292,6 +288,36 @@ export class CommandManager {
     pskdBytes.copy(data, 9);
     data.writeUInt32BE(timeoutSeconds, 9 + pskdBytes.length);
     return this.sendRequest(CMD.COMMISSIONER_JOINER, data);
+  }
+
+  /**
+   * Gửi CMD_SRP_REGISTER (0x44) để BR/Thread-Host đăng ký service _dashboard._udp lên SRP server.
+   * DATA: hostname_len(1) + hostname(N UTF-8, label only) + backend_ipv6(16) + port(2 BE).
+   * ACK rỗng → OK; NACK 1 byte: 0x04 payload sai, 0x02 OT chưa sẵn sàng, 0x03 lock timeout.
+   */
+  sendSrpRegister(
+    hostname: string,
+    backendIPv6: string,
+    port: number
+  ): Promise<{ ack: boolean; data?: Buffer; errorCode?: number; frameId?: number }> {
+    const label = hostname.trim();
+    const hostnameBytes = Buffer.from(label, "utf8");
+    if (label.length === 0 || hostnameBytes.length > 63) {
+      return Promise.resolve({ ack: false, errorCode: 0x04 });
+    }
+    const ipv6Buf = ipv6StringToBytes(backendIPv6.trim());
+    if (!ipv6Buf || ipv6Buf.length !== 16) {
+      return Promise.resolve({ ack: false, errorCode: 0x04 });
+    }
+    if (!Number.isInteger(port) || port < 1 || port > 65535) {
+      return Promise.resolve({ ack: false, errorCode: 0x04 });
+    }
+    const data = Buffer.allocUnsafe(1 + hostnameBytes.length + 16 + 2);
+    data[0] = hostnameBytes.length;
+    hostnameBytes.copy(data, 1);
+    ipv6Buf.copy(data, 1 + hostnameBytes.length);
+    data.writeUInt16BE(port, 1 + hostnameBytes.length + 16);
+    return this.sendRequest(CMD.SRP_REGISTER, data);
   }
 
   /** Gửi ACK (cùng frameId) cho leader biết đã nhận dữ liệu (vd. sau khi nhận ACK IP addr). */

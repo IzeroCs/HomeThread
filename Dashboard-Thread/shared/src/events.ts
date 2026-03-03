@@ -61,6 +61,16 @@ export const EVENTS = {
   DEVICE_RESET_RESULT: "device:reset:result",
   DEVICE_FACTORY_RESET: "device:factoryReset",
   DEVICE_FACTORY_RESET_RESULT: "device:factoryReset:result",
+
+  // Child data (CoAP → backend → frontend; payload to frontend is subset only)
+  CHILD_DATA: "child:data",
+
+  // SRP register (frame CMD 0x44): backend → BR
+  SRP_REGISTER: "srp:register",
+  SRP_REGISTER_RESULT: "srp:register:result",
+
+  // Backend system info (IPv4/IPv6) for Status → System section
+  SYSTEM_INFO: "system:info",
 } as const;
 
 export type EventName = (typeof EVENTS)[keyof typeof EVENTS];

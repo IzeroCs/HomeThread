@@ -7,6 +7,7 @@ import { Server, Socket } from "socket.io";
 import type { BrConnectionConfigService, CommunicateManager } from "../communicate";
 import { AppSettingsService } from "../services/AppSettingsService";
 import { logger } from "../utils/logger";
+import { getBackendAddresses } from "../utils/ipv6";
 import { EVENTS } from "shared/src/events";
 import { validateBrConnectionConfig, validateOtSetConfig } from "shared/src/validation";
 
@@ -100,6 +101,8 @@ export class WebSocketServer {
         this.handleCommissionerConnect(socket, data)
       );
       socket.on(EVENTS.COMMISSIONER_GET_JOINER_TABLE, () => this.handleCommissionerGetJoinerTable(socket));
+      socket.on(EVENTS.SRP_REGISTER, (data: { hostname?: string; backendIPv6: string; port?: number }) =>
+        this.handleSrpRegister(socket, data));
 
       socket.on("disconnect", () => {
         wsLog.info(`Client disconnected: ${socket.id}`);
@@ -111,6 +114,7 @@ export class WebSocketServer {
 
   private sendCurrentConfig(socket: Socket): void {
     socket.emit(EVENTS.CONFIG_CURRENT, this.brConnectionConfigService.getLatest());
+    socket.emit(EVENTS.SYSTEM_INFO, getBackendAddresses());
   }
 
   private sendSerialStatus(socket: Socket): void {
@@ -458,6 +462,45 @@ export class WebSocketServer {
       }
     } catch (error) {
       socket.emit(EVENTS.COMMISSIONER_CONNECT_RESULT, {
+        success: false,
+        error: error instanceof Error ? error.message : "Unknown error",
+      });
+    }
+  }
+
+  private async handleSrpRegister(
+    socket: Socket,
+    data: { hostname?: string; backendIPv6: string; port?: number }
+  ): Promise<void> {
+    if (!this.communicate.getStatus().isConnected) {
+      socket.emit(EVENTS.SRP_REGISTER_RESULT, { success: false, error: "BR not connected. Connect to BR first." });
+      return;
+    }
+    const backendIPv6 = (data.backendIPv6 ?? "").trim();
+    if (!backendIPv6) {
+      socket.emit(EVENTS.SRP_REGISTER_RESULT, { success: false, error: "backendIPv6 is required." });
+      return;
+    }
+    const hostname = (data.hostname ?? "dashboard").trim() || "dashboard";
+    const port = typeof data.port === "number" ? data.port : 5683;
+    try {
+      const result = await this.communicate.srpRegister(hostname, backendIPv6, port);
+      if (result.ack) {
+        socket.emit(EVENTS.SRP_REGISTER_RESULT, { success: true });
+      } else {
+        const errorMap: Record<number, string> = {
+          0x02: "OT chưa sẵn sàng (chưa leader, SRP client/server chưa up).",
+          0x03: "Lock timeout.",
+          0x04: "Payload sai (hostname/len/port hoặc tổng độ dài).",
+        };
+        const errorMsg =
+          result.errorCode != null
+            ? errorMap[result.errorCode] ?? `Thất bại (error code: 0x${result.errorCode.toString(16)})`
+            : "SRP register thất bại.";
+        socket.emit(EVENTS.SRP_REGISTER_RESULT, { success: false, error: errorMsg });
+      }
+    } catch (error) {
+      socket.emit(EVENTS.SRP_REGISTER_RESULT, {
         success: false,
         error: error instanceof Error ? error.message : "Unknown error",
       });

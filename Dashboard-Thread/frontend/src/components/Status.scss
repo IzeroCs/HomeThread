@@ -532,3 +532,23 @@
   color: $text-dark-muted;
   font-size: 14px;
 }
+
+// System section — cùng bảng/grid như OpenThread Network, chỉ 2 ô
+.status-section-system .status-section-ot-header {
+  margin-bottom: 16px;
+}
+
+.status-ot-grid--system {
+  @media (min-width: 768px) {
+    grid-template-rows: minmax(100px, auto);
+    grid-auto-rows: unset;
+  }
+
+  @media (min-width: 1024px) {
+    grid-template-rows: minmax(100px, auto);
+  }
+}
+
+.status-field-value--wrap {
+  word-break: break-all;
+}

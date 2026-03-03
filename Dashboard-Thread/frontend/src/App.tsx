@@ -7,6 +7,7 @@ import Status from "./components/Status";
 import Nodes from "./components/Nodes/Nodes";
 import Sidebar, { type NavPage } from "./components/common/Sidebar";
 import ToastContainer from "./components/common/ToastContainer";
+import WaitingForBackend from "./components/common/WaitingForBackend";
 import "./App.scss";
 
 function App() {
@@ -51,11 +52,7 @@ function App() {
     return (
       <div className="app-layout app-layout--waiting">
         <div className="app-container">
-          <div className="loading waiting-for-backend">
-            <span className="waiting-dot" />
-            <p className="waiting-message">Waiting for backend...</p>
-            <p className="waiting-hint">Start the backend or reconnecting.</p>
-          </div>
+          <WaitingForBackend />
         </div>
       </div>
     );

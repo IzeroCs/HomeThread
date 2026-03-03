@@ -38,11 +38,12 @@ extern "C" {
 #define CMD_CHILD_TABLE     0x31
 #define CMD_JOINER_TABLE    0x32
 
-/* Thread start/stop/version, commissioner_joiner */
+/* Thread start/stop/version, commissioner_joiner, SRP register */
 #define CMD_THREAD_START        0x40
 #define CMD_THREAD_STOP         0x41
 #define CMD_THREAD_VERSION      0x42
 #define CMD_COMMISSIONER_JOINER 0x43
+#define CMD_SRP_REGISTER        0x44
 
 /** Callback khi nhận được một frame hợp lệ (frame_id, cmd, data, len). */
 typedef void (*communicate_rx_frame_cb_t)(uint8_t frame_id, uint8_t cmd, const uint8_t *data, size_t len, void *ctx);

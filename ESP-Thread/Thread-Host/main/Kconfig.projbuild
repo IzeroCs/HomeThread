@@ -18,7 +18,7 @@ config LED_STATUS_GPIO
 
 config BR_ETH_W5500_ENABLE
     bool "Bật Ethernet W5500 (backhaul ưu tiên, SPI)"
-    default n
+    default y
     select ETH_USE_SPI_ETHERNET
     select ETH_SPI_ETHERNET_W5500
     help
@@ -77,11 +77,11 @@ endif
 
 config BR_WIFI_STA_ENABLE
     bool "Bật Wi-Fi STA (backhaul / fallback khi không Ethernet)"
-    default y
+    default n
     help
         BR kết nối AP, lấy IP (DHCP). Dùng làm backhaul hoặc fallback khi Ethernet W5500 không link.
 
-config BR_WIFI_SSID
+config BR_WIFI_SSIDn
     string "Wi-Fi SSID"
     depends on BR_WIFI_STA_ENABLE
     default "IzeroCs-IoT"

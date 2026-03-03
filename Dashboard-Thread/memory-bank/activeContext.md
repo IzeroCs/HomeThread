@@ -2,9 +2,21 @@
 
 ## Current Work Focus
 
-Project da on dinh voi BR qua TCP, trang Nodes (Router/Child/Joiner List), Toast dark theme, stable React keys. UI dark navy: Modal/ConfirmModal, System action cards, Sidebar settings icons. Tiep theo: bao tri, optional mDNS, security neu can.
+Project da on dinh voi BR qua TCP, trang Nodes (Router/Child/Joiner List), Toast dark theme, stable React keys. UI dark navy: Modal/ConfirmModal, System action cards, Sidebar settings icons. **SRP register**: Backend gui CMD_SRP_REGISTER (0x44) qua frame khi BR la leader; **Status**: section **System** (IPv4/IPv6 backend), da bo section "Child data (CoAP)". Tiep theo: bao tri, optional mDNS, security neu can.
 
 ## Recent Significant Changes
+
+### SRP register (frame CMD 0x44) + System section
+- **Backend:** Khi BR chuyen sang **leader** (poll CMD_STATE), tu dong gui **CMD_SRP_REGISTER** (0x44) qua frame: DATA = hostname_len(1) + hostname(N) + backend_ipv6(16) + port(2 BE). IPv6 lay tu `BACKEND_IPV6` env hoac `getPreferredBackendIPv6()` (utils/ipv6). CommunicateManager.pullState() → stateChangedOrFirst && roleByte === LEADER → srpRegister(). WebSocket handler `srp:register` / `srp:register:result` cho trigger thu cong.
+- **Frame:** CMD_SRP_REGISTER = 0x44 trong constants; CommandManager.sendSrpRegister(), CommunicateManager.srpRegister(). NACK 0x02/0x03/0x04 (Not ready, Timeout, Invalid param).
+- **Status:** Bo section "Child data (CoAP)". Them section **System** (cung giao dien bang nhu OpenThread Network): IPv4 (backend), IPv6 (backend) tu event `system:info`; backend gui getBackendAddresses() khi send CONFIG_CURRENT.
+- **Shared:** EVENTS.SRP_REGISTER, SRP_REGISTER_RESULT, SYSTEM_INFO. useWebSocket tra ve systemInfo (khong con childDataEvents).
+- **Da xoa:** DashboardSrpClient.ts (UDP SRP), register-srp.ts script, STATE_FAKE_PAYLOAD (sendState gui payload rong khi khong data).
+
+### Child data (CoAP + CBOR) — backend van nhan, frontend khong hien section
+- **Backend:** CoAP server UDP 5683 (`CoapChildDataServer.ts`), resources `/child/register`, `/child/update`, `/child/ping`. Nhan full payload CBOR tu child, parse → JSON noi bo; emit WebSocket `CHILD_DATA` (subset). Khong doi.
+- **Frontend:** Khong con section "Child data (CoAP)" tren Status; useWebSocket khong export childDataEvents. Event CHILD_DATA van co the subscribe neu can sau.
+- **Docs:** `docs/coap/thread_node_coap.md` — huong dan Thread-Node (CoAP URL, CBOR, SRP discovery).
 
 ### UI polish (dark navy, Settings, Modal)
 - **Modal / ConfirmModal:** Dark navy — overlay rgba + backdrop blur; box $card-dark, border $brand-border; title/body $text-dark, $text-dark-subtle; nut Cancel ghost, Confirm danger/warning (#ef4444, #f97316) voi hover glow.
@@ -59,8 +71,11 @@ ROUTER_TABLE, CHILD_TABLE, JOINER_TABLE TX va ACK bi filter ra khoi console log 
 
 ## Files to Watch
 
-- `backend/src/communicate/CommunicateManager.ts`, `TransportTcp.ts`, `BrConnectionConfigService.ts`
-- `backend/src/communicate/CommandManager.ts` — frame handling
+- `backend/src/server/CoapChildDataServer.ts` — CoAP child data, CBOR decode, emit subset
+- `backend/src/utils/ipv6.ts` — getPreferredBackendIPv6(), getBackendAddresses()
+- `docs/coap/thread_node_coap.md`, `docs/architecture/real_br_integration.md` — Thread-Node, SRP discovery
+- `backend/src/communicate/CommunicateManager.ts` — pullState(), SRP register khi leader
+- `backend/src/communicate/CommandManager.ts` — frame handling, sendSrpRegister, sendState (no fake payload)
 - `frontend/src/components/Nodes/Nodes.tsx` — Router/Child table, JoinerList, CommissionNodeModal
 - `frontend/src/components/Nodes/JoinerList.tsx` — joiner cards, countdown (snapshot + now)
 - `frontend/src/components/common/ToastContainer.tsx` + `ToastContainer.scss` — toast dark

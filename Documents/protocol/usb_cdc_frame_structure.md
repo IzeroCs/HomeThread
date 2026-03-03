@@ -63,7 +63,8 @@
 | CMD_THREAD_STOP | `0x41` | Node→ESP32 | **Pull** | Dừng Thread + IPv6 |
 | CMD_THREAD_VERSION | `0x42` | Node→ESP32 | **Pull** | Lấy phiên bản OpenThread (ACK data = UTF-8 string, tối đa 64 byte) |
 | CMD_COMMISSIONER_JOINER | `0x43` | Node→ESP32 | **Pull** | Thêm joiner vào commissioner (EUI64 + PSKd + timeout); BR tự start commissioner nếu chưa active |
-| *(reserved)* | `0x44–0xFF` | — | — | Dành mở rộng sau |
+| CMD_SRP_REGISTER | `0x44` | Node→ESP32 | **Pull** | Backend đăng ký service `_dashboard._udp` với SRP server (qua SRP client trên BR). DATA: hostname_len(1) + hostname(N) + backend_ipv6(16) + port(2 BE). BR trả ACK rỗng hoặc NACK. |
+| *(reserved)* | `0x45–0xFF` | — | — | Dành mở rộng sau |
 
 ---
 
@@ -100,6 +101,7 @@
 - `CMD_ROUTER_TABLE / CMD_CHILD_TABLE / CMD_JOINER_TABLE`: binary format (xem `table_data_format.md`)
 - `CMD_THREAD_VERSION`: UTF-8 string (vd. `"OPENTHREAD/thread-reference-20230706-..."`, tối đa 64 byte)
 - `CMD_COMMISSIONER_JOINER`: Không có data (0 byte) – chỉ xác nhận thêm joiner thành công
+- `CMD_SRP_REGISTER`: Không có data (0 byte) – chỉ xác nhận đã submit đăng ký SRP (BR dùng SRP client auto-start)
 
 ---
 

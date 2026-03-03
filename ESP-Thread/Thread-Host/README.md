@@ -115,7 +115,7 @@ Thread-Host/
 │   │   ├── communicate.c               # Parse/serialize frame, gọi transport
 │   │   ├── communicate_task.c          # RX callback + state watchdog (backend pull định kỳ)
 │   │   ├── communicate_queue.c         # Queue frame, process task gọi handler; timeout gửi, log khi chờ lâu
-│   │   ├── communicate_command.c      # Handler CMD STATE, DATASET_ACTIVE, IP_ADDR, SET_*, ROUTER/CHILD/JOINER_TABLE, THREAD_START/STOP/VERSION
+│   │   ├── communicate_command.c       # Handler CMD STATE, DATASET_ACTIVE, IP_ADDR, SET_*, ROUTER/CHILD/JOINER_TABLE, THREAD_START/STOP/VERSION, RESET/FACTORY, COMMISSIONER_JOINER, SRP_REGISTER
 │   │   └── transport_tcp.c             # Transport TCP (BR listen, dashboard kết nối qua IP)
 │   ├── include/
 │   │   ├── br_config.h              # UART config, pin definitions
@@ -195,7 +195,8 @@ Thread-Host/
 - ✅ **Communicate (frame protocol)** — Parse/serialize khung SOF/Frame ID/CMD/LEN/DATA/CRC8/EOF; **transport TCP** (BR listen, dashboard kết nối qua IP). **communicate_task**: init + queue (timeout 500 ms, log khi chờ &gt; 2 s) + state watchdog. **Handlers:** CMD_STATE, DATASET_ACTIVE, IP_ADDR (ACK + data), SET_PANID/CHANNEL/NETWORK_NAME/EXTENDED_PANID/NETWORK_KEY, ROUTER/CHILD/JOINER_TABLE (ACK + table data), THREAD_START, THREAD_STOP, THREAD_VERSION (ACK + version string), CMD_RESET (ACK + restart sau 2s), CMD_FACTORY (ACK + NVS erase + restart sau 2s); xem [Documents/protocol/usb_cdc_frame_structure.md](../../Documents/protocol/usb_cdc_frame_structure.md) và [Documents/protocol/table_data_format.md](../../Documents/protocol/table_data_format.md). **Stack & heap monitor:** task `stk_mon` log mỗi 30 s — stack high water mark của tất cả task + heap free/min_free; tên task và stack size tập trung tại `include/br_config.h` (`TASK_NAME_*`, `TASK_STACK_*`).
 - ❌ **Auto-flash RCP khi boot** — xem [TODO.md](TODO.md)
 - ❌ RCP update/firmware management (đã loại bỏ)
-- ✅ **Xử lý CMD** — STATE, DATASET_ACTIVE, IP_ADDR, SET_* (PANID, CHANNEL, NETWORK_NAME, EXTENDED_PANID, NETWORK_KEY), ROUTER/CHILD/JOINER_TABLE, THREAD_START, THREAD_STOP, THREAD_VERSION, RESET, FACTORY, COMMISSIONER_JOINER; BR trả ACK (+ data khi có) hoặc NACK; xem [Documents/protocol/usb_cdc_frame_structure.md](../../Documents/protocol/usb_cdc_frame_structure.md) và [Documents/protocol/table_data_format.md](../../Documents/protocol/table_data_format.md).
+- ✅ **Xử lý CMD** — STATE, DATASET_ACTIVE, IP_ADDR, SET_* (PANID, CHANNEL, NETWORK_NAME, EXTENDED_PANID, NETWORK_KEY), ROUTER/CHILD/JOINER_TABLE, THREAD_START, THREAD_STOP, THREAD_VERSION, RESET, FACTORY, COMMISSIONER_JOINER, **SRP_REGISTER (0x44)**; BR trả ACK (+ data khi có) hoặc NACK; xem [Documents/protocol/usb_cdc_frame_structure.md](../../Documents/protocol/usb_cdc_frame_structure.md) và [Documents/protocol/table_data_format.md](../../Documents/protocol/table_data_format.md).
+- ✅ **SRP (Service Registration Protocol)** — SRP server bật trên BR (listen Thread mesh); backend đăng ký service `_dashboard._udp` qua **CMD_SRP_REGISTER** (frame TCP, không UDP BR:53535). BR dùng SRP client đăng ký host + service lên SRP server; child discovery `_dashboard._udp` qua SRP/DNS.
 - ❌ **Push system health** — Gửi stack HWM + heap size cho backend/Node để monitor từ xa; xem [TODO.md](TODO.md).
 
 ## Tài liệu tham khảo

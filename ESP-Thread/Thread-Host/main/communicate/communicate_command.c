@@ -19,6 +19,7 @@
 #include "openthread/ip6.h"
 #include "openthread/thread.h"
 #include "openthread/thread_ftd.h"
+#include "openthread/srp_client.h"
 #include <string.h>
 
 #define TAG "communicate_cmd"
@@ -35,6 +36,12 @@ static bool s_cached_leader_rloc_valid = false;
 
 static esp_timer_handle_t s_reset_timer   = NULL;
 static esp_timer_handle_t s_factory_timer = NULL;
+
+/* SRP client: 1 service `_dashboard._udp` để backend tự đăng ký. */
+#define SRP_HOSTNAME_MAX_LEN 63
+
+static otSrpClientService s_srp_dashboard_service;
+static bool s_srp_dashboard_service_inited = false;
 
 /** Dừng Thread stack và hạ IPv6 interface trước khi reset/factory. */
 static void thread_graceful_shutdown(void)
@@ -734,6 +741,110 @@ int communicate_command_handle_commissioner_joiner(uint8_t frame_id, const uint8
 
     ESP_LOGI(TAG, "Commissioner: joiner added pskd=%s timeout=%lus wildcard=%d",
              pskd_str, (unsigned long)timeout_s, (int)is_wildcard);
+    esp_err_t err = communicate_send_frame(frame_id, CMD_ACK, NULL, 0);
+    return (err == ESP_OK) ? 0 : -1;
+}
+
+int communicate_command_handle_srp_register(uint8_t frame_id, const uint8_t *data, size_t len)
+{
+    if (data == NULL || len < (size_t)(1 + 16 + 2)) {
+        send_nack(frame_id, 0x04); /* Invalid param */
+        return -1;
+    }
+
+    const uint8_t *p = data;
+    uint8_t hostname_len = *p++;
+    if (hostname_len == 0 || hostname_len > SRP_HOSTNAME_MAX_LEN) {
+        send_nack(frame_id, 0x04); /* Invalid param */
+        return -1;
+    }
+
+    /* Tổng độ dài: 1 + hostname_len + 16 (IPv6) + 2 (port) */
+    if (len != (size_t)(1 + hostname_len + 16 + 2)) {
+        send_nack(frame_id, 0x04); /* Invalid param (TXT chưa được hỗ trợ trong phiên bản này) */
+        return -1;
+    }
+
+    char hostname[SRP_HOSTNAME_MAX_LEN + 1];
+    memcpy(hostname, p, hostname_len);
+    hostname[hostname_len] = '\0';
+    p += hostname_len;
+
+    otIp6Address backend_addr;
+    memcpy(&backend_addr, p, sizeof(backend_addr));
+    p += sizeof(backend_addr);
+
+    uint16_t port = ((uint16_t)p[0] << 8) | (uint16_t)p[1];
+    if (port == 0) {
+        send_nack(frame_id, 0x04); /* Invalid param */
+        return -1;
+    }
+
+    ESP_LOGI(TAG, "SRP register from backend: host=%s port=%u AAAA=%02x%02x:%02x%02x:...",
+             hostname, (unsigned)port,
+             backend_addr.mFields.m8[0], backend_addr.mFields.m8[1],
+             backend_addr.mFields.m8[2], backend_addr.mFields.m8[3]);
+
+    otInstance *instance = esp_openthread_get_instance();
+    if (instance == NULL) {
+        send_nack(frame_id, 0x02); /* Not ready */
+        return -1;
+    }
+
+    if (!esp_openthread_lock_acquire(pdMS_TO_TICKS(2000))) {
+        send_nack(frame_id, 0x03); /* Timeout */
+        return -1;
+    }
+
+    /* Bật auto-start mode để SRP client tự tìm SRP server trong mesh. */
+    (void)otSrpClientEnableAutoStartMode(instance, NULL, NULL);
+
+    /* Clear host + services cũ trước khi đăng ký lại. */
+    (void)otSrpClientClearHostAndServices(instance);
+
+    otError ot_err = otSrpClientSetHostName(instance, hostname);
+    if (ot_err != OT_ERROR_NONE) {
+        esp_openthread_lock_release();
+        ESP_LOGE(TAG, "SRP: otSrpClientSetHostName failed: %d", ot_err);
+        send_nack(frame_id, 0x02); /* Not ready */
+        return -1;
+    }
+
+    ot_err = otSrpClientSetHostAddresses(instance, &backend_addr, 1);
+    if (ot_err != OT_ERROR_NONE) {
+        esp_openthread_lock_release();
+        ESP_LOGE(TAG, "SRP: otSrpClientSetHostAddresses failed: %d", ot_err);
+        send_nack(frame_id, 0x02); /* Not ready */
+        return -1;
+    }
+
+    if (!s_srp_dashboard_service_inited) {
+        memset(&s_srp_dashboard_service, 0, sizeof(s_srp_dashboard_service));
+        s_srp_dashboard_service.mName = "_dashboard._udp";
+        s_srp_dashboard_service.mInstanceName = "dashboard";
+        s_srp_dashboard_service.mPriority = 0;
+        s_srp_dashboard_service.mWeight = 0;
+        s_srp_dashboard_service.mSubTypeLabels = NULL;
+        s_srp_dashboard_service.mTxtEntries = NULL;
+        s_srp_dashboard_service.mNumTxtEntries = 0;
+        s_srp_dashboard_service.mLease = 60;
+        s_srp_dashboard_service.mKeyLease = 60;
+        s_srp_dashboard_service_inited = true;
+    }
+
+    s_srp_dashboard_service.mPort = port;
+
+    ot_err = otSrpClientAddService(instance, &s_srp_dashboard_service);
+    esp_openthread_lock_release();
+    if (ot_err != OT_ERROR_NONE) {
+        ESP_LOGE(TAG, "SRP: otSrpClientAddService failed: %d", ot_err);
+        send_nack(frame_id, 0x02); /* Not ready */
+        return -1;
+    }
+
+    /* SRP client đã bật auto-start; sau khi set host + address + add service sẽ tự gửi SRP Update.
+     * Không gọi otSrpClientStart(instance, NULL) — API dereference server addr → crash. */
+    ESP_LOGI(TAG, "SRP register OK: _dashboard._udp -> %s port %u (ACK sent)", hostname, (unsigned)port);
     esp_err_t err = communicate_send_frame(frame_id, CMD_ACK, NULL, 0);
     return (err == ESP_OK) ? 0 : -1;
 }

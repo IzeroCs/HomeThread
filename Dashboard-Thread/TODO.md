@@ -6,7 +6,8 @@ Phần đã triển khai được mô tả trong [README.md](./README.md). Dư�
 
 ## Frame protocol & kiến trúc
 
-- [ ] **CMD_DATA (CBOR)**: Parse CBOR từ CMD_DATA để cập nhật thread state / router-child-joiner table khi firmware push.
+- [x] **Child data**: Đã triển khai — Thread-Node gửi trực tiếp tới backend qua **CoAP** (UDP 5683), payload **CBOR**. Backend parse, emit subset. Xem [docs/coap/thread_node_coap.md](./docs/coap/thread_node_coap.md).
+- [x] **SRP register**: Backend gửi CMD_SRP_REGISTER (0x44) qua frame khi BR là leader; Thread-Node có thể discovery `_dashboard._udp`. Status section **System** (IPv4/IPv6 backend).
 
 ---
 
@@ -31,4 +32,4 @@ Phần đã triển khai được mô tả trong [README.md](./README.md). Dư�
 
 ---
 
-Chi tiết đã triển khai: **xem README.md** và [Documents/dashboard/migration_to_frame_protocol.md](../Documents/dashboard/migration_to_frame_protocol.md).
+Chi tiết đã triển khai: **xem README.md**, [docs/coap/thread_node_coap.md](./docs/coap/thread_node_coap.md) (Thread-Node + SRP discovery), [docs/architecture/real_br_integration.md](./docs/architecture/real_br_integration.md) (SRP/DNS-SD), và [Documents/dashboard/migration_to_frame_protocol.md](../Documents/dashboard/migration_to_frame_protocol.md).

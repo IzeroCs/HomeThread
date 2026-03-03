@@ -18,6 +18,17 @@ WebSocketServer    (backend/src/server/WebSocketServer.ts)
 useWebSocket hook  (frontend/src/hooks/useWebSocket.ts)
     ↓ React state update
 UI Components      (frontend/src/components/)
+
+Thread-Node (child)  -- CoAP UDP 5683, payload CBOR (full)
+    ↓
+CoapChildDataServer (backend/src/server/CoapChildDataServer.ts)
+    ↓ parse CBOR → build subset → io.emit(CHILD_DATA). Frontend khong hien section Child data.
+
+Backend (os.networkInterfaces) → getBackendAddresses() → io.emit(SYSTEM_INFO) khi CONFIG_CURRENT
+    ↓
+Frontend             subscribe SYSTEM_INFO → systemInfo → Status section "System" (IPv4, IPv6).
+
+Backend (khi BR = leader) → sendSrpRegister() qua frame CMD_SRP_REGISTER (0x44) → BR dang ky _dashboard._udp len SRP server.
 ```
 
 ## Backend Layer Responsibilities
@@ -32,6 +43,7 @@ UI Components      (frontend/src/components/)
 | `OtConfigManager` | `backend/src/communicate/OtConfigManager.ts` | In-memory store. `.update(partial)` de merge, `.get()` de doc, `.clear()` khi disconnect |
 | `PollingManager` | `backend/src/communicate/PollingManager.ts` | Poll table 6s (child +1.5s delay). CHI khi frontend connected + state = leader/router/child |
 | `AppSettingsService` | `backend/src/services/AppSettingsService.ts` | SQLite key-value cho app settings (thread_run_on_connect) |
+| `CoapChildDataServer` | `backend/src/server/CoapChildDataServer.ts` | CoAP server UDP 5683; nhan request /child/register, /child/update, /child/ping; decode CBOR; emit CHILD_DATA (subset) qua io |
 
 ## Frame Protocol
 
@@ -56,6 +68,7 @@ UI Components      (frontend/src/components/)
 | THREAD_START/STOP | 0x40-0x41 | Khoi dong/dung Thread |
 | THREAD_VERSION | 0x42 | Phien ban OpenThread |
 | COMMISSIONER_JOINER | 0x43 | EUI64(8) + PSKD_len(1) + PSKD(var) + Timeout(4) |
+| SRP_REGISTER | 0x44 | hostname_len(1) + hostname(N) + backend_ipv6(16) + port(2 BE) |
 
 ### NACK Codes
 
@@ -153,7 +166,7 @@ Status dot tren Sidebar (header) dung chung mapping mau:
 
 ### Status Page — Connected vs Disconnected
 
-- **Connected:** BR card với vùng icon lớn (router), badge Connected, Host Address, Uptime, nút Refresh; OpenThread grid 3×4 (label UPPERCASE, giá trị accent cho Network Name / IP), Channel có badge "2.4 GHz", Network Key có nút show/hide.
+- **Connected:** BR card với vùng icon lớn (router), badge Connected, Host Address, Uptime, nút Refresh; OpenThread grid 3×4 (label UPPERCASE, giá trị accent cho Network Name / IP), Channel có badge "2.4 GHz", Network Key có nút show/hide; **System** section (cùng style bảng): IPv4 (backend), IPv6 (backend) từ systemInfo.
 - **Disconnected:** BR card layout ngang: icon tròn 48px đỏ (link_off) + label "BR Connection Status" + chữ "DISCONNECTED" + chấm đỏ pulse + nút Refresh. OpenThread: ghost grid (opacity 0.4, blur) + overlay card (backdrop-blur) "No Network Data Available" + nút "Configure Border Router" gọi `onConfigureBr` (App truyền `() => setPage("settings")`).
 
 ### Version Display

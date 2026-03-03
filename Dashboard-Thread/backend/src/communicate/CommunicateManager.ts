@@ -13,6 +13,7 @@ import { PollingManager } from "./PollingManager";
 import { FrameParser, type ParsedFrame } from "./frame";
 import { AppSettingsService } from "../services/AppSettingsService";
 import { serialLogger } from "../utils/logger";
+import { getPreferredBackendIPv6 } from "../utils/ipv6";
 import { DEVICE_ROLE, DEVICE_ROLE_NAMES } from "../openthread/deviceRole";
 import type { DeviceRole } from "../openthread/deviceRole";
 import { EVENTS, type EventName } from "shared/src/events";
@@ -375,6 +376,19 @@ export class CommunicateManager {
     return { ack: result.ack, errorCode: result.errorCode };
   }
 
+  /** Gửi CMD_SRP_REGISTER (0x44) qua frame protocol để BR đăng ký _dashboard._udp lên SRP server. */
+  async srpRegister(
+    hostname: string,
+    backendIPv6: string,
+    port: number
+  ): Promise<{ ack: boolean; errorCode?: number }> {
+    if (!this.commandManager) {
+      return { ack: false, errorCode: 0x02 }; // NOT_READY
+    }
+    const result = await this.commandManager.sendSrpRegister(hostname, backendIPv6, port);
+    return { ack: result.ack, errorCode: result.errorCode };
+  }
+
   private stopAllPolling(): void {
     this.pollingManager.stopAll();
     this.threadDataManager.clear();
@@ -513,6 +527,26 @@ export class CommunicateManager {
               .catch((err) =>
                 serialLogger.warn(`fetchIpAddr failed: ${(err as Error)?.message ?? err}`)
               );
+          }
+
+          // SRP register: khi chuyển sang leader hoặc lần đầu thấy leader (kể cả sau backend restart)
+          if (stateChangedOrFirst && roleByte === DEVICE_ROLE.LEADER) {
+            const backendIPv6 = process.env.BACKEND_IPV6?.trim() || getPreferredBackendIPv6();
+            if (backendIPv6) {
+              const hostname = process.env.SRP_HOSTNAME?.trim() || "dashboard";
+              const port = process.env.SRP_PORT ? parseInt(process.env.SRP_PORT, 10) : 5683;
+              this.srpRegister(hostname, backendIPv6, Number.isInteger(port) && port >= 1 && port <= 65535 ? port : 5683)
+                .then((result) => {
+                  if (result.ack) {
+                    serialLogger.info("SRP register sent (BR is leader).");
+                  } else {
+                    serialLogger.warn(`SRP register failed: errorCode=0x${result.errorCode?.toString(16) ?? "?"}`);
+                  }
+                })
+                .catch((err) => serialLogger.warn(`SRP register error: ${(err as Error)?.message ?? err}`));
+            } else {
+              serialLogger.info("SRP register skipped: no IPv6 found (set BACKEND_IPV6 in .env or ensure host has ULA/link-local).");
+            }
           }
 
           // Start/stop polling tables dựa trên state và frontend connection
