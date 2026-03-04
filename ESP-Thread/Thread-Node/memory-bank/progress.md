@@ -9,7 +9,7 @@ Infrastructure Layer     ██████████████████�
 Entity Model (data)      ████████████████░░░░  80%
 CBOR Serialization       ████████████░░░░░░░░  60%
 Entity Control (CoAP)    ████░░░░░░░░░░░░░░░░  20%
-Examples                 ████████████░░░░░░░░  60%
+Examples                 █████████████░░░░░░░  70%
 ```
 
 ## Đã hoàn chỉnh ✅
@@ -19,13 +19,14 @@ Examples                 ████████████░░░░░░�
 | Component | File(s) | Mô tả |
 |---|---|---|
 | **Thread Joiner** | `thread_joiner.c/.h` | State machine hoàn chỉnh: existing dataset → reattach, no dataset → joiner start, retry logic (30s / 5s NotFound), factory reset |
-| **Thread Endpoint** | `thread_endpoint.c/.h` | Bootstrap framework: NVS → LED → btn → OT → joiner → on_joined → registry |
+| **Thread Endpoint** | `thread_endpoint.c/.h` | Bootstrap framework: NVS → LED → btn → OT → joiner → on_joined; **enable_device_registry** (bool) tắt/bật CoAP device register (registry task + device_registry_init) |
 | **Status LED** | `status_led.c/.h` | WS2812 via RMT. 6 trạng thái: Boot/NotJoined/Detached/Child/Router/Leader |
 | **Boot Button** | `boot_btn.c/.h` | Long press detection, gọi factory reset |
 | **CoAP Server Manager** | `thread_coap.c/.h` | Idempotent start, resource registration với lock, response helper |
 | **Device Registry** | `device_registry.c/.h` | CoAP POST → `/device/register` tại Leader RLOC; chỉ gửi khi Child/Router; chờ ACK (20s); **one-shot** (dừng sau ACK, gửi lại khi notify); retry 2s khi NACK/timeout; `device_registry_is_registered()`; từ chối khi role Leader |
 | **Network Stop** | `thread_network_stop.c/.h` | CoAP GET `/network/stop`, tạm dừng 120s nếu là Leader |
-| **Custom OT Config** | `openthread_custom_config.h` | Child timeout 60s, supervision 30s/60s, leader weight |
+| **Custom OT Config** | `openthread_custom_config.h` | Child timeout 60s, supervision 30s/60s, leader weight, CoAP API. **Không** define OPENTHREAD_CONFIG_DNS_CLIENT_ENABLE (ESP-IDF 5.5.3 dùng CONFIG_OPENTHREAD_DNS_CLIENT từ sdkconfig trong openthread-core-esp32x-ftd-config.h). |
+| **Backend Discovery** | `backend_discovery.c/.h` | SRP/DNS-SD browse `_dashboard._udp.default.svc.arpa` (otDnsClientBrowse + GetServiceInfo/GetHostAddress); `otDnsServiceInfo` dùng mHostNameBuffer/mHostNameBufferSize (ESP-IDF 5.5.3); cache NVS + static fallback. Phụ thuộc BR đăng ký service qua SRP (lease/key-lease) thì discovery mới trả kết quả. |
 
 ### Entity Model (data structures)
 
@@ -70,7 +71,7 @@ Examples                 ████████████░░░░░░�
 
 | Example | Trạng thái | Ghi chú |
 |---|---|---|
-| `examples/light_on_off/` | ✅ **Buildable và functional** | Thread join + LED + button + device registry (ACK flow) + entity model. CoAP control không hoạt động (5.01) |
+| `examples/light_on_off/` | ✅ **Buildable và functional** | Thread join + LED + button + entity model + backend discovery SRP/DNS-SD. **Device registry tắt** (enable_device_registry=false). CoAP control không hoạt động (5.01). Discovery trả NotFound cho đến khi BR register _dashboard._udp qua SRP. |
 
 ## Còn lại ❌
 
@@ -143,6 +144,14 @@ Root `Thread-Node/` không buildable như một standalone project. Lập trình
 
 `entity_model_priv.h` expose internal types (`entity_entry_t`, `entity_type_registry_t`) — không nên include trực tiếp từ application code. Hiện không có enforcement, dễ bị misuse.
 
+### Issue 5: Backend discovery (SRP) trả NotFound cho đến khi BR đăng ký service
+
+Discovery browse `_dashboard._udp.default.svc.arpa` qua OpenThread DNS client; query đi qua Thread mesh tới BR. Node nhận NotFound/Timeout khi:
+- BR chưa đăng ký service `_dashboard._udp` qua SRP client (otSrpClient*), hoặc
+- SRP server trên BR từ chối (vd. lease/key-lease không đúng, ProcessAdditionalSection/SIG(0)).
+
+OpenThread core **không** forward `*.default.svc.arpa` ra upstream (dnssd_server.cpp ShouldForwardToUpstream). Sửa phía BR: đảm bảo SRP client gửi lease/key-lease đúng (otSrpClientSetLeaseInterval, SetKeyLeaseInterval; key lease ≥ lease), và SRP server chấp nhận đăng ký. Xem `docs/coap/backend_discovery_srp.md`.
+
 ## Lịch sử phát triển
 
 | Giai đoạn | Mô tả |
@@ -155,6 +164,7 @@ Root `Thread-Node/` không buildable như một standalone project. Lập trình
 | 0.6.0 | light_on_off example hoàn chỉnh, custom OT config |
 | 0.7.0 | **Device register ACK flow** (chỉ Child/Router, chờ ACK, retry); **ACK/NACK docs**; Leader check trong device_registry |
 | 0.8.0 | **Device info numeric** (device_type, sw_version, hw_version = number; Zigbee-style; giảm băng thông register) |
-| 0.8.1 (hiện tại) | **Register one-shot on ACK** (gửi 1 lần rồi dừng; gửi lại khi notify); **device_registry_is_registered()**; bỏ REGISTRY_PERIODIC_MS; TODO re-register từ Leader |
+| 0.8.1 | **Register one-shot on ACK** (gửi 1 lần rồi dừng; gửi lại khi notify); **device_registry_is_registered()**; bỏ REGISTRY_PERIODIC_MS |
+| 0.8.2 (hiện tại) | **enable_device_registry** (tùy chọn tắt CoAP device register); **backend_discovery** otDnsServiceInfo mHostNameBuffer (ESP-IDF 5.5.3); bỏ OPENTHREAD_CONFIG_DNS_CLIENT_ENABLE khỏi openthread_custom_config.h; light_on_off: device registry tắt; docs backend_discovery_srp.md |
 | **0.9.0 (tiếp theo)** | **entity_coap_server implementation** |
 | 1.0.0 | CBOR cho switch/fan/climate/binary_sensor; main.c template; additional examples |

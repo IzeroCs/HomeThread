@@ -196,7 +196,7 @@ Thread-Host/
 - ❌ **Auto-flash RCP khi boot** — xem [TODO.md](TODO.md)
 - ❌ RCP update/firmware management (đã loại bỏ)
 - ✅ **Xử lý CMD** — STATE, DATASET_ACTIVE, IP_ADDR, SET_* (PANID, CHANNEL, NETWORK_NAME, EXTENDED_PANID, NETWORK_KEY), ROUTER/CHILD/JOINER_TABLE, THREAD_START, THREAD_STOP, THREAD_VERSION, RESET, FACTORY, COMMISSIONER_JOINER, **SRP_REGISTER (0x44)**; BR trả ACK (+ data khi có) hoặc NACK; xem [Documents/protocol/usb_cdc_frame_structure.md](../../Documents/protocol/usb_cdc_frame_structure.md) và [Documents/protocol/table_data_format.md](../../Documents/protocol/table_data_format.md).
-- ✅ **SRP (Service Registration Protocol)** — SRP server bật trên BR (listen Thread mesh); backend đăng ký service `_dashboard._udp` qua **CMD_SRP_REGISTER** (frame TCP, không UDP BR:53535). BR dùng SRP client đăng ký host + service lên SRP server; child discovery `_dashboard._udp` qua SRP/DNS.
+- ✅ **SRP (Service Registration Protocol)** — SRP server bật trên BR (listen Thread mesh); backend đăng ký service `_dashboard._udp` qua **CMD_SRP_REGISTER** (frame TCP, không UDP BR:53535). BR dùng SRP client đăng ký host + service lên SRP server; child discovery `_dashboard._udp` qua SRP/DNS. Cần `CONFIG_OPENTHREAD_HEADER_CUSTOM=y` và path `include` để lệnh **`ot srp server host`** / **`ot srp server service`** có sẵn trên serial CLI (kiểm tra host/service đã đăng ký).
 - ❌ **Push system health** — Gửi stack HWM + heap size cho backend/Node để monitor từ xa; xem [TODO.md](TODO.md).
 
 ## Tài liệu tham khảo

@@ -10,6 +10,7 @@ set(EXTRA_COMPONENT_DIRS
     "${CMAKE_CURRENT_SOURCE_DIR}/../../components/thread"
     "${CMAKE_CURRENT_SOURCE_DIR}/../../components/thread/coap"
     "${CMAKE_CURRENT_SOURCE_DIR}/../../components/thread/device_registry"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../../components/thread/backend_discovery"
     "${CMAKE_CURRENT_SOURCE_DIR}/../../components/thread/status_led"
     "${CMAKE_CURRENT_SOURCE_DIR}/../../components/thread/boot_btn"
     "${CMAKE_CURRENT_SOURCE_DIR}/../../components/entity"

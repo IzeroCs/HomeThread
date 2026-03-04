@@ -217,7 +217,7 @@ Nếu node không phải Leader, CoAP handler vẫn respond `2.05 Content` nhưn
 thread_endpoint
     ├── uses → thread_joiner
     ├── uses → thread_coap
-    ├── uses → device_registry
+    ├── uses → device_registry   (chỉ khi enable_device_registry = true)
     │              └── uses → device_model (read-only)
     │              └── uses → entity_serialization (encode CBOR)
     ├── uses → thread_network_stop
@@ -225,6 +225,9 @@ thread_endpoint
     ├── uses → status_led
     └── uses → boot_btn
                    └── uses → thread_joiner (factory_reset)
+
+backend_discovery (app-level, ví dụ light_on_off)
+    └── uses → openthread DNS client (otDnsClient*), nvs_flash; không phụ thuộc device_registry
 
 entity_coap_server
     └── uses → entity_model (get/set entities)

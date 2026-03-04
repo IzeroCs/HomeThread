@@ -1,6 +1,7 @@
 /*
  * OpenThread Custom Configuration
  * CoAP API, Ping Sender API, Leader Weight, SRP Server bật mặc định.
+ * (SRP server + CLI: cần CONFIG_OPENTHREAD_HEADER_CUSTOM=y và path "include" trong sdkconfig.)
  */
 
 #pragma once

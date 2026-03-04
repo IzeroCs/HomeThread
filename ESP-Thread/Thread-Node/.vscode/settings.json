@@ -13,7 +13,7 @@
     "--query-driver=**",
     "--compile-commands-dir=/home/izerocs/Documents/GitHub/HomeThread/ESP-Thread/Thread-Node/examples/light_on_off/build"
 ],
-"idf.port": "/dev/ttyACM2",
+"idf.port": "/dev/ttyACM1",
 "idf.flashType": "UART",
 "idf.pythonInstallPath": "/usr/bin/python3",
 "workbench.colorCustomizations": {

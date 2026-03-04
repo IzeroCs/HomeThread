@@ -21,6 +21,7 @@ Documents/
 │
 ├── coap/                        # CoAP docs (ESP-IDF + OpenThread)
 │   ├── border_router_coap_server.md   # CoAP server BR (device registry)
+│   ├── backend_discovery_srp.md      # Thread-Node SRP/DNS-SD backend discovery
 │   ├── leader_stop_command_coap.md    # Leader Control (GET /network)
 │   └── coap_client_snippet.md         # Snippet CoAP client thuần (tham khảo)
 │
@@ -57,6 +58,7 @@ Documents/
 | Tài liệu | Mô tả |
 |----------|-------|
 | [coap/border_router_coap_server.md](coap/border_router_coap_server.md) | Device registry (legacy trên BR; **hiện Backend** nhận register từ Child). Payload format, ACK/NACK. |
+| [coap/backend_discovery_srp.md](coap/backend_discovery_srp.md) | Thread-Node: Backend discovery qua SRP/DNS-SD (_dashboard._udp.default.svc.arpa), cấu hình DNS client, otDnsServiceInfo (mHostNameBuffer), phụ thuộc BR SRP đăng ký service. |
 | [coap/leader_stop_command_coap.md](coap/leader_stop_command_coap.md) | Leader Control: GET /network, response copy token, gửi response trước khi stop |
 | [coap/coap_client_snippet.md](coap/coap_client_snippet.md) | Snippet CoAP client thuần: NON-CONFIRMABLE GET /ping đến Leader RLOC |
 

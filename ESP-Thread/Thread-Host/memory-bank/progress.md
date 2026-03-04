@@ -15,6 +15,7 @@ _Cập nhật: 2026-03-03_
 | 0.11.0 | 2026-02-27 | Phase 2: Wi‑Fi STA backhaul, transport TCP (frame qua socket), bỏ USB/UART; border routing + prefix; Ethernet W5500 ưu tiên, Wi‑Fi fallback. |
 | 0.12.0 | 2026-03-03 | Ethernet IPv6: tạo link-local trên ETHERNET_EVENT_CONNECTED trong eth_w5500.c; br_main log backbone global/link-local IPv6 sau BR init; backhaul chỉ Ethernet (Wi‑Fi fallback tắt trong code). |
 | 0.13.0 | 2026-03-03 | SRP server bật (br_custom_config.h + otSrpServerSetEnabled trong br_main); CMD_SRP_REGISTER (0x44) — backend đăng ký _dashboard._udp qua SRP client trên BR (hostname + AAAA + port); sdkconfig.defaults SRP client; log khi nhận đăng ký; fix crash otSrpClientStart(instance, NULL) (bỏ gọi, dùng auto-start). |
+| 0.14.0 | 2026-03-03 | SRP: lease/key lease 60/120 (service struct + SetLeaseInterval/SetKeyLeaseInterval) để server chấp nhận update; SRP CLI: CONFIG_OPENTHREAD_HEADER_CUSTOM=y, path "include", file br_custom_config.h — lệnh `ot srp server host` / `ot srp server service` dùng để kiểm tra đăng ký. |
 
 _(Ghi phiên bản theo Semantic Versioning MAJOR.MINOR.PATCH, không dùng tiền tố `v`. Nếu chỉ có major/minor thì PATCH = 0.)_
 
@@ -101,6 +102,8 @@ _(Ghi phiên bản theo Semantic Versioning MAJOR.MINOR.PATCH, không dùng ti�
 | Leader CoAP response không được xử lý | Chưa fix | Leader cần implement GET /network/stop handler |
 | Dashboard reply ACK cho CMD_IP_ADDR | Dashboard-Thread | Chỉ pullState gửi replyAck khi stateChangedOrFirst; BR retry vô hạn nếu fetch IP từ nơi khác. Fix: CommandManager.handle() gửi replyAck cho mọi ACK IP_ADDR (16 byte). |
 
+_(SRP server Refused đã xử lý trong 0.14.0 — lease/key lease 60/120.)_
+
 ## Bug Fixes đã làm
 
 | Bug | Fix |
@@ -110,3 +113,4 @@ _(Ghi phiên bản theo Semantic Versioning MAJOR.MINOR.PATCH, không dùng ti�
 | `CMD_FACTORY` không xóa được NVS | Đổi sang raw `esp_partition_erase_range`, bỏ `thread_graceful_shutdown` trước erase |
 | `assert: esp_openthread_task_switching_lock_release` trong leader_rloc task | `send_coap_stop_command_once` tự quản lý lock; caller dùng `goto next_iteration` |
 | LoadProhibited khi gọi `otSrpClientStart(instance, NULL)` | OpenThread dereference server addr; bỏ gọi Start, chỉ dùng SRP client auto-start sau set host+address+add service |
+| SRP CLI "Unrecognized command" | Bật CONFIG_OPENTHREAD_HEADER_CUSTOM=y và CONFIG_OPENTHREAD_CUSTOM_HEADER_PATH="include" (sdkconfig) để OpenThread include br_custom_config.h → lệnh srp server/srp client được biên dịch; fullclean + build + flash |

@@ -75,6 +75,7 @@ CONFIG_OPENTHREAD_FTD=y           # Full Thread Device
 CONFIG_OPENTHREAD_JOINER=y        # Joiner enabled
 CONFIG_MBEDTLS_ECJPAKE_C=y        # ECJPAKE cho commissioning
 CONFIG_OPENTHREAD_DNS64_CLIENT=n  # Không dùng DNS64
+CONFIG_OPENTHREAD_DNS_CLIENT=y    # Bật DNS client (SRP/DNS-SD browse backend)
 ```
 
 ### Entity Model
@@ -84,13 +85,21 @@ CONFIG_ENTITY_MODEL_MAX_TYPES=16     # Số loại entity có thể đăng ký
 CONFIG_ENTITY_MODEL_MAX_ENTITIES=32  # Số entity tối đa trên một thiết bị
 ```
 
-### Device Registry (thread_endpoint.c)
+### Thread Endpoint (thread_endpoint_config_t)
+
+- **enable_device_registry** (bool): Bật/tắt CoAP POST `/device/register` lên Leader. Khi `false`, không tạo registry task, không gọi `device_registry_init()` / `device_registry_update_leader_rloc()`. Mặc định `true` khi `config == NULL`.
+
+### Device Registry (thread_endpoint.c, khi enable_device_registry = true)
 
 ```c
 #define REGISTRY_ACK_TIMEOUT_MS  20000   // Timeout chờ ACK từ Leader (20s)
 #define REGISTRY_RETRY_DELAY_MS  2000    // Delay trước khi retry khi NACK/timeout (2s)
 // Chỉ gửi 1 lần đăng ký khi nhận ACK; dừng cho đến khi notify (role change hoặc re-register request).
 ```
+
+### Backend Discovery (backend_discovery.c)
+
+- Bật DNS client qua **CONFIG_OPENTHREAD_DNS_CLIENT=y** (sdkconfig). Dùng `otDnsClientBrowse` cho `_dashboard._udp.default.svc.arpa`; **otDnsServiceInfo** (ESP-IDF 5.5.3) dùng **mHostNameBuffer** (char*) và **mHostNameBufferSize** (uint16_t) — caller cung cấp buffer trước khi gọi `otDnsBrowseResponseGetServiceInfo`. Discovery trả NotFound/Timeout cho đến khi BR đăng ký service qua SRP thành công. Chi tiết: `docs/coap/backend_discovery_srp.md`.
 
 ### Device info (device_model.h)
 
@@ -116,6 +125,8 @@ File này được chỉ định trong `sdkconfig.defaults` qua `CONFIG_OPENTHRE
 // Bật CoAP API
 #define OPENTHREAD_CONFIG_COAP_API_ENABLE                        1
 ```
+
+**Lưu ý DNS client:** Không define `OPENTHREAD_CONFIG_DNS_CLIENT_ENABLE` trong file này — ESP-IDF 5.5.3 đã define trong `openthread-core-esp32x-ftd-config.h` từ `CONFIG_OPENTHREAD_DNS_CLIENT` (sdkconfig). Bật DNS client qua `CONFIG_OPENTHREAD_DNS_CLIENT=y` trong sdkconfig / sdkconfig.defaults.
 
 **Lý do custom timeout**: Giảm từ 240s → 60s để Border Router biết sớm hơn khi một node disconnect khỏi mạng.
 
@@ -144,7 +155,10 @@ Thread-Node/
 │   │   │   ├── thread_coap.c/.h      # Shared CoAP server
 │   │   │   └── CMakeLists.txt
 │   │   ├── device_registry/
-│   │   │   ├── device_registry.c/.h  # CoAP POST → /device/register
+│   │   │   ├── device_registry.c/.h  # CoAP POST → /device/register (Leader RLOC)
+│   │   │   └── CMakeLists.txt
+│   │   ├── backend_discovery/
+│   │   │   ├── backend_discovery.c/.h # SRP/DNS-SD browse _dashboard._udp.default.svc.arpa → IPv6 backend + port
 │   │   │   └── CMakeLists.txt
 │   │   ├── status_led/
 │   │   │   ├── status_led.c/.h       # WS2812 via RMT
@@ -193,6 +207,7 @@ Khai báo trong các `CMakeLists.txt` của từng component:
 | `thread` | `openthread`, `esp_netif` | `nvs_flash`, `esp_event` |
 | `thread/coap` | `openthread` | — |
 | `thread/device_registry` | `openthread` | `entity/model`, `entity/serialization` |
+| `thread/backend_discovery` | `openthread`, `nvs_flash`, `freertos` | — |
 | `thread/status_led` | `led_strip` | `freertos` |
 | `thread/boot_btn` | — | `freertos`, `thread_joiner` |
 | `entity/model` | — | `esp_mac` |

@@ -21,6 +21,34 @@ Backend              --[WebSocket, subset only]-->     Frontend (Dashboard UI)
 
 **Spec service (backend đăng ký):** type `_dashboard._udp`, domain `default.svc.arpa`, instance `dashboard`, port 5683, TXT `ver=1`, `proto=coap+cbor`, `path=/child`. Dashboard-Thread backend gửi đăng ký qua **frame protocol** (CMD_SRP_REGISTER 0x44) tới BR khi BR là leader; BR submit lên SRP server. Chi tiết: [../architecture/real_br_integration.md](../architecture/real_br_integration.md).
 
+### Ghi chú triển khai (Thread-Node)
+
+- **Module**: `ESP-Thread/Thread-Node/components/thread/backend_discovery/backend_discovery.c` + header đi kèm.
+- **API chính**:
+  - `backend_discovery_init(const backend_discovery_cfg_t *cfg)` – khởi tạo, cấu hình namespace/key NVS (mặc định `backend/srp_ep`, `backend/static_ep`).
+  - `backend_discovery_get_endpoint(backend_endpoint_t *out, bool force_refresh)`:
+    - Nếu có cache SRP hợp lệ trong NVS và `force_refresh == false` → trả luôn.
+    - Nếu không → dùng OpenThread DNS client (`otDnsClientBrowse` + `otDnsBrowseResponseGetServiceInfo` + `otDnsBrowseResponseGetHostAddress`) để browse `_dashboard._udp.default.svc.arpa`, lấy SRV (port + hostname) và AAAA (IPv6), sau đó cache vào NVS.
+    - Nếu SRP/DNS-SD không tìm thấy service → fallback dùng endpoint tĩnh (nếu đã provision trong NVS).
+- **Example sử dụng**: `ESP-Thread/Thread-Node/examples/light_on_off/main/main.c`
+  - Sau khi join Thread (trong `on_joined()`), example gọi `backend_discovery_init(NULL)` và `backend_discovery_get_endpoint(&ep, false)` rồi log ra địa chỉ backend:
+
+```c
+backend_discovery_init(NULL);
+backend_endpoint_t ep;
+esp_err_t err = backend_discovery_get_endpoint(&ep, false);
+if (err == ESP_OK) {
+    char addr_str[40];
+    otIp6AddressToString(&ep.addr, addr_str, sizeof(addr_str));
+    ESP_LOGI(TAG, "Backend endpoint discovered: [%s]:%u (from_srp=%s)",
+             addr_str, (unsigned int)ep.port, ep.from_srp ? "yes" : "no");
+} else {
+    // Nếu lần đầu fail, example spawn task retry nền với force_refresh=true
+}
+```
+
+Phần client gửi CoAP `/child/register|update|ping` sẽ dùng `backend_endpoint_t` trả về ở trên làm `IP-backend:port` theo đúng spec `coap://<IP-backend>:5683/child/<type>`.
+
 ## CoAP
 
 - **Giao thức**: Chỉ CoAP (không HTTP).

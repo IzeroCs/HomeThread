@@ -85,6 +85,8 @@
 - `CONFIG_OPENTHREAD_BORDER_ROUTER=y`
 - `CONFIG_OPENTHREAD_COMMISSIONER=y`
 - `CONFIG_OPENTHREAD_BORDER_AGENT=y`
+- `CONFIG_OPENTHREAD_SRP_CLIENT=y`, `CONFIG_OPENTHREAD_SRP_CLIENT_MAX_SERVICES=5` — CMD_SRP_REGISTER
+- **SRP CLI (ot srp server / ot srp client):** `CONFIG_OPENTHREAD_HEADER_CUSTOM=y`, `CONFIG_OPENTHREAD_CUSTOM_HEADER_PATH="include"`, `CONFIG_OPENTHREAD_CUSTOM_HEADER_FILE_NAME="br_custom_config.h"` — nếu không bật thì lệnh `srp server` / `srp client` sẽ "Unrecognized command". Custom header nằm tại `include/br_custom_config.h` (SRP server enable + CoAP API, v.v.). Kiểm tra đăng ký: **`ot srp server host`**, **`ot srp server service`**.
 - `CONFIG_OPENTHREAD_LOG_LEVEL_WARN` — giảm noise OT log
 - `CONFIG_ESP_MAIN_TASK_STACK_SIZE` — stack của `app_main` task
 - UART baud: 460800 (Host–RCP runtime), 115200 (download mode)
@@ -122,6 +124,7 @@ Thread-Host/
 │       └── boot_btn.c               ← GPIO0 poll
 ├── include/
 │   ├── br_config.h                  ← TASK_NAME_*, TASK_STACK_* (centralized)
+│   ├── br_custom_config.h           ← OpenThread custom config (SRP server, CoAP API, …); cần HEADER_CUSTOM=y + path "include"
 │   ├── backhaul/wifi_sta.h, eth_w5500.h
 │   └── communicate/communicate.h   ← CMD defines, frame API
 ├── memory-bank/                     ← Memory Bank files

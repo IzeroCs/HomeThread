@@ -56,7 +56,7 @@ Version notation in this file uses Semantic Versioning `MAJOR.MINOR.PATCH` (no l
 - CMD_SRP_REGISTER (0x44) — dang ky _dashboard._udp len SRP server qua BR (hostname, backend IPv6, port)
 - CMD_RESET, CMD_FACTORY
 - Auto-start Thread (thread_run_on_connect + portClosedWhileRunning flag)
-- SRP register khi BR chuyen sang leader (BACKEND_IPV6 hoac getPreferredBackendIPv6())
+- SRP register khi BR chuyen sang leader (BACKEND_IPV6 hoac getPreferredBackendIPv6()); log "SRP register: IPv6=... hostname=... port=..." truoc khi gui
 
 ### Backend — WebSocket
 

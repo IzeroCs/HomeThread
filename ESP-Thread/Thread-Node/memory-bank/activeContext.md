@@ -1,6 +1,6 @@
 # Thread-Node — Active Context
 
-## Focus hiện tại (2026-02-21)
+## Focus hiện tại (2026-03-04)
 
 Dự án đang ở giai đoạn **migration và hoàn thiện** sau khi lớp hạ tầng Thread (joiner, registry, LED, button) đã hoàn chỉnh. **Device register one-shot on ACK** đã implement: chỉ gửi khi Child/Router, chờ ACK (20s), gửi 1 lần rồi dừng; retry khi NACK/timeout; flag `device_registry_is_registered()`. Các công việc còn lại tập trung vào **Entity CoAP Server** và **CBOR serialization** cho các entity type chưa implement.
 
@@ -10,6 +10,8 @@ Dự án đang ở giai đoạn **migration và hoàn thiện** sau khi lớp h�
 - **Flag `device_registry_is_registered()`** (`device_registry.h/.c`): false lúc boot; lên true khi Leader đã ACK ít nhất một lần. TODO: sau này lắng nghe Leader yêu cầu gửi lại đăng ký (re-register).
 - **Tài liệu ACK/NACK** (`docs/coap/border_router_coap_server.md`): Thêm mục "ACK / NACK — Phản hồi bắt buộc cho mọi message từ Node"; Leader phải luôn trả response (ACK hoặc NACK); bảng mã ACK (2.01, 2.04, 2.05) và NACK (4.xx, 5.xx). Cập nhật `docs/README.md`.
 - **Device info numeric (Zigbee-style)** (`device_model.h`, `device_model.c`, `entity_serialization.c`, `entity_model_specification.md`, `entity_model_schema.md`): Chỉ giữ **string** cho manufacturer, model, device_name; **number** cho device_type (uint16), sw_version (uint32), hw_version (uint32) để giảm băng thông khi gửi register nhiều lần. device_type = Zigbee-style ID (DEVICE_TYPE_*); version = DEVICE_VERSION(maj,min,patch). Example `light_on_off` dùng numeric constants.
+- **Backend discovery via SRP/DNS-SD** (`components/thread/backend_discovery/`, `examples/light_on_off/main/main.c`): Module `backend_discovery` dùng OpenThread DNS client (`otDnsClientBrowse` + `otDnsBrowseResponseGetServiceInfo` + `otDnsBrowseResponseGetHostAddress`) để browse `_dashboard._udp.default.svc.arpa`, lấy SRV (port + hostname), resolve AAAA → IPv6, cache NVS + fallback static. **API ESP-IDF 5.5.3:** `otDnsServiceInfo` dùng `mHostNameBuffer` / `mHostNameBufferSize` (caller cung cấp buffer), không có `mHostName`. **DNS client:** Bật qua `CONFIG_OPENTHREAD_DNS_CLIENT=y` trong sdkconfig; không define `OPENTHREAD_CONFIG_DNS_CLIENT_ENABLE` trong `openthread_custom_config.h` (ESP-IDF core đã define từ Kconfig). Discovery trả NotFound/Timeout cho đến khi BR (Thread-Host) đăng ký service `_dashboard._udp` qua SRP thành công (lease/key-lease đúng, ProcessAdditionalSection); OpenThread core **không** forward `*.default.svc.arpa` ra upstream. Chi tiết: `docs/coap/backend_discovery_srp.md`.
+- **Device registry tùy chọn** (`thread_endpoint.h`, `thread_endpoint.c`): Thêm `enable_device_registry` (bool) vào `thread_endpoint_config_t`. Khi `false`, không tạo registry task, không gọi `device_registry_init()` / `device_registry_update_leader_rloc()`. Example `light_on_off` đặt `enable_device_registry = false` khi chưa có BR nhận `/device/register`.
 
 ## Công việc đang pending
 
@@ -67,17 +69,19 @@ Phía Thread-Host chưa implement việc forward CBOR data từ `/device/registe
 
 `examples/light_on_off/` là **hoàn chỉnh và buildable**:
 - ✅ Thread joining và re-joining
-- ✅ Device registration lên Border Router
 - ✅ Status LED phản ánh đúng OT role
 - ✅ Boot button factory reset
 - ✅ Entity model khởi tạo đúng
+- ✅ Backend discovery SRP/DNS-SD (scan `_dashboard._udp.default.svc.arpa`, cache NVS, retry nền); discovery trả NotFound cho đến khi BR đăng ký service qua SRP thành công
+- ⚠️ Device registration **tắt** (`enable_device_registry = false`) — bật lại khi BR có CoAP `/device/register`
 - ❌ Entity CoAP server (tất cả return 5.01 Not Implemented)
 
 ## Files quan trọng cần biết
 
 | File | Trạng thái | Ghi chú |
 |---|---|---|
-| `components/thread/thread_endpoint.c` | ✅ Complete | Entry point chính |
+| `components/thread/thread_endpoint.c` | ✅ Complete | Entry point; enable_device_registry (tùy chọn device register) |
+| `components/thread/backend_discovery/backend_discovery.c` | ✅ Complete | SRP/DNS-SD browse _dashboard._udp; mHostNameBuffer API; phụ thuộc BR SRP |
 | `components/thread/thread_joiner.c` | ✅ Complete | Joiner state machine |
 | `components/thread/device_registry/device_registry.c` | ✅ Complete | CoAP POST /device/register; từ chối khi role Leader; callback ACK/NACK |
 | `components/entity/coap_server/entity_coap_server.c` | ❌ Stub | Tất cả return 5.01 |

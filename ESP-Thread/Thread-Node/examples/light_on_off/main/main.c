@@ -5,11 +5,15 @@
  */
 #include "esp_err.h"
 #include "esp_log.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
 #include "on_off_light.h"
 #include "entity_model.h"
 #include "device_model.h"
 #include "entity_coap_server.h"
 #include "thread_endpoint.h"
+#include "backend_discovery.h"
+#include "openthread/ip6.h"
 
 static const char *TAG = "light_on_off";
 
@@ -25,6 +29,37 @@ static const char *TAG = "light_on_off";
 
 /* Flag để tránh init nhiều lần khi on_joined() được gọi lại */
 static bool s_app_initialized = false;
+static bool s_backend_ep_valid = false;
+static backend_endpoint_t s_backend_ep;
+
+static void backend_discovery_retry_task(void *pvParameters)
+{
+    (void)pvParameters;
+    const TickType_t delay_ticks = pdMS_TO_TICKS(60000); /* 60s backoff */
+
+    while (!s_backend_ep_valid) {
+        backend_endpoint_t ep;
+        esp_err_t err = backend_discovery_get_endpoint(&ep, true);
+        if (err == ESP_OK) {
+            s_backend_ep = ep;
+            s_backend_ep_valid = true;
+
+            char addr_str[40];
+            otIp6AddressToString(&s_backend_ep.addr, addr_str, sizeof(addr_str));
+            ESP_LOGI(TAG, "Backend endpoint discovered (retry): [%s]:%u (from_srp=%s)",
+                     addr_str,
+                     (unsigned int)s_backend_ep.port,
+                     s_backend_ep.from_srp ? "yes" : "no");
+            break;
+        }
+
+        ESP_LOGW(TAG, "Backend discovery retry failed: %s, retry in 60s",
+                 esp_err_to_name(err));
+        vTaskDelay(delay_ticks);
+    }
+
+    vTaskDelete(NULL);
+}
 
 /* Callback khi đã join Thread network */
 static void on_joined(void *ctx)
@@ -36,7 +71,7 @@ static void on_joined(void *ctx)
         return;
     }
 
-    ESP_LOGI(TAG, "Joined Thread -> init device model + entity model + CoAP server");
+    ESP_LOGI(TAG, "Joined Thread -> init device model + entity model + CoAP server + backend discovery");
 
     // Initialize Device Model with device info (ESP-IDF style: designated initializers)
     // device_id and mac_address will be auto-generated if not provided
@@ -54,11 +89,34 @@ static void on_joined(void *ctx)
         ESP_LOGE(TAG, "device_model_init failed: %d", err);
         return;
     }
-    
+
     // Get device_id from Device Model (after auto-generation)
     device_model_t *device = device_model_get();
     if (device) {
         ESP_LOGI(TAG, "Device Model initialized: device_id=%s", device->info.device_id);
+    }
+
+    /* Backend discovery init + first scan (SRP/DNS-SD + static fallback). */
+    backend_discovery_init(NULL);
+    backend_endpoint_t ep;
+    err = backend_discovery_get_endpoint(&ep, false);
+    if (err == ESP_OK) {
+        s_backend_ep = ep;
+        s_backend_ep_valid = true;
+
+        char addr_str[40];
+        otIp6AddressToString(&s_backend_ep.addr, addr_str, sizeof(addr_str));
+        ESP_LOGI(TAG, "Backend endpoint discovered: [%s]:%u (from_srp=%s)",
+                 addr_str,
+                 (unsigned int)s_backend_ep.port,
+                 s_backend_ep.from_srp ? "yes" : "no");
+    } else {
+        ESP_LOGW(TAG, "Initial backend discovery failed: %s", esp_err_to_name(err));
+        /* Spawn background retry task (force_refresh=true). */
+        if (xTaskCreate(backend_discovery_retry_task, "backend_disc_retry",
+                        4096, NULL, 5, NULL) != pdPASS) {
+            ESP_LOGE(TAG, "Failed to create backend discovery retry task");
+        }
     }
 
     // Initialize entity model
@@ -107,6 +165,7 @@ void app_main(void)
         .prefer_not_leader = true,
         .router_selection_jitter = 1,
         .enable_network_stop_handler = true,
+        .enable_device_registry = false,   /* CoAP /device/register tắt (Leader chưa có BR) */
         .on_joined = on_joined,
         .ctx = NULL,
     };

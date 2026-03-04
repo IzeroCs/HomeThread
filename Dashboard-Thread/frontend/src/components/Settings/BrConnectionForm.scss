@@ -8,7 +8,7 @@
 .br-divider {
   height: 1px;
   background: $brand-border;
-  margin: 1.5rem 0;
+  margin: 1.5rem 0 0;
 }
 
 .br-connection-note {
@@ -45,7 +45,7 @@
 }
 
 .br-connection-actions {
-  margin: 20px -32px -32px;
+  margin: 0 -32px -32px;
   padding: 1.75rem;
   border-top: 1px solid $brand-border;
   background: #111722;

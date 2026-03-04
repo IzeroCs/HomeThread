@@ -47,8 +47,13 @@
 
 ### 3.1. Gửi register/update/ping tới Backend
 
-- **Đích:** Backend (server) — địa chỉ IP và port do cấu hình (commissioning, NVS, hoặc mDNS). **Không** gửi tới BR cho device registry.
+- **Đích (kiến trúc mục tiêu):** Backend (server) — địa chỉ IP và port do cấu hình (commissioning, NVS, hoặc mDNS). **Không** gửi tới BR cho device registry.
 - **Giao thức thường dùng:** CoAP (UDP 5683) hoặc HTTP (TCP). Định dạng payload thường là JSON hoặc CBOR (xem [border_router_coap_server.md](../coap/border_router_coap_server.md) phần payload format — backend có thể giữ resource `/device/register`, `/device/update`, `/device/ping` nhưng **chạy trên Backend**, không trên BR).
+
+> **Ghi chú triển khai hiện tại (Thread-Node 0.8.x)**  
+> - Luồng `/device/register` của Thread-Node vẫn đang gửi CoAP POST tới **Leader RLOC (Border Router)** thông qua component `thread/device_registry` (không dùng backend discovery).  
+> - Luồng **Child → Backend trực tiếp** được áp dụng cho các endpoint `/child/*` (xem [../coap/thread_node_coap.md](../coap/thread_node_coap.md)) và sử dụng module `thread/backend_discovery` để lấy địa chỉ backend `_dashboard._udp.default.svc.arpa`.  
+> - Việc migrate hoàn toàn `/device/register` sang gửi thẳng Backend sẽ được thực hiện ở phase sau để đồng bộ với Dashboard-Thread backend.
 
 ### 3.2. Địa chỉ Backend
 
@@ -65,6 +70,7 @@
   - **TXT:** `ver=1`, `proto=coap+cbor`, `path=/child`
 - **Luồng Backend:** Dashboard-Thread backend gửi đăng ký SRP **qua frame protocol** (CMD_SRP_REGISTER = 0x44) tới BR khi BR trở thành leader; BR (Thread-Host) nhận frame rồi submit lên SRP server. DATA: hostname_len(1) + hostname(N) + backend_ipv6(16) + port(2 BE). IPv6 backend lấy từ env BACKEND_IPV6 hoặc tự lấy (ULA/link-local).
 - **Luồng Thread-Node:** Sau khi join mạng, browse `_dashboard._udp.default.svc.arpa` (OpenThread SRP client / DNS-SD) → nhận SRV + A/AAAA → lấy IP và port backend → cache; dùng cho CoAP. Nếu browse không thấy service → fallback cấu hình tĩnh (IP/port trong NVS hoặc commissioning).
+- **Kiểm tra trên BR:** Trên serial CLI BR (UART0), chạy **`ot srp server host`** và **`ot srp server service`** để xem host/service đã đăng ký (vd. `dashboard.default.service.arpa.`, `dashboard._dashboard._udp.default.service.arpa.`). Cần `CONFIG_OPENTHREAD_HEADER_CUSTOM=y` và path `include` trong sdkconfig để lệnh SRP CLI có sẵn.
 
 ### 3.3. IPv6 routable
 

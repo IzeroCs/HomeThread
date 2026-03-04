@@ -211,11 +211,11 @@ static void on_openthread_event(void *arg, esp_event_base_t base, int32_t id, vo
         log_leader_data();
 
         /* Update Leader RLOC khi role thay đổi */
-        device_registry_update_leader_rloc();
-
-        /* Re-register device khi role thay đổi (child → router, router → child, ...) */
-        if (s_registry_task_handle) {
-            xTaskNotifyGive(s_registry_task_handle);
+        if (s_config.enable_device_registry) {
+            device_registry_update_leader_rloc();
+            if (s_registry_task_handle) {
+                xTaskNotifyGive(s_registry_task_handle);
+            }
         }
     }
 }
@@ -252,7 +252,9 @@ static void on_joined_wrapper(void *ctx)
     log_leader_data();
 
     /* Update Leader RLOC sau khi join */
-    device_registry_update_leader_rloc();
+    if (s_config.enable_device_registry) {
+        device_registry_update_leader_rloc();
+    }
 
     /* Register CoAP resource /network/stop (nếu bật trong config) */
     if (s_config.enable_network_stop_handler) {
@@ -267,10 +269,12 @@ static void on_joined_wrapper(void *ctx)
         s_config.on_joined(s_config.ctx);
     }
 
-    /* Auto register device lên Border Router */
-    esp_err_t err = device_registry_init();
-    if (err == ESP_OK && s_registry_task_handle) {
-        xTaskNotifyGive(s_registry_task_handle);
+    /* Auto register device lên Border Router (nếu bật trong config) */
+    if (s_config.enable_device_registry) {
+        esp_err_t err = device_registry_init();
+        if (err == ESP_OK && s_registry_task_handle) {
+            xTaskNotifyGive(s_registry_task_handle);
+        }
     }
 }
 
@@ -297,6 +301,7 @@ esp_err_t thread_endpoint_start(const thread_endpoint_config_t *config)
     }
     if (config == NULL) {
         s_config.enable_network_stop_handler = true;  /* Default: bật /network/stop handler */
+        s_config.enable_device_registry = true;       /* Default: bật device register */
     }
 
     /* Init ESP-IDF components */
@@ -365,11 +370,13 @@ esp_err_t thread_endpoint_start(const thread_endpoint_config_t *config)
     };
     ESP_ERROR_CHECK(boot_btn_start(&boot_cfg));
 
-    /* Create registry task để tránh stack overflow trong event handler */
-    xTaskCreate(registry_task, "registry", 4096, NULL, 5, &s_registry_task_handle);
-    if (!s_registry_task_handle) {
-        ESP_LOGE(TAG, "Failed to create registry task");
-        return ESP_ERR_NO_MEM;
+    /* Create registry task nếu bật device registry */
+    if (s_config.enable_device_registry) {
+        xTaskCreate(registry_task, "registry", 4096, NULL, 5, &s_registry_task_handle);
+        if (!s_registry_task_handle) {
+            ESP_LOGE(TAG, "Failed to create registry task");
+            return ESP_ERR_NO_MEM;
+        }
     }
 
     ESP_LOGI(TAG, "Thread Endpoint started");

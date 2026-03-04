@@ -11,9 +11,11 @@ Backhaul Ethernet W5500 đã có IPv6 trên backbone (link-local + ULA/global kh
 ### SRP (Service Registration Protocol) — Đã implement
 - **SRP server:** Bật trong `br_custom_config.h` (`OPENTHREAD_CONFIG_SRP_SERVER_ENABLE 1`); `br_main.c` gọi `otSrpServerSetEnabled(instance, true)` sau border router init (khi có backbone). SRP server chỉ lắng nghe trên giao diện Thread (mesh), **không** lắng nghe trên backbone: backend **không** gửi UDP tới BR:53535 được.
 - **SRP client trên BR:** Backend gửi **CMD_SRP_REGISTER (0x44)** qua TCP (frame). DATA: hostname_len(1) + hostname(N) + backend_ipv6(16) + port(2 BE). BR dùng SRP client (auto-start mode) đăng ký host + service `_dashboard._udp` (instance "dashboard") lên chính SRP server của BR; child discovery `_dashboard._udp` qua SRP/DNS. Build: `CONFIG_OPENTHREAD_SRP_CLIENT=y`, `CONFIG_OPENTHREAD_SRP_CLIENT_MAX_SERVICES=5` trong `sdkconfig.defaults`.
+- **Lease / key lease:** Service struct `mLease=60`, `mKeyLease=120`; gọi `otSrpClientSetLeaseInterval(instance, 60)` và `otSrpClientSetKeyLeaseInterval(instance, 120)` trước khi add service (server yêu cầu key lease ≥ lease).
 - **Không gọi `otSrpClientStart(instance, NULL)`** — API dereference server addr → LoadProhibited crash; chỉ dùng auto-start sau khi set host + address + add service.
 - **Log khi đăng ký:** Handler log `SRP register from backend: host=... port=... AAAA=...` và `SRP register OK: _dashboard._udp -> ... (ACK sent)`.
 - **Nhiều lần gửi CMD_SRP_REGISTER:** Mỗi lần clear host+services rồi đăng ký lại → một bản ghi mới nhất (dashboard restart gửi lại là OK).
+- **SRP CLI (ot srp server / ot srp client):** Cần bật **CONFIG_OPENTHREAD_HEADER_CUSTOM=y** và **CONFIG_OPENTHREAD_CUSTOM_HEADER_PATH="include"** (file `br_custom_config.h` trong `include/`) để OpenThread build include custom header → lệnh `srp server` / `srp client` được biên dịch. Trên serial BR: **`ot srp server host`** và **`ot srp server service`** để kiểm tra host/service đã đăng ký (vd. `dashboard.default.service.arpa.`, `dashboard._dashboard._udp.default.service.arpa.`).
 
 ### Ethernet IPv6 (Preferred: link-local) — Đã implement
 - **Vấn đề:** Gọi `esp_netif_create_ip6_linklocal(s_eth_netif)` ngay sau `esp_netif_attach` trả `ESP_FAIL` (netif chưa link up).
@@ -82,4 +84,4 @@ Backhaul Ethernet W5500 đã có IPv6 trên backbone (link-local + ULA/global kh
 - `main` task hiện "used full" trong stack monitor — đây là artifact của task đã exit, không phải overflow
 - Leader Control Client gửi `GET /network/stop` nhưng chưa biết Leader phía kia xử lý thế nào
 - **Dashboard-Thread:** IP_ADDR response no ACK retry — backend chỉ gửi reply ACK khi `stateChangedOrFirst` trong pullState; các lần fetch IP_ADDR khác không reply → BR retry. Fix: gọi replyAck trong `CommandManager.handle()` cho mọi ACK CMD_IP_ADDR (16 byte).
-- **SRP server:** Log OpenThread `Failed to process DNS Additional section` / `Send fail response: 5` (RCODE Refused) — SRP client gửi update tới SRP server nhưng server từ chối khi xử lý Additional section (lease/key lease hoặc OPT). Đã thử set `mLease`/`mKeyLease` = 60 trong service struct; nếu vẫn lỗi cần xem source OpenThread SRP server (điều kiện từ chối).
+- **(Đã xử lý) SRP server Refused:** Trước đây server trả RCODE 5 (Refused) do key lease phải ≥ lease; đã sửa bằng `mKeyLease=120`, `mLease=60` và gọi `otSrpClientSetLeaseInterval`/`SetKeyLeaseInterval` trước add service — đăng ký thành công, kiểm tra bằng `ot srp server host` / `ot srp server service`.

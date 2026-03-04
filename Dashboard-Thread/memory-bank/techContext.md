@@ -127,7 +127,7 @@ SQLite (`better-sqlite3`, WAL mode). 5 migrations:
 ## Logging (pino)
 
 Backend dung pino voi child loggers:
-- `serialLogger` — transport/TCP events (ten file giu de tranh doi ref)
+- `serialLogger` — transport/TCP events (ten file giu de tranh doi ref); khi gui SRP register: log "SRP register: IPv6=... hostname=... port=..."
 - `frameLogger` — frame TX/RX (TABLE commands bi filter khoi console)
 - `wsLogger` — WebSocket events
 

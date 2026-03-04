@@ -1,14 +1,17 @@
 {
   "folders": [
     {
-      "name": "Thread-Node",
-      "path": "."
+        "name": "Thread-Node",
+        "path": "."
     },
     {
-      "name": "light_on_off (build)",
-      "path": "examples/light_on_off"
+        "name": "light_on_off (build)",
+        "path": "examples/light_on_off"
+    },
+    {
+        "path": "../../../../../esp/v5.5.3/esp-idf"
     }
-  ],
+],
   "settings": {
     "idf.port": "/dev/ttyACM2",
     "idf.flashType": "UART",
