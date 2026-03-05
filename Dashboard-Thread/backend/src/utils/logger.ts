@@ -110,5 +110,5 @@ function createLogger(prefix: string | null): Logger {
 export const logger: Logger = createLogger(null);
 
 /** Logger có sẵn prefix thường dùng (tuỳ chọn). */
-export const serialLogger = logger.child("Serial");
+export const transportLogger = logger.child("Transport");
 export const frameLogger = logger.child("Frame");

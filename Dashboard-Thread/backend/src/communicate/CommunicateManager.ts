@@ -12,7 +12,7 @@ import { ThreadDataManager, type ThreadState, type TableData } from "./ThreadDat
 import { PollingManager } from "./PollingManager";
 import { FrameParser, type ParsedFrame } from "./frame";
 import { AppSettingsService } from "../services/AppSettingsService";
-import { serialLogger } from "../utils/logger";
+import { transportLogger } from "../utils/logger";
 import { getPreferredBackendIPv6 } from "../utils/ipv6";
 import { DEVICE_ROLE, DEVICE_ROLE_NAMES } from "../openthread/deviceRole";
 import type { DeviceRole } from "../openthread/deviceRole";
@@ -144,7 +144,7 @@ export class CommunicateManager {
         this.broadcast(EVENTS.OT_ROUTER_TABLE, tableData);
       }
     } catch (err) {
-      serialLogger.warn(`fetchRouterTable failed: ${(err as Error)?.message ?? err}`);
+      transportLogger.warn(`fetchRouterTable failed: ${(err as Error)?.message ?? err}`);
       const errorData: TableData = { headers: [], rows: [], error: `Failed: ${(err as Error)?.message ?? err}` };
       this.threadDataManager.setRouterTable(errorData);
       this.broadcast(EVENTS.OT_ROUTER_TABLE, errorData);
@@ -162,7 +162,7 @@ export class CommunicateManager {
         this.broadcast(EVENTS.OT_CHILD_TABLE, tableData);
       }
     } catch (err) {
-      serialLogger.warn(`fetchChildTable failed: ${(err as Error)?.message ?? err}`);
+      transportLogger.warn(`fetchChildTable failed: ${(err as Error)?.message ?? err}`);
       const errorData: TableData = { headers: [], rows: [], error: `Failed: ${(err as Error)?.message ?? err}` };
       this.threadDataManager.setChildTable(errorData);
       this.broadcast(EVENTS.OT_CHILD_TABLE, errorData);
@@ -180,7 +180,7 @@ export class CommunicateManager {
         this.broadcast(EVENTS.OT_JOINER_TABLE, tableData);
       }
     } catch (err) {
-      serialLogger.warn(`fetchJoinerTable failed: ${(err as Error)?.message ?? err}`);
+      transportLogger.warn(`fetchJoinerTable failed: ${(err as Error)?.message ?? err}`);
       const errorData: TableData = { headers: [], rows: [], error: `Failed: ${(err as Error)?.message ?? err}` };
       this.threadDataManager.setJoinerTable(errorData);
       this.broadcast(EVENTS.OT_JOINER_TABLE, errorData);
@@ -405,7 +405,7 @@ export class CommunicateManager {
       this.frameUnsubscribe = null;
     }
     if (this.transportTcp) {
-      this.transportTcp.close().catch((err) => serialLogger.error(String(err?.message ?? err)));
+      this.transportTcp.close().catch((err) => transportLogger.error(String(err?.message ?? err)));
       this.transportTcp = null;
     }
     this.clearPendingFrames();
@@ -434,7 +434,7 @@ export class CommunicateManager {
         },
         (bytes, reason) => {
           const text = bytes.toString("utf8").replace(/[\r\n]+/g, " ").trim();
-          serialLogger.info(`RX (lỗi: ${reason}): ${bytes.length} bytes ${text}`);
+          transportLogger.info(`RX (lỗi: ${reason}): ${bytes.length} bytes ${text}`);
         }
       );
     });
@@ -458,7 +458,7 @@ export class CommunicateManager {
   private pullState(): void {
     if (!this.transportTcp?.getStatus().isConnected || !this.commandManager) return;
     if (this.stateWithoutResponseCount >= STATE_WITHOUT_RESPONSE_LIMIT) {
-      serialLogger.warn("STATE " + STATE_WITHOUT_RESPONSE_LIMIT + " lần không có phản hồi — đóng và reconnect.");
+      transportLogger.warn("STATE " + STATE_WITHOUT_RESPONSE_LIMIT + " lần không có phản hồi — đóng và reconnect.");
       const transport = this.transportTcp;
       transport.close().then(() => this.onTransportDisconnected()).catch(() => this.onTransportDisconnected());
       return;
@@ -500,20 +500,20 @@ export class CommunicateManager {
                   this.broadcast(EVENTS.OT_CONFIG, this.otConfigManager.get());
                 }
               })
-              .catch((err) => serialLogger.warn(`getThreadVersion failed: ${(err as Error)?.message ?? err}`));
+              .catch((err) => transportLogger.warn(`getThreadVersion failed: ${(err as Error)?.message ?? err}`));
           }
 
           // Auto-start Thread: khi state vừa đổi sang disabled và thread_run_on_connect bật
           if (stateChangedOrFirst && roleByte === DEVICE_ROLE.DISABLED && this.appSettingsService.getThreadRunOnConnect()) {
             this.startThread()
               .then((result) => {
-                if (result.ack) {
-                  serialLogger.info("Auto-started Thread (thread_run_on_connect=true, state was disabled)");
-                } else {
-                  serialLogger.warn(`Auto-start Thread failed: errorCode=${result.errorCode}`);
-                }
-              })
-              .catch((err) => serialLogger.warn(`Auto-start Thread error: ${(err as Error)?.message ?? err}`));
+                  if (result.ack) {
+                    transportLogger.info("Auto-started Thread (thread_run_on_connect=true, state was disabled)");
+                  } else {
+                    transportLogger.warn(`Auto-start Thread failed: errorCode=${result.errorCode}`);
+                  }
+                })
+                .catch((err) => transportLogger.warn(`Auto-start Thread error: ${(err as Error)?.message ?? err}`));
           }
 
           // IP addr: chỉ fetch khi state là leader/router/child và state đổi hoặc lần đầu
@@ -525,7 +525,7 @@ export class CommunicateManager {
             cmdMgr
               .fetchIpAddr()
               .catch((err) =>
-                serialLogger.warn(`fetchIpAddr failed: ${(err as Error)?.message ?? err}`)
+                transportLogger.warn(`fetchIpAddr failed: ${(err as Error)?.message ?? err}`)
               );
           }
 
@@ -536,18 +536,18 @@ export class CommunicateManager {
               const hostname = process.env.SRP_HOSTNAME?.trim() || "dashboard";
               const port = process.env.SRP_PORT ? parseInt(process.env.SRP_PORT, 10) : 5683;
               const srpPort = Number.isInteger(port) && port >= 1 && port <= 65535 ? port : 5683;
-              serialLogger.info(`SRP register: IPv6=${backendIPv6} hostname=${hostname} port=${srpPort}`);
+              transportLogger.info(`SRP register: IPv6=${backendIPv6} hostname=${hostname} port=${srpPort}`);
               this.srpRegister(hostname, backendIPv6, srpPort)
                 .then((result) => {
                   if (result.ack) {
-                    serialLogger.info("SRP register sent (BR is leader).");
+                    transportLogger.info("SRP register sent (BR is leader).");
                   } else {
-                    serialLogger.warn(`SRP register failed: errorCode=0x${result.errorCode?.toString(16) ?? "?"}`);
+                    transportLogger.warn(`SRP register failed: errorCode=0x${result.errorCode?.toString(16) ?? "?"}`);
                   }
                 })
-                .catch((err) => serialLogger.warn(`SRP register error: ${(err as Error)?.message ?? err}`));
+                .catch((err) => transportLogger.warn(`SRP register error: ${(err as Error)?.message ?? err}`));
             } else {
-              serialLogger.info("SRP register skipped: no IPv6 found (set BACKEND_IPV6 in .env or ensure host has ULA/link-local).");
+              transportLogger.info("SRP register skipped: no IPv6 found (set BACKEND_IPV6 in .env or ensure host has ULA/link-local).");
             }
           }
 
@@ -595,7 +595,7 @@ export class CommunicateManager {
     if (!this.autoReconnectEnabled) return;
     const config = this.brConnectionConfigService.getLatest();
     if (!config) return;
-    serialLogger.info(`Will retry BR connection in ${RECONNECT_INTERVAL_MS}ms...`);
+    transportLogger.info(`Will retry BR connection in ${RECONNECT_INTERVAL_MS}ms...`);
     this.reconnectTimer = setTimeout(() => {
       this.reconnectTimer = null;
       this.connectInternal();
@@ -616,10 +616,10 @@ export class CommunicateManager {
       const status = this.transportTcp!.getStatus();
       this.broadcast(EVENTS.SERIAL_CONNECTED, { success: true, status });
       this.broadcast(EVENTS.SERIAL_STATUS, status);
-      serialLogger.info(`Connected to BR: ${config.brHost}:${config.brPort}`);
+      transportLogger.info(`Connected to BR: ${config.brHost}:${config.brPort}`);
       this.startStateInterval();
     } catch (error) {
-      serialLogger.error(`BR connection failed: ${error}`);
+      transportLogger.error(`BR connection failed: ${error}`);
       this.broadcast(EVENTS.SERIAL_STATUS, { isConnected: false, host: config.brHost, port: config.brPort });
       this.scheduleReconnect();
     }
@@ -652,6 +652,6 @@ export class CommunicateManager {
       this.frameUnsubscribe = null;
     }
     this.frameParser.reset();
-    serialLogger.info("Server shutdown: BR connection left open.");
+    transportLogger.info("Server shutdown: BR connection left open.");
   }
 }

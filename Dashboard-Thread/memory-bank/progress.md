@@ -25,7 +25,7 @@ Version notation in this file uses Semantic Versioning `MAJOR.MINOR.PATCH` (no l
 - npm workspaces monorepo (backend + frontend + shared)
 - SQLite database (WAL mode, 5 migrations: serial_config legacy, app_settings, br_connection_config)
 - Shared package: types, events, constants, validation
-- pino logging voi child loggers (serialLogger, frameLogger, wsLogger)
+- pino logging voi child loggers (transportLogger, frameLogger, wsLogger)
 - Table log filtering (ROUTER/CHILD/JOINER TX + ACK bi an)
 - Cursor Memory Bank (memory-bank/)
 - Symlink docs → HomeThread/Documents/ (Dashboard-Thread + ESP-Thread/Thread-Host)

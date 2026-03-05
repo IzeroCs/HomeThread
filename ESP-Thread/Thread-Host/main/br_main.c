@@ -187,5 +187,5 @@ void app_main(void)
     };
     ESP_ERROR_CHECK(boot_btn_start(&btn_cfg));
 
-    xTaskCreate(stack_monitor_task, TASK_NAME_STK_MON, TASK_STACK_STK_MON, NULL, STACK_MONITOR_TASK_PRIO, NULL);
+    // xTaskCreate(stack_monitor_task, TASK_NAME_STK_MON, TASK_STACK_STK_MON, NULL, STACK_MONITOR_TASK_PRIO, NULL);
 }

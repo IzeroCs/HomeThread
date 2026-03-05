@@ -28,7 +28,7 @@ Backend (os.networkInterfaces) → getBackendAddresses() → io.emit(SYSTEM_INFO
     ↓
 Frontend             subscribe SYSTEM_INFO → systemInfo → Status section "System" (IPv4, IPv6).
 
-Backend (khi BR = leader) → log "SRP register: IPv6=... hostname=... port=..." (serialLogger.info) → sendSrpRegister() qua frame CMD_SRP_REGISTER (0x44) → BR dang ky _dashboard._udp len SRP server.
+Backend (khi BR = leader) → log "SRP register: IPv6=... hostname=... port=..." (transportLogger.info) → sendSrpRegister() qua frame CMD_SRP_REGISTER (0x44) → BR dang ky _dashboard._udp len SRP server.
 ```
 
 ## Backend Layer Responsibilities

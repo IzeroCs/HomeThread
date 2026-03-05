@@ -1,6 +1,6 @@
 export {
   logger,
-  serialLogger,
+  transportLogger,
   frameLogger,
   setLogAdapter,
   getLogAdapter,

@@ -29,8 +29,9 @@ OpenThread core **không** forward query cho `*.default.svc.arpa` ra upstream (t
 Để Thread-Node discovery được backend:
 
 1. **SRP client trên BR:** Gọi `otSrpClientSetLeaseInterval(instance, 60)` và `otSrpClientSetKeyLeaseInterval(instance, 120)` trước khi add service; service struct: `mLease = 60`, `mKeyLease = 120` (key lease ≥ lease). Đăng ký service `_dashboard._udp` với host và port phù hợp.
-2. **SRP server:** Đảm bảo không từ chối với RCODE Refused (vd. do lease/format). Nếu vẫn lỗi "Failed to process DNS Additional section", kiểm tra SIG(0) và zone/domain; có thể bật log debug SRP server trên OpenThread.
-3. **Không forward** query `*.default.svc.arpa` ra upstream — xử lý local bởi SRP/DNS-SD trên Thread.
+2. **Hostname lifetime:** OpenThread SRP client **không copy** hostname — chỉ lưu con trỏ. BR (Thread-Host) khi xử lý CMD_SRP_REGISTER phải copy hostname vào **buffer tĩnh** rồi mới gọi `otSrpClientSetHostName(instance, ptr)`; nếu dùng buffer trên stack thì sau khi handler return con trỏ thành dangling và DNS update bất đồng bộ sẽ đọc rác → mojibake hoặc host rỗng trên SRP server.
+3. **SRP server:** Đảm bảo không từ chối với RCODE Refused (vd. do lease/format). Nếu vẫn lỗi "Failed to process DNS Additional section", kiểm tra SIG(0) và zone/domain; có thể bật log debug SRP server trên OpenThread.
+4. **Không forward** query `*.default.svc.arpa` ra upstream — xử lý local bởi SRP/DNS-SD trên Thread.
 
 Sau khi BR đăng ký thành công, Thread-Node sẽ nhận response thay vì NotFound/Timeout và log dạng "Discovered backend via SRP: [addr]:port".
 

@@ -101,7 +101,7 @@
 - `CMD_ROUTER_TABLE / CMD_CHILD_TABLE / CMD_JOINER_TABLE`: binary format (xem `table_data_format.md`)
 - `CMD_THREAD_VERSION`: UTF-8 string (vd. `"OPENTHREAD/thread-reference-20230706-..."`, tối đa 64 byte)
 - `CMD_COMMISSIONER_JOINER`: Không có data (0 byte) – chỉ xác nhận thêm joiner thành công
-- `CMD_SRP_REGISTER`: Không có data (0 byte) – chỉ xác nhận đã submit đăng ký SRP (BR dùng SRP client auto-start)
+- `CMD_SRP_REGISTER`: Không có data (0 byte) – chỉ xác nhận đã submit đăng ký SRP (BR dùng SRP client auto-start). BR copy hostname từ payload vào buffer tĩnh rồi mới gọi `otSrpClientSetHostName` (OpenThread SRP client chỉ lưu con trỏ, không copy).
 
 ---
 

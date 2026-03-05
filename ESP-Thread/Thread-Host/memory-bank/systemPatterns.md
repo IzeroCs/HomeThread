@@ -153,4 +153,4 @@ nvs_flash_erase();         // ← erase bị vô hiệu hóa
 | CMD_THREAD_STOP | 0x41 | Node→ESP | thread stop + ifconfig down |
 | CMD_THREAD_VERSION | 0x42 | Node→ESP | → ACK + version string |
 | CMD_COMMISSIONER_JOINER | 0x43 | Node→ESP | EUI64(8)+PSKd_len(1)+PSKd(1–32)+Timeout(4 BE) |
-| CMD_SRP_REGISTER | 0x44 | Node→ESP | Backend đăng ký `_dashboard._udp` qua SRP client trên BR (hostname + AAAA + port) |
+| CMD_SRP_REGISTER | 0x44 | Node→ESP | Backend đăng ký `_dashboard._udp` qua SRP client trên BR (hostname + AAAA + port). **Hostname:** BR copy payload vào buffer tĩnh `s_srp_hostname` rồi mới gọi `otSrpClientSetHostName` — OT SRP client chỉ lưu con trỏ, không copy; buffer stack → dangling → mojibake. |

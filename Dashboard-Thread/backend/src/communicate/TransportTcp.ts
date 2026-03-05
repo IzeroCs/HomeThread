@@ -4,7 +4,7 @@
  */
 
 import * as net from "net";
-import { serialLogger } from "../utils/logger";
+import { transportLogger } from "../utils/logger";
 
 export interface TransportTcpConfig {
   host: string;
@@ -42,7 +42,7 @@ export class TransportTcp {
         () => {
           this.isConnected = true;
           sock.setKeepAlive(true, 10_000);
-          serialLogger.info(`TCP connected: ${config.host}:${config.port}`);
+          transportLogger.info(`TCP connected: ${config.host}:${config.port}`);
           resolve();
         }
       );
@@ -61,13 +61,13 @@ export class TransportTcp {
       };
 
       sock.on("error", (err) => {
-        serialLogger.error(`TCP error (${config.host}:${config.port}): ${err?.message ?? err}`);
+        transportLogger.error(`TCP error (${config.host}:${config.port}): ${err?.message ?? err}`);
         triggerDisconnect();
         if (!this.closedByUs) reject(err);
       });
 
       sock.on("close", () => {
-        serialLogger.info(`TCP closed: ${config.host}:${config.port}`);
+        transportLogger.info(`TCP closed: ${config.host}:${config.port}`);
         triggerDisconnect();
       });
 

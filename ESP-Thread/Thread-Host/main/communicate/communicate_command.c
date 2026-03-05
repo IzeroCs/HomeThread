@@ -42,6 +42,8 @@ static esp_timer_handle_t s_factory_timer = NULL;
 
 static otSrpClientService s_srp_dashboard_service;
 static bool s_srp_dashboard_service_inited = false;
+/* OT SRP client lưu con trỏ hostname, không copy; phải dùng buffer tĩnh để tránh dangling pointer. */
+static char s_srp_hostname[SRP_HOSTNAME_MAX_LEN + 1];
 
 /** Dừng Thread stack và hạ IPv6 interface trước khi reset/factory. */
 static void thread_graceful_shutdown(void)
@@ -770,6 +772,13 @@ int communicate_command_handle_srp_register(uint8_t frame_id, const uint8_t *dat
     hostname[hostname_len] = '\0';
     p += hostname_len;
 
+    if (hostname[0] == '\0') {
+        ESP_LOGW(TAG, "SRP: hostname empty (len=%u), reject", (unsigned)hostname_len);
+        send_nack(frame_id, 0x04);
+        return -1;
+    }
+    memcpy(s_srp_hostname, hostname, (size_t)hostname_len + 1);
+
     otIp6Address backend_addr;
     memcpy(&backend_addr, p, sizeof(backend_addr));
     p += sizeof(backend_addr);
@@ -808,7 +817,7 @@ int communicate_command_handle_srp_register(uint8_t frame_id, const uint8_t *dat
     /* Clear host + services cũ trước khi đăng ký lại. */
     (void)otSrpClientClearHostAndServices(instance);
 
-    otError ot_err = otSrpClientSetHostName(instance, hostname);
+    otError ot_err = otSrpClientSetHostName(instance, s_srp_hostname);
     if (ot_err != OT_ERROR_NONE) {
         esp_openthread_lock_release();
         ESP_LOGE(TAG, "SRP: otSrpClientSetHostName failed: %d", ot_err);

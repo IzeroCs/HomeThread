@@ -5,7 +5,7 @@
 
 import { buildFrame, CMD, type ParsedFrame } from "./frame";
 import { CMD_NAMES } from "./frame/constants";
-import { serialLogger, frameLogger } from "../utils/logger";
+import { transportLogger, frameLogger } from "../utils/logger";
 import { DEVICE_ROLE } from "../openthread/deviceRole";
 import { bytes16ToIPv6String, ipv6StringToBytes } from "../utils/ipv6";
 import { parseDatasetActive, type ParsedDataset } from "./frame";
@@ -326,10 +326,10 @@ export class CommandManager {
       const ackFrame = buildFrame(frameId, CMD.ACK, undefined);
       this.callbacks
         .writeRaw(ackFrame)
-        .catch((err) => serialLogger.warn(`Failed to send reply ACK: ${(err as Error)?.message ?? err}`));
+        .catch((err) => transportLogger.warn(`Failed to send reply ACK: ${(err as Error)?.message ?? err}`));
       frameLogger.log(`TX (reply) frameId=0x${frameId.toString(16).padStart(2, "0")} cmd=0x02 (ACK) len=0`);
     } catch (err) {
-      serialLogger.warn(`Failed to build reply ACK: ${err}`);
+      transportLogger.warn(`Failed to build reply ACK: ${err}`);
     }
   }
 
