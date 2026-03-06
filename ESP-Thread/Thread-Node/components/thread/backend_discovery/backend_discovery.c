@@ -18,7 +18,7 @@
 static const char *TAG = "backend_discovery";
 
 /* Default SRP/DNS-SD service for Dashboard backend. */
-#define BACKEND_SERVICE_NAME "_dashboard._udp.default.svc.arpa"
+#define BACKEND_SERVICE_NAME "_dashboard._udp.default.service.arpa"
 #define BACKEND_COAP_DEFAULT_PORT 5683
 
 /* Default NVS keys */
@@ -88,6 +88,29 @@ static void endpoint_to_storage(const backend_endpoint_t *ep, uint8_t origin, ba
     out->port = ep->port;
     out->origin = origin;
     out->ts = (uint32_t)time(NULL);
+}
+
+/** Load endpoint from NVS into storage (caller can check st.ts for TTL). */
+static esp_err_t nvs_load_srp_storage(backend_ep_storage_t *st)
+{
+    if (!st) {
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    nvs_handle_t nvs = 0;
+    esp_err_t err = nvs_open_backend(&nvs);
+    if (err != ESP_OK) {
+        return err;
+    }
+
+    size_t len = sizeof(backend_ep_storage_t);
+    err = nvs_get_blob(nvs, get_key_srp(), st, &len);
+    nvs_close(nvs);
+
+    if (err != ESP_OK || len != sizeof(backend_ep_storage_t)) {
+        return (err == ESP_OK) ? ESP_FAIL : err;
+    }
+    return ESP_OK;
 }
 
 static esp_err_t nvs_load_endpoint(const char *key, backend_endpoint_t *out)
@@ -177,7 +200,6 @@ static void dns_browse_callback(otError aError, const otDnsBrowseResponse *aResp
         return;
     }
 
-#if CONFIG_OPENTHREAD_DNS_CLIENT
     otError err;
     char instance_label[64];
     char host_name_buf[256];
@@ -220,9 +242,6 @@ static void dns_browse_callback(otError aError, const otDnsBrowseResponse *aResp
     ctx->dns_addr = addr;
     ctx->dns_port = service_info.mPort ? service_info.mPort : BACKEND_COAP_DEFAULT_PORT;
     ctx->dns_valid = true;
-#else
-    (void)aResponse;
-#endif
 
     xSemaphoreGive(ctx->dns_sem);
 }
@@ -233,10 +252,6 @@ static esp_err_t srp_discover_once(backend_endpoint_t *out)
         return ESP_ERR_INVALID_ARG;
     }
 
-#if !CONFIG_OPENTHREAD_DNS_CLIENT
-    ESP_LOGW(TAG, "OpenThread DNS client is disabled, cannot browse SRP services");
-    return ESP_ERR_NOT_SUPPORTED;
-#else
     otInstance *instance = esp_openthread_get_instance();
     if (!instance) {
         ESP_LOGE(TAG, "OpenThread instance NULL");
@@ -295,7 +310,6 @@ static esp_err_t srp_discover_once(backend_endpoint_t *out)
     otIp6AddressToString(&out->addr, addr_str, sizeof(addr_str));
     ESP_LOGI(TAG, "Discovered backend via SRP: [%s]:%u", addr_str, out->port);
     return ESP_OK;
-#endif
 }
 
 esp_err_t backend_discovery_init(const backend_discovery_cfg_t *cfg)
@@ -333,13 +347,19 @@ esp_err_t backend_discovery_get_endpoint(backend_endpoint_t *out, bool force_ref
     esp_err_t err;
     backend_endpoint_t ep;
 
-    /* 1) Try SRP cache if not forcing refresh. */
+    /* 1) Try SRP cache if not forcing refresh. Honour cache_ttl_sec: if set and cache expired, treat as miss. */
     if (!force_refresh) {
-        err = nvs_load_endpoint(get_key_srp(), &ep);
+        backend_ep_storage_t st;
+        err = nvs_load_srp_storage(&st);
         if (err == ESP_OK) {
-            *out = ep;
-            ESP_LOGI(TAG, "Using cached SRP backend endpoint");
-            return ESP_OK;
+            uint32_t ttl = s_ctx.cfg.cache_ttl_sec;
+            uint32_t now = (uint32_t)time(NULL);
+            if (ttl == 0 || (now - st.ts) <= ttl) {
+                storage_to_endpoint(&st, out);
+                ESP_LOGI(TAG, "Using cached SRP backend endpoint");
+                return ESP_OK;
+            }
+            /* Cache expired, fall through to SRP discovery. */
         }
     }
 

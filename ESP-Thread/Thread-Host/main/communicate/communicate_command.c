@@ -42,8 +42,9 @@ static esp_timer_handle_t s_factory_timer = NULL;
 
 static otSrpClientService s_srp_dashboard_service;
 static bool s_srp_dashboard_service_inited = false;
-/* OT SRP client lưu con trỏ hostname, không copy; phải dùng buffer tĩnh để tránh dangling pointer. */
+/* OT SRP client lưu con trỏ hostname/address, không copy; phải dùng buffer tĩnh để tránh dangling pointer. */
 static char s_srp_hostname[SRP_HOSTNAME_MAX_LEN + 1];
+static otIp6Address s_srp_backend_addr;
 
 /** Dừng Thread stack và hạ IPv6 interface trước khi reset/factory. */
 static void thread_graceful_shutdown(void)
@@ -779,9 +780,8 @@ int communicate_command_handle_srp_register(uint8_t frame_id, const uint8_t *dat
     }
     memcpy(s_srp_hostname, hostname, (size_t)hostname_len + 1);
 
-    otIp6Address backend_addr;
-    memcpy(&backend_addr, p, sizeof(backend_addr));
-    p += sizeof(backend_addr);
+    memcpy(&s_srp_backend_addr, p, sizeof(s_srp_backend_addr));
+    p += sizeof(s_srp_backend_addr);
 
     uint16_t port = ((uint16_t)p[0] << 8) | (uint16_t)p[1];
     if (port == 0) {
@@ -791,7 +791,7 @@ int communicate_command_handle_srp_register(uint8_t frame_id, const uint8_t *dat
 
     {
         char ip6_str[44];
-        const uint8_t *a = backend_addr.mFields.m8;
+        const uint8_t *a = s_srp_backend_addr.mFields.m8;
         snprintf(ip6_str, sizeof(ip6_str),
                  "%02x%02x:%02x%02x:%02x%02x:%02x%02x:%02x%02x:%02x%02x:%02x%02x:%02x%02x",
                  a[0], a[1], a[2], a[3], a[4], a[5], a[6], a[7],
@@ -825,7 +825,7 @@ int communicate_command_handle_srp_register(uint8_t frame_id, const uint8_t *dat
         return -1;
     }
 
-    ot_err = otSrpClientSetHostAddresses(instance, &backend_addr, 1);
+    ot_err = otSrpClientSetHostAddresses(instance, &s_srp_backend_addr, 1);
     if (ot_err != OT_ERROR_NONE) {
         esp_openthread_lock_release();
         ESP_LOGE(TAG, "SRP: otSrpClientSetHostAddresses failed: %d", ot_err);

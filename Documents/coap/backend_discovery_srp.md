@@ -6,7 +6,7 @@ Tài liệu ngắn về cơ chế discovery backend (Dashboard) trên Thread-Nod
 
 Thread-Node dùng **OpenThread DNS client** (`otDnsClientBrowse`, `otDnsBrowseResponseGetServiceInfo`, `otDnsBrowseResponseGetHostAddress`) để:
 
-1. Browse service `_dashboard._udp.default.svc.arpa` trên mesh.
+1. Browse service `_dashboard._udp.default.service.arpa` trên mesh.
 2. Lấy thông tin SRV (hostname + port) và resolve AAAA → IPv6.
 3. Cache kết quả vào NVS (namespace `backend`) và fallback cấu hình tĩnh nếu SRP không trả kết quả.
 
@@ -34,6 +34,14 @@ OpenThread core **không** forward query cho `*.default.svc.arpa` ra upstream (t
 4. **Không forward** query `*.default.svc.arpa` ra upstream — xử lý local bởi SRP/DNS-SD trên Thread.
 
 Sau khi BR đăng ký thành công, Thread-Node sẽ nhận response thay vì NotFound/Timeout và log dạng "Discovered backend via SRP: [addr]:port".
+
+## Nhận biết backend đổi IPv6 (không cần reboot)
+
+Kết hợp hai cơ chế:
+
+1. **Cache TTL (`backend_discovery_cfg_t.cache_ttl_sec`):** Khi `get_endpoint(out, false)` và có cache SRP trong NVS, nếu `cache_ttl_sec > 0` và `(now - cache_ts) > cache_ttl_sec` thì coi cache hết hạn và thực hiện SRP discovery lại (không trả cache cũ). Như vậy mọi caller gọi `get_endpoint(..., false)` định kỳ sẽ nhận endpoint mới khi cache hết TTL.
+
+2. **Task re-discovery định kỳ (example light_on_off):** Task chạy vô hạn, mỗi 60s gọi `get_endpoint(&ep, false)`. Nhờ TTL = 60s, cache hết hạn nên sẽ SRP lại; nếu endpoint (addr + port) khác `s_backend_ep` thì cập nhật in-memory và log "Backend endpoint updated". Task được tạo luôn sau join (dù lần đầu discovery thành công hay thất bại). Backend đổi IPv6 và gửi lại CMD_SRP_REGISTER lên BR thì tối đa sau một chu kỳ (60s) Thread-Node có endpoint mới mà không cần reboot.
 
 ## Tài liệu liên quan
 

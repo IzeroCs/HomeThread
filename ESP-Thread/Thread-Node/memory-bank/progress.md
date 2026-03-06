@@ -26,7 +26,7 @@ Examples                 █████████████░░░░░�
 | **Device Registry** | `device_registry.c/.h` | CoAP POST → `/device/register` tại Leader RLOC; chỉ gửi khi Child/Router; chờ ACK (20s); **one-shot** (dừng sau ACK, gửi lại khi notify); retry 2s khi NACK/timeout; `device_registry_is_registered()`; từ chối khi role Leader |
 | **Network Stop** | `thread_network_stop.c/.h` | CoAP GET `/network/stop`, tạm dừng 120s nếu là Leader |
 | **Custom OT Config** | `openthread_custom_config.h` | Child timeout 60s, supervision 30s/60s, leader weight, CoAP API. **Không** define OPENTHREAD_CONFIG_DNS_CLIENT_ENABLE (ESP-IDF 5.5.3 dùng CONFIG_OPENTHREAD_DNS_CLIENT từ sdkconfig trong openthread-core-esp32x-ftd-config.h). |
-| **Backend Discovery** | `backend_discovery.c/.h` | SRP/DNS-SD browse `_dashboard._udp.default.svc.arpa` (otDnsClientBrowse + GetServiceInfo/GetHostAddress); `otDnsServiceInfo` dùng mHostNameBuffer/mHostNameBufferSize (ESP-IDF 5.5.3); cache NVS + static fallback. Phụ thuộc BR đăng ký service qua SRP (lease/key-lease) thì discovery mới trả kết quả. |
+| **Backend Discovery** | `backend_discovery.c/.h` | SRP/DNS-SD browse `_dashboard._udp.default.service.arpa`; mHostNameBuffer API; cache NVS + **cache_ttl_sec** (0 = không TTL; >0 thì get_endpoint(..., false) coi cache hết hạn sau TTL và SRP lại); static fallback. Example: task định kỳ 60s gọi get_endpoint(..., false), cập nhật s_backend_ep khi endpoint đổi → nhận backend đổi IPv6 không cần reboot. |
 
 ### Entity Model (data structures)
 

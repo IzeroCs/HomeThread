@@ -3,6 +3,7 @@
  *
  * Sử dụng thread/endpoint, entity_coap_server, network_stop handler.
  */
+#include <string.h>
 #include "esp_err.h"
 #include "esp_log.h"
 #include "freertos/FreeRTOS.h"
@@ -32,33 +33,44 @@ static bool s_app_initialized = false;
 static bool s_backend_ep_valid = false;
 static backend_endpoint_t s_backend_ep;
 
-static void backend_discovery_retry_task(void *pvParameters)
+#define BACKEND_DISCOVERY_REFRESH_MS  60000   /* Chu kỳ re-discovery (60s) để nhận backend đổi IPv6 không cần reboot */
+
+/** Task định kỳ: gọi get_endpoint(..., false); TTL trong backend_discovery sẽ làm cache hết hạn sau cache_ttl_sec, khi đó sẽ SRP lại. Cập nhật s_backend_ep nếu endpoint thay đổi. */
+static void backend_discovery_refresh_task(void *pvParameters)
 {
     (void)pvParameters;
-    const TickType_t delay_ticks = pdMS_TO_TICKS(60000); /* 60s backoff */
+    const TickType_t delay_ticks = pdMS_TO_TICKS(BACKEND_DISCOVERY_REFRESH_MS);
 
-    while (!s_backend_ep_valid) {
+    for (;;) {
+        vTaskDelay(delay_ticks);
+
         backend_endpoint_t ep;
-        esp_err_t err = backend_discovery_get_endpoint(&ep, true);
-        if (err == ESP_OK) {
-            s_backend_ep = ep;
-            s_backend_ep_valid = true;
-
-            char addr_str[40];
-            otIp6AddressToString(&s_backend_ep.addr, addr_str, sizeof(addr_str));
-            ESP_LOGI(TAG, "Backend endpoint discovered (retry): [%s]:%u (from_srp=%s)",
-                     addr_str,
-                     (unsigned int)s_backend_ep.port,
-                     s_backend_ep.from_srp ? "yes" : "no");
-            break;
+        esp_err_t err = backend_discovery_get_endpoint(&ep, false);
+        if (err != ESP_OK) {
+            continue;
         }
 
-        ESP_LOGW(TAG, "Backend discovery retry failed: %s, retry in 60s",
-                 esp_err_to_name(err));
-        vTaskDelay(delay_ticks);
-    }
+        bool addr_eq = (memcmp(ep.addr.mFields.m8, s_backend_ep.addr.mFields.m8, 16) == 0);
+        bool port_eq = (ep.port == s_backend_ep.port);
+        if (addr_eq && port_eq) {
+            continue;   /* Không đổi */
+        }
 
-    vTaskDelete(NULL);
+        if (!s_backend_ep_valid) {
+            s_backend_ep = ep;
+            s_backend_ep_valid = true;
+            char addr_str[40];
+            otIp6AddressToString(&s_backend_ep.addr, addr_str, sizeof(addr_str));
+            ESP_LOGI(TAG, "Backend endpoint discovered (refresh): [%s]:%u (from_srp=%s)",
+                     addr_str, (unsigned int)s_backend_ep.port, s_backend_ep.from_srp ? "yes" : "no");
+        } else {
+            s_backend_ep = ep;
+            char addr_str[40];
+            otIp6AddressToString(&s_backend_ep.addr, addr_str, sizeof(addr_str));
+            ESP_LOGI(TAG, "Backend endpoint updated: [%s]:%u (from_srp=%s)",
+                     addr_str, (unsigned int)s_backend_ep.port, s_backend_ep.from_srp ? "yes" : "no");
+        }
+    }
 }
 
 /* Callback khi đã join Thread network */
@@ -96,10 +108,16 @@ static void on_joined(void *ctx)
         ESP_LOGI(TAG, "Device Model initialized: device_id=%s", device->info.device_id);
     }
 
-    /* Backend discovery init + first scan (SRP/DNS-SD + static fallback). */
-    backend_discovery_init(NULL);
+    /* Backend discovery init + first scan. cache_ttl_sec=60: cache SRP hết hạn sau 60s, refresh task gọi get_endpoint(..., false) sẽ trigger re-discovery. */
+    backend_discovery_cfg_t disc_cfg = {
+        .nvs_namespace = NULL,
+        .cache_key_srp = NULL,
+        .cache_key_static = NULL,
+        .cache_ttl_sec = 60,
+    };
+    backend_discovery_init(&disc_cfg);
     backend_endpoint_t ep;
-    err = backend_discovery_get_endpoint(&ep, false);
+    err = backend_discovery_get_endpoint(&ep, true);   /* force_refresh: boot/join luôn quét lại SRP */
     if (err == ESP_OK) {
         s_backend_ep = ep;
         s_backend_ep_valid = true;
@@ -112,11 +130,12 @@ static void on_joined(void *ctx)
                  s_backend_ep.from_srp ? "yes" : "no");
     } else {
         ESP_LOGW(TAG, "Initial backend discovery failed: %s", esp_err_to_name(err));
-        /* Spawn background retry task (force_refresh=true). */
-        if (xTaskCreate(backend_discovery_retry_task, "backend_disc_retry",
-                        4096, NULL, 5, NULL) != pdPASS) {
-            ESP_LOGE(TAG, "Failed to create backend discovery retry task");
-        }
+    }
+
+    /* Task định kỳ re-discovery: mỗi BACKEND_DISCOVERY_REFRESH_MS gọi get_endpoint(..., false); khi cache hết TTL sẽ SRP lại và cập nhật s_backend_ep nếu backend đổi IPv6. */
+    if (xTaskCreate(backend_discovery_refresh_task, "backend_disc_refresh",
+                    4096, NULL, 5, NULL) != pdPASS) {
+        ESP_LOGE(TAG, "Failed to create backend discovery refresh task");
     }
 
     // Initialize entity model
@@ -165,7 +184,7 @@ void app_main(void)
         .prefer_not_leader = true,
         .router_selection_jitter = 1,
         .enable_network_stop_handler = true,
-        .enable_device_registry = false,   /* CoAP /device/register tắt (Leader chưa có BR) */
+        .enable_device_registry = true,   /* CoAP POST /device/register lên Leader (BR phải trả ACK/NACK) */
         .on_joined = on_joined,
         .ctx = NULL,
     };
