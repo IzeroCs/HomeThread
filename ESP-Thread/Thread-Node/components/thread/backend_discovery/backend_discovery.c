@@ -292,12 +292,12 @@ static esp_err_t srp_discover_once(backend_endpoint_t *out)
 
     /* Wait for callback to signal completion. */
     if (xSemaphoreTake(s_ctx.dns_sem, pdMS_TO_TICKS(3000)) != pdTRUE) {
-        ESP_LOGW(TAG, "DNS browse timeout");
+        ESP_LOGD(TAG, "DNS browse timeout");
         return ESP_ERR_TIMEOUT;
     }
 
     if (!s_ctx.dns_valid) {
-        ESP_LOGW(TAG, "DNS browse did not return a valid service");
+        ESP_LOGD(TAG, "DNS browse did not return a valid service");
         return ESP_FAIL;
     }
 
@@ -375,7 +375,7 @@ esp_err_t backend_discovery_get_endpoint(backend_endpoint_t *out, bool force_ref
         return ESP_OK;
     }
 
-    ESP_LOGW(TAG, "SRP discovery failed (%s), trying static fallback", esp_err_to_name(err));
+    ESP_LOGD(TAG, "SRP discovery failed (%s), trying static fallback", esp_err_to_name(err));
 
     /* 3) Fallback to static config if available. */
     err = nvs_load_endpoint(get_key_static(), &ep);
@@ -385,7 +385,7 @@ esp_err_t backend_discovery_get_endpoint(backend_endpoint_t *out, bool force_ref
         return ESP_OK;
     }
 
-    ESP_LOGE(TAG, "No backend endpoint available (SRP + static both missing)");
+    ESP_LOGI(TAG, "Backend not available yet (will retry in 60s)");
     return ESP_ERR_NOT_FOUND;
 }
 

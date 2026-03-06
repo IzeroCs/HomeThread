@@ -17,6 +17,7 @@ _Cập nhật: 2026-03-03_
 | 0.13.0 | 2026-03-03 | SRP server bật (br_custom_config.h + otSrpServerSetEnabled trong br_main); CMD_SRP_REGISTER (0x44) — backend đăng ký _dashboard._udp qua SRP client trên BR (hostname + AAAA + port); sdkconfig.defaults SRP client; log khi nhận đăng ký; fix crash otSrpClientStart(instance, NULL) (bỏ gọi, dùng auto-start). |
 | 0.14.0 | 2026-03-03 | SRP: lease/key lease 60/120 (service struct + SetLeaseInterval/SetKeyLeaseInterval) để server chấp nhận update; SRP CLI: CONFIG_OPENTHREAD_HEADER_CUSTOM=y, path "include", file br_custom_config.h — lệnh `ot srp server host` / `ot srp server service` dùng để kiểm tra đăng ký. |
 | 0.15.0 | 2026-03-03 | SRP hostname lifetime: buffer tĩnh `s_srp_hostname` thay vì stack; copy hostname vào đó trước `otSrpClientSetHostName` vì OT SRP client chỉ lưu con trỏ — tránh dangling pointer và mojibake/empty host khi DNS update bất đồng bộ. |
+| 0.16.0 | 2026-03-03 | SRP IPv6 address lifetime: buffer tĩnh `s_srp_backend_addr` thay vì stack; copy 16 byte AAAA vào đó trước `otSrpClientSetHostAddresses` — tránh địa chỉ rác trên SRP server và discovery sai trên Thread-Node. |
 
 _(Ghi phiên bản theo Semantic Versioning MAJOR.MINOR.PATCH, không dùng tiền tố `v`. Nếu chỉ có major/minor thì PATCH = 0.)_
 
@@ -116,3 +117,4 @@ _(SRP server Refused đã xử lý trong 0.14.0 — lease/key lease 60/120.)_
 | LoadProhibited khi gọi `otSrpClientStart(instance, NULL)` | OpenThread dereference server addr; bỏ gọi Start, chỉ dùng SRP client auto-start sau set host+address+add service |
 | SRP CLI "Unrecognized command" | Bật CONFIG_OPENTHREAD_HEADER_CUSTOM=y và CONFIG_OPENTHREAD_CUSTOM_HEADER_PATH="include" (sdkconfig) để OpenThread include br_custom_config.h → lệnh srp server/srp client được biên dịch; fullclean + build + flash |
 | SRP hostname mojibake / host rỗng khi đăng ký qua CMD_SRP_REGISTER | OT SRP client không copy hostname, chỉ lưu con trỏ; buffer stack thành dangling sau khi handler return. Fix: buffer tĩnh `s_srp_hostname`, copy hostname vào đó rồi gọi `otSrpClientSetHostName(instance, s_srp_hostname)` (0.15.0) |
+| SRP địa chỉ IPv6 sai (SRP server / Thread-Node discovery) | OT SRP client không copy địa chỉ; stack `otIp6Address` → dangling. Fix: buffer tĩnh `s_srp_backend_addr`, copy 16 byte payload rồi gọi `otSrpClientSetHostAddresses(instance, &s_srp_backend_addr, 1)` (0.16.0) |

@@ -1,7 +1,7 @@
 /*
- * Device Registry - CoAP client wrapper: gui device_model len Leader qua CoAP POST.
- * Dung OpenThread CoAP API (otCoap) de register device khi join hoac thay doi role.
- * 
+ * Device Registry - CoAP client: gửi device_model lên Backend qua CoAP POST /device/register.
+ * Chỉ gửi sau khi đã discovery được backend (backend_discovery). Khi backend IPv6 đổi thì gửi lại.
+ *
  * TODO: Migrate to struct-based approach (see MIGRATION_TO_STRUCT_BASED.md)
  */
 #pragma once
@@ -15,53 +15,43 @@ extern "C" {
 #endif
 
 /**
- * Callback khi register device thanh cong hoac that bai.
- * @param success true neu Leader tra ve 2.01 Created, false neu loi.
- * @param ctx context truyen vao device_registry_register().
+ * Callback khi register device thành công hoặc thất bại.
+ * @param success true nếu server trả 2.01 Created, false nếu lỗi.
+ * @param ctx context truyền vào device_registry_register().
  */
 typedef void (*device_registry_callback_fn)(bool success, void *ctx);
 
 /**
- * Update Leader RLOC address (gọi khi join hoặc state change).
- * Tự động được gọi trong component endpoint (thread/endpoint), nhưng có thể gọi thủ công nếu cần.
+ * Backend endpoint (IPv6 + port) cho CoAP register. Từ backend_discovery.
  */
-void device_registry_update_leader_rloc(void);
+typedef struct {
+    otIp6Address addr;
+    uint16_t port;
+} device_registry_endpoint_t;
 
 /**
- * Get Leader RLOC address đã lưu.
- * @param leader_rloc Output: Leader RLOC address
- * @return true nếu có Leader RLOC hợp lệ, false nếu chưa có
- */
-bool device_registry_get_leader_rloc(otIp6Address *leader_rloc);
-
-/**
- * Đã đăng ký thành công với Leader chưa (nhận ACK).
- * - Boot: false.
- * - Chỉ lên true khi đã gửi /device/register và Leader trả ACK (2.01/2.04/2.05).
- * TODO: Sau này lắng nghe từ Leader yêu cầu gửi lại đăng ký (re-register), khi nhận thì trigger gửi lại.
+ * Đã đăng ký thành công với Backend chưa (nhận ACK 2.01/2.04/2.05).
  */
 bool device_registry_is_registered(void);
 
 /**
- * Khoi tao Device Registry: start CoAP client.
- * Can goi sau khi OpenThread da start va device da join.
- * @return ESP_OK neu thanh cong, ESP_ERR_INVALID_STATE neu CoAP da start roi.
+ * Khởi tạo Device Registry: start CoAP client.
+ * Gọi sau khi OpenThread đã start và device đã join.
  */
 esp_err_t device_registry_init(void);
 
 /**
- * Register device len Leader: gui CoAP POST /device/register voi device_model.
- * 
- * TODO: Update to struct-based approach
- *   - Use device_model_t struct
- *   - Serialize to CBOR format
- *   - Payload: CBOR binary (application/cbor)
- * 
- * @param callback callback khi nhan response (co the NULL).
- * @param ctx context truyen vao callback.
- * @return ESP_OK neu gui request thanh cong, ESP_ERR_INVALID_STATE neu chua init hoac chua join.
+ * Gửi CoAP POST /device/register tới backend (endpoint từ backend_discovery).
+ * Gọi sau khi discovery được backend; khi backend IPv6 đổi thì gọi lại với endpoint mới.
+ *
+ * @param endpoint Backend (IPv6 + port), từ backend_discovery_get_endpoint().
+ * @param callback Callback khi nhận response (có thể NULL).
+ * @param ctx      Context cho callback.
+ * @return ESP_OK nếu gửi request thành công.
  */
-esp_err_t device_registry_register(device_registry_callback_fn callback, void *ctx);
+esp_err_t device_registry_register(const device_registry_endpoint_t *endpoint,
+                                  device_registry_callback_fn callback,
+                                  void *ctx);
 
 #ifdef __cplusplus
 }

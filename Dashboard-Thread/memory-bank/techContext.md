@@ -25,7 +25,7 @@ Dashboard-Thread/          # npm workspaces root
 | pino | ^9.5.0 | Structured logging |
 | pino-pretty | latest | Pretty console output |
 
-Transport: TCP (net.Socket) to BR; CoAP (UDP 5683) from Thread-Node. Dependencies: `coap`, `cbor2` cho child data. Khong con serialport.
+Transport: TCP (net.Socket) to BR; CoAP (UDP 5683, udp6 listen [::]) from Thread-Node. Dependencies: `coap`, `cbor2` cho device CoAP payload. Khong con serialport.
 
 ### Frontend
 
@@ -42,8 +42,8 @@ Transport: TCP (net.Socket) to BR; CoAP (UDP 5683) from Thread-Node. Dependencie
 ```
 shared/src/
 ├── index.ts        # Re-exports
-├── types.ts        # SerialConfig, ConnectionStatus, OtConfig, OtThreadState, OtTableData, ChildDataPayload
-├── events.ts       # EVENTS (CHILD_DATA, SRP_REGISTER, SRP_REGISTER_RESULT, SYSTEM_INFO, ...)
+├── types.ts        # ConnectionStatus, OtConfig, OtThreadState, OtTableData, ...
+├── events.ts       # EVENTS (SRP_REGISTER, SRP_REGISTER_RESULT, SYSTEM_INFO, ...)
 ├── constants.ts    # Validation limits (channel 11-26, PAN ID 0x0000-0xFFFE, etc.)
 └── validation.ts   # validateSerialConfig(), validateOtSetConfig()
 ```
@@ -105,10 +105,11 @@ npm run build         # backend then frontend
 
 ## Database
 
-SQLite (`better-sqlite3`, WAL mode). 5 migrations:
-- `serial_config` (legacy, co the khong dung)
+SQLite (`better-sqlite3`, WAL mode). 6 migrations:
+- 001–004: legacy serial_config (da xoa bang boi migration 006)
 - `app_settings`: key-value (thread_run_on_connect)
 - `br_connection_config`: br_host, br_port, use_mdns (mac dinh Thread-Host.local:5000)
+- 006: DROP TABLE serial_config (BR chi dung TCP, khong con Serial)
 
 ## Configuration
 
@@ -127,9 +128,10 @@ SQLite (`better-sqlite3`, WAL mode). 5 migrations:
 ## Logging (pino)
 
 Backend dung pino voi child loggers:
-- `transportLogger` — transport/TCP events (ten file giu de tranh doi ref); khi gui SRP register: log "SRP register: IPv6=... hostname=... port=..."
+- `transportLogger` — transport/TCP events; khi gui SRP register: log "SRP register: IPv6=... hostname=... port=..."
 - `frameLogger` — frame TX/RX (TABLE commands bi filter khoi console)
 - `wsLogger` — WebSocket events
+- `coapLog` (CoapDeviceServer) — CoAP request, path, CBOR→JSON log, 2.01 response
 
 Log file: `backend/logs/` (neu cau hinh). Console: pino-pretty format.
 

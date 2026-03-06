@@ -109,6 +109,13 @@ const migrations: Migration[] = [
       `);
     },
   },
+  {
+    name: "006_drop_serial_config",
+    up: (db) => {
+      // BR chỉ dùng TCP (br_connection_config); bảng serial_config legacy không còn dùng
+      db.exec(`DROP TABLE IF EXISTS serial_config`);
+    },
+  },
 ];
 
 /**

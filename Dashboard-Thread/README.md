@@ -35,7 +35,7 @@ Dashboard-Thread/
 ├── package.json          # Root: workspaces, scripts chạy cả BE + FE
 ├── backend/              # Node.js + TypeScript (WebSocket, TCP frame protocol)
 │   ├── src/
-│   │   ├── server/       # WebSocketServer, CoapChildDataServer (UDP 5683, child CoAP+CBOR)
+│   │   ├── server/       # WebSocketServer, CoapDeviceServer (UDP 5683, Thread-Node CoAP+CBOR)
 │   │   ├── communicate/ # TransportTcp, BrConnectionConfigService, frame (parser/builder/crc8), CommandManager (incl. sendSrpRegister), CommunicateManager, OtConfigManager, PollingManager
 │   │   ├── database/     # SQLite (Database, migrations)
 │   │   ├── services/     # AppSettings
@@ -105,8 +105,8 @@ Dashboard-Thread/
 | Commissioner | CMD_COMMISSIONER_JOINER (EUI64 + PSKd + timeout) |
 | Hệ thống | CMD_RESET, CMD_FACTORY |
 
-- **Database:** SQLite lưu cấu hình serial và app settings (`thread_run_on_connect`).
+- **Database:** SQLite (BR connection config, app settings `thread_run_on_connect`). Migration 006 đã xóa bảng legacy `serial_config`.
 
-**Thread-Node (child) gửi dữ liệu:** CoAP UDP port 5683, payload CBOR. Resources: `/child/register`, `/child/update`, `/child/ping`. Backend chỉ gửi subset lên frontend. Xem [docs/coap/thread_node_coap.md](./docs/coap/thread_node_coap.md).
+**Thread-Node gửi dữ liệu:** CoAP UDP port 5683 (IPv6 [::]), path `/device/register`, `/device/update`, `/device/ping`, payload CBOR. Backend parse CBOR, log JSON, trả 2.01; không gửi lên frontend. Xem [docs/coap/thread_node_coap.md](./docs/coap/thread_node_coap.md).
 
 Chi tiết: [Documents/protocol/usb_cdc_frame_structure.md](../Documents/protocol/usb_cdc_frame_structure.md) · [Documents/dashboard/migration_to_frame_protocol.md](../Documents/dashboard/migration_to_frame_protocol.md) · Việc còn lại: [TODO.md](./TODO.md).

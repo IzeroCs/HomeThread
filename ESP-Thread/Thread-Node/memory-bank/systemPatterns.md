@@ -160,15 +160,17 @@ cbor_close_array()          // Break code (0xFF)
 
 **Factory Reset**: `otInstanceErasePersistentInfo()` + NVS namespace erase + `esp_restart()`
 
-## Pattern 8: Device Registry — Chỉ gửi khi Child/Router, chờ ACK
+## Pattern 8: Device Registry — Gửi tới Backend sau discovery
 
-**Điều kiện gửi:** Chỉ gọi `device_registry_register()` khi `role == OT_DEVICE_ROLE_CHILD || role == OT_DEVICE_ROLE_ROUTER`. Không gửi khi Detached, Disabled, hoặc Leader (Leader không đăng ký lên chính mình). `device_registry_register()` từ chối khi role là Leader (return `ESP_ERR_INVALID_STATE`).
+**Đích:** Backend (IPv6 + port từ `backend_discovery_get_endpoint()`). **Không** còn registry task trong thread_endpoint hay gửi tới Leader RLOC.
 
-**Luồng:** (1) Nhận notification (join hoặc role change) → delay 1s → lấy role. (2) Nếu không phải Child/Router → bỏ qua gửi, chờ notify lại. (3) Gửi với callback `on_registry_response`; chờ `ulTaskNotifyTake(..., 20s)`. (4) Nếu ACK (2.01/2.04/2.05) → success, **chỉ gửi 1 lần rồi dừng** cho đến khi có notify (role change hoặc sau này re-register request từ Leader). (5) Nếu NACK hoặc timeout → delay 2s rồi gửi lại. Một request trong flight tại một thời điểm — tránh NoBufs.
+**Điều kiện gửi:** App gọi `device_registry_register(endpoint, ...)` chỉ khi đã có endpoint từ `backend_discovery_get_endpoint()`. `device_registry_register()` từ chối khi role là Leader (return `ESP_ERR_INVALID_STATE`). Chỉ gửi khi Child/Router.
 
-**Tham số:** `REGISTRY_ACK_TIMEOUT_MS` 20s, `REGISTRY_RETRY_DELAY_MS` 2s (trong `thread_endpoint.c`). Không còn gửi định kỳ sau ACK.
+**Trigger:** (1) Lần đầu discovery backend thành công (trong on_joined hoặc task) → gọi `device_registry_register(ep, ...)`. (2) Refresh task (vd. 60s) phát hiện endpoint (addr/port) đổi → cập nhật endpoint và gọi lại `device_registry_register()`.
 
-Khi role thay đổi (child ↔ router), task được notify và gửi lại sau khi check role.
+**Luồng:** Gửi với callback `on_registry_response`; timeout 20s. Nếu ACK (2.01/2.04/2.05) → one-shot (chỉ gửi 1 lần rồi dừng cho đến khi app gọi lại). Nếu NACK hoặc timeout → delay 2s rồi retry. Một request trong flight tại một thời điểm — tránh NoBufs.
+
+**Tham số:** `REGISTRY_ACK_TIMEOUT_MS` 20s, `REGISTRY_RETRY_DELAY_MS` 2s (trong `device_registry.c`).
 
 ## Pattern 9: Device info — strings vs numbers
 

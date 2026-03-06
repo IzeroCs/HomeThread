@@ -87,15 +87,12 @@ CONFIG_ENTITY_MODEL_MAX_ENTITIES=32  # Số entity tối đa trên một thiết
 
 ### Thread Endpoint (thread_endpoint_config_t)
 
-- **enable_device_registry** (bool): Bật/tắt CoAP POST `/device/register` lên Leader. Khi `false`, không tạo registry task, không gọi `device_registry_init()` / `device_registry_update_leader_rloc()`. Mặc định `true` khi `config == NULL`.
+- **enable_device_registry** (bool): Khi `true` chỉ gọi `device_registry_init()`; **không** có registry task hay Leader RLOC. App gọi `device_registry_register(endpoint, ...)` sau khi `backend_discovery_get_endpoint()` thành công và khi endpoint đổi. Mặc định `true` khi `config == NULL`.
 
-### Device Registry (thread_endpoint.c, khi enable_device_registry = true)
+### Device Registry (device_registry.c, khi enable_device_registry = true)
 
-```c
-#define REGISTRY_ACK_TIMEOUT_MS  20000   // Timeout chờ ACK từ Leader (20s)
-#define REGISTRY_RETRY_DELAY_MS  2000    // Delay trước khi retry khi NACK/timeout (2s)
-// Chỉ gửi 1 lần đăng ký khi nhận ACK; dừng cho đến khi notify (role change hoặc re-register request).
-```
+- **Đích:** **Backend** — `device_registry_endpoint_t` (IPv6 + port) từ `backend_discovery_get_endpoint()`. App gọi `device_registry_register(endpoint, callback, ctx)` khi đã có endpoint (sau discovery và khi refresh task phát hiện endpoint đổi).
+- **Tham số:** `REGISTRY_ACK_TIMEOUT_MS` 20s, `REGISTRY_RETRY_DELAY_MS` 2s (trong `device_registry.c`). Chỉ gửi 1 lần khi nhận ACK; gửi lại khi app gọi lại (vd. endpoint đổi). Re-register khi backend reboot (periodic hoặc multicast) — chưa implement.
 
 ### Backend Discovery (backend_discovery.c)
 

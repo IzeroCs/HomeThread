@@ -19,10 +19,10 @@ useWebSocket hook  (frontend/src/hooks/useWebSocket.ts)
     ↓ React state update
 UI Components      (frontend/src/components/)
 
-Thread-Node (child)  -- CoAP UDP 5683, payload CBOR (full)
+Thread-Node  -- CoAP UDP 5683 (IPv6 [::]), path /device/, payload CBOR
     ↓
-CoapChildDataServer (backend/src/server/CoapChildDataServer.ts)
-    ↓ parse CBOR → build subset → io.emit(CHILD_DATA). Frontend khong hien section Child data.
+CoapDeviceServer (backend/src/server/CoapDeviceServer.ts)
+    ↓ parse CBOR (cbor2), log JSON + type/rloc16, tra 2.01. Khong emit len frontend.
 
 Backend (os.networkInterfaces) → getBackendAddresses() → io.emit(SYSTEM_INFO) khi CONFIG_CURRENT
     ↓
@@ -43,7 +43,7 @@ Backend (khi BR = leader) → log "SRP register: IPv6=... hostname=... port=..."
 | `OtConfigManager` | `backend/src/communicate/OtConfigManager.ts` | In-memory store. `.update(partial)` de merge, `.get()` de doc, `.clear()` khi disconnect |
 | `PollingManager` | `backend/src/communicate/PollingManager.ts` | Poll table 6s (child +1.5s delay). CHI khi frontend connected + state = leader/router/child |
 | `AppSettingsService` | `backend/src/services/AppSettingsService.ts` | SQLite key-value cho app settings (thread_run_on_connect) |
-| `CoapChildDataServer` | `backend/src/server/CoapChildDataServer.ts` | CoAP server UDP 5683; nhan request /child/register, /child/update, /child/ping; decode CBOR; emit CHILD_DATA (subset) qua io |
+| `CoapDeviceServer` | `backend/src/server/CoapDeviceServer.ts` | CoAP server UDP 5683 (udp6, listen [::]); path /device/register, /device/update, /device/ping; decode CBOR (cbor2), log JSON; tra 2.01; khong emit qua io |
 
 ## Frame Protocol
 

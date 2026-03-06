@@ -62,9 +62,6 @@ export const EVENTS = {
   DEVICE_FACTORY_RESET: "device:factoryReset",
   DEVICE_FACTORY_RESET_RESULT: "device:factoryReset:result",
 
-  // Child data (CoAP → backend → frontend; payload to frontend is subset only)
-  CHILD_DATA: "child:data",
-
   // SRP register (frame CMD 0x44): backend → BR
   SRP_REGISTER: "srp:register",
   SRP_REGISTER_RESULT: "srp:register:result",

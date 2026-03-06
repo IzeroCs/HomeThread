@@ -3,7 +3,7 @@
 > **Platform:** ESP-IDF + OpenThread
 > **Role:** Border Router (Leader)
 
-**Với BR thật (sau Phase 1):** CoAP device registry **không còn chạy trên BR**. Child devices gửi register/update/ping **trực tiếp tới backend** (CoAP hoặc HTTP tới IP:port của backend). BR chỉ route IP và quản lý (state, dataset, Commissioner) qua frame protocol với backend. Tài liệu dưới mô tả flow legacy / tham khảo cho backend và Thread-Node.
+**Với BR thật (sau Phase 1):** CoAP device registry **không còn chạy trên BR**. Child devices gửi register/update/ping **trực tiếp tới backend** (CoAP hoặc HTTP tới IP:port của backend). BR chỉ route IP và quản lý (state, dataset, Commissioner) qua frame protocol với backend. **Backend** nhận `/device/register` phải trả ACK/NACK đúng quy tắc trong tài liệu này (để Node không treo đợi). Tài liệu dưới mô tả flow legacy / tham khảo cho backend và Thread-Node.
 
 CoAP server trên BR (port 5683) nhận đăng ký từ child devices — **đã gỡ khỏi Thread-Host**. Resources từng được xử lý bởi `device_registry_server` + `device_registry_handler`.
 

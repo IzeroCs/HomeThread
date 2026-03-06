@@ -49,6 +49,6 @@ OpenThread Border Router (BR) cần được điều khiển và giám sát từ
 
 Console đã bỏ. Commissioner gộp vào Nodes (modal Commission Node + Joiner List).
 
-## Thread-Node (child) gửi dữ liệu
+## Thread-Node gửi dữ liệu
 
-Thiết bị child/endpoint (**Thread-Node**) gửi dữ liệu **trực tiếp tới backend** qua IP: **CoAP** (UDP 5683), payload **CBOR**. BR chỉ route IP. Backend parse CBOR, chỉ gửi subset (type, rloc16, timestamp, summary) lên frontend. Hướng dẫn cho firmware: [docs/coap/thread_node_coap.md](../docs/coap/thread_node_coap.md).
+Thiết bị **Thread-Node** (router/child/endpoint) gửi dữ liệu **trực tiếp tới backend** qua IP: **CoAP** (UDP 5683, IPv6), path **/device/register**, **/device/update**, **/device/ping**, payload **CBOR**. BR chỉ route IP. Backend parse CBOR, log JSON ra console, trả CoAP 2.01; không gửi lên frontend. Hướng dẫn: [docs/coap/thread_node_coap.md](../docs/coap/thread_node_coap.md).

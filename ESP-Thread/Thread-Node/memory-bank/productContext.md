@@ -20,7 +20,7 @@ Border Router (Thread-Host) cần biết:
 - Các thuộc tính của từng entity
 - Trạng thái mạng của thiết bị (IP, RLOC, role)
 
-Thread-Node giải quyết bằng cách tự động gửi CBOR-encoded device model lên `/device/register` sau khi join thành công. Chỉ gửi khi role là **Child hoặc Router**; gửi xong **chờ ACK/NACK** (timeout 20s). **Thành công thì chỉ gửi 1 lần rồi dừng**; chỉ gửi lại khi có notify (role change hoặc Leader yêu cầu re-register). Thất bại thì retry sau 2s — tránh tích tụ request và NoBufs. Leader (Border Router) phải luôn trả response (ACK/NACK) cho mọi request (xem `docs/coap/border_router_coap_server.md`).
+Thread-Node giải quyết bằng cách gửi CBOR-encoded device model lên **Backend** (không phải BR) qua CoAP POST `/device/register`. Địa chỉ Backend lấy từ **backend discovery** (SRP/DNS-SD `_dashboard._udp`). Chỉ gửi **sau khi discovery thành công**; khi Backend IPv6/port đổi thì gửi lại (refresh task 60s). Chỉ gửi khi role **Child hoặc Router**; chờ ACK/NACK (timeout 20s); one-shot sau ACK. Backend phải trả ACK/NACK (xem `docs/coap/border_router_coap_server.md`).
 
 ### 3. Quản lý Leader role
 
@@ -44,8 +44,8 @@ main()
                       ├─ status_led_update(CHILD/ROUTER)
                       ├─ thread_coap_start()
                       ├─ thread_network_stop_register()  → /network/stop resource
-                      ├─ on_joined_callback()            → App setup entities
-                      └─ device_registry_start()         → Gửi CBOR một lần (one-shot sau ACK)
+                      ├─ device_registry_init()          → (nếu enable_device_registry)
+                      ├─ on_joined_callback()            → App setup entities; gọi backend_discovery_get_endpoint() rồi device_registry_register(ep, ...) khi có endpoint; task refresh 60s cập nhật endpoint và gọi lại register khi đổi
 ```
 
 ### Luồng callback của lập trình viên (on_joined)
@@ -69,23 +69,21 @@ void on_joined(void) {
 }
 ```
 
-### Giao tiếp CoAP với Border Router
+### Giao tiếp CoAP
 
 ```
-Thread-Node                           Border Router (Thread-Host)
-    │                                         │
-    │── POST /device/register (CBOR) ────────►│  Đăng ký device + entities
-    │   [chỉ khi Child/Router; one-shot,     │
-    │    dừng sau ACK; Leader trả 2.01/NACK]│
-    │   [device_type, sw_version, hw_version  │
-    │    = number để giảm băng thông]        │
-    │                                         │
-    │◄── GET /network/stop ──────────────────│  BR yêu cầu node tạm rời mạng
-    │── 2.05 Content ──────────────────────►│
-    │   [rời mạng 120s, BR lấy lại Leader]   │
-    │                                         │
-    │◄── PUT /entities/light.0/state ────────│  BR điều khiển entity
-    │── 2.04 Changed ──────────────────────►│
+Thread-Node                    Backend (địa chỉ từ backend discovery)     Border Router (Thread-Host)
+    │                                         │                                        │
+    │── POST /device/register (CBOR) ─────────►│  Đăng ký device + entities              │
+    │   [sau discovery; khi endpoint đổi      │  (2.01/2.04/2.05 hoặc NACK)            │
+    │    gửi lại; one-shot sau ACK]           │                                        │
+    │                                         │                                        │
+    │◄── GET /network/stop ────────────────────────────────────────────────────────────│  BR yêu cầu node tạm rời mạng
+    │── 2.05 Content ───────────────────────────────────────────────────────────────►│
+    │   [rời mạng 120s, BR lấy lại Leader]   │                                        │
+    │                                         │                                        │
+    │◄── PUT /entities/light.0/state ────────────────────────────────────────────────│  BR điều khiển entity
+    │── 2.04 Changed ───────────────────────────────────────────────────────────────►│
 ```
 
 ## Trải nghiệm lập trình viên (Developer UX)

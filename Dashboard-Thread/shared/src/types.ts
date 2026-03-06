@@ -88,17 +88,3 @@ export interface OtTableData {
   error?: string;
 }
 
-/**
- * Payload sent from backend to frontend when child sends data via CoAP.
- * Subset only (not full child payload). Used by backend emit + frontend subscribe.
- */
-export interface ChildDataPayload {
-  /** register | update | ping */
-  type: string;
-  /** RLOC16 if available (e.g. "0x1234") */
-  rloc16?: string;
-  /** ISO timestamp when backend received */
-  timestamp?: string;
-  /** Short summary for UI (e.g. one line) */
-  summary?: string;
-}

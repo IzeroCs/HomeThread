@@ -14,6 +14,7 @@
 #include "entity_coap_server.h"
 #include "thread_endpoint.h"
 #include "backend_discovery.h"
+#include "device_registry.h"
 #include "openthread/ip6.h"
 
 static const char *TAG = "light_on_off";
@@ -35,7 +36,32 @@ static backend_endpoint_t s_backend_ep;
 
 #define BACKEND_DISCOVERY_REFRESH_MS  60000   /* Chu kỳ re-discovery (60s) để nhận backend đổi IPv6 không cần reboot */
 
-/** Task định kỳ: gọi get_endpoint(..., false); TTL trong backend_discovery sẽ làm cache hết hạn sau cache_ttl_sec, khi đó sẽ SRP lại. Cập nhật s_backend_ep nếu endpoint thay đổi. */
+/* Callback khi device register xong (thành công hay thất bại). */
+static void on_registry_response(bool success, void *ctx)
+{
+    (void)ctx;
+    if (success) {
+        ESP_LOGI(TAG, "Device registered OK");
+    } else {
+        ESP_LOGW(TAG, "Device register failed");
+    }
+}
+
+/** Gửi /device/register tới backend hiện tại (s_backend_ep). Chỉ gọi khi s_backend_ep_valid. */
+static void trigger_register(void)
+{
+    if (!s_backend_ep_valid) {
+        return;
+    }
+    /* device_registry_endpoint_t tương thích với 2 field đầu của backend_endpoint_t (addr, port). */
+    const device_registry_endpoint_t *ep = (const device_registry_endpoint_t *)&s_backend_ep;
+    esp_err_t err = device_registry_register(ep, on_registry_response, NULL);
+    if (err != ESP_OK) {
+        ESP_LOGW(TAG, "device_registry_register: %s", esp_err_to_name(err));
+    }
+}
+
+/** Task định kỳ: gọi get_endpoint(..., false); TTL trong backend_discovery sẽ làm cache hết hạn sau cache_ttl_sec, khi đó sẽ SRP lại. Cập nhật s_backend_ep nếu endpoint thay đổi; khi đổi thì gửi lại register. */
 static void backend_discovery_refresh_task(void *pvParameters)
 {
     (void)pvParameters;
@@ -70,6 +96,8 @@ static void backend_discovery_refresh_task(void *pvParameters)
             ESP_LOGI(TAG, "Backend endpoint updated: [%s]:%u (from_srp=%s)",
                      addr_str, (unsigned int)s_backend_ep.port, s_backend_ep.from_srp ? "yes" : "no");
         }
+        /* Gửi register khi lần đầu discovery hoặc khi IPv6 backend thay đổi. */
+        trigger_register();
     }
 }
 
@@ -128,8 +156,10 @@ static void on_joined(void *ctx)
                  addr_str,
                  (unsigned int)s_backend_ep.port,
                  s_backend_ep.from_srp ? "yes" : "no");
+        /* Bắt đầu CoAP device register ngay khi đã discovery được backend. */
+        trigger_register();
     } else {
-        ESP_LOGW(TAG, "Initial backend discovery failed: %s", esp_err_to_name(err));
+        ESP_LOGD(TAG, "Initial backend discovery failed: %s", esp_err_to_name(err));
     }
 
     /* Task định kỳ re-discovery: mỗi BACKEND_DISCOVERY_REFRESH_MS gọi get_endpoint(..., false); khi cache hết TTL sẽ SRP lại và cập nhật s_backend_ep nếu backend đổi IPv6. */
@@ -184,7 +214,7 @@ void app_main(void)
         .prefer_not_leader = true,
         .router_selection_jitter = 1,
         .enable_network_stop_handler = true,
-        .enable_device_registry = true,   /* CoAP POST /device/register lên Leader (BR phải trả ACK/NACK) */
+        .enable_device_registry = true,   /* CoAP client cho register; app gửi tới Backend sau khi discovery */
         .on_joined = on_joined,
         .ctx = NULL,
     };

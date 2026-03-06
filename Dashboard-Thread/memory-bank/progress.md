@@ -16,6 +16,7 @@ Version notation in this file uses Semantic Versioning `MAJOR.MINOR.PATCH` (no l
 | 1.1.0   | UI dark navy: Modal/ConfirmModal dark theme (overlay blur, card-dark, ghost cancel, danger/warning buttons + glow). Settings/System: action cards (Restart + Factory Reset), image panel, danger divider "Vung nguy hiem". Sidebar Settings sub-items: icons `lan`, `device_hub`, `warning`. OpenThread card: header full-bleed, footer same width as body, overflow hidden. |
 | 1.2.0   | Child data (CoAP): Backend CoAP server UDP 5683 (CoapChildDataServer), resources /child/register, /child/update, /child/ping; nhan full CBOR, parse, emit subset (CHILD_DATA) len frontend. Frontend Status section "Child data (CoAP)". Shared CHILD_DATA, ChildDataPayload. Doc Thread-Node: docs/coap/thread_node_coap.md. |
 | 1.3.0   | SRP register qua frame: CMD_SRP_REGISTER (0x44), DATA hostname_len+hostname+backend_ipv6(16)+port(2 BE). Backend tu dong gui khi BR la leader (pullState); IPv6 tu env hoac getPreferredBackendIPv6(). Status: bo "Child data (CoAP)"; them section **System** (bang giong OpenThread): IPv4/IPv6 backend tu SYSTEM_INFO (getBackendAddresses()). Events SRP_REGISTER, SRP_REGISTER_RESULT, SYSTEM_INFO. Bo STATE_FAKE_PAYLOAD; sendState(undefined) = payload rong. |
+| 1.4.0   | CoAP device: Doi ten CoapChildDataServer → CoapDeviceServer; path chi /device/ (register, update, ping). Bo EVENTS.CHILD_DATA, ChildDataPayload; backend khong emit len frontend. CoAP server udp6 listen [::]:5683 (nhan IPv6 Thread-Node). Parse CBOR (cbor2), log "CoAP CBOR -> JSON: ...". Migration 006: DROP TABLE serial_config. |
 
 
 ## What Works (Completed)
@@ -23,7 +24,7 @@ Version notation in this file uses Semantic Versioning `MAJOR.MINOR.PATCH` (no l
 ### Infrastructure
 
 - npm workspaces monorepo (backend + frontend + shared)
-- SQLite database (WAL mode, 5 migrations: serial_config legacy, app_settings, br_connection_config)
+- SQLite database (WAL mode, 6 migrations: app_settings, br_connection_config; migration 006 drop serial_config)
 - Shared package: types, events, constants, validation
 - pino logging voi child loggers (transportLogger, frameLogger, wsLogger)
 - Table log filtering (ROUTER/CHILD/JOINER TX + ACK bi an)
@@ -65,9 +66,9 @@ Version notation in this file uses Semantic Versioning `MAJOR.MINOR.PATCH` (no l
 - Handle set config commands tu frontend
 - Commissioner joiner command
 
-### Backend — Child data (CoAP) & System
+### Backend — CoAP device & System
 
-- CoapChildDataServer: listen UDP 5683, path /child/register, /child/update, /child/ping; nhan CBOR, emit CHILD_DATA (subset). Frontend khong con section Child data tren Status.
+- CoapDeviceServer: listen UDP 5683 on [::] (udp6); path /device/register, /device/update, /device/ping; parse CBOR (cbor2), log "CoAP CBOR -> JSON: ..." + type/rloc16; tra 2.01; khong emit len frontend.
 - System info: getBackendAddresses() (utils/ipv6); gui SYSTEM_INFO khi CONFIG_GET/CONFIG_CURRENT. Frontend Status section System (IPv4/IPv6).
 
 ### Frontend — Pages

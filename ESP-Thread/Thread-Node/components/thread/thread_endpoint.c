@@ -32,13 +32,6 @@ static const char *TAG = "thread_endpoint";
 
 static thread_endpoint_config_t s_config;
 static bool s_started = false;
-static TaskHandle_t s_registry_task_handle = NULL;
-
-/* Registry ACK flow: result from last CoAP response (set by callback) */
-static volatile bool s_registry_last_success = false;
-
-#define REGISTRY_ACK_TIMEOUT_MS  20000
-#define REGISTRY_RETRY_DELAY_MS  2000
 
 /* Log Leader Data (partition, leader router id, weight, data version) */
 static void log_leader_data(void)
@@ -89,113 +82,6 @@ static void on_boot_long_press(void *ctx)
     thread_joiner_factory_reset(true);
 }
 
-/* Callback khi nhận ACK/NACK từ Leader (CoAP response) */
-static void on_registry_response(bool success, void *ctx)
-{
-    (void)ctx;
-    s_registry_last_success = success;
-    if (s_registry_task_handle) {
-        xTaskNotifyGive(s_registry_task_handle);
-    }
-}
-
-/* Task để register device: chỉ gửi khi Child/Router, chờ ACK rồi mới gửi tiếp */
-static void registry_task(void *pvParameters)
-{
-    (void)pvParameters;
-    bool started_periodic = false;
-    const TickType_t ack_timeout_ticks = pdMS_TO_TICKS(REGISTRY_ACK_TIMEOUT_MS);
-    const TickType_t retry_delay_ticks = pdMS_TO_TICKS(REGISTRY_RETRY_DELAY_MS);
-
-    while (1) {
-        /* Wait for notification (khi join hoặc role change) */
-        ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
-
-        /* Delay để network ready */
-        vTaskDelay(pdMS_TO_TICKS(1000));
-
-        /* Lấy role: chỉ gửi khi Child hoặc Router */
-        otInstance *instance = esp_openthread_get_instance();
-        if (!instance) {
-            continue;
-        }
-
-        otDeviceRole role;
-        if (!esp_openthread_lock_acquire(pdMS_TO_TICKS(200))) {
-            continue;
-        }
-        role = otThreadGetDeviceRole(instance);
-        esp_openthread_lock_release();
-
-        if (role != OT_DEVICE_ROLE_CHILD && role != OT_DEVICE_ROLE_ROUTER) {
-            /* Detached, Disabled, hoặc Leader — không gửi, chờ notify lại */
-            ESP_LOGD(TAG, "Registry: role not Child/Router, skip send (role=%d)", (int)role);
-            continue;
-        }
-
-        if (!started_periodic) {
-            started_periodic = true;
-            ESP_LOGI(TAG, "Starting device registration (one-shot until ACK)");
-        }
-
-        /* Vòng gửi — chờ ACK rồi mới gửi tiếp hoặc retry */
-        while (started_periodic) {
-            /* Kiểm tra role trước mỗi lần gửi */
-            if (!esp_openthread_lock_acquire(pdMS_TO_TICKS(200))) {
-                vTaskDelay(retry_delay_ticks);
-                continue;
-            }
-            role = otThreadGetDeviceRole(instance);
-            esp_openthread_lock_release();
-
-            if (role != OT_DEVICE_ROLE_CHILD && role != OT_DEVICE_ROLE_ROUTER) {
-                started_periodic = false;
-                ESP_LOGI(TAG, "Device detached or leader, stopping periodic registration");
-                break;
-            }
-
-            /* Xóa notification cũ trước khi gửi */
-            ulTaskNotifyTake(pdTRUE, 0);
-
-            /* Gửi CoAP POST /device/register với callback */
-            esp_err_t err = device_registry_register(on_registry_response, NULL);
-            if (err != ESP_OK) {
-                ESP_LOGW(TAG, "Registry send failed: %s, retry in %d ms", esp_err_to_name(err), REGISTRY_RETRY_DELAY_MS);
-                vTaskDelay(retry_delay_ticks);
-                continue;
-            }
-
-            /* Chờ ACK/NACK hoặc timeout */
-            uint32_t notified = ulTaskNotifyTake(pdTRUE, ack_timeout_ticks);
-            bool success = s_registry_last_success;
-
-            if (notified == 0) {
-                /* Timeout — coi như thất bại, gửi lại sau retry delay */
-                ESP_LOGW(TAG, "Registry ACK timeout (%d ms), retry", REGISTRY_ACK_TIMEOUT_MS);
-                vTaskDelay(retry_delay_ticks);
-                continue;
-            }
-
-            if (success) {
-                /* ACK — chỉ gửi 1 lần, dừng cho đến khi có notify (role change / re-register request) */
-                started_periodic = false;
-                ESP_LOGI(TAG, "Device registered with Leader, stopping until next notify");
-                break;
-            } else {
-                /* NACK hoặc lỗi — gửi lại sau retry delay */
-                ESP_LOGW(TAG, "Registry NACK or error, retry in %d ms", REGISTRY_RETRY_DELAY_MS);
-                vTaskDelay(retry_delay_ticks);
-            }
-
-            /* Có notification mới (role change) — xử lý ngay bằng cách thoát vòng và chờ lại từ đầu */
-            if (ulTaskNotifyTake(pdFALSE, 0) > 0) {
-                break;
-            }
-        }
-    }
-}
-
-
 /* Thread event handler */
 static void on_openthread_event(void *arg, esp_event_base_t base, int32_t id, void *data)
 {
@@ -209,14 +95,6 @@ static void on_openthread_event(void *arg, esp_event_base_t base, int32_t id, vo
         status_led_set_state(STATUS_LED_ATTACHED);
         update_attached_led_role();
         log_leader_data();
-
-        /* Update Leader RLOC khi role thay đổi */
-        if (s_config.enable_device_registry) {
-            device_registry_update_leader_rloc();
-            if (s_registry_task_handle) {
-                xTaskNotifyGive(s_registry_task_handle);
-            }
-        }
     }
 }
 
@@ -251,11 +129,6 @@ static void on_joined_wrapper(void *ctx)
     update_attached_led_role();
     log_leader_data();
 
-    /* Update Leader RLOC sau khi join */
-    if (s_config.enable_device_registry) {
-        device_registry_update_leader_rloc();
-    }
-
     /* Register CoAP resource /network/stop (nếu bật trong config) */
     if (s_config.enable_network_stop_handler) {
         esp_err_t err = thread_network_stop_register();
@@ -264,17 +137,14 @@ static void on_joined_wrapper(void *ctx)
         }
     }
 
-    /* Call user callback */
-    if (s_config.on_joined) {
-        s_config.on_joined(s_config.ctx);
+    /* Init CoAP client trước on_joined để app gọi device_registry_register() khi đã discovery backend. */
+    if (s_config.enable_device_registry) {
+        device_registry_init();
     }
 
-    /* Auto register device lên Border Router (nếu bật trong config) */
-    if (s_config.enable_device_registry) {
-        esp_err_t err = device_registry_init();
-        if (err == ESP_OK && s_registry_task_handle) {
-            xTaskNotifyGive(s_registry_task_handle);
-        }
+    /* Call user callback (app gọi device_registry_register() khi đã discovery backend). */
+    if (s_config.on_joined) {
+        s_config.on_joined(s_config.ctx);
     }
 }
 
@@ -369,15 +239,6 @@ esp_err_t thread_endpoint_start(const thread_endpoint_config_t *config)
         .task_priority = 4,
     };
     ESP_ERROR_CHECK(boot_btn_start(&boot_cfg));
-
-    /* Create registry task nếu bật device registry */
-    if (s_config.enable_device_registry) {
-        xTaskCreate(registry_task, "registry", 4096, NULL, 5, &s_registry_task_handle);
-        if (!s_registry_task_handle) {
-            ESP_LOGE(TAG, "Failed to create registry task");
-            return ESP_ERR_NO_MEM;
-        }
-    }
 
     ESP_LOGI(TAG, "Thread Endpoint started");
     ESP_LOGI(TAG, "PSKd=\"%s\" - Commissioner: joiner add * %s",

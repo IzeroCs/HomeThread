@@ -50,10 +50,10 @@
 - **Đích (kiến trúc mục tiêu):** Backend (server) — địa chỉ IP và port do cấu hình (commissioning, NVS, hoặc mDNS). **Không** gửi tới BR cho device registry.
 - **Giao thức thường dùng:** CoAP (UDP 5683) hoặc HTTP (TCP). Định dạng payload thường là JSON hoặc CBOR (xem [border_router_coap_server.md](../coap/border_router_coap_server.md) phần payload format — backend có thể giữ resource `/device/register`, `/device/update`, `/device/ping` nhưng **chạy trên Backend**, không trên BR).
 
-> **Ghi chú triển khai hiện tại (Thread-Node 0.8.x)**  
-> - Luồng `/device/register` của Thread-Node vẫn đang gửi CoAP POST tới **Leader RLOC (Border Router)** thông qua component `thread/device_registry` (không dùng backend discovery).  
-> - Luồng **Child → Backend trực tiếp** được áp dụng cho các endpoint `/child/*` (xem [../coap/thread_node_coap.md](../coap/thread_node_coap.md)) và sử dụng module `thread/backend_discovery` để lấy địa chỉ backend `_dashboard._udp.default.svc.arpa`.  
-> - Việc migrate hoàn toàn `/device/register` sang gửi thẳng Backend sẽ được thực hiện ở phase sau để đồng bộ với Dashboard-Thread backend.
+> **Ghi chú triển khai hiện tại (Thread-Node 0.9.x)**  
+> - Thread-Node **đã** gửi `/device/register` **tới Backend** (sau khi discovery qua `backend_discovery`). Không còn gửi tới Leader RLOC.  
+> - Register được trigger khi discovery thành công và khi refresh task (60s) phát hiện backend endpoint (addr/port) thay đổi.  
+> - Migration hoàn tất. Xem [thread_node_coap.md](../coap/thread_node_coap.md) và component `thread/device_registry` + `thread/backend_discovery`.
 
 ### 3.2. Địa chỉ Backend
 
