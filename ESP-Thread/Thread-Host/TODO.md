@@ -89,7 +89,7 @@ Tính năng: Giao tiếp với dashboard qua **TCP** (BR listen port, dashboard 
 4. **Push system health (ESP32 → Node)** ❌ Chưa làm
    - **CMD_SYS_HEALTH (TBD):** Push định kỳ (hoặc khi backend pull) thông tin sức khoẻ hệ thống để backend/Node monitor từ xa.
    - **Payload dự kiến:**
-     - Stack high water mark của từng task (bytes còn lại tối thiểu): `comm_queue`, `comm_task`, `boot_btn`, `led_status`, `usb_rx`, `leader_rloc`, `stk_mon`
+     - Stack high water mark của từng task (bytes còn lại tối thiểu): `comm_queue`, `comm_task`, `boot_btn`, `led_status`, `usb_rx`, `stk_mon`
      - Heap free hiện tại (bytes)
      - Heap min free từ trước đến giờ (bytes)
    - **Nguồn dữ liệu:** `uxTaskGetStackHighWaterMark()` + `esp_get_free_heap_size()` + `esp_get_minimum_free_heap_size()` — đã có trong `stack_monitor_task` ở `br_main.c`.

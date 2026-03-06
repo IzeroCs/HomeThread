@@ -29,7 +29,7 @@ Backend       parse CBOR → log JSON, tra 2.01.     (khong push len frontend)
 ### Device register (`/device/register`) — gửi tới Backend
 
 - **Path**: POST `/device/register` tới Backend. IP và port lấy từ `backend_discovery_get_endpoint()`.
-- **Trigger**: (1) Sau khi discovery backend thành công (vd. trong `on_joined` hoặc task); (2) Khi refresh task (vd. 60s) phát hiện endpoint (addr/port) thay đổi → gọi lại register.
+- **Trigger**: (1) Sau khi discovery backend thành công (vd. trong `on_joined` hoặc task); (2) Khi refresh task (vd. 60s) phát hiện endpoint (addr/port) thay đổi → gọi lại register. **Lưu ý:** Nếu backend restart nhưng giữ nguyên IPv6/port thì hiện tại Node không tự gửi lại register (cần periodic re-register hoặc cơ chế notify nếu muốn).
 - **Payload**: CBOR device model (device info + entities). Response: 2.01/2.04/2.05 (ACK) hoặc 4.xx/5.xx (NACK). Backend phải luôn trả response (xem [border_router_coap_server.md](border_router_coap_server.md) ACK/NACK).
 - **API**: `device_registry_init()` (gọi khi enable_device_registry); `device_registry_register(endpoint, callback, ctx)` với `device_registry_endpoint_t` tương thích với `backend_endpoint_t` (addr, port). Example: `examples/light_on_off/main/main.c` — `trigger_register()` khi có endpoint, refresh task cập nhật endpoint và gọi lại.
 

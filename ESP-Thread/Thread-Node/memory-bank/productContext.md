@@ -20,11 +20,11 @@ Border Router (Thread-Host) cần biết:
 - Các thuộc tính của từng entity
 - Trạng thái mạng của thiết bị (IP, RLOC, role)
 
-Thread-Node giải quyết bằng cách gửi CBOR-encoded device model lên **Backend** (không phải BR) qua CoAP POST `/device/register`. Địa chỉ Backend lấy từ **backend discovery** (SRP/DNS-SD `_dashboard._udp`). Chỉ gửi **sau khi discovery thành công**; khi Backend IPv6/port đổi thì gửi lại (refresh task 60s). Chỉ gửi khi role **Child hoặc Router**; chờ ACK/NACK (timeout 20s); one-shot sau ACK. Backend phải trả ACK/NACK (xem `docs/coap/border_router_coap_server.md`).
+Thread-Node giải quyết bằng cách gửi CBOR-encoded device model lên **Backend** (không phải BR) qua CoAP POST `/device/register`. Địa chỉ Backend lấy từ **backend discovery** (SRP/DNS-SD `_dashboard._udp`). Chỉ gửi **sau khi discovery thành công**; khi Backend IPv6/port đổi thì gửi lại (refresh task 60s). Mọi role **Child/Router/Leader** đều có thể gửi; chờ ACK/NACK (timeout 20s); one-shot sau ACK. Backend phải trả ACK/NACK (xem `docs/coap/border_router_coap_server.md`).
 
 ### 3. Quản lý Leader role
 
-Trong Thread mesh, nếu không có Border Router, một node thường tự trở thành Leader. Khi Border Router kết nối lại, nó cần lấy lại vai trò Leader. Thread-Node hỗ trợ lệnh `/network/stop` để tạm thời rời mạng 120 giây, cho phép BR tái thiết lập leader role.
+Trong Thread mesh, nếu không có Border Router, một node thường tự trở thành Leader. Khi Border Router kết nối lại, nó cần lấy lại vai trò Leader. Thread-Node sử dụng `prefer_not_leader` và `router_selection_jitter` để tránh trở thành Leader khi không mong muốn.
 
 ## Cách hoạt động
 
@@ -43,7 +43,6 @@ main()
                  └─ [Join thành công]
                       ├─ status_led_update(CHILD/ROUTER)
                       ├─ thread_coap_start()
-                      ├─ thread_network_stop_register()  → /network/stop resource
                       ├─ device_registry_init()          → (nếu enable_device_registry)
                       ├─ on_joined_callback()            → App setup entities; gọi backend_discovery_get_endpoint() rồi device_registry_register(ep, ...) khi có endpoint; task refresh 60s cập nhật endpoint và gọi lại register khi đổi
 ```
@@ -77,10 +76,6 @@ Thread-Node                    Backend (địa chỉ từ backend discovery)    
     │── POST /device/register (CBOR) ─────────►│  Đăng ký device + entities              │
     │   [sau discovery; khi endpoint đổi      │  (2.01/2.04/2.05 hoặc NACK)            │
     │    gửi lại; one-shot sau ACK]           │                                        │
-    │                                         │                                        │
-    │◄── GET /network/stop ────────────────────────────────────────────────────────────│  BR yêu cầu node tạm rời mạng
-    │── 2.05 Content ───────────────────────────────────────────────────────────────►│
-    │   [rời mạng 120s, BR lấy lại Leader]   │                                        │
     │                                         │                                        │
     │◄── PUT /entities/light.0/state ────────────────────────────────────────────────│  BR điều khiển entity
     │── 2.04 Changed ───────────────────────────────────────────────────────────────►│

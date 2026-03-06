@@ -126,11 +126,6 @@ esp_err_t device_registry_register(const device_registry_endpoint_t *endpoint,
         ESP_LOGW(TAG, "Device not joined yet");
         return ESP_ERR_INVALID_STATE;
     }
-    if (role == OT_DEVICE_ROLE_LEADER) {
-        esp_openthread_lock_release();
-        ESP_LOGW(TAG, "Device is Leader, skip register to backend");
-        return ESP_ERR_INVALID_STATE;
-    }
 
     uint16_t rloc16 = 0;
     uint16_t parent_rloc16 = 0;
@@ -152,6 +147,10 @@ esp_err_t device_registry_register(const device_registry_endpoint_t *endpoint,
             break;
         case OT_DEVICE_ROLE_ROUTER:
             role_enum = 2;
+            parent_rloc16 = 0;
+            break;
+        case OT_DEVICE_ROLE_LEADER:
+            role_enum = 3;
             parent_rloc16 = 0;
             break;
         default:

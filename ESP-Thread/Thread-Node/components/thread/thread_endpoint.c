@@ -26,7 +26,6 @@
 #include "boot_btn.h"
 #include "status_led.h"
 #include "device_registry.h"
-#include "thread_network_stop.h"
 
 static const char *TAG = "thread_endpoint";
 
@@ -129,14 +128,6 @@ static void on_joined_wrapper(void *ctx)
     update_attached_led_role();
     log_leader_data();
 
-    /* Register CoAP resource /network/stop (nếu bật trong config) */
-    if (s_config.enable_network_stop_handler) {
-        esp_err_t err = thread_network_stop_register();
-        if (err != ESP_OK) {
-            ESP_LOGW(TAG, "Failed to register network stop handler: %s", esp_err_to_name(err));
-        }
-    }
-
     /* Init CoAP client trước on_joined để app gọi device_registry_register() khi đã discovery backend. */
     if (s_config.enable_device_registry) {
         device_registry_init();
@@ -170,7 +161,6 @@ esp_err_t thread_endpoint_start(const thread_endpoint_config_t *config)
         s_config.prefer_not_leader = true;  /* Default: prefer not leader */
     }
     if (config == NULL) {
-        s_config.enable_network_stop_handler = true;  /* Default: bật /network/stop handler */
         s_config.enable_device_registry = true;       /* Default: bật device register */
     }
 

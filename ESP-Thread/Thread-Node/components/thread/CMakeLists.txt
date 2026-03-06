@@ -2,7 +2,6 @@ idf_component_register(
     SRCS 
         "thread_joiner.c"
         "thread_endpoint.c"
-        "thread_network_stop.c"
     INCLUDE_DIRS "include"
     REQUIRES
         esp_event

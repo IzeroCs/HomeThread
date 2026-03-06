@@ -31,6 +31,13 @@ Frontend             subscribe SYSTEM_INFO → systemInfo → Status section "Sy
 Backend (khi BR = leader) → log "SRP register: IPv6=... hostname=... port=..." (transportLogger.info) → sendSrpRegister() qua frame CMD_SRP_REGISTER (0x44) → BR dang ky _dashboard._udp len SRP server.
 ```
 
+## Node Registration Patterns (Thread-Node → Backend)
+
+- **Current model (implemented):** Thread-Node la **CoAP client** chu dong gui request len backend (CoapDeviceServer). Backend **khong** co kenh push xuong node.
+- **Backend reboot / endpoint change:** Node khong co “event push” de biet backend vua reboot. Pattern khuyen nghi:
+  - **Periodic refresh:** task goi discovery dinh ky (vd. 60s) + cache TTL de cap nhat endpoint.
+  - **On failure:** neu CoAP timeout/ICMP unreachable → `force_refresh=true` → browse SRP lai → gui lai request.
+
 ## Backend Layer Responsibilities
 
 | Module | File | Vai tro — TUYET DOI KHONG vi pham |

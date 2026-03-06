@@ -4,7 +4,6 @@ idf_component_register(
   "backhaul/eth_w5500.c"
   "hardware/led_status.c"
   "hardware/boot_btn.c"
-  "coap_controller/leader_control_client.c"
   "communicate/communicate.c"
   "communicate/communicate_command.c"
   "communicate/communicate_queue.c"

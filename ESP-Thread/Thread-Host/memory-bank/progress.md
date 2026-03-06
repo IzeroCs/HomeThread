@@ -18,6 +18,7 @@ _Cập nhật: 2026-03-03_
 | 0.14.0 | 2026-03-03 | SRP: lease/key lease 60/120 (service struct + SetLeaseInterval/SetKeyLeaseInterval) để server chấp nhận update; SRP CLI: CONFIG_OPENTHREAD_HEADER_CUSTOM=y, path "include", file br_custom_config.h — lệnh `ot srp server host` / `ot srp server service` dùng để kiểm tra đăng ký. |
 | 0.15.0 | 2026-03-03 | SRP hostname lifetime: buffer tĩnh `s_srp_hostname` thay vì stack; copy hostname vào đó trước `otSrpClientSetHostName` vì OT SRP client chỉ lưu con trỏ — tránh dangling pointer và mojibake/empty host khi DNS update bất đồng bộ. |
 | 0.16.0 | 2026-03-03 | SRP IPv6 address lifetime: buffer tĩnh `s_srp_backend_addr` thay vì stack; copy 16 byte AAAA vào đó trước `otSrpClientSetHostAddresses` — tránh địa chỉ rác trên SRP server và discovery sai trên Thread-Node. |
+| 0.17.0 | 2026-03-06 | Loại bỏ Leader Control Client (CoAP GET `/network/stop`) và toàn bộ docs liên quan. |
 
 _(Ghi phiên bản theo Semantic Versioning MAJOR.MINOR.PATCH, không dùng tiền tố `v`. Nếu chỉ có major/minor thì PATCH = 0.)_
 
@@ -67,7 +68,6 @@ _(Ghi phiên bản theo Semantic Versioning MAJOR.MINOR.PATCH, không dùng ti�
 - [x] Wi‑Fi STA (Kconfig) — code đã tắt fallback trong br_main; có thể bật lại nếu cần
 
 ### CoAP
-- [x] Leader Control Client — task gửi GET /network/stop đến Leader mỗi khi cần
 - [x] Device Registry — đã bỏ (Phase 1); child gửi thẳng backend qua IP
 
 ### Monitoring

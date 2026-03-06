@@ -117,8 +117,6 @@ Thread-Host/
 │   │   ├── communicate_queue.c      ← FreeRTOS queue + dispatch
 │   │   ├── communicate_task.c       ← state watchdog + IP retry
 │   │   └── transport_tcp.c          ← TCP transport (BR listen, dashboard qua IP)
-│   ├── coap_controller/
-│   │   └── leader_control_client.c  ← CoAP GET /network/stop
 │   └── hardware/
 │       ├── led_status.c             ← WS2812 RMT
 │       └── boot_btn.c               ← GPIO0 poll

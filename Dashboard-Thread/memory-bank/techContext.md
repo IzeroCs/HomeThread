@@ -25,7 +25,7 @@ Dashboard-Thread/          # npm workspaces root
 | pino | ^9.5.0 | Structured logging |
 | pino-pretty | latest | Pretty console output |
 
-Transport: TCP (net.Socket) to BR; CoAP (UDP 5683, udp6 listen [::]) from Thread-Node. Dependencies: `coap`, `cbor2` cho device CoAP payload. Khong con serialport.
+Transport: TCP (net.Socket) to BR; CoAP (UDP 5683, udp6 listen [::]) from Thread-Node. Dependencies: `coap`, `cbor2` cho device CoAP payload. Khong con serialport. Luu y: Thread-Node la ben **chu dong** (CoAP client) gui len backend; backend khong push xuong node neu firmware khong co kenh nhan lenh.
 
 ### Frontend
 

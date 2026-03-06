@@ -529,8 +529,11 @@ export class CommunicateManager {
               );
           }
 
-          // SRP register: khi chuyển sang leader hoặc lần đầu thấy leader (kể cả sau backend restart)
-          if (stateChangedOrFirst && roleByte === DEVICE_ROLE.LEADER) {
+          // SRP register: khi chuyển sang leader/router hoặc lần đầu thấy leader/router (BR có backbone nên đều có thể đăng ký SRP)
+          if (
+            stateChangedOrFirst &&
+            (roleByte === DEVICE_ROLE.LEADER || roleByte === DEVICE_ROLE.ROUTER)
+          ) {
             const backendIPv6 = process.env.BACKEND_IPV6?.trim() || getPreferredBackendIPv6();
             if (backendIPv6) {
               const hostname = process.env.SRP_HOSTNAME?.trim() || "dashboard";
@@ -540,7 +543,7 @@ export class CommunicateManager {
               this.srpRegister(hostname, backendIPv6, srpPort)
                 .then((result) => {
                   if (result.ack) {
-                    transportLogger.info("SRP register sent (BR is leader).");
+                    transportLogger.info("SRP register sent (BR is leader/router).");
                   } else {
                     transportLogger.warn(`SRP register failed: errorCode=0x${result.errorCode?.toString(16) ?? "?"}`);
                   }

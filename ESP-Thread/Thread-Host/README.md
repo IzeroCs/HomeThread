@@ -106,8 +106,6 @@ Thread-Host/
 │   ├── br_custom_config.h           # OpenThread custom config (CoAP API enabled)
 │   ├── hardware/
 │   │   └── led_status.c             # LED status indicator (WS2812)
-│   ├── coap_controller/
-│   │   └── leader_control_client.c      # CoAP client để gửi lệnh stop đến Leader
 │   ├── backhaul/
 │   │   ├── wifi_sta.c                  # Wi‑Fi STA, DHCP, backbone netif
 │   │   └── eth_w5500.c                 # Ethernet W5500 (SPI), ưu tiên / fallback Wi‑Fi
@@ -135,8 +133,6 @@ Thread-Host/
 │   │   ├── communicate_queue.h      # communicate_queue_init(), post
 │   │   ├── communicate_command.h    # Command handler API
 │   │   └── transport_tcp.h          # Transport TCP API
-│   └── coap_controller/
-│       └── leader_control_client.h      # Leader control client header
 ├── components/
 │   └── cmd_system/                  # System console commands (version, restart, free, heap...)
 ├── docs -> ../../Documents/         # Symlink → HomeThread/Documents/
@@ -185,12 +181,6 @@ Thread-Host/
   - Router: tím tĩnh
   - Child: xanh dương tĩnh
   - GPIO mặc định: 48 (onboard LED) hoặc 5 (external LED), có thể config qua menuconfig
-- ✅ **Leader Control Client (CoAP)** - Tự động gửi lệnh stop đến Leader khi cần
-  - Gửi **GET `/network/stop`** (CONFIRMABLE, port 5683) đến Leader RLOC; không payload
-  - Gửi khi: first time, Leader RLOC16 thay đổi, retry on failure, hoặc retry timeout (sau 2 phút nếu Leader vẫn còn)
-  - Task chạy suốt vòng đời, check mỗi 5 giây; timeout response 5 giây
-  - Lock quản lý đúng: acquire/release bên trong `send_coap_stop_command_once`; caller release trước khi gọi
-  - Chi tiết format, flow, leader election timing: xem [Documents/coap/leader_stop_command_coap.md](../../Documents/coap/leader_stop_command_coap.md)
 - **Device Registry:** Đã bỏ (Phase 1). BR chuyển sang mô hình BR thật: child gửi register/update/ping **trực tiếp tới backend** (CoAP/HTTP tới IP backend); BR chỉ quản lý (state, dataset, Commissioner) qua frame protocol với backend — xem plan Real BR migration.
 - ✅ **Communicate (frame protocol)** — Parse/serialize khung SOF/Frame ID/CMD/LEN/DATA/CRC8/EOF; **transport TCP** (BR listen, dashboard kết nối qua IP). **communicate_task**: init + queue (timeout 500 ms, log khi chờ &gt; 2 s) + state watchdog. **Handlers:** CMD_STATE, DATASET_ACTIVE, IP_ADDR (ACK + data), SET_PANID/CHANNEL/NETWORK_NAME/EXTENDED_PANID/NETWORK_KEY, ROUTER/CHILD/JOINER_TABLE (ACK + table data), THREAD_START, THREAD_STOP, THREAD_VERSION (ACK + version string), CMD_RESET (ACK + restart sau 2s), CMD_FACTORY (ACK + NVS erase + restart sau 2s); xem [Documents/protocol/usb_cdc_frame_structure.md](../../Documents/protocol/usb_cdc_frame_structure.md) và [Documents/protocol/table_data_format.md](../../Documents/protocol/table_data_format.md). **Stack & heap monitor:** task `stk_mon` log mỗi 30 s — stack high water mark của tất cả task + heap free/min_free; tên task và stack size tập trung tại `include/br_config.h` (`TASK_NAME_*`, `TASK_STACK_*`).
 - ❌ **Auto-flash RCP khi boot** — xem [TODO.md](TODO.md)
@@ -205,7 +195,6 @@ Thread-Host/
 
 - **[Documents/protocol/usb_cdc_frame_structure.md](../../Documents/protocol/usb_cdc_frame_structure.md)** — Cấu trúc khung USB CDC (SOF, Frame ID, CMD, LEN, DATA, CRC8, EOF); bảng CMD.
 - **[Documents/protocol/table_data_format.md](../../Documents/protocol/table_data_format.md)** — Format dữ liệu Router Table, Child Table, Joiner Table.
-- **[Documents/coap/leader_stop_command_coap.md](../../Documents/coap/leader_stop_command_coap.md)** — CoAP Stop Command / Leader Control.
 - **[Documents/coap/border_router_coap_server.md](../../Documents/coap/border_router_coap_server.md)** — CoAP server BR (device registry).
 
 ### Tài liệu chính thức

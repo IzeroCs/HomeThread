@@ -15,6 +15,7 @@ Project da on dinh voi BR qua TCP, trang Nodes (Router/Child/Joiner List), Toast
 
 ### CoAP device data (Thread-Node)
 - **Backend:** CoAP server UDP 5683 (**CoapDeviceServer.ts**), socket **udp6** listen `[::]:5683`. Path chi **/device/** (vd. `/device/register`, `/device/update`, `/device/ping`). Nhan payload CBOR, parse bang `cbor2`, log `CoAP CBOR -> JSON: ...` + type/rloc16; tra 2.01. **Khong emit** len frontend (da bo EVENTS.CHILD_DATA, ChildDataPayload).
+- **Registration model:** Thread-Node la **CoAP client** chu dong POST len backend; backend chi **listen**. Neu CoAP fail (timeout/ICMP unreachable) thi force SRP re-discovery (force_refresh) va gui lai.
 - **Docs:** `docs/coap/thread_node_coap.md` — huong dan Thread-Node (path /device/, CBOR, SRP discovery).
 
 ### UI polish (dark navy, Settings, Modal)

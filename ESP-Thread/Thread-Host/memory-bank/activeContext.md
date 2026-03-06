@@ -36,10 +36,6 @@ Backhaul Ethernet W5500 đã có IPv6 trên backbone (link-local + ULA/global kh
 - EUI64 all-zero = wildcard → `NULL` vào `otCommissionerAddJoiner`
 - Log EUI64 format `xx:xx:xx:xx:xx:xx:xx:xx` trước khi gọi OT
 
-### Leader Control Client — Fix assert crash
-- **Bug:** `esp_openthread_task_switching_lock_release` assert khi `send_coap_stop_command_once` gọi OT API mà không giữ lock
-- **Fix:** `send_coap_stop_command_once` tự acquire/release lock bên trong; caller release trước khi gọi và dùng `goto next_iteration` để skip `lock_release()` bên dưới
-
 ### Phase 1 cleanup (BR thật) — Đã thực hiện
 - Đã xóa Device Registry (CoAP server /device/register|update|ping) và CMD_DATA push/wait-ACK. BR không còn forward child→backend; chuyển hướng sang BR thật (child gửi thẳng backend qua IP). Frame protocol chỉ dùng cho quản lý BR (state, dataset, Commissioner…).
 
@@ -84,7 +80,6 @@ Backhaul Ethernet W5500 đã có IPv6 trên backbone (link-local + ULA/global kh
 ## Known Issues đang theo dõi
 
 - `main` task hiện "used full" trong stack monitor — đây là artifact của task đã exit, không phải overflow
-- Leader Control Client gửi `GET /network/stop` nhưng chưa biết Leader phía kia xử lý thế nào
 - **Dashboard-Thread:** IP_ADDR response no ACK retry — backend chỉ gửi reply ACK khi `stateChangedOrFirst` trong pullState; các lần fetch IP_ADDR khác không reply → BR retry. Fix: gọi replyAck trong `CommandManager.handle()` cho mọi ACK CMD_IP_ADDR (16 byte).
 - **(Đã xử lý) SRP server Refused:** Trước đây server trả RCODE 5 (Refused) do key lease phải ≥ lease; đã sửa bằng `mKeyLease=120`, `mLease=60` và gọi `otSrpClientSetLeaseInterval`/`SetKeyLeaseInterval` trước add service — đăng ký thành công, kiểm tra bằng `ot srp server host` / `ot srp server service`.
 - **(Đã xử lý) SRP hostname mojibake/rỗng:** Khi dùng buffer stack cho hostname, SRP client giữ con trỏ dangling → DNS update bất đồng bộ đọc rác. Đã sửa bằng buffer tĩnh `s_srp_hostname` và copy hostname vào đó trước khi gọi `otSrpClientSetHostName`.

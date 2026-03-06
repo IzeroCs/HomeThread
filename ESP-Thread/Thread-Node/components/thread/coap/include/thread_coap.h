@@ -2,7 +2,7 @@
  * Thread CoAP - Shared CoAP server management.
  * 
  * Component để quản lý CoAP server dùng chung cho các component khác
- * (entity_coap_server, thread_network_stop, ...).
+ * (entity_coap_server, ...).
  */
 #pragma once
 
@@ -36,7 +36,7 @@ bool thread_coap_server_is_started(void);
  * Tự động start CoAP server nếu chưa start, setup resource, acquire lock, add resource, release lock.
  * 
  * @param resource Pointer đến otCoapResource structure (phải là static hoặc persistent)
- * @param uri_path URI path string (ví dụ: "entities", "network/stop")
+ * @param uri_path URI path string (ví dụ: "entities")
  * @param handler Handler function để xử lý request
  * @param context Context pointer (có thể NULL)
  * @return ESP_OK nếu thành công

@@ -489,7 +489,7 @@ export class WebSocketServer {
         socket.emit(EVENTS.SRP_REGISTER_RESULT, { success: true });
       } else {
         const errorMap: Record<number, string> = {
-          0x02: "OT chưa sẵn sàng (chưa leader, SRP client/server chưa up).",
+          0x02: "OT chưa sẵn sàng (SRP client/server chưa up hoặc lock timeout).",
           0x03: "Lock timeout.",
           0x04: "Payload sai (hostname/len/port hoặc tổng độ dài).",
         };

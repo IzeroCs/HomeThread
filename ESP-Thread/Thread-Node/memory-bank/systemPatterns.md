@@ -8,7 +8,6 @@ Thread-Node/
 │   ├── thread/                   # Thread middleware layer
 │   │   ├── thread_endpoint       # Application bootstrap framework
 │   │   ├── thread_joiner         # OpenThread Joiner state machine
-│   │   ├── thread_network_stop   # /network/stop CoAP handler
 │   │   ├── coap/                 # Shared CoAP server manager
 │   │   ├── device_registry/      # CoAP client → /device/register
 │   │   ├── status_led/           # WS2812 RGB status indicator
@@ -83,7 +82,7 @@ esp_openthread_lock_release();
 
 **Các nơi áp dụng**:
 - `thread_joiner.c`: `otJoinerStart()`, `otThreadSetEnabled()`, `otDeviceProperties`
-- `device_registry.c`: `otThreadGetLeaderRloc()`, `otCoapSendRequest()`
+- `device_registry.c`: `otThreadGetDeviceRole()`, `otCoapSendRequest()`
 - `thread_coap.c`: `otCoapStart()`, `otCoapAddResource()`
 - `entity_coap_server.c`: Mọi OT API trong handler callbacks
 
@@ -95,13 +94,12 @@ Mỗi Thread-Node vừa là **CoAP Server** vừa là **CoAP Client**:
 
 ```
 Thread-Node CoAP Server:
-  /network/stop        GET  → Xử lý yêu cầu tạm dừng mạng từ BR
   /entities            GET  → Liệt kê tất cả entities
   /entities/{id}       GET  → Mô tả entity cụ thể
   /entities/{id}/{attr} PUT/POST → Điều khiển entity
 
 Thread-Node CoAP Client:
-  Leader RLOC /device/register  POST → Đăng ký device model (CBOR payload)
+  Backend /device/register  POST → Đăng ký device model (CBOR payload; endpoint từ backend discovery)
 ```
 
 **Shared CoAP manager** (`thread_coap.c`): Idempotent `otCoapStart()` — có thể gọi nhiều lần mà không lỗi. Resource registration với lock. Response helper `thread_coap_send_response()`.
@@ -129,10 +127,9 @@ cbor_close_array()          // Break code (0xFF)
 | Task | Stack | Priority | Mục đích |
 |---|---|---|---|
 | `openthread` | 10240 | 5 | OpenThread stack (do ESP-IDF tạo) |
-| `registry_task` | 4096 | 5 | Gửi CBOR đến Leader; chỉ khi Child/Router; one-shot (dừng sau ACK); retry 2s khi fail |
+| `backend_disc_refresh` | 4096 | 4 | Re-discovery backend định kỳ (vd. 60s); cập nhật endpoint khi addr/port đổi; trigger register khi đổi |
 | `status_led_task` | 2048 | 2 | Cập nhật WS2812 LED |
 | `boot_btn_task` | 2048 | 2 | Poll GPIO, detect long press |
-| `network_stop_restart_task` | 4096 | 4 | Dừng 120s rồi restart Thread |
 
 ## Pattern 7: Joiner State Machine
 
@@ -164,7 +161,7 @@ cbor_close_array()          // Break code (0xFF)
 
 **Đích:** Backend (IPv6 + port từ `backend_discovery_get_endpoint()`). **Không** còn registry task trong thread_endpoint hay gửi tới Leader RLOC.
 
-**Điều kiện gửi:** App gọi `device_registry_register(endpoint, ...)` chỉ khi đã có endpoint từ `backend_discovery_get_endpoint()`. `device_registry_register()` từ chối khi role là Leader (return `ESP_ERR_INVALID_STATE`). Chỉ gửi khi Child/Router.
+**Điều kiện gửi:** App gọi `device_registry_register(endpoint, ...)` chỉ khi đã có endpoint từ `backend_discovery_get_endpoint()`. Mọi role Child/Router/Leader đều gửi được.
 
 **Trigger:** (1) Lần đầu discovery backend thành công (trong on_joined hoặc task) → gọi `device_registry_register(ep, ...)`. (2) Refresh task (vd. 60s) phát hiện endpoint (addr/port) đổi → cập nhật endpoint và gọi lại `device_registry_register()`.
 
@@ -196,23 +193,6 @@ entity_model (global registry)
 - `entity_set(id, attr, value)` → Update attribute
 - `entity_describe(id, buf, len)` → Human-readable description
 
-## Pattern 11: Network Stop Handler
-
-Khi Border Router gửi `GET /network/stop` và node **đang là Leader**:
-
-```
-[Receive /network/stop]
-    │
-    ├── Send CoAP 2.05 Content response
-    └── Spawn network_stop_restart_task
-          │
-          ├── otThreadSetEnabled(false)   → Rời mạng
-          ├── vTaskDelay(120s)            → Chờ BR lấy lại Leader
-          └── otThreadSetEnabled(true)    → Tái gia nhập
-```
-
-Nếu node không phải Leader, CoAP handler vẫn respond `2.05 Content` nhưng không thực hiện gì (chỉ Leader mới cần nhường).
-
 ## Quan hệ giữa các component
 
 ```
@@ -222,8 +202,6 @@ thread_endpoint
     ├── uses → device_registry   (chỉ khi enable_device_registry = true)
     │              └── uses → device_model (read-only)
     │              └── uses → entity_serialization (encode CBOR)
-    ├── uses → thread_network_stop
-    │              └── uses → thread_coap
     ├── uses → status_led
     └── uses → boot_btn
                    └── uses → thread_joiner (factory_reset)

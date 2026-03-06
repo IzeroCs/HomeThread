@@ -2,14 +2,14 @@
 
 ## Focus hiện tại (2026-03-04)
 
-Dự án đang ở giai đoạn **migration và hoàn thiện** sau khi lớp hạ tầng Thread (joiner, registry, LED, button) đã hoàn chỉnh. **Device register** gửi **chỉ tới Backend** (sau khi discovery); re-register khi backend endpoint (IPv6/port) thay đổi; one-shot on ACK (chỉ gửi khi Child/Router, chờ ACK 20s, gửi 1 lần rồi dừng; retry khi NACK/timeout); flag `device_registry_is_registered()`. Các công việc còn lại tập trung vào **Entity CoAP Server** và **CBOR serialization** cho các entity type chưa implement.
+Dự án đang ở giai đoạn **migration và hoàn thiện** sau khi lớp hạ tầng Thread (joiner, registry, LED, button) đã hoàn chỉnh. **Device register** gửi **chỉ tới Backend** (sau khi discovery); re-register khi backend endpoint (IPv6/port) thay đổi; one-shot on ACK (mọi role Child/Router/Leader đều gửi được; chờ ACK 20s, gửi 1 lần rồi dừng; retry khi NACK/timeout); flag `device_registry_is_registered()`. Các công việc còn lại tập trung vào **Entity CoAP Server** và **CBOR serialization** cho các entity type chưa implement.
 
 ## Recent changes
 
 - **Device register chỉ tới Backend** (`device_registry.c/.h`, `thread_endpoint.c`, `light_on_off/main.c`): CoAP POST `/device/register` gửi tới **Backend** (endpoint từ `backend_discovery_get_endpoint()`), không còn gửi tới Leader RLOC. API: `device_registry_register(endpoint, callback, ctx)` với `device_registry_endpoint_t`; `device_registry_init()` gọi trong thread_endpoint khi `enable_device_registry` (không có registry task, không Leader RLOC). App gọi `device_registry_register()` **sau khi** discovery thành công và khi refresh task (60s) phát hiện endpoint đổi.
 - **Trigger register** (`light_on_off/main.c`): `trigger_register()` khi (1) lần đầu discovery backend thành công, (2) task `backend_disc_refresh` mỗi 60s thấy addr/port đổi → cập nhật `s_backend_ep` và gửi lại register.
 - **Backend discovery log cleanup** (`backend_discovery.c`, `light_on_off/main.c`): Khi discovery không tìm thấy backend: một dòng thân thiện (vd. "Backend not available yet (will retry in 60s)"); chi tiết (DNS timeout, SRP failed, "Initial backend discovery failed") ở LOGD.
-- **Flag `device_registry_is_registered()`** (`device_registry.h/.c`): false lúc boot; lên true khi Backend đã ACK (2.01/2.04/2.05) ít nhất một lần. Re-register khi backend reboot: có thể thêm sau (periodic re-register hoặc backend multicast).
+- **Flag `device_registry_is_registered()`** (`device_registry.h/.c`): false lúc boot; lên true khi Backend đã ACK (2.01/2.04/2.05) ít nhất một lần. **Hiện tại** chỉ gửi lại register khi app gọi lại `device_registry_register()` (thường do endpoint đổi hoặc node reboot/join lại); **backend restart nhưng giữ nguyên IPv6/port sẽ không tự trigger re-register**. (TODO: periodic re-register hoặc backend-side notify)
 - **Tài liệu ACK/NACK** (`docs/coap/border_router_coap_server.md`): Backend nhận `/device/register` phải trả ACK/NACK; bảng mã ACK (2.01, 2.04, 2.05) và NACK (4.xx, 5.xx).
 - **Device info numeric (Zigbee-style)** (`device_model.h`, `device_model.c`, `entity_serialization.c`): device_type, sw_version, hw_version = number; strings cho manufacturer, model, device_name.
 - **Backend discovery: cache TTL + re-discovery định kỳ** (`backend_discovery.c`, `light_on_off/main.c`): `cache_ttl_sec`; task 60s gọi get_endpoint(..., false), cập nhật s_backend_ep khi endpoint đổi → trigger_register(). Chi tiết: `docs/coap/backend_discovery_srp.md`.
@@ -86,7 +86,7 @@ Phía Thread-Host chưa implement việc forward CBOR data từ `/device/registe
 | `components/thread/thread_endpoint.c` | ✅ Complete | Entry point; enable_device_registry (tùy chọn device register) |
 | `components/thread/backend_discovery/backend_discovery.c` | ✅ Complete | SRP/DNS-SD browse _dashboard._udp; mHostNameBuffer API; phụ thuộc BR SRP |
 | `components/thread/thread_joiner.c` | ✅ Complete | Joiner state machine |
-| `components/thread/device_registry/device_registry.c` | ✅ Complete | CoAP POST /device/register **tới Backend** (endpoint từ backend_discovery); callback ACK/NACK; từ chối khi role Leader |
+| `components/thread/device_registry/device_registry.c` | ✅ Complete | CoAP POST /device/register **tới Backend** (endpoint từ backend_discovery); callback ACK/NACK; mọi role (Child/Router/Leader) đều gửi được |
 | `components/entity/coap_server/entity_coap_server.c` | ❌ Stub | Tất cả return 5.01 |
 | `components/entity/serialization/entity_serialization.c` | ⚠️ Partial | Light+sensor OK, rest missing; device info encode device_type/sw/hw as uint |
 | `components/entity/model/include/device_model.h` | ✅ Complete | device_info_t: strings (name, manufacturer, model) + numbers (device_type, sw_version, hw_version) |
@@ -102,7 +102,7 @@ Phía Thread-Host chưa implement việc forward CBOR data từ `/device/registe
 
 4. **Quyết định và implement main/main.c** — nếu muốn Thread-Node root buildable như một template project
 
-5. **TODO (xử lý sau):** Check khi node tự nhảy lên Leader — khi đó node đang ở partition tách riêng (BR vẫn Leader ở partition kia), nên BR **không gửi được** `/network/stop` sang. Cần xử lý khác: phát hiện role = Leader khi prefer_not_leader bật → trigger re-join / chờ partition merge / recovery, sẽ làm sau.
+5. **TODO (xử lý sau):** Check khi node tự nhảy lên Leader — khi đó node đang ở partition tách riêng. Phát hiện role = Leader khi prefer_not_leader bật → trigger re-join / chờ partition merge / recovery, sẽ làm sau.
 
 ## Nguồn tham khảo cho migration
 

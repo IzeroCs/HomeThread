@@ -15,9 +15,8 @@ Firmware cho **ESP32-S3** chạy vai trò **Thread Border Router (BR)**, giao ti
 1. **OpenThread Border Router** — stack OT đầy đủ, border routing + prefix, Commissioner, Border Agent
 2. **Frame protocol (communicate)** — binary frame qua **TCP** (BR listen port); dashboard kết nối BR_IP:port
 3. **Backhaul** — Ethernet W5500 (SPI); IPv6 link-local trên ETHERNET_EVENT_CONNECTED; Wi‑Fi fallback tắt
-4. **CoAP Leader Control** — BR gửi lệnh stop đến Leader khi cần
-5. **LED Status** — WS2812 hiển thị OT device role
-6. **Boot button** — long press 3s → factory reset
+4. **LED Status** — WS2812 hiển thị OT device role
+5. **Boot button** — long press 3s → factory reset
 
 ## Constraints
 
@@ -33,5 +32,4 @@ Firmware cho **ESP32-S3** chạy vai trò **Thread Border Router (BR)**, giao ti
 - `TODO.md` — tính năng chưa làm
 - `../../Documents/protocol/usb_cdc_frame_structure.md` — frame protocol spec
 - `../../Documents/protocol/table_data_format.md` — format Router/Child/Joiner table
-- `../../Documents/coap/leader_stop_command_coap.md` — CoAP leader stop spec
 - `../../Documents/coap/border_router_coap_server.md` — CoAP (device registry chạy trên backend; child gửi thẳng backend)

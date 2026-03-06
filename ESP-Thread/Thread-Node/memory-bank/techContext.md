@@ -92,7 +92,7 @@ CONFIG_ENTITY_MODEL_MAX_ENTITIES=32  # Số entity tối đa trên một thiết
 ### Device Registry (device_registry.c, khi enable_device_registry = true)
 
 - **Đích:** **Backend** — `device_registry_endpoint_t` (IPv6 + port) từ `backend_discovery_get_endpoint()`. App gọi `device_registry_register(endpoint, callback, ctx)` khi đã có endpoint (sau discovery và khi refresh task phát hiện endpoint đổi).
-- **Tham số:** `REGISTRY_ACK_TIMEOUT_MS` 20s, `REGISTRY_RETRY_DELAY_MS` 2s (trong `device_registry.c`). Chỉ gửi 1 lần khi nhận ACK; gửi lại khi app gọi lại (vd. endpoint đổi). Re-register khi backend reboot (periodic hoặc multicast) — chưa implement.
+- **Tham số:** `REGISTRY_ACK_TIMEOUT_MS` 20s, `REGISTRY_RETRY_DELAY_MS` 2s (trong `device_registry.c`). Chỉ gửi 1 lần khi nhận ACK; gửi lại khi app gọi lại (vd. endpoint đổi). **Backend restart nhưng giữ nguyên IPv6/port hiện không có cơ chế tự re-register** (cần periodic re-register hoặc backend-side notify — chưa implement).
 
 ### Backend Discovery (backend_discovery.c)
 
@@ -145,14 +145,13 @@ Thread-Node/
 │   │   ├── Kconfig                   # THREAD_JOINER_PSKD, RETRY_SEC, RETRY_NOT_FOUND_SEC
 │   │   ├── thread_endpoint.c/.h      # Bootstrap framework
 │   │   ├── thread_joiner.c/.h        # Joiner state machine
-│   │   ├── thread_network_stop.c/.h  # /network/stop CoAP handler
 │   │   ├── include/
 │   │   │   └── esp_ot_config_defaults.h  # Radio/host/port macros
 │   │   ├── coap/
 │   │   │   ├── thread_coap.c/.h      # Shared CoAP server
 │   │   │   └── CMakeLists.txt
 │   │   ├── device_registry/
-│   │   │   ├── device_registry.c/.h  # CoAP POST → /device/register (Leader RLOC)
+│   │   │   ├── device_registry.c/.h  # CoAP POST → /device/register (Backend; endpoint từ backend_discovery)
 │   │   │   └── CMakeLists.txt
 │   │   ├── backend_discovery/
 │   │   │   ├── backend_discovery.c/.h # SRP/DNS-SD browse _dashboard._udp.default.svc.arpa → IPv6 backend + port

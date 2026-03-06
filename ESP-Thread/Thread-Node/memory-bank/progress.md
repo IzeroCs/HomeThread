@@ -23,8 +23,7 @@ Examples                 █████████████░░░░░�
 | **Status LED** | `status_led.c/.h` | WS2812 via RMT. 6 trạng thái: Boot/NotJoined/Detached/Child/Router/Leader |
 | **Boot Button** | `boot_btn.c/.h` | Long press detection, gọi factory reset |
 | **CoAP Server Manager** | `thread_coap.c/.h` | Idempotent start, resource registration với lock, response helper |
-| **Device Registry** | `device_registry.c/.h` | CoAP POST → `/device/register` tại **Backend** (endpoint từ backend_discovery); gọi device_registry_register() sau khi discovery và khi endpoint đổi; chỉ gửi khi Child/Router; chờ ACK (20s); one-shot sau ACK; retry 2s khi NACK/timeout; `device_registry_is_registered()`; từ chối khi role Leader |
-| **Network Stop** | `thread_network_stop.c/.h` | CoAP GET `/network/stop`, tạm dừng 120s nếu là Leader |
+| **Device Registry** | `device_registry.c/.h` | CoAP POST → `/device/register` tại **Backend** (endpoint từ backend_discovery); gọi device_registry_register() sau khi discovery và khi endpoint đổi; mọi role Child/Router/Leader đều gửi được; chờ ACK (20s); one-shot sau ACK; retry 2s khi NACK/timeout; `device_registry_is_registered()` |
 | **Custom OT Config** | `openthread_custom_config.h` | Child timeout 60s, supervision 30s/60s, leader weight, CoAP API. **Không** define OPENTHREAD_CONFIG_DNS_CLIENT_ENABLE (ESP-IDF 5.5.3 dùng CONFIG_OPENTHREAD_DNS_CLIENT từ sdkconfig trong openthread-core-esp32x-ftd-config.h). |
 | **Backend Discovery** | `backend_discovery.c/.h` | SRP/DNS-SD browse `_dashboard._udp.default.svc.arpa`; mHostNameBuffer API; cache NVS + **cache_ttl_sec**; static fallback. Log: một dòng thân thiện khi NOT_FOUND (vd. "Backend not available yet (will retry in 60s)"); chi tiết (DNS timeout, SRP failed) ở LOGD. Example: task 60s gọi get_endpoint(..., false), cập nhật s_backend_ep khi endpoint đổi → trigger_register(). |
 
@@ -57,10 +56,9 @@ Examples                 █████████████░░░░░�
 | Mục | Trạng thái |
 |---|---|
 | Đích: Backend (từ discovery) | ✅ App gọi device_registry_register(endpoint) với endpoint từ backend_discovery_get_endpoint(); trigger khi discovery thành công và khi endpoint đổi |
-| Chỉ gửi khi Child/Router | ✅ device_registry_register() từ chối khi role Leader |
+| Mọi role đều gửi được | ✅ Child, Router, Leader đều có thể gửi đăng ký tới backend |
 | Chờ ACK/NACK (callback) | ✅ on_registry_response + timeout 20s |
 | Retry khi NACK/timeout | ✅ Delay 2s rồi gửi lại |
-| Leader không gửi | ✅ device_registry_register() return ESP_ERR_INVALID_STATE khi role Leader |
 
 ### Tài liệu
 
@@ -125,7 +123,7 @@ Trước đây gửi register mỗi 5s không chờ response → tích tụ requ
 
 **NoBufs → partition / "nhảy Leader":** Khi message buffer cạn (nhiều CoAP confirmable cùng lúc), MLE/keep-alive có thể mất → topology thay đổi, mạng dễ partition → node có thể tự trở thành Leader (ref: OpenThread issue #4508). ACK flow giảm số request đồng thời nên test ổn định lâu, không còn nhảy.
 
-**TODO (xử lý sau):** Thêm check: nếu node tự dưng chuyển lên Leader (do NoBufs → partition, node nằm ở partition tách riêng nên thành Leader của partition đó). Lúc này BR vẫn là Leader ở partition kia, nên BR **không thể** gửi `/network/stop` sang (không cùng partition). Cần xử lý khác — vd. phát hiện role = Leader khi `prefer_not_leader` bật rồi trigger re-join / chờ partition merge / hoặc recovery logic, sẽ làm sau.
+**TODO (xử lý sau):** Thêm check: nếu node tự dưng chuyển lên Leader (do NoBufs → partition, node nằm ở partition tách riêng). Phát hiện role = Leader khi `prefer_not_leader` bật rồi trigger re-join / chờ partition merge / hoặc recovery logic, sẽ làm sau.
 
 ### Issue 1: entity_coap_server không functional
 
@@ -134,6 +132,10 @@ Tất cả CoAP control commands từ Border Router đều bị reject với `5.
 ### Issue 2: CMD_DATA forwarding chưa implement (phía Thread-Host)
 
 Thread-Node gửi `/device/register` **trực tiếp tới Backend** (không qua BR). Backend (Dashboard-Thread) nhận CoAP và xử lý; không còn CMD_DATA từ BR cho device register.
+
+### Issue 2.1: Backend restart không trigger re-register (hiện tại)
+
+Nếu Backend khởi động lại nhưng **IPv6/port không đổi**, `backend_disc_refresh` sẽ không gọi lại `trigger_register()` → Node **không tự gửi lại** `/device/register`. (TODO: periodic re-register hoặc backend-side notify)
 
 ### Issue 3: Chỉ build từ examples/
 
@@ -159,7 +161,7 @@ OpenThread core **không** forward `*.default.svc.arpa` ra upstream (dnssd_serve
 | 0.2.0 | Device Registry (CoAP POST với CBOR) |
 | 0.3.0 | Entity Model data structures (6 entity types) |
 | 0.4.0 | CBOR serialization (light + sensor), device_model singleton |
-| 0.5.0 | network/stop handler, /entities CoAP resource skeleton (stub) |
+| 0.5.0 | /entities CoAP resource skeleton (stub) |
 | 0.6.0 | light_on_off example hoàn chỉnh, custom OT config |
 | 0.7.0 | **Device register ACK flow** (chỉ Child/Router, chờ ACK, retry); **ACK/NACK docs**; Leader check trong device_registry |
 | 0.8.0 | **Device info numeric** (device_type, sw_version, hw_version = number; Zigbee-style; giảm băng thông register) |

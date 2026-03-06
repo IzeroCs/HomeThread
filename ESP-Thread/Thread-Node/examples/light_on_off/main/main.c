@@ -1,7 +1,7 @@
 /*
  * Example light_on_off: Thread Endpoint với Entity Model và CoAP.
  *
- * Sử dụng thread/endpoint, entity_coap_server, network_stop handler.
+ * Sử dụng thread/endpoint, entity_coap_server.
  */
 #include <string.h>
 #include "esp_err.h"
@@ -213,7 +213,6 @@ void app_main(void)
         .pskd = NULL,
         .prefer_not_leader = true,
         .router_selection_jitter = 1,
-        .enable_network_stop_handler = true,
         .enable_device_registry = true,   /* CoAP client cho register; app gửi tới Backend sau khi discovery */
         .on_joined = on_joined,
         .ctx = NULL,

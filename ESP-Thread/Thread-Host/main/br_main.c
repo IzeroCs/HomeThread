@@ -15,7 +15,6 @@
 #include "nvs_flash.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
-#include "esp_check.h"
 
 #include "br_launch.h"
 #include "br_rcp_ctrl.h"
@@ -23,7 +22,6 @@
 #include "hardware/led_status.h"
 #include "hardware/boot_btn.h"
 #include "backhaul/eth_w5500.h"
-#include "coap_controller/leader_control_client.h"
 #include "communicate/communicate_task.h"
 #include "esp_log.h"
 #include "esp_system.h"
@@ -48,11 +46,10 @@ static const task_stack_info_t k_tasks[] = {
     { TASK_NAME_BOOT_BTN,     TASK_STACK_BOOT_BTN     },
     { TASK_NAME_LED_STATUS,   TASK_STACK_LED_STATUS   },
     { TASK_NAME_TCP_RX,       TASK_STACK_TCP_RX       },
-    { TASK_NAME_LEADER_RLOC,  TASK_STACK_LEADER_RLOC  },
     { TASK_NAME_STK_MON,      TASK_STACK_STK_MON      },
 };
 
-static void stack_monitor_task(void *pv)
+static void __attribute__((unused)) stack_monitor_task(void *pv)
 {
     (void)pv;
     const int n = (int)(sizeof(k_tasks) / sizeof(k_tasks[0]));
@@ -171,9 +168,6 @@ void app_main(void)
     // Disabled: đỏ nhấp nháy | Detached: xanh dương nhấp nháy
     // Leader: xanh lá tĩnh | Router: tím tĩnh | Child: xanh dương tĩnh
     ESP_ERROR_CHECK(led_status_start(NULL));
-
-    // Initialize Leader Control Client (CoAP client để gửi lệnh stop đến Leader)
-    ESP_ERROR_CHECK(leader_control_client_init());
 
     // Boot button: long press ~3s → factory reset (erase NVS) và restart
     boot_btn_config_t btn_cfg = {

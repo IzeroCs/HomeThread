@@ -6,7 +6,7 @@ Tài liệu ngắn về cơ chế discovery backend (Dashboard) trên Thread-Nod
 
 Thread-Node dùng **OpenThread DNS client** (`otDnsClientBrowse`, `otDnsBrowseResponseGetServiceInfo`, `otDnsBrowseResponseGetHostAddress`) để:
 
-1. Browse service `_dashboard._udp.default.service.arpa` trên mesh.
+1. Browse service `_dashboard._udp.default.svc.arpa` trên mesh.
 2. Lấy thông tin SRV (hostname + port) và resolve AAAA → IPv6.
 3. Cache kết quả vào NVS (namespace `backend`) và fallback cấu hình tĩnh nếu SRP không trả kết quả.
 

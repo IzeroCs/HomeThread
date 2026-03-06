@@ -11,8 +11,8 @@
                                         |
                     +-----------+-------+--------+-----------+
                     |           |                |           |
-              [CoAP Client]  [Frame Protocol] [LED/Button]
-              leader_rloc    communicate     hardware
+             [Frame Protocol]           [LED/Button]
+             communicate               hardware
                     |           |                |
               Thread net   TCP listen       [Backbone IP]
                     |           |                |
@@ -32,7 +32,7 @@ nvs_flash_init → esp_netif_init → esp_event_loop
 → openthread_dataset_init_on_boot   (tạo dataset "ESP-BR-<MAC>" nếu chưa có)
 → esp_openthread_border_router_init()   (routing + prefix)
 → communicate_task_start            (queue + watchdog + transport TCP)
-→ led_status_start, leader_control_client_init, boot_btn_start
+→ led_status_start, boot_btn_start
 → xTaskCreate(stack_monitor_task)   (log HWM mỗi 30s)
 ```
 
@@ -46,7 +46,6 @@ nvs_flash_init → esp_netif_init → esp_event_loop
 | `tcp_rx` | `TASK_NAME_TCP_RX` | 4096 | 5 | Đọc byte từ socket TCP (frame từ dashboard) |
 | `led_status` | `TASK_NAME_LED_STATUS` | 2048 | 5 | WS2812 theo OT role (dùng last-known role khi lock timeout) |
 | `boot_btn` | `TASK_NAME_BOOT_BTN` | 4096 | 0 | Poll GPIO0 |
-| `leader_rloc` | `TASK_NAME_LEADER_RLOC` | 4096 | 5 | CoAP GET /network/stop |
 | `stk_mon` | `TASK_NAME_STK_MON` | 3072 | 2 | Log HWM + heap mỗi 30s |
 
 **Centralized config:** `include/br_config.h` — tất cả `TASK_NAME_*` và `TASK_STACK_*`
@@ -88,16 +87,13 @@ esp_openthread_lock_release();
 
 **Timeout conventions:**
 - 500ms: CMD_STATE, IP_ADDR cache refresh
-- 1000ms: dataset, tables, SET_*, thread start/stop, leader CoAP tasks
+- 1000ms: dataset, tables, SET_*, thread start/stop
 - 2000ms: CMD_COMMISSIONER_JOINER, thread_graceful_shutdown
 
 **NACK error codes:** 0x01 invalid cmd, 0x02 not ready, 0x03 lock timeout, 0x04 invalid param, 0x05 busy
 
 ### Exception — Commissioner
 Sau `otCommissionerStart()`, **phải release lock** trước khi poll state (vòng lặp 200ms, timeout 1s). OT task cần lock để xử lý petition. Sau khi ACTIVE → re-acquire → gọi `otCommissionerAddJoiner`.
-
-### Exception — Leader CoAP send
-`send_coap_stop_command_once()` tự quản lý lock bên trong. Caller **release lock trước khi gọi**, dùng `goto next_iteration` để skip `lock_release()` bên dưới.
 
 ## Pattern: Deferred Action (Timer)
 

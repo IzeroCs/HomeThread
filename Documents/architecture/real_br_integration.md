@@ -67,7 +67,7 @@
   - **Domain:** `default.svc.arpa`
   - **Instance:** ví dụ `dashboard` (hoặc từ cấu hình)
   - **Port:** 5683 (CoAP)
-  - **TXT:** `ver=1`, `proto=coap+cbor`, `path=/child`
+  - **TXT:** `ver=1`, `proto=coap+cbor`, `path=/device`
 - **Luồng Backend:** Dashboard-Thread backend gửi đăng ký SRP **qua frame protocol** (CMD_SRP_REGISTER = 0x44) tới BR khi BR trở thành leader; BR (Thread-Host) nhận frame rồi submit lên SRP server. DATA: hostname_len(1) + hostname(N) + backend_ipv6(16) + port(2 BE). IPv6 backend lấy từ env BACKEND_IPV6 hoặc tự lấy (ULA/link-local).
 - **Luồng Thread-Node:** Sau khi join mạng, browse `_dashboard._udp.default.svc.arpa` (OpenThread SRP client / DNS-SD) → nhận SRV + A/AAAA → lấy IP và port backend → cache; dùng cho CoAP. Nếu browse không thấy service → fallback cấu hình tĩnh (IP/port trong NVS hoặc commissioning).
 - **Kiểm tra trên BR:** Trên serial CLI BR (UART0), chạy **`ot srp server host`** và **`ot srp server service`** để xem host/service đã đăng ký (vd. `dashboard.default.service.arpa.`, `dashboard._dashboard._udp.default.service.arpa.`). Cần `CONFIG_OPENTHREAD_HEADER_CUSTOM=y` và path `include` trong sdkconfig để lệnh SRP CLI có sẵn.

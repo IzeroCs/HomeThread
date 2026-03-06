@@ -16,7 +16,6 @@ Thread-Node là **lớp thiết bị cuối** (End Device / Router Node) trong h
 - Kết nối vào Thread mesh thông qua Border Router (Thread-Host)
 - Đăng ký thông tin thiết bị lên **Backend** qua CoAP POST `/device/register` (địa chỉ Backend lấy từ backend discovery SRP/DNS-SD)
 - Nhận lệnh điều khiển từ Border Router qua CoAP PUT `/entities/{id}/{attr}`
-- Hỗ trợ leader management qua CoAP GET `/network/stop`
 
 ## Mục tiêu cốt lõi
 
@@ -29,7 +28,7 @@ Thread-Node là **lớp thiết bị cuối** (End Device / Router Node) trong h
 ## Phạm vi
 
 ### Bao gồm
-- `components/thread/`: Thread joining, CoAP server/client, device registry, status LED, boot button, network stop
+- `components/thread/`: Thread joining, CoAP server/client, device registry, status LED, boot button
 - `components/entity/`: Entity model, device model, CBOR serialization, entity CoAP server
 - `examples/light_on_off/`: Example hoàn chỉnh duy nhất
 - `openthread_custom_config.h`: Tùy chỉnh OpenThread timeout và CoAP
@@ -55,5 +54,4 @@ Thread-Node là **lớp thiết bị cuối** (End Device / Router Node) trong h
 
 - `Documents/iot-entity-model/entity_model_specification.md` — Entity type system spec v1.3.0
 - `docs/coap/border_router_coap_server.md` — CoAP device registry spec; **ACK/NACK bắt buộc** cho mọi message Node → Leader
-- `Documents/coap/leader_stop_command_coap.md` — CoAP network stop spec
 - `Documents/iot-entity-model/entity_model_schema.md` — SQLite schema (phía Dashboard)

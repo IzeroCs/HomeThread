@@ -247,6 +247,5 @@ entity_id=light.0 type=on_off_light name=LED
 
 ## Tài liệu liên quan
 
-- **[leader_stop_command_coap.md](leader_stop_command_coap.md)** — Leader Control (GET `/network`).
 - **[../iot-entity-model/entity_model_specification.md](../iot-entity-model/entity_model_specification.md)** — Entity model spec.
 - **[../iot-entity-model/entity_model_schema.md](../iot-entity-model/entity_model_schema.md)** — SQLite schema backend.

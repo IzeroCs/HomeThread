@@ -158,4 +158,3 @@ Code production hiện dùng `entity_coap_server`; snippet này chỉ lưu lại
 ## Tài liệu liên quan
 
 - **[border_router_coap_server.md](border_router_coap_server.md)** — CoAP server trên BR.
-- **[leader_stop_command_coap.md](leader_stop_command_coap.md)** — Leader Control CoAP.
