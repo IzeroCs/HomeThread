@@ -14,9 +14,9 @@ Project da on dinh voi BR qua TCP, trang Nodes (Router/Child/Joiner List), Toast
 - **Da xoa:** DashboardSrpClient.ts (UDP SRP), register-srp.ts script, STATE_FAKE_PAYLOAD (sendState gui payload rong khi khong data).
 
 ### CoAP device data (Thread-Node)
-- **Backend:** CoAP server UDP 5683 (**CoapDeviceServer.ts**), socket **udp6** listen `[::]:5683`. Path chi **/device/** (vd. `/device/register`, `/device/update`, `/device/ping`). Nhan payload CBOR, parse bang `cbor2`, log `CoAP CBOR -> JSON: ...` + type/rloc16; tra 2.01. **Khong emit** len frontend (da bo EVENTS.CHILD_DATA, ChildDataPayload).
-- **Registration model:** Thread-Node la **CoAP client** chu dong POST len backend; backend chi **listen**. Neu CoAP fail (timeout/ICMP unreachable) thi force SRP re-discovery (force_refresh) va gui lai.
-- **Docs:** `docs/coap/thread_node_coap.md` — huong dan Thread-Node (path /device/, CBOR, SRP discovery).
+- **Backend:** CoAP server UDP 5683 (**CoapDeviceServer.ts**), socket **udp6** listen `[::]:5683`. Path **/device/** (register, update, ping). **GET /device/ping**: tra **2.05 Content**, payload 4 byte = timestamp uint32 LE (gia tri luc khoi tao server; restart = timestamp moi → node so sanh va gui lai register). **POST /device/register**, update: nhan CBOR, parse bang **thu vien CBOR noi bo** (`backend/src/cbor`), log `CoAP CBOR -> JSON: ...` + structure (device_id, rloc16, role, entities); tra 2.01. Role trong payload la **so** (0=child, 1=router, 2=leader). **Khong emit** len frontend (da bo EVENTS.CHILD_DATA).
+- **Registration model:** Thread-Node la **CoAP client** chu dong: POST register/update; GET /device/ping dinh ky → nhan timestamp → neu khac lan truoc (backend restart) thi callback trigger re-register. Neu CoAP fail thi force SRP re-discovery va gui lai.
+- **Docs:** `docs/coap/thread_node_coap.md` — huong dan Thread-Node (path /device/, CBOR, GET ping, SRP discovery).
 
 ### UI polish (dark navy, Settings, Modal)
 - **Modal / ConfirmModal:** Dark navy — overlay rgba + backdrop blur; box $card-dark, border $brand-border; title/body $text-dark, $text-dark-subtle; nut Cancel ghost, Confirm danger/warning (#ef4444, #f97316) voi hover glow.
@@ -71,7 +71,7 @@ ROUTER_TABLE, CHILD_TABLE, JOINER_TABLE TX va ACK bi filter ra khoi console log 
 
 ## Files to Watch
 
-- `backend/src/server/CoapDeviceServer.ts` — CoAP device (path /device/), CBOR decode (cbor2), log JSON, tra 2.01
+- `backend/src/server/CoapDeviceServer.ts` — CoAP device (path /device/); GET ping → 2.05 + 4-byte timestamp; POST → CBOR decode (backend/src/cbor), log JSON, tra 2.01
 - `backend/src/utils/ipv6.ts` — getPreferredBackendIPv6(), getBackendAddresses()
 - `docs/coap/thread_node_coap.md`, `docs/architecture/real_br_integration.md` — Thread-Node, SRP discovery
 - `backend/src/communicate/CommunicateManager.ts` — pullState(), SRP register khi leader

@@ -85,18 +85,18 @@ CONFIG_ENTITY_MODEL_MAX_TYPES=16     # Số loại entity có thể đăng ký
 CONFIG_ENTITY_MODEL_MAX_ENTITIES=32  # Số entity tối đa trên một thiết bị
 ```
 
-### Thread Endpoint (thread_endpoint_config_t)
+### Thread Node (thread_node_config_t)
 
-- **enable_device_registry** (bool): Khi `true` chỉ gọi `device_registry_init()`; **không** có registry task hay Leader RLOC. App gọi `device_registry_register(endpoint, ...)` sau khi `backend_discovery_get_endpoint()` thành công và khi endpoint đổi. Mặc định `true` khi `config == NULL`.
+- **enable_device_registry** (bool): Khi `true`, thread_node gọi `device_registry_init()`, `thread_discovery_init()`, tạo task discovery refresh 60s và task ping 10s. App **không** gọi discovery/register/ping — chỉ implement on_joined (device + entities + entity_coap_server_start). Mặc định `true` khi `config == NULL`.
 
-### Device Registry (device_registry.c, khi enable_device_registry = true)
+### Device (components/thread/device/)
 
-- **Đích:** **Backend** — `device_registry_endpoint_t` (IPv6 + port) từ `backend_discovery_get_endpoint()`. App gọi `device_registry_register(endpoint, callback, ctx)` khi đã có endpoint (sau discovery và khi refresh task phát hiện endpoint đổi).
-- **Tham số:** `REGISTRY_ACK_TIMEOUT_MS` 20s, `REGISTRY_RETRY_DELAY_MS` 2s (trong `device_registry.c`). Chỉ gửi 1 lần khi nhận ACK; gửi lại khi app gọi lại (vd. endpoint đổi). **Backend restart nhưng giữ nguyên IPv6/port hiện không có cơ chế tự re-register** (cần periodic re-register hoặc backend-side notify — chưa implement).
+- **device_registry**: Build payload (device_model, entity_serialization), API `device_registry_register(endpoint, callback, ctx)`, `device_registry_ping(endpoint, on_timestamp_changed, ctx)`, `device_registry_is_registered()`. Gọi **device_coap** cho transport.
+- **device_coap**: CoAP client: init, `device_coap_send_register(endpoint, payload, len, callback, ctx)`, `device_coap_ping()`. Token 2 byte; GET /device/ping response timestamp → callback re-register khi đổi. Backend restart (timestamp đổi) → trigger re-register.
 
-### Backend Discovery (backend_discovery.c)
+### Thread Discovery (thread_discovery.c)
 
-- Bật DNS client qua **CONFIG_OPENTHREAD_DNS_CLIENT=y** (sdkconfig). Dùng `otDnsClientBrowse` cho `_dashboard._udp.default.svc.arpa`; **otDnsServiceInfo** (ESP-IDF 5.5.3) dùng **mHostNameBuffer** (char*) và **mHostNameBufferSize** (uint16_t) — caller cung cấp buffer trước khi gọi `otDnsBrowseResponseGetServiceInfo`. Discovery trả NotFound/Timeout cho đến khi BR đăng ký service qua SRP thành công. Chi tiết: `docs/coap/backend_discovery_srp.md`.
+- API: `thread_discovery_init(&cfg)`, `thread_discovery_get_endpoint(out, force_refresh)`. `thread_discovery_cfg_t.cache_ttl_sec`. Bật **CONFIG_OPENTHREAD_DNS_CLIENT=y**. Browse `_dashboard._udp.default.svc.arpa`; mHostNameBuffer API (ESP-IDF 5.5.3). **Log:** Chỉ thread_node log INFO khi có IP lần đầu hoặc khi IP thay đổi ("Backend discovered", "Backend endpoint updated"); thread_discovery log cache/static/SRP ở LOGD. Chi tiết: `docs/coap/backend_discovery_srp.md`.
 
 ### Device info (device_model.h)
 
@@ -142,19 +142,16 @@ Thread-Node/
 ├── components/
 │   ├── thread/
 │   │   ├── CMakeLists.txt
-│   │   ├── Kconfig                   # THREAD_JOINER_PSKD, RETRY_SEC, RETRY_NOT_FOUND_SEC
-│   │   ├── thread_endpoint.c/.h      # Bootstrap framework
+│   │   ├── Kconfig
+│   │   ├── thread_node.c/.h          # Bootstrap framework
 │   │   ├── thread_joiner.c/.h        # Joiner state machine
+│   │   ├── thread_coap.c/.h          # Shared CoAP server
+│   │   ├── thread_discovery.c/.h    # SRP/DNS-SD backend discovery
 │   │   ├── include/
-│   │   │   └── esp_ot_config_defaults.h  # Radio/host/port macros
-│   │   ├── coap/
-│   │   │   ├── thread_coap.c/.h      # Shared CoAP server
-│   │   │   └── CMakeLists.txt
-│   │   ├── device_registry/
-│   │   │   ├── device_registry.c/.h  # CoAP POST → /device/register (Backend; endpoint từ backend_discovery)
-│   │   │   └── CMakeLists.txt
-│   │   ├── backend_discovery/
-│   │   │   ├── backend_discovery.c/.h # SRP/DNS-SD browse _dashboard._udp.default.svc.arpa → IPv6 backend + port
+│   │   │   └── esp_ot_config_defaults.h
+│   │   ├── device/                   # Component "device"
+│   │   │   ├── device_registry.c/.h  # Build payload; API register/ping
+│   │   │   ├── device_coap.c/.h      # CoAP transport (register, ping, token)
 │   │   │   └── CMakeLists.txt
 │   │   ├── status_led/
 │   │   │   ├── status_led.c/.h       # WS2812 via RMT
@@ -200,15 +197,13 @@ Khai báo trong các `CMakeLists.txt` của từng component:
 
 | Component | REQUIRES | PRIV_REQUIRES |
 |---|---|---|
-| `thread` | `openthread`, `esp_netif` | `nvs_flash`, `esp_event` |
-| `thread/coap` | `openthread` | — |
-| `thread/device_registry` | `openthread` | `entity/model`, `entity/serialization` |
-| `thread/backend_discovery` | `openthread`, `nvs_flash`, `freertos` | — |
+| `thread` | `openthread`, `esp_netif`, `device`, … | `nvs_flash`, `esp_event` |
+| `device` | `openthread` | `model`, `serialization` (device_registry + device_coap) |
 | `thread/status_led` | `led_strip` | `freertos` |
 | `thread/boot_btn` | — | `freertos`, `thread_joiner` |
 | `entity/model` | — | `esp_mac` |
 | `entity/serialization` | `entity/model` | — |
-| `entity/coap_server` | `entity/model`, `thread/coap` | `openthread` |
+| `entity/coap_server` | `entity/model`, `thread` | `openthread` |
 
 ## Thiết lập môi trường phát triển
 

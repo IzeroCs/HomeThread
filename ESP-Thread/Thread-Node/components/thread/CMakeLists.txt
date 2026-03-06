@@ -1,7 +1,9 @@
 idf_component_register(
-    SRCS 
+    SRCS
         "thread_joiner.c"
-        "thread_endpoint.c"
+        "thread_node.c"
+        "thread_coap.c"
+        "thread_discovery.c"
     INCLUDE_DIRS "include"
     REQUIRES
         esp_event
@@ -13,6 +15,5 @@ idf_component_register(
         freertos
         boot_btn
         status_led
-        device_registry
-        coap
+        device
 )

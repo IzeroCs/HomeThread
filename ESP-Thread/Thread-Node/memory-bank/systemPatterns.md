@@ -5,34 +5,38 @@
 ```
 Thread-Node/
 ├── components/
-│   ├── thread/                   # Thread middleware layer
-│   │   ├── thread_endpoint       # Application bootstrap framework
-│   │   ├── thread_joiner         # OpenThread Joiner state machine
-│   │   ├── coap/                 # Shared CoAP server manager
-│   │   ├── device_registry/      # CoAP client → /device/register
+│   ├── thread/                   # Thread middleware layer (one component, multiple .c)
+│   │   ├── thread_node.c/.h      # Application bootstrap framework
+│   │   ├── thread_joiner.c/.h    # OpenThread Joiner state machine
+│   │   ├── thread_coap.c/.h      # Shared CoAP server manager
+│   │   ├── thread_discovery.c/.h  # Backend discovery (SRP/DNS-SD)
+│   │   ├── device/               # Device ↔ Backend (one component)
+│   │   │   ├── device_registry.c/.h  # Build payload, API; gọi device_coap
+│   │   │   └── device_coap.c/.h     # CoAP transport (register, ping, token)
 │   │   ├── status_led/           # WS2812 RGB status indicator
 │   │   └── boot_btn/             # Factory reset trigger
 │   └── entity/                   # Entity Model layer
 │       ├── model/                # entity_model + device_model + typed structs
 │       ├── serialization/        # Custom CBOR encoder
-│       └── coap_server/          # /entities CoAP resource
+│       └── coap_server/         # /entities CoAP resource
 ├── main/                         # Stub (migration pending)
 └── examples/light_on_off/        # Reference implementation
 ```
 
 ## Pattern 1: One-Call Bootstrap
 
-`thread_endpoint_start()` là single entry point cho toàn bộ hạ tầng. Lập trình viên không gọi bất kỳ OpenThread API nào trực tiếp.
+`thread_node_start()` là single entry point cho toàn bộ hạ tầng. Lập trình viên không gọi bất kỳ OpenThread API nào trực tiếp.
 
 ```
-thread_endpoint_start(on_joined_cb)
+thread_node_start(on_joined_cb)
     │
     ├── NVS init
     ├── status_led_init()
     ├── boot_btn_init()
     ├── esp_openthread_init() + esp_openthread_start()   ← OpenThread task
     └── thread_joiner_start()
-          └── [On join success] → on_joined_cb() → device_registry_start()
+          └── [On join success] → device_registry_init(), thread_discovery, tasks (disc refresh, ping)
+                                  → on_joined_cb()   ← App chỉ setup entities + entity_coap_server
 ```
 
 **Lý do**: Đảm bảo thứ tự khởi động đúng và che giấu toàn bộ phức tạp của OpenThread khỏi code ứng dụng.
@@ -82,7 +86,8 @@ esp_openthread_lock_release();
 
 **Các nơi áp dụng**:
 - `thread_joiner.c`: `otJoinerStart()`, `otThreadSetEnabled()`, `otDeviceProperties`
-- `device_registry.c`: `otThreadGetDeviceRole()`, `otCoapSendRequest()`
+- `device/device_registry.c`: `otThreadGetDeviceRole()` (khi build payload)
+- `device/device_coap.c`: `otCoapSendRequest()`, lock trong send path
 - `thread_coap.c`: `otCoapStart()`, `otCoapAddResource()`
 - `entity_coap_server.c`: Mọi OT API trong handler callbacks
 
@@ -98,11 +103,11 @@ Thread-Node CoAP Server:
   /entities/{id}       GET  → Mô tả entity cụ thể
   /entities/{id}/{attr} PUT/POST → Điều khiển entity
 
-Thread-Node CoAP Client:
-  Backend /device/register  POST → Đăng ký device model (CBOR payload; endpoint từ backend discovery)
+Thread-Node CoAP Client (device_coap, gọi từ device_registry):
+  Backend POST /device/register  → CBOR payload (device_registry build); GET /device/ping → timestamp; re-register khi timestamp đổi.
 ```
 
-**Shared CoAP manager** (`thread_coap.c`): Idempotent `otCoapStart()` — có thể gọi nhiều lần mà không lỗi. Resource registration với lock. Response helper `thread_coap_send_response()`.
+**Shared CoAP manager** (`thread_coap.c`): Idempotent `otCoapStart()`. **device_coap**: CoAP client (token 2 byte, lock), POST register + GET ping; response handler ping parse timestamp → callback re-register. **device_registry**: build payload (device_model, entity_serialization), gọi device_coap_send_register / device_coap_ping.
 
 ## Pattern 5: Custom CBOR Serialization
 
@@ -127,9 +132,10 @@ cbor_close_array()          // Break code (0xFF)
 | Task | Stack | Priority | Mục đích |
 |---|---|---|---|
 | `openthread` | 10240 | 5 | OpenThread stack (do ESP-IDF tạo) |
-| `backend_disc_refresh` | 4096 | 4 | Re-discovery backend định kỳ (vd. 60s); cập nhật endpoint khi addr/port đổi; trigger register khi đổi |
-| `status_led_task` | 2048 | 2 | Cập nhật WS2812 LED |
-| `boot_btn_task` | 2048 | 2 | Poll GPIO, detect long press |
+| `thread_disc` | 4096 | 5 | Re-discovery 60s; cập nhật endpoint khi addr/port đổi; log "Backend discovered" / "Backend endpoint updated" chỉ khi lần đầu hoặc đổi; trigger_register |
+| `backend_ping` | 4096 | 5 | GET /device/ping mỗi 10s; khi timestamp response khác → trigger_register |
+| `status_led_task` | 2048 | 2 | WS2812 LED |
+| `boot_btn_task` | 2048 | 2 | Poll GPIO, long press → factory reset |
 
 ## Pattern 7: Joiner State Machine
 
@@ -157,17 +163,15 @@ cbor_close_array()          // Break code (0xFF)
 
 **Factory Reset**: `otInstanceErasePersistentInfo()` + NVS namespace erase + `esp_restart()`
 
-## Pattern 8: Device Registry — Gửi tới Backend sau discovery
+## Pattern 8: Device Registry + device_coap — Backend sau discovery
 
-**Đích:** Backend (IPv6 + port từ `backend_discovery_get_endpoint()`). **Không** còn registry task trong thread_endpoint hay gửi tới Leader RLOC.
+**Đích:** Backend (IPv6 + port từ `thread_discovery_get_endpoint()`). **thread_node** nội bộ: discovery, refresh task 60s, ping task 10s; khi có/đổi endpoint hoặc ping timestamp đổi → gọi `device_registry_register()` / `device_registry_ping()`. App không gọi discovery/register/ping.
 
-**Điều kiện gửi:** App gọi `device_registry_register(endpoint, ...)` chỉ khi đã có endpoint từ `backend_discovery_get_endpoint()`. Mọi role Child/Router/Leader đều gửi được.
+**device_registry** (device/): Build payload (device_model, entity_serialization), gọi **device_coap** (transport). API: `device_registry_register(endpoint, callback, ctx)`, `device_registry_ping(endpoint, on_timestamp_changed, ctx)`, `device_registry_is_registered()`.
 
-**Trigger:** (1) Lần đầu discovery backend thành công (trong on_joined hoặc task) → gọi `device_registry_register(ep, ...)`. (2) Refresh task (vd. 60s) phát hiện endpoint (addr/port) đổi → cập nhật endpoint và gọi lại `device_registry_register()`.
+**device_coap** (device/): CoAP client: `device_coap_init()`, `device_coap_send_register(endpoint, payload, len, callback, ctx)`, `device_coap_ping()`. Token 2 byte cho mọi request; lock pattern. GET /device/ping response 4-byte timestamp (LE) → nếu khác lần trước gọi callback (thread_node → trigger_register).
 
-**Luồng:** Gửi với callback `on_registry_response`; timeout 20s. Nếu ACK (2.01/2.04/2.05) → one-shot (chỉ gửi 1 lần rồi dừng cho đến khi app gọi lại). Nếu NACK hoặc timeout → delay 2s rồi retry. Một request trong flight tại một thời điểm — tránh NoBufs.
-
-**Tham số:** `REGISTRY_ACK_TIMEOUT_MS` 20s, `REGISTRY_RETRY_DELAY_MS` 2s (trong `device_registry.c`).
+**Log backend IP:** Chỉ log INFO **1 lần** khi có IP và **khi IP thay đổi** (thread_node: "Backend discovered", "Backend endpoint updated"). thread_discovery khi trả cache/static/SRP dùng LOGD.
 
 ## Pattern 9: Device info — strings vs numbers
 
@@ -196,20 +200,21 @@ entity_model (global registry)
 ## Quan hệ giữa các component
 
 ```
-thread_endpoint
+thread_node
     ├── uses → thread_joiner
     ├── uses → thread_coap
-    ├── uses → device_registry   (chỉ khi enable_device_registry = true)
-    │              └── uses → device_model (read-only)
-    │              └── uses → entity_serialization (encode CBOR)
+    ├── uses → thread_discovery   (khi enable_device_registry)
+    ├── uses → device (device_registry)   (khi enable_device_registry)
     ├── uses → status_led
-    └── uses → boot_btn
-                   └── uses → thread_joiner (factory_reset)
+    └── uses → boot_btn → thread_joiner (factory_reset)
 
-backend_discovery (app-level, ví dụ light_on_off)
-    └── uses → openthread DNS client (otDnsClient*), nvs_flash; không phụ thuộc device_registry
+device (component)
+    ├── device_registry  → device_model, entity_serialization (build payload)
+    └── device_coap     → openthread CoAP client (transport)
+
+thread_discovery
+    └── uses → openthread DNS client, nvs_flash
 
 entity_coap_server
-    └── uses → entity_model (get/set entities)
-    └── uses → thread_coap (register resource, send response)
+    └── uses → entity_model, thread_coap
 ```

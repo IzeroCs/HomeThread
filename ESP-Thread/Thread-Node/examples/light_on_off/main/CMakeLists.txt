@@ -6,5 +6,4 @@ idf_component_register(
         model
         coap_server
         thread
-        backend_discovery
 )

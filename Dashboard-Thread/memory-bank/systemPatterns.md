@@ -19,10 +19,10 @@ useWebSocket hook  (frontend/src/hooks/useWebSocket.ts)
     ↓ React state update
 UI Components      (frontend/src/components/)
 
-Thread-Node  -- CoAP UDP 5683 (IPv6 [::]), path /device/, payload CBOR
-    ↓
+Thread-Node  -- CoAP UDP 5683 (IPv6 [::]), path /device/
+    ↓ GET /device/ping → 2.05 + 4-byte timestamp (server start); POST /device/register, update → CBOR payload
 CoapDeviceServer (backend/src/server/CoapDeviceServer.ts)
-    ↓ parse CBOR (cbor2), log JSON + type/rloc16, tra 2.01. Khong emit len frontend.
+    ↓ GET ping: tra timestamp (uint32 LE). POST: parse CBOR (backend/src/cbor), log JSON + structure, tra 2.01. Khong emit len frontend.
 
 Backend (os.networkInterfaces) → getBackendAddresses() → io.emit(SYSTEM_INFO) khi CONFIG_CURRENT
     ↓
@@ -37,6 +37,7 @@ Backend (khi BR = leader) → log "SRP register: IPv6=... hostname=... port=..."
 - **Backend reboot / endpoint change:** Node khong co “event push” de biet backend vua reboot. Pattern khuyen nghi:
   - **Periodic refresh:** task goi discovery dinh ky (vd. 60s) + cache TTL de cap nhat endpoint.
   - **On failure:** neu CoAP timeout/ICMP unreachable → `force_refresh=true` → browse SRP lai → gui lai request.
+- **GET /device/ping:** Node gui GET dinh ky; backend tra 2.05 voi payload 4 byte = timestamp (uint32 LE, server start). Node so sanh timestamp; neu khac lan truoc (backend restart) → callback trigger gui lai POST /device/register.
 
 ## Backend Layer Responsibilities
 
@@ -50,7 +51,7 @@ Backend (khi BR = leader) → log "SRP register: IPv6=... hostname=... port=..."
 | `OtConfigManager` | `backend/src/communicate/OtConfigManager.ts` | In-memory store. `.update(partial)` de merge, `.get()` de doc, `.clear()` khi disconnect |
 | `PollingManager` | `backend/src/communicate/PollingManager.ts` | Poll table 6s (child +1.5s delay). CHI khi frontend connected + state = leader/router/child |
 | `AppSettingsService` | `backend/src/services/AppSettingsService.ts` | SQLite key-value cho app settings (thread_run_on_connect) |
-| `CoapDeviceServer` | `backend/src/server/CoapDeviceServer.ts` | CoAP server UDP 5683 (udp6, listen [::]); path /device/register, /device/update, /device/ping; decode CBOR (cbor2), log JSON; tra 2.01; khong emit qua io |
+| `CoapDeviceServer` | `backend/src/server/CoapDeviceServer.ts` | CoAP server UDP 5683 (udp6, listen [::]). GET /device/ping → 2.05, payload 4-byte timestamp (server start). POST /device/register, update → decode CBOR (backend/src/cbor), log JSON + structure; tra 2.01; khong emit qua io |
 
 ## Frame Protocol
 

@@ -37,5 +37,21 @@
 },
 "peacock.color": "#832561",
 "idf.espIdfPath": "/home/izerocs/esp/v5.5.3/esp-idf",
-"idf.toolsPath": "/home/izerocs/esp/.espressif"
+"idf.toolsPath": "/home/izerocs/esp/.espressif",
+"files.exclude": {
+    "**/.git": true,
+    "**/.gitignore": true,
+    "**/.cache": true,
+    "**/.cursor": true,
+    "**/.svn": true,
+    "**/.hg": true,
+    "**/.DS_Store": true,
+    "**/Thumbs.db": true,
+    "**/.clangd": true,
+    "**/memory-bank": true,
+    "**/Thread-Node.code-workspace": true,
+    "**/examples/**/.cache": true,
+    "**/examples/**/.vscode": true,
+    "**/examples/**/dependencies.lock": true,
+}
 }

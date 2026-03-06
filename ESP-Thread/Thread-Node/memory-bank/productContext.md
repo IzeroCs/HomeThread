@@ -20,7 +20,7 @@ Border Router (Thread-Host) cần biết:
 - Các thuộc tính của từng entity
 - Trạng thái mạng của thiết bị (IP, RLOC, role)
 
-Thread-Node giải quyết bằng cách gửi CBOR-encoded device model lên **Backend** (không phải BR) qua CoAP POST `/device/register`. Địa chỉ Backend lấy từ **backend discovery** (SRP/DNS-SD `_dashboard._udp`). Chỉ gửi **sau khi discovery thành công**; khi Backend IPv6/port đổi thì gửi lại (refresh task 60s). Mọi role **Child/Router/Leader** đều có thể gửi; chờ ACK/NACK (timeout 20s); one-shot sau ACK. Backend phải trả ACK/NACK (xem `docs/coap/border_router_coap_server.md`).
+Thread-Node giải quyết bằng cách gửi CBOR-encoded device model lên **Backend** (không phải BR) qua CoAP POST `/device/register`. Địa chỉ Backend lấy từ **thread_discovery** (SRP/DNS-SD `_dashboard._udp`). **thread_node** khi `enable_device_registry` tự chạy discovery, refresh 60s, ping 10s; khi có endpoint hoặc endpoint đổi thì gửi register; khi GET `/device/ping` nhận timestamp backend khác thì gửi lại register. Mọi role **Child/Router/Leader** đều gửi được; CoAP token 2 byte cho mọi request; chờ ACK (2.01/2.04/2.05). Backend phải trả ACK/NACK (xem `docs/coap/border_router_coap_server.md`).
 
 ### 3. Quản lý Leader role
 
@@ -31,8 +31,8 @@ Trong Thread mesh, nếu không có Border Router, một node thường tự tr�
 ### Luồng khởi động thiết bị
 
 ```
-main() 
-  └─ thread_endpoint_start(on_joined_callback)
+main()
+  └─ thread_node_start(on_joined_callback)
        ├─ nvs_flash_init()
        ├─ status_led_init()          → LED đỏ nhấp nháy (Boot)
        ├─ boot_btn_init()            → Giám sát long press → factory reset
@@ -44,7 +44,9 @@ main()
                       ├─ status_led_update(CHILD/ROUTER)
                       ├─ thread_coap_start()
                       ├─ device_registry_init()          → (nếu enable_device_registry)
-                      ├─ on_joined_callback()            → App setup entities; gọi backend_discovery_get_endpoint() rồi device_registry_register(ep, ...) khi có endpoint; task refresh 60s cập nhật endpoint và gọi lại register khi đổi
+                      ├─ thread_discovery_init()        → (nếu enable_device_registry)
+                      ├─ Discovery lần đầu + task refresh 60s + task ping 10s (thread_node nội bộ)
+                      └─ on_joined_callback()           → App chỉ setup entities + entity_coap_server; không gọi discovery/register/ping
 ```
 
 ### Luồng callback của lập trình viên (on_joined)
@@ -85,7 +87,7 @@ Thread-Node                    Backend (địa chỉ từ backend discovery)    
 
 ### Mục tiêu thiết kế
 
-- **Minimal boilerplate**: Chỉ cần gọi `thread_endpoint_start()` và implement `on_joined()`
+- **Minimal boilerplate**: Chỉ cần gọi `thread_node_start()` và implement `on_joined()`
 - **Zero network code**: Lập trình viên không cần biết về OpenThread API, CoAP, hay CBOR
 - **Extensible entity types**: Định nghĩa entity type mới bằng cách đăng ký struct C
 
@@ -93,7 +95,7 @@ Thread-Node                    Backend (địa chỉ từ backend discovery)    
 
 ```c
 // main.c
-#include "thread_endpoint.h"
+#include "thread_node.h"
 
 void on_joined(void) {
     // Setup device + entities ở đây
@@ -101,7 +103,7 @@ void on_joined(void) {
 }
 
 void app_main(void) {
-    thread_endpoint_start(on_joined);
+    thread_node_start(on_joined);
 }
 ```
 

@@ -224,12 +224,14 @@ entity_id=light.0 type=on_off_light name=LED
 
 ## Files trong project
 
-| File | Mô tả |
-|------|-------|
-| `main/coap_controller/device_registry_server.c` | Init CoAP, đăng ký resource; handler gửi CoAP response theo kết quả forward |
-| `main/coap_controller/device_registry_handler.c` | Queue, enqueue, `process_and_clear_queue` forward qua `communicate_task_send_cmd_data_and_wait_ack` (CMD_DATA + chờ CMD_ACK) |
-| `main/communicate/communicate_task.c` | `communicate_task_send_cmd_data_and_wait_ack`: gửi CMD_DATA, chờ CMD_ACK (Node→ESP) trong timeout |
-| `br_custom_config.h` | Bật CoAP API |
+**Thread-Host (BR):** CoAP server và device registry **đã gỡ** (Phase 1). Các file dưới mô tả kiến trúc legacy / tham khảo cho backend và Thread-Node.
+
+| File (legacy / tham khảo) | Mô tả |
+|---------------------------|-------|
+| ~~`main/coap_controller/device_registry_server.c`~~ | Đã xóa khỏi Thread-Host — init CoAP, resource; handler forward CMD_DATA. |
+| ~~`main/coap_controller/device_registry_handler.c`~~ | Đã xóa — queue, CMD_DATA + chờ CMD_ACK. |
+| `main/communicate/communicate_task.c` | Không còn `communicate_task_send_cmd_data_and_wait_ack`; frame protocol chỉ quản lý BR. |
+| `br_custom_config.h` | Có thể bật CoAP API nếu BR cần CoAP lại (hiện BR không chạy CoAP). |
 
 ---
 

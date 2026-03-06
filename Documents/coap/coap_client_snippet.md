@@ -1,6 +1,6 @@
 # CoAP Client thuần — Snippet tham khảo
 
-> Code CoAP client thuần (chỉ dùng OpenThread API, không dùng component `device_registry`) từng dùng để test gửi request lên Leader. Dùng để tham khảo hoặc paste lại khi cần test.
+> Code CoAP client thuần (chỉ dùng OpenThread API, không dùng component `device` / `device_coap`) từng dùng để test gửi request lên Leader. Dùng để tham khảo hoặc paste lại khi cần test.
 
 ---
 

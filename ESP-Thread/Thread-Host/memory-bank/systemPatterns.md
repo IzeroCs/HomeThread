@@ -2,6 +2,8 @@
 
 ## Kiến trúc tổng quan
 
+BR không chạy CoAP server hay CoAP client (Device Registry và Leader Control Client đã gỡ — Phase 1 và 0.17.0).
+
 ```
 [ESP32-H2 RCP] --UART1 460800--> [ESP32-S3 Host]
                                         |

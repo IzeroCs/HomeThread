@@ -1,10 +1,10 @@
 # Active Context — Thread-Host
 
-_Cập nhật: 2026-03-03_
+_Cập nhật: 2026-03-06_
 
 ## Công việc hiện tại
 
-Backhaul Ethernet W5500 đã có IPv6 trên backbone (link-local + ULA/global khi router gửi RA). SRP server + SRP client (CMD_SRP_REGISTER) đã bật: backend đăng ký `_dashboard._udp` qua frame TCP; child discovery service qua SRP. Child↔backend test: ping/CoAP từ child tới IPv6 backend qua BR.
+Backhaul Ethernet W5500 đã có IPv6 trên backbone (link-local + ULA/global khi router gửi RA). SRP server + SRP client (CMD_SRP_REGISTER) đã bật: backend đăng ký `_dashboard._udp` qua frame TCP; child discovery service qua SRP. Child↔backend: ping/CoAP từ child tới IPv6 backend qua BR. BR không còn CoAP client (Leader Control GET `/network/stop` đã gỡ trong 0.17.0).
 
 ## Thay đổi gần đây
 
@@ -52,6 +52,9 @@ Backhaul Ethernet W5500 đã có IPv6 trên backbone (link-local + ULA/global kh
 - **Nguyên nhân:** Task LED poll `otThreadGetDeviceRole()` với lock 200ms; khi OT bận (MLE/child table lúc join) lock timeout → code mặc định role = DISABLED → đỏ.
 - **Fix:** Khi không lấy được lock: dùng **last-known role** (`s_last_role` / `s_role_valid`) thay vì mặc định DISABLED. Trong lúc joiner join, LED giữ màu Leader (xanh) thay vì nháy đỏ.
 
+### Leader Control Client removed (0.17.0) — 2026-03-06
+- Đã loại bỏ CoAP Leader Control Client (GET `/network/stop`) và toàn bộ code/docs liên quan trên Thread-Host. BR không còn gửi CoAP request tới Leader; chỉ quản lý qua frame protocol (state, dataset, Commissioner, SRP register, …).
+
 ### Memory Bank — Vừa tạo
 - `.cursor/rules/thread-host-memory-bank.mdc` — entry point rule
 - `memory-bank/` — 6 core files theo chuẩn Memory Bank
@@ -84,3 +87,4 @@ Backhaul Ethernet W5500 đã có IPv6 trên backbone (link-local + ULA/global kh
 - **(Đã xử lý) SRP server Refused:** Trước đây server trả RCODE 5 (Refused) do key lease phải ≥ lease; đã sửa bằng `mKeyLease=120`, `mLease=60` và gọi `otSrpClientSetLeaseInterval`/`SetKeyLeaseInterval` trước add service — đăng ký thành công, kiểm tra bằng `ot srp server host` / `ot srp server service`.
 - **(Đã xử lý) SRP hostname mojibake/rỗng:** Khi dùng buffer stack cho hostname, SRP client giữ con trỏ dangling → DNS update bất đồng bộ đọc rác. Đã sửa bằng buffer tĩnh `s_srp_hostname` và copy hostname vào đó trước khi gọi `otSrpClientSetHostName`.
 - **(Đã xử lý) SRP địa chỉ IPv6 sai trên SRP server / discovery:** Tương tự hostname, dùng stack cho `otIp6Address` → dangling → `ot srp server host` và Thread-Node discovery thấy địa chỉ rác. Đã sửa bằng buffer tĩnh `s_srp_backend_addr` và copy 16 byte payload vào đó trước khi gọi `otSrpClientSetHostAddresses`.
+- **(Đã xử lý) Leader Control Client:** Code và docs CoAP GET `/network/stop` đã gỡ khỏi Thread-Host (0.17.0); BR không còn CoAP client.

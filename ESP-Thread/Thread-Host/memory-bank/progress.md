@@ -1,6 +1,6 @@
 # Progress — Thread-Host
 
-_Cập nhật: 2026-03-03_
+_Cập nhật: 2026-03-06_
 
 ## Release history
 
@@ -69,6 +69,7 @@ _(Ghi phiên bản theo Semantic Versioning MAJOR.MINOR.PATCH, không dùng ti�
 
 ### CoAP
 - [x] Device Registry — đã bỏ (Phase 1); child gửi thẳng backend qua IP
+- [x] Leader Control Client (GET `/network/stop`) — đã gỡ (0.17.0); BR không còn CoAP client
 
 ### Monitoring
 - [x] Stack monitor task (stk_mon, 3072 bytes) — log HWM + heap mỗi 30s
@@ -101,7 +102,6 @@ _(Ghi phiên bản theo Semantic Versioning MAJOR.MINOR.PATCH, không dùng ti�
 | Issue | Trạng thái | Ghi chú |
 |-------|-----------|---------|
 | `main` task "used full" trong stack monitor | Bình thường | Task đã exit sau `app_main()`, `uxTaskGetStackHighWaterMark` trả 0 → hiển thị "full" |
-| Leader CoAP response không được xử lý | Chưa fix | Leader cần implement GET /network/stop handler |
 | Dashboard reply ACK cho CMD_IP_ADDR | Dashboard-Thread | Chỉ pullState gửi replyAck khi stateChangedOrFirst; BR retry vô hạn nếu fetch IP từ nơi khác. Fix: CommandManager.handle() gửi replyAck cho mọi ACK IP_ADDR (16 byte). |
 
 _(SRP server Refused đã xử lý trong 0.14.0 — lease/key lease 60/120.)_
@@ -113,7 +113,7 @@ _(SRP server Refused đã xử lý trong 0.14.0 — lease/key lease 60/120.)_
 | `assert failed: xTaskGetHandle` với tên > 15 ký tự | Rút ngắn tên task trong `br_config.h` |
 | Stack overflow trong `stk_mon` task | Tăng `TASK_STACK_STK_MON` từ 1536 → 3072 |
 | `CMD_FACTORY` không xóa được NVS | Đổi sang raw `esp_partition_erase_range`, bỏ `thread_graceful_shutdown` trước erase |
-| `assert: esp_openthread_task_switching_lock_release` trong leader_rloc task | `send_coap_stop_command_once` tự quản lý lock; caller dùng `goto next_iteration` |
+| `assert: esp_openthread_task_switching_lock_release` (Leader Control) | Code path đã gỡ trong 0.17.0 (Leader Control Client removed). Trước đây: lock management trong send_coap_stop_command_once. |
 | LoadProhibited khi gọi `otSrpClientStart(instance, NULL)` | OpenThread dereference server addr; bỏ gọi Start, chỉ dùng SRP client auto-start sau set host+address+add service |
 | SRP CLI "Unrecognized command" | Bật CONFIG_OPENTHREAD_HEADER_CUSTOM=y và CONFIG_OPENTHREAD_CUSTOM_HEADER_PATH="include" (sdkconfig) để OpenThread include br_custom_config.h → lệnh srp server/srp client được biên dịch; fullclean + build + flash |
 | SRP hostname mojibake / host rỗng khi đăng ký qua CMD_SRP_REGISTER | OT SRP client không copy hostname, chỉ lưu con trỏ; buffer stack thành dangling sau khi handler return. Fix: buffer tĩnh `s_srp_hostname`, copy hostname vào đó rồi gọi `otSrpClientSetHostName(instance, s_srp_hostname)` (0.15.0) |

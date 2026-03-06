@@ -1,13 +1,11 @@
 # Thread-Node - OpenThread Joiner + Entity model (ESP32-C6 / ESP32-H2)
 cmake_minimum_required(VERSION 3.16)
 
-# Component joiner, endpoint nằm trong components/thread/
+# Component thread (joiner, node, coap, discovery) nằm trong components/thread/
 # Entity: model, serialization, coap_server (mỗi thư mục con là một component)
-# Component coap nằm trong components/thread/coap/
 set(EXTRA_COMPONENT_DIRS 
     "${CMAKE_CURRENT_SOURCE_DIR}/components/thread"
-    "${CMAKE_CURRENT_SOURCE_DIR}/components/thread/coap"
-    "${CMAKE_CURRENT_SOURCE_DIR}/components/thread/device_registry"
+    "${CMAKE_CURRENT_SOURCE_DIR}/components/thread/device"
     "${CMAKE_CURRENT_SOURCE_DIR}/components/thread/status_led"
     "${CMAKE_CURRENT_SOURCE_DIR}/components/thread/boot_btn"
     "${CMAKE_CURRENT_SOURCE_DIR}/components/entity/model"

@@ -1,5 +1,5 @@
 /*
- * Backend Discovery - SRP/DNS-SD + NVS cache + static fallback.
+ * Thread Discovery - SRP/DNS-SD + NVS cache + static fallback.
  *
  * Thread-Node (child) uses this module to discover the Dashboard backend
  * service `_dashboard._udp.default.svc.arpa` via OpenThread DNS client,
@@ -19,7 +19,7 @@ extern "C" {
 #endif
 
 /**
- * Backend endpoint information.
+ * Backend endpoint information (discovered or static).
  *
  * addr:   IPv6 address of backend server (reachable through BR).
  * port:   UDP port (CoAP default: 5683).
@@ -29,10 +29,10 @@ typedef struct {
     otIp6Address addr;
     uint16_t port;
     bool from_srp;
-} backend_endpoint_t;
+} thread_discovery_endpoint_t;
 
 /**
- * Backend discovery configuration (optional).
+ * Thread discovery configuration (optional).
  *
  * nvs_namespace:   NVS namespace used to store endpoint info. If NULL, a
  *                  default namespace "backend" is used.
@@ -47,18 +47,18 @@ typedef struct {
     const char *cache_key_srp;
     const char *cache_key_static;
     uint32_t cache_ttl_sec;
-} backend_discovery_cfg_t;
+} thread_discovery_cfg_t;
 
 /**
- * Initialize backend discovery module.
+ * Initialize thread discovery module.
  *
- * Must be called after NVS has been initialized (thread_endpoint_start()
+ * Must be called after NVS has been initialized (thread_node_start()
  * already does this before joining).
  *
  * @param cfg Optional configuration (may be NULL for defaults).
  * @return ESP_OK on success.
  */
-esp_err_t backend_discovery_init(const backend_discovery_cfg_t *cfg);
+esp_err_t thread_discovery_init(const thread_discovery_cfg_t *cfg);
 
 /**
  * Get backend endpoint.
@@ -77,7 +77,7 @@ esp_err_t backend_discovery_init(const backend_discovery_cfg_t *cfg);
  *                      (ignoring SRP cache, but still falling back to static).
  * @return ESP_OK on success, error otherwise.
  */
-esp_err_t backend_discovery_get_endpoint(backend_endpoint_t *out, bool force_refresh);
+esp_err_t thread_discovery_get_endpoint(thread_discovery_endpoint_t *out, bool force_refresh);
 
 /**
  * Set static backend endpoint (provisioned).
@@ -88,16 +88,15 @@ esp_err_t backend_discovery_get_endpoint(backend_endpoint_t *out, bool force_ref
  * @param ep Endpoint to persist as static config.
  * @return ESP_OK on success.
  */
-esp_err_t backend_discovery_set_static(const backend_endpoint_t *ep);
+esp_err_t thread_discovery_set_static(const thread_discovery_endpoint_t *ep);
 
 /**
  * Check if a static backend endpoint is present in NVS.
  *
  * @return true if static endpoint exists, false otherwise.
  */
-bool backend_discovery_has_static(void);
+bool thread_discovery_has_static(void);
 
 #ifdef __cplusplus
 }
 #endif
-

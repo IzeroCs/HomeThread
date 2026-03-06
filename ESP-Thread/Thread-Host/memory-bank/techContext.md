@@ -33,7 +33,7 @@
 - Dataset: `otDatasetGetActiveTlvs`, `otDatasetGetActive`, `otDatasetSetActive`
 - Tables: `otThreadGetRouterInfo`, `otThreadGetChildInfoByIndex`
 - Commissioner: `otCommissionerGetState`, `otCommissionerStart`, `otCommissionerAddJoiner`, `otCommissionerGetNextJoinerInfo`
-- CoAP: `otCoapStart`, `otCoapAddResource`, `otCoapNewMessage`, `otCoapSendRequest`, `otCoapMessageInit`, `otCoapMessageAppendUriPathOptions`
+- CoAP: BR hiện **không** dùng CoAP (server/client đã gỡ — Device Registry Phase 1, Leader Control Client 0.17.0). APIs tham khảo: `otCoapStart`, `otCoapAddResource`, `otCoapNewMessage`, …
 - Network: `otThreadGetLeaderRloc`, `otThreadGetLeaderData`
 - SRP server: `otSrpServerSetEnabled` (br_main sau border router init). SRP server chỉ listen trên Thread mesh, không trên backbone.
 - SRP client: `otSrpClientEnableAutoStartMode`, `otSrpClientClearHostAndServices`, `otSrpClientSetHostName`, `otSrpClientSetHostAddresses`, `otSrpClientAddService`. Không gọi `otSrpClientStart(instance, NULL)` — crash (dereference). Dùng auto-start sau khi set host + address + add service.

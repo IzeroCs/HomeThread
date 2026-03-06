@@ -1,10 +1,10 @@
 /*
- * Backend Discovery - SRP/DNS-SD + NVS cache + static fallback.
+ * Thread Discovery - SRP/DNS-SD + NVS cache + static fallback.
  */
 #include <string.h>
 #include <time.h>
 #include "sdkconfig.h"
-#include "backend_discovery.h"
+#include "thread_discovery.h"
 #include "esp_err.h"
 #include "esp_log.h"
 #include "esp_openthread.h"
@@ -15,7 +15,7 @@
 #include "openthread/error.h"
 #include "openthread/instance.h"
 
-static const char *TAG = "backend_discovery";
+static const char *TAG = "thread_discovery";
 
 /* Default SRP/DNS-SD service for Dashboard backend. */
 #define BACKEND_SERVICE_NAME "_dashboard._udp.default.service.arpa"
@@ -34,15 +34,15 @@ typedef struct {
 } backend_ep_storage_t;
 
 typedef struct {
-    backend_discovery_cfg_t cfg;
+    thread_discovery_cfg_t cfg;
     bool initialized;
     SemaphoreHandle_t dns_sem;
     otIp6Address dns_addr;
     uint16_t dns_port;
     bool dns_valid;
-} backend_discovery_ctx_t;
+} thread_discovery_ctx_t;
 
-static backend_discovery_ctx_t s_ctx;
+static thread_discovery_ctx_t s_ctx;
 
 static const char *get_ns(void)
 {
@@ -67,7 +67,7 @@ static esp_err_t nvs_open_backend(nvs_handle_t *handle)
     return nvs_open(get_ns(), NVS_READWRITE, handle);
 }
 
-static void storage_to_endpoint(const backend_ep_storage_t *st, backend_endpoint_t *out)
+static void storage_to_endpoint(const backend_ep_storage_t *st, thread_discovery_endpoint_t *out)
 {
     if (!st || !out) {
         return;
@@ -78,7 +78,7 @@ static void storage_to_endpoint(const backend_ep_storage_t *st, backend_endpoint
     out->from_srp = (st->origin == 1);
 }
 
-static void endpoint_to_storage(const backend_endpoint_t *ep, uint8_t origin, backend_ep_storage_t *out)
+static void endpoint_to_storage(const thread_discovery_endpoint_t *ep, uint8_t origin, backend_ep_storage_t *out)
 {
     if (!ep || !out) {
         return;
@@ -113,7 +113,7 @@ static esp_err_t nvs_load_srp_storage(backend_ep_storage_t *st)
     return ESP_OK;
 }
 
-static esp_err_t nvs_load_endpoint(const char *key, backend_endpoint_t *out)
+static esp_err_t nvs_load_endpoint(const char *key, thread_discovery_endpoint_t *out)
 {
     if (!key || !out) {
         return ESP_ERR_INVALID_ARG;
@@ -144,7 +144,7 @@ static esp_err_t nvs_load_endpoint(const char *key, backend_endpoint_t *out)
     return ESP_OK;
 }
 
-static esp_err_t nvs_save_endpoint(const char *key, const backend_endpoint_t *ep, uint8_t origin)
+static esp_err_t nvs_save_endpoint(const char *key, const thread_discovery_endpoint_t *ep, uint8_t origin)
 {
     if (!key || !ep) {
         return ESP_ERR_INVALID_ARG;
@@ -187,7 +187,7 @@ static bool nvs_has_key(const char *key)
 /* DNS-SD browse callback: called on OpenThread task context. */
 static void dns_browse_callback(otError aError, const otDnsBrowseResponse *aResponse, void *aContext)
 {
-    backend_discovery_ctx_t *ctx = (backend_discovery_ctx_t *)aContext;
+    thread_discovery_ctx_t *ctx = (thread_discovery_ctx_t *)aContext;
     if (!ctx || !ctx->dns_sem) {
         return;
     }
@@ -246,7 +246,7 @@ static void dns_browse_callback(otError aError, const otDnsBrowseResponse *aResp
     xSemaphoreGive(ctx->dns_sem);
 }
 
-static esp_err_t srp_discover_once(backend_endpoint_t *out)
+static esp_err_t srp_discover_once(thread_discovery_endpoint_t *out)
 {
     if (!out) {
         return ESP_ERR_INVALID_ARG;
@@ -306,13 +306,14 @@ static esp_err_t srp_discover_once(backend_endpoint_t *out)
     out->port = s_ctx.dns_port;
     out->from_srp = true;
 
+    /* Caller (thread_node) logs backend IP once / when changed at INFO. */
     char addr_str[40];
     otIp6AddressToString(&out->addr, addr_str, sizeof(addr_str));
-    ESP_LOGI(TAG, "Discovered backend via SRP: [%s]:%u", addr_str, out->port);
+    ESP_LOGD(TAG, "Discovered backend via SRP: [%s]:%u", addr_str, out->port);
     return ESP_OK;
 }
 
-esp_err_t backend_discovery_init(const backend_discovery_cfg_t *cfg)
+esp_err_t thread_discovery_init(const thread_discovery_cfg_t *cfg)
 {
     if (s_ctx.initialized) {
         return ESP_OK;
@@ -330,22 +331,22 @@ esp_err_t backend_discovery_init(const backend_discovery_cfg_t *cfg)
     s_ctx.dns_port = BACKEND_COAP_DEFAULT_PORT;
 
     s_ctx.initialized = true;
-    ESP_LOGI(TAG, "Backend discovery initialized (ns=\"%s\")", get_ns());
+    ESP_LOGI(TAG, "Thread discovery initialized (ns=\"%s\")", get_ns());
     return ESP_OK;
 }
 
-esp_err_t backend_discovery_get_endpoint(backend_endpoint_t *out, bool force_refresh)
+esp_err_t thread_discovery_get_endpoint(thread_discovery_endpoint_t *out, bool force_refresh)
 {
     if (!out) {
         return ESP_ERR_INVALID_ARG;
     }
 
     if (!s_ctx.initialized) {
-        backend_discovery_init(NULL);
+        thread_discovery_init(NULL);
     }
 
     esp_err_t err;
-    backend_endpoint_t ep;
+    thread_discovery_endpoint_t ep;
 
     /* 1) Try SRP cache if not forcing refresh. Honour cache_ttl_sec: if set and cache expired, treat as miss. */
     if (!force_refresh) {
@@ -356,7 +357,7 @@ esp_err_t backend_discovery_get_endpoint(backend_endpoint_t *out, bool force_ref
             uint32_t now = (uint32_t)time(NULL);
             if (ttl == 0 || (now - st.ts) <= ttl) {
                 storage_to_endpoint(&st, out);
-                ESP_LOGI(TAG, "Using cached SRP backend endpoint");
+                ESP_LOGD(TAG, "Using cached SRP backend endpoint");
                 return ESP_OK;
             }
             /* Cache expired, fall through to SRP discovery. */
@@ -381,7 +382,7 @@ esp_err_t backend_discovery_get_endpoint(backend_endpoint_t *out, bool force_ref
     err = nvs_load_endpoint(get_key_static(), &ep);
     if (err == ESP_OK) {
         *out = ep;
-        ESP_LOGI(TAG, "Using static backend endpoint from NVS");
+        ESP_LOGD(TAG, "Using static backend endpoint from NVS");
         return ESP_OK;
     }
 
@@ -389,14 +390,14 @@ esp_err_t backend_discovery_get_endpoint(backend_endpoint_t *out, bool force_ref
     return ESP_ERR_NOT_FOUND;
 }
 
-esp_err_t backend_discovery_set_static(const backend_endpoint_t *ep)
+esp_err_t thread_discovery_set_static(const thread_discovery_endpoint_t *ep)
 {
     if (!ep) {
         return ESP_ERR_INVALID_ARG;
     }
 
     if (!s_ctx.initialized) {
-        backend_discovery_init(NULL);
+        thread_discovery_init(NULL);
     }
 
     esp_err_t err = nvs_save_endpoint(get_key_static(), ep, 2);
@@ -411,10 +412,10 @@ esp_err_t backend_discovery_set_static(const backend_endpoint_t *ep)
     return ESP_OK;
 }
 
-bool backend_discovery_has_static(void)
+bool thread_discovery_has_static(void)
 {
     if (!s_ctx.initialized) {
-        backend_discovery_init(NULL);
+        thread_discovery_init(NULL);
     }
     return nvs_has_key(get_key_static());
 }

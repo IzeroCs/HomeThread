@@ -1,7 +1,7 @@
 /*
- * Thread Endpoint - Application framework wrapper.
+ * Thread Node - Application framework wrapper.
  *
- * Tích hợp các phần common cho Thread endpoint:
+ * Tích hợp các phần common cho Thread node:
  * - OpenThread initialization
  * - Status LED (auto update theo Thread state/role)
  * - Boot button (factory reset)
@@ -30,22 +30,22 @@ extern "C" {
  *
  * @param ctx User context (từ config)
  */
-typedef void (*thread_endpoint_on_joined_fn)(void *ctx);
+typedef void (*thread_node_on_joined_fn)(void *ctx);
 
 /**
- * Cấu hình Thread Endpoint.
+ * Cấu hình Thread Node.
  */
 typedef struct {
     const char *pskd;                    ///< PSKd cho Thread joiner (NULL = dùng CONFIG_THREAD_JOINER_PSKD_DEFAULT)
     bool prefer_not_leader;              ///< Set Leader Weight -16 để tránh trở thành Leader (default: true)
     uint8_t router_selection_jitter;     ///< Router selection jitter (seconds, 0 = default 120s)
     bool enable_device_registry;         ///< Bật CoAP client cho device register (app gửi tới Backend sau khi discovery); default: true
-    thread_endpoint_on_joined_fn on_joined; ///< Callback khi join thành công
+    thread_node_on_joined_fn on_joined;   ///< Callback khi join thành công
     void *ctx;                            ///< User context cho callbacks
-} thread_endpoint_config_t;
+} thread_node_config_t;
 
 /**
- * Khởi động Thread Endpoint.
+ * Khởi động Thread Node.
  *
  * Hàm này sẽ:
  * 1. Init NVS, event loop, netif, OpenThread
@@ -62,7 +62,7 @@ typedef struct {
  * @note Status LED sẽ tự động update theo Thread state và role.
  * @note Device sẽ tự động register lên Border Router khi join.
  */
-esp_err_t thread_endpoint_start(const thread_endpoint_config_t *config);
+esp_err_t thread_node_start(const thread_node_config_t *config);
 
 #ifdef __cplusplus
 }

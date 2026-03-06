@@ -834,8 +834,8 @@ int communicate_command_handle_srp_register(uint8_t frame_id, const uint8_t *dat
     }
 
     /* Lease: server requires key lease >= lease; use 60/120 to avoid server reject. */
-    (void)otSrpClientSetLeaseInterval(instance, 60);
-    (void)otSrpClientSetKeyLeaseInterval(instance, 120);
+    // (void)otSrpClientSetLeaseInterval(instance, 60);
+    // (void)otSrpClientSetKeyLeaseInterval(instance, 120);
 
     if (!s_srp_dashboard_service_inited) {
         memset(&s_srp_dashboard_service, 0, sizeof(s_srp_dashboard_service));
@@ -846,7 +846,7 @@ int communicate_command_handle_srp_register(uint8_t frame_id, const uint8_t *dat
         s_srp_dashboard_service.mSubTypeLabels = NULL;
         s_srp_dashboard_service.mTxtEntries = NULL;
         s_srp_dashboard_service.mNumTxtEntries = 0;
-        s_srp_dashboard_service.mLease = 60;
+        s_srp_dashboard_service.mLease = 10;
         s_srp_dashboard_service.mKeyLease = 120;
         s_srp_dashboard_service_inited = true;
     }

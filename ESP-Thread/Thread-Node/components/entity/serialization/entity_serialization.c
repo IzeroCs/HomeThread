@@ -441,14 +441,8 @@ int entity_serialize_cbor(uint16_t rloc16, const char *ml_eid_str,
     if (cbor_encode_uint(&enc, net_rloc16) < 0) return -1;
     
     if (cbor_encode_uint(&enc, CBOR_K_NET_ROLE) < 0) return -1;
-    const char *role_str = "unknown";
-    switch (device->role) {
-        case 0: role_str = "child"; break;
-        case 1: role_str = "leader"; break;
-        case 2: role_str = "router"; break;
-        default: break;
-    }
-    if (cbor_encode_text_string(&enc, role_str) < 0) return -1;
+    /* 0=child, 1=router, 2=leader — encode as number */
+    if (cbor_encode_uint(&enc, device->role) < 0) return -1;
     
     if (cbor_encode_uint(&enc, CBOR_K_NET_IPV6) < 0) return -1;
     // Use device_model ipv6_addr if set, otherwise try to parse ml_eid_str

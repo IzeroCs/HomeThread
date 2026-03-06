@@ -1,5 +1,5 @@
 /*
- * Thread Endpoint - Implementation.
+ * Thread Node - Implementation.
  */
 #include <inttypes.h>
 #include <stdio.h>
@@ -21,16 +21,25 @@
 #include "openthread/link.h"
 #include "openthread/thread.h"
 #include "openthread/thread_ftd.h"
-#include "thread_endpoint.h"
+#include "thread_node.h"
 #include "thread_joiner.h"
+#include "thread_discovery.h"
 #include "boot_btn.h"
 #include "status_led.h"
 #include "device_registry.h"
+#include "openthread/ip6.h"
 
-static const char *TAG = "thread_endpoint";
+static const char *TAG = "thread_node";
 
-static thread_endpoint_config_t s_config;
+#define DEFAULT_DISCOVERY_REFRESH_MS  60000
+#define DEFAULT_PING_INTERVAL_MS      10000
+
+static thread_node_config_t s_config;
 static bool s_started = false;
+
+/* Backend communication (when enable_device_registry): discovery + ping + register */
+static thread_discovery_endpoint_t s_backend_ep;
+static bool s_backend_ep_valid = false;
 
 /* Log Leader Data (partition, leader router id, weight, data version) */
 static void log_leader_data(void)
@@ -71,6 +80,81 @@ static void update_attached_led_role(void)
     }
 
     status_led_set_attached_role(led_role);
+}
+
+/* Gửi /device/register tới backend hiện tại. Chỉ gọi khi s_backend_ep_valid. */
+static void backend_trigger_register(void)
+{
+    if (!s_backend_ep_valid) {
+        return;
+    }
+    const device_registry_endpoint_t *ep = (const device_registry_endpoint_t *)&s_backend_ep;
+    esp_err_t err = device_registry_register(ep, NULL, NULL);
+    if (err != ESP_OK) {
+        ESP_LOGW(TAG, "device_registry_register: %s", esp_err_to_name(err));
+    }
+}
+
+/* Callback khi /device/ping nhận timestamp khác → gửi lại register */
+static void backend_on_ping_timestamp_changed(void *ctx)
+{
+    (void)ctx;
+    backend_trigger_register();
+}
+
+static void backend_discovery_refresh_task(void *pvParameters)
+{
+    (void)pvParameters;
+    const TickType_t delay_ticks = pdMS_TO_TICKS(DEFAULT_DISCOVERY_REFRESH_MS);
+
+    for (;;) {
+        vTaskDelay(delay_ticks);
+
+        thread_discovery_endpoint_t ep;
+        esp_err_t err = thread_discovery_get_endpoint(&ep, false);
+        if (err != ESP_OK) {
+            continue;
+        }
+
+        bool addr_eq = (memcmp(ep.addr.mFields.m8, s_backend_ep.addr.mFields.m8, 16) == 0);
+        bool port_eq = (ep.port == s_backend_ep.port);
+        if (addr_eq && port_eq) {
+            continue;
+        }
+
+        if (!s_backend_ep_valid) {
+            s_backend_ep = ep;
+            s_backend_ep_valid = true;
+            char addr_str[40];
+            otIp6AddressToString(&s_backend_ep.addr, addr_str, sizeof(addr_str));
+            ESP_LOGI(TAG, "Backend discovered: [%s]:%u (from_srp=%s)",
+                     addr_str, (unsigned)s_backend_ep.port, s_backend_ep.from_srp ? "yes" : "no");
+        } else {
+            s_backend_ep = ep;
+            char addr_str[40];
+            otIp6AddressToString(&s_backend_ep.addr, addr_str, sizeof(addr_str));
+            ESP_LOGI(TAG, "Backend endpoint updated: [%s]:%u", addr_str, (unsigned)s_backend_ep.port);
+        }
+        backend_trigger_register();
+    }
+}
+
+static void backend_ping_task(void *pvParameters)
+{
+    (void)pvParameters;
+    const TickType_t delay_ticks = pdMS_TO_TICKS(DEFAULT_PING_INTERVAL_MS);
+
+    for (;;) {
+        vTaskDelay(delay_ticks);
+        if (!s_backend_ep_valid) {
+            continue;
+        }
+        const device_registry_endpoint_t *ep = (const device_registry_endpoint_t *)&s_backend_ep;
+        esp_err_t err = device_registry_ping(ep, backend_on_ping_timestamp_changed, NULL);
+        if (err != ESP_OK) {
+            ESP_LOGD(TAG, "device_registry_ping: %s", esp_err_to_name(err));
+        }
+    }
 }
 
 /* Boot button callback: factory reset */
@@ -128,18 +212,47 @@ static void on_joined_wrapper(void *ctx)
     update_attached_led_role();
     log_leader_data();
 
-    /* Init CoAP client trước on_joined để app gọi device_registry_register() khi đã discovery backend. */
+    /* Backend communication: discovery + ping + register (core xử lý, app không cần code). */
     if (s_config.enable_device_registry) {
         device_registry_init();
+
+        thread_discovery_cfg_t disc_cfg = {
+            .nvs_namespace = NULL,
+            .cache_key_srp = NULL,
+            .cache_key_static = NULL,
+            .cache_ttl_sec = 10,
+        };
+        thread_discovery_init(&disc_cfg);
+
+        thread_discovery_endpoint_t ep;
+        esp_err_t err = thread_discovery_get_endpoint(&ep, true);
+        if (err == ESP_OK) {
+            s_backend_ep = ep;
+            s_backend_ep_valid = true;
+            char addr_str[40];
+            otIp6AddressToString(&s_backend_ep.addr, addr_str, sizeof(addr_str));
+            ESP_LOGI(TAG, "Backend discovered: [%s]:%u (from_srp=%s)",
+                     addr_str, (unsigned)s_backend_ep.port, s_backend_ep.from_srp ? "yes" : "no");
+            backend_trigger_register();
+        } else {
+            ESP_LOGD(TAG, "Initial backend discovery: %s", esp_err_to_name(err));
+        }
+
+        if (xTaskCreate(backend_discovery_refresh_task, "thread_disc", 4096, NULL, 5, NULL) != pdPASS) {
+            ESP_LOGE(TAG, "Failed to create discovery refresh task");
+        }
+        if (xTaskCreate(backend_ping_task, "thread_ping", 3072, NULL, 5, NULL) != pdPASS) {
+            ESP_LOGE(TAG, "Failed to create ping task");
+        }
     }
 
-    /* Call user callback (app gọi device_registry_register() khi đã discovery backend). */
+    /* Call user callback (app chỉ init device/entity model + driver). */
     if (s_config.on_joined) {
         s_config.on_joined(s_config.ctx);
     }
 }
 
-esp_err_t thread_endpoint_start(const thread_endpoint_config_t *config)
+esp_err_t thread_node_start(const thread_node_config_t *config)
 {
     if (s_started) {
         ESP_LOGW(TAG, "Already started");
@@ -230,7 +343,7 @@ esp_err_t thread_endpoint_start(const thread_endpoint_config_t *config)
     };
     ESP_ERROR_CHECK(boot_btn_start(&boot_cfg));
 
-    ESP_LOGI(TAG, "Thread Endpoint started");
+    ESP_LOGI(TAG, "Thread Node started");
     ESP_LOGI(TAG, "PSKd=\"%s\" - Commissioner: joiner add * %s",
              s_config.pskd, s_config.pskd);
     ESP_LOGI(TAG, "Hold BOOT button (GPIO %d) ~%lu s for factory reset",

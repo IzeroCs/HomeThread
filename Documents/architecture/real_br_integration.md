@@ -51,9 +51,9 @@
 - **Giao thức thường dùng:** CoAP (UDP 5683) hoặc HTTP (TCP). Định dạng payload thường là JSON hoặc CBOR (xem [border_router_coap_server.md](../coap/border_router_coap_server.md) phần payload format — backend có thể giữ resource `/device/register`, `/device/update`, `/device/ping` nhưng **chạy trên Backend**, không trên BR).
 
 > **Ghi chú triển khai hiện tại (Thread-Node 0.9.x)**  
-> - Thread-Node **đã** gửi `/device/register` **tới Backend** (sau khi discovery qua `backend_discovery`). Không còn gửi tới Leader RLOC.  
-> - Register được trigger khi discovery thành công và khi refresh task (60s) phát hiện backend endpoint (addr/port) thay đổi.  
-> - Migration hoàn tất. Xem [thread_node_coap.md](../coap/thread_node_coap.md) và component `thread/device_registry` + `thread/backend_discovery`.
+> - Thread-Node **đã** gửi `/device/register` **tới Backend** (sau khi discovery qua `thread_discovery`). Không còn gửi tới Leader RLOC.  
+> - Register được trigger khi: discovery thành công; refresh task (60s) phát hiện endpoint (addr/port) thay đổi; **GET /device/ping** nhận timestamp khác (backend restart) → gửi lại register.  
+> - Xem [thread_node_coap.md](../coap/thread_node_coap.md) và component `thread/device` (device_registry, device_coap) + `thread/thread_discovery`.
 
 ### 3.2. Địa chỉ Backend
 

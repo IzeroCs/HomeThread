@@ -19,7 +19,7 @@ Thread-Node là **lớp thiết bị cuối** (End Device / Router Node) trong h
 
 ## Mục tiêu cốt lõi
 
-1. **Reusable framework**: Lập trình viên chỉ cần implement callback `on_joined()` — toàn bộ hạ tầng Thread (joining, registration, LED, button) được xử lý tự động bởi `thread_endpoint_start()`.
+1. **Reusable framework**: Lập trình viên chỉ cần implement callback `on_joined()` — toàn bộ hạ tầng Thread (joining, registration, LED, button) được xử lý tự động bởi `thread_node_start()`.
 
 2. **Entity Model**: Hệ thống trừu tượng hóa thiết bị IoT theo chuẩn `entity_model_specification.md` v1.3.0 — hỗ trợ light, switch, fan, sensor, climate, binary_sensor. Mỗi entity được mô tả bằng C struct, serialize bằng CBOR, và truyền đi qua CoAP. Device info: manufacturer, model, device_name = string; device_type, sw_version, hw_version = number (Zigbee-style) để giảm băng thông khi gửi register nhiều lần.
 
@@ -28,7 +28,7 @@ Thread-Node là **lớp thiết bị cuối** (End Device / Router Node) trong h
 ## Phạm vi
 
 ### Bao gồm
-- `components/thread/`: Thread joining, CoAP server/client, device registry, status LED, boot button
+- `components/thread/`: Thread joining (`thread_node`, `thread_joiner`), CoAP server (`thread_coap`), backend discovery (`thread_discovery`), device layer (`device/`: device_registry + device_coap), status LED, boot button
 - `components/entity/`: Entity model, device model, CBOR serialization, entity CoAP server
 - `examples/light_on_off/`: Example hoàn chỉnh duy nhất
 - `openthread_custom_config.h`: Tùy chỉnh OpenThread timeout và CoAP

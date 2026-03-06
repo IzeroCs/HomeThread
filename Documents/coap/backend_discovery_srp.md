@@ -6,7 +6,7 @@ Tài liệu ngắn về cơ chế discovery backend (Dashboard) trên Thread-Nod
 
 Thread-Node dùng **OpenThread DNS client** (`otDnsClientBrowse`, `otDnsBrowseResponseGetServiceInfo`, `otDnsBrowseResponseGetHostAddress`) để:
 
-1. Browse service `_dashboard._udp.default.svc.arpa` trên mesh.
+1. Browse service `_dashboard._udp.default.service.arpa` trên mesh.
 2. Lấy thông tin SRV (hostname + port) và resolve AAAA → IPv6.
 3. Cache kết quả vào NVS (namespace `backend`) và fallback cấu hình tĩnh nếu SRP không trả kết quả.
 
@@ -33,17 +33,21 @@ OpenThread core **không** forward query cho `*.default.svc.arpa` ra upstream (t
 3. **SRP server:** Đảm bảo không từ chối với RCODE Refused (vd. do lease/format). Nếu vẫn lỗi "Failed to process DNS Additional section", kiểm tra SIG(0) và zone/domain; có thể bật log debug SRP server trên OpenThread.
 4. **Không forward** query `*.default.svc.arpa` ra upstream — xử lý local bởi SRP/DNS-SD trên Thread.
 
-Sau khi BR đăng ký thành công, Thread-Node sẽ nhận response thay vì NotFound/Timeout và log dạng "Discovered backend via SRP: [addr]:port".
+Sau khi BR đăng ký thành công, Thread-Node sẽ nhận response thay vì NotFound/Timeout. thread_discovery log "Discovered backend via SRP" ở LOGD; thread_node log "Backend discovered: [addr]:port" ở INFO (chỉ 1 lần khi có IP hoặc khi IP đổi).
+
+## Nhận biết backend restart (cùng IPv6/port)
+
+Thread-Node gửi **GET /device/ping** định kỳ. Backend trả **2.05 Content** với payload 4 byte = timestamp uint32 LE (giá trị lúc server khởi động). Node lưu timestamp; nếu response lần sau có **timestamp khác** → backend đã restart → callback trigger gửi lại **POST /device/register**. Chi tiết: [thread_node_coap.md](thread_node_coap.md).
 
 ## Nhận biết backend đổi IPv6 (không cần reboot)
 
 Kết hợp hai cơ chế:
 
-1. **Cache TTL (`backend_discovery_cfg_t.cache_ttl_sec`):** Khi `get_endpoint(out, false)` và có cache SRP trong NVS, nếu `cache_ttl_sec > 0` và `(now - cache_ts) > cache_ttl_sec` thì coi cache hết hạn và thực hiện SRP discovery lại (không trả cache cũ). Như vậy mọi caller gọi `get_endpoint(..., false)` định kỳ sẽ nhận endpoint mới khi cache hết TTL.
+1. **Cache TTL (`thread_discovery_cfg_t.cache_ttl_sec`):** Khi `thread_discovery_get_endpoint(out, false)` và có cache SRP trong NVS, nếu `cache_ttl_sec > 0` và `(now - cache_ts) > cache_ttl_sec` thì coi cache hết hạn và thực hiện SRP discovery lại (không trả cache cũ). Caller gọi get_endpoint định kỳ sẽ nhận endpoint mới khi cache hết TTL.
 
-2. **Task re-discovery định kỳ (example light_on_off):** Task chạy vô hạn, mỗi 60s gọi `get_endpoint(&ep, false)`. Nhờ TTL = 60s, cache hết hạn nên sẽ SRP lại; nếu endpoint (addr + port) khác `s_backend_ep` thì cập nhật in-memory và log "Backend endpoint updated". Task được tạo luôn sau join (dù lần đầu discovery thành công hay thất bại). Backend đổi IPv6 và gửi lại CMD_SRP_REGISTER lên BR thì tối đa sau một chu kỳ (60s) Thread-Node có endpoint mới mà không cần reboot.
+2. **Task re-discovery (thread_node):** Task `thread_disc` mỗi 60s gọi `thread_discovery_get_endpoint(&ep, false)`. Nếu endpoint (addr + port) khác `s_backend_ep` thì cập nhật và log **"Backend discovered"** (lần đầu) hoặc **"Backend endpoint updated"** (khi đổi). Log backend IP chỉ 1 lần khi có IP và khi IP thay đổi (thread_node log INFO); thread_discovery khi trả cache/static/SRP dùng LOGD. Backend đổi IPv6 và gửi lại CMD_SRP_REGISTER lên BR thì tối đa sau 60s Thread-Node có endpoint mới.
 
 ## Tài liệu liên quan
 
-- [border_router_coap_server.md](border_router_coap_server.md) — CoAP server BR, device registry.
-- Memory-bank: `progress.md` (Issue 5: Backend discovery NotFound), `techContext.md` (Backend Discovery), `activeContext.md` (Recent changes).
+- [border_router_coap_server.md](border_router_coap_server.md) — Backend device registry (BR không còn chạy CoAP server; child gửi thẳng backend).
+- Memory-bank (Thread-Host): `progress.md`, `techContext.md`, `activeContext.md`.
