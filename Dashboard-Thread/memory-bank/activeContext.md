@@ -2,7 +2,7 @@
 
 ## Current Work Focus
 
-Project da on dinh voi BR qua TCP, trang Nodes (Router/Child/Joiner List), Toast dark theme, stable React keys. UI dark navy: Modal/ConfirmModal, System action cards, Sidebar settings icons. **SRP register**: Backend gui CMD_SRP_REGISTER (0x44) qua frame khi BR la leader; **Status**: section **System** (IPv4/IPv6 backend), da bo section "Child data (CoAP)". **Docker:** Backend chay duoc bang Docker (network host, bind DB, default BR IP 192.168.31.3). Tiep theo: bao tri, optional mDNS, security neu can.
+Project da on dinh voi BR qua TCP, trang Nodes, Toast dark theme, UI dark navy. **Supervisor** (thu muc `supervisor/`): daemon Python stdlib — Unix socket `/var/run/izerocs/supervisor.sock` (backend goi restart-otbr) + thread watch device (RCP mat thi docker restart OTBR). Mot systemd service thay cho otbr-watch-device; da xoa `otbr/install-otbr-watch-service.sh` va `otbr/otbr-watch-device.sh`. Tiep theo: bao tri, optional mDNS, security neu can.
 
 ## Recent Significant Changes
 
@@ -30,6 +30,13 @@ Project da on dinh voi BR qua TCP, trang Nodes (Router/Child/Joiner List), Toast
 - **Nodes page:** Router Table + Child Table + **Joiner List** (ben duoi Child Table). Nut "Commission Node" mo **CommissionNodeModal** (khong con trang Commissioner rieng). Khi BR disconnect: overlay full main (blur), khong boc content; cung layout nhu khi connect. Bang trong: empty state "No routers found" / "No child nodes connected".
 - **Leader row:** Chi badge "LEADER" trong cell, khong highlight nen xanh la.
 - **Version:** Subtitle Status lay tu `frontend/package.json` qua Vite `__APP_VERSION__`; dong bo voi progress.md (1.0.0).
+
+### Supervisor (socket + watch device)
+- **Thu muc:** `supervisor/` (ngang backend, frontend). Python stdlib only: `server.py` (Unix socket + thread poll device), `install-supervisor-service.sh` (systemd unit `dashboard-thread-supervisor.service`).
+- **Socket:** `/var/run/izerocs/supervisor.sock`. Backend hoac supervisor (ai chay truoc) deu tao folder `/var/run/izerocs`; supervisor tao sock va listen. Xac thuc bang quyen truy cap file (khong token). Protocol: mot dong lenh (`restart-otbr`, `health`) → mot dong phan hoi (`ok` hoac `error: ...`).
+- **Watch device:** Neu set env `DEVICE_PATH` (vd. `/dev/ttyACM0`), thread phu poll moi `INTERVAL` giay; device mat → `docker restart OTBR_CONTAINER_NAME`. Env: `OTBR_CONTAINER_NAME`, `DEVICE_PATH`, `INTERVAL`, `DOCKER`. Service ExecStartPre bat IP forwarding (IPv4 + IPv6).
+- **Backend:** Khoi dong tao folder `/var/run/izerocs` (mkdirSync). `backend/src/supervisor/socketClient.ts`: `requestSupervisor(cmd)`, `restartOtbr()`; env `SUPERVISOR_SOCK_DIR`. Backend Docker can mount `/var/run/izerocs:/var/run/izerocs` de thay sock.
+- **OTBR:** Da xoa `otbr/install-otbr-watch-service.sh`, `otbr/otbr-watch-device.sh`. Chi con `otbr-entrypoint.sh` (doi RCP roi exec /init). Doc `otbr/README.md` tro sang supervisor.
 
 ### Docker backend (chay backend bang container)
 - **Vi tri:** Dockerfile va docker-compose o **thu muc goc** Dashboard-Thread: `Dockerfile.backend`, `docker-compose.yml`, `.dockerignore`. Sau co the them frontend cung build.
@@ -80,9 +87,14 @@ ROUTER_TABLE, CHILD_TABLE, JOINER_TABLE TX va ACK bi filter ra khoi console log 
 1. **Tim BR** *(tuy chon)* — mDNS browse `_thread-frame._tcp` (khi chay tren host) hoac quet dai IP (TCP 5000) khi chay Docker
 2. **TCP keepalive** — Da co the bat de phat hien mat ket noi BR nhanh hon (backend TransportTcp)
 3. **Security** *(neu can)* — auth WS, HTTPS
+4. **OTBR config tu backend** *(neu can)* — Backend ghi file config (serial, baudrate, interface), goi `restartOtbr()` qua supervisor socket; entrypoint OTBR doc file khi start
 
 ## Files to Watch
 
+- `supervisor/server.py` — socket + watch device; env DEVICE_PATH, OTBR_CONTAINER_NAME, INTERVAL
+- `supervisor/install-supervisor-service.sh` — systemd unit dashboard-thread-supervisor
+- `backend/src/supervisor/socketClient.ts` — requestSupervisor(), restartOtbr(); SUPERVISOR_SOCK_DIR
+- `otbr/README.md` — tro sang supervisor cho "Rut RCP"
 - `backend/src/server/CoapDeviceServer.ts` — CoAP device (path /device/); GET ping → 2.05 + 4-byte timestamp; POST → CBOR decode (backend/src/cbor), log JSON, tra 2.01
 - `backend/src/utils/ipv6.ts` — getPreferredBackendIPv6(), getBackendAddresses()
 - `docs/coap/thread_node_coap.md`, `docs/architecture/real_br_integration.md` — Thread-Node, SRP discovery

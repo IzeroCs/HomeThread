@@ -19,6 +19,7 @@ Version notation in this file uses Semantic Versioning `MAJOR.MINOR.PATCH` (no l
 | 1.4.0   | CoAP device: Doi ten CoapChildDataServer → CoapDeviceServer; path chi /device/ (register, update, ping). Bo EVENTS.CHILD_DATA, ChildDataPayload; backend khong emit len frontend. CoAP server udp6 listen [::]:5683 (nhan IPv6 Thread-Node). Parse CBOR (cbor2), log "CoAP CBOR -> JSON: ...". Migration 006: DROP TABLE serial_config. |
 | 1.5.0   | CoAP: CBOR decode **noi bo** (backend/src/cbor), bo dependency cbor2. GET /device/ping → 2.05 Content, payload 4 byte timestamp uint32 LE (gia tri luc khoi tao server; restart = timestamp moi). Thread-Node so sanh timestamp → neu doi goi lai register. Payload register: role la **so** (0=child, 1=router, 2=leader). Log structure: device_id, device_name, device_type, rloc16, role, entities. |
 | 1.6.0   | Docker backend: Dockerfile.backend + docker-compose o root (sau them frontend). network_mode: host, volume backend/data. Default BR 192.168.31.3:5000 (migration 005) — mDNS trong Docker khong dung duoc, phai dung IP. Doc backend/README.docker.md. |
+| 1.7.0   | Supervisor: thu muc `supervisor/` (Python stdlib) — Unix socket `/var/run/izerocs/supervisor.sock` (backend goi restart-otbr/health) + thread watch device (DEVICE_PATH mat → docker restart OTBR). Install script `install-supervisor-service.sh` (systemd dashboard-thread-supervisor, IP forwarding). Backend: mkdir /var/run/izerocs luc khoi dong; `backend/src/supervisor/socketClient.ts` (requestSupervisor, restartOtbr). Xoa otbr/install-otbr-watch-service.sh, otbr/otbr-watch-device.sh; otbr/README tro sang supervisor. |
 
 
 ## What Works (Completed)
@@ -90,6 +91,11 @@ Console da bo. Commissioner gop vao Nodes (modal + Joiner List).
 - Sidebar: brand "OpenThread", nav Status / Nodes / Settings (icon `speed` / `account_tree` / `settings`); Settings dropdown sub-items voi icon `lan` (BR Connection), `device_hub` (OpenThread), `warning` (System); status dot mau theo thread state + BR connection
 - Toggle switch custom
 
+### Integration & Operations (Supervisor, OTBR)
+
+- **Supervisor** (`supervisor/`): Daemon Python stdlib — listen Unix socket `/var/run/izerocs/supervisor.sock`; backend goi `restartOtbr()` qua socketClient. Neu set `DEVICE_PATH` (vd. /dev/ttyACM0), thread poll device; mat → docker restart container. Mot systemd service: `sudo bash ./supervisor/install-supervisor-service.sh [container] [device]`. ExecStartPre bat IP forwarding. Doc: supervisor/README.md.
+- **OTBR Docker** (`otbr/`): Entrypoint doi RCP (by-id) roi exec /init; compose mount /dev, env OT_RCP_DEVICE. Rut RCP → dung supervisor (watch device) restart container. Da xoa script otbr-watch rieng (gom vao supervisor).
+
 ### Documentation
 
 - HomeThread/Documents/protocol/usb_cdc_frame_structure.md
@@ -116,6 +122,7 @@ Console da bo. Commissioner gop vao Nodes (modal + Joiner List).
 
 - **Tim BR** *(tuy chon)*: mDNS browse (khi chay tren host) hoac quet dai IP TCP 5000 (phu hop Docker)
 - **Docker**: Build frontend thanh rieng image (backend da co)
+- **OTBR config tu backend** *(tuy chon)*: Backend ghi file config (serial/baudrate/interface), goi supervisor restart; entrypoint OTBR doc file luc start
 
 ## Known Issues / Notes
 

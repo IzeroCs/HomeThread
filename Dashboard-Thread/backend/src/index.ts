@@ -4,6 +4,7 @@
  */
 
 import "dotenv/config";
+import { mkdirSync } from "fs";
 import { createServer } from "http";
 import { Server } from "socket.io";
 import { getDatabase, closeDatabase } from "./database/Database";
@@ -12,6 +13,7 @@ import { BrConnectionConfigService, CommunicateManager } from "./communicate";
 import { AppSettingsService } from "./services/AppSettingsService";
 import { WebSocketServer } from "./server/WebSocketServer";
 import { startCoapDeviceServer } from "./server/CoapDeviceServer";
+import { SUPERVISOR_SOCK_DIR } from "./supervisor/socketClient";
 import { logger } from "./utils/logger";
 
 const serverLog = logger.child("Server");
@@ -20,6 +22,12 @@ const PORT = process.env.PORT ?? 3000;
 
 getDatabase();
 runMigrations();
+
+try {
+  mkdirSync(SUPERVISOR_SOCK_DIR, { recursive: true });
+} catch {
+  // Ignore (e.g. read-only fs, không mount sock)
+}
 
 const brConnectionConfigService = new BrConnectionConfigService();
 const appSettingsService = new AppSettingsService();

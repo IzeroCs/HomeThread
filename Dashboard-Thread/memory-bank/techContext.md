@@ -8,6 +8,8 @@ Dashboard-Thread/          # npm workspaces root
 ├── backend/               # Node.js + TypeScript server
 ├── frontend/              # React + Vite + SCSS
 ├── shared/                # Pure TypeScript, shared by both
+├── supervisor/            # Python stdlib daemon: socket + watch device (khong thuoc npm workspaces)
+├── otbr/                  # OTBR Docker (Dockerfile, entrypoint, README)
 └── memory-bank/           # Cursor Memory Bank files
 ```
 
@@ -111,11 +113,18 @@ SQLite (`better-sqlite3`, WAL mode). 6 migrations:
 - `br_connection_config`: br_host, br_port, use_mdns (mac dinh 192.168.31.3:5000 — dung khi chay Docker; co the doi qua Settings)
 - 006: DROP TABLE serial_config (BR chi dung TCP, khong con Serial)
 
-## Docker (backend)
+## Supervisor (host daemon)
 
-- **Vi tri:** `Dockerfile.backend`, `docker-compose.yml` o thu muc goc. Build: `docker compose up --build`.
-- **Cau hinh:** `network_mode: host` (reply CoAP ve Thread-Node dung **bang route cua host** — backend khong can doc/cau hinh route trong code). Volume chi `./backend/data:/app/data`. Container name: `dashboard-thread-backend`.
-- **Default BR:** 192.168.31.3:5000. **mDNS trong Docker khong dung duoc**; khi chay Docker phai dung IP. "Tim BR" sau co the lam bang quet dai IP (TCP 5000). Chi tiet: `backend/README.docker.md`.
+- **Vi tri:** `supervisor/` — Python 3 stdlib only (khong pip). `server.py`: Unix socket `/var/run/izerocs/supervisor.sock` + thread watch device (neu set `DEVICE_PATH`).
+- **Socket:** Backend hoac supervisor (ai chay truoc) tao folder `/var/run/izerocs`; supervisor bind sock, nhan lenh `restart-otbr` / `health`, tra `ok` hoac `error: ...`. Xac thuc bang quyen file (khong token).
+- **Watch device:** Env `DEVICE_PATH` (vd. /dev/ttyACM0), `INTERVAL` (giay), `OTBR_CONTAINER_NAME`, `DOCKER`. Device mat → `docker restart`.
+- **Backend:** `backend/src/supervisor/socketClient.ts` — `restartOtbr()`, `requestSupervisor(cmd)`; env `SUPERVISOR_SOCK_DIR`. Backend khoi dong mkdir `/var/run/izerocs`. Backend Docker can volume `/var/run/izerocs:/var/run/izerocs`.
+- **Systemd:** `sudo bash ./supervisor/install-supervisor-service.sh [container] [device]` → unit `dashboard-thread-supervisor.service` (ExecStartPre IP forwarding). Doc: `supervisor/README.md`.
+
+## Docker (backend, OTBR)
+
+- **Backend:** `Dockerfile.backend`, `docker-compose.yml` o thu muc goc. `network_mode: host`, volume `./backend/data:/app/data`; neu chay backend container can them volume `/var/run/izerocs:/var/run/izerocs` de goi supervisor socket. Container name: `dashboard-thread-backend`. Default BR: 192.168.31.3:5000. mDNS trong Docker khong dung duoc. Chi tiet: `backend/README.docker.md`.
+- **OTBR:** Service `otbr` trong compose — entrypoint doi RCP (by-id) roi exec /init; mount /dev, env OT_RCP_DEVICE. Rut RCP → supervisor (watch device) restart container. Doc: `otbr/README.md`.
 
 ## Configuration
 

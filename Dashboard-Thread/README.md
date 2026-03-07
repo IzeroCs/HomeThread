@@ -36,10 +36,11 @@ Dashboard-Thread/
 ├── backend/              # Node.js + TypeScript (WebSocket, TCP frame protocol)
 │   ├── src/
 │   │   ├── server/       # WebSocketServer, CoapDeviceServer (UDP 5683, Thread-Node CoAP+CBOR)
-│   │   ├── communicate/ # TransportTcp, BrConnectionConfigService, frame (parser/builder/crc8), CommandManager (incl. sendSrpRegister), CommunicateManager, OtConfigManager, PollingManager
+│   │   ├── communicate/  # TransportTcp, BrConnectionConfigService, frame, CommandManager, CommunicateManager, OtConfigManager, PollingManager
+│   │   ├── supervisor/   # socketClient (restartOtbr qua Unix socket)
 │   │   ├── database/     # SQLite (Database, migrations)
 │   │   ├── services/     # AppSettings
-│   │   └── utils/        # logger, ipv6 (getPreferredBackendIPv6, getBackendAddresses)
+│   │   └── utils/       # logger, ipv6 (getPreferredBackendIPv6, getBackendAddresses)
 │   └── package.json
 ├── frontend/
 │   ├── src/
@@ -47,7 +48,9 @@ Dashboard-Thread/
 │   │   │   └── common/   # Modal, ConfirmModal, Sidebar, ToastContainer
 │   │   └── hooks/        # useWebSocket, useWebSocketContext
 │   └── package.json
-├── docs/                 # coap/thread_node_coap.md (hướng dẫn Thread-Node gửi dữ liệu CoAP+CBOR)
+├── supervisor/           # Daemon Python (stdlib): Unix socket + watch RCP device → restart OTBR
+├── otbr/                 # OTBR Docker (entrypoint đợi RCP, compose)
+├── docs/                 # coap/thread_node_coap.md, ...
 ├── TODO.md
 └── README.md
 ```
@@ -108,5 +111,7 @@ Dashboard-Thread/
 - **Database:** SQLite (BR connection config, app settings `thread_run_on_connect`). Migration 006 đã xóa bảng legacy `serial_config`.
 
 **Thread-Node gửi dữ liệu:** CoAP UDP port 5683 (IPv6 [::]), path `/device/register`, `/device/update`, `/device/ping`, payload CBOR. Backend parse CBOR, log JSON, trả 2.01; không gửi lên frontend. Xem [docs/coap/thread_node_coap.md](./docs/coap/thread_node_coap.md).
+
+**OTBR (Docker):** Compose có service `otbr`; entrypoint đợi RCP (by-id) rồi start. Rút RCP → dùng **supervisor** trên host (socket + watch device) để restart container. Cài service: `sudo bash ./supervisor/install-supervisor-service.sh`. Xem [supervisor/README.md](./supervisor/README.md), [otbr/README.md](./otbr/README.md).
 
 Chi tiết: [Documents/protocol/usb_cdc_frame_structure.md](../Documents/protocol/usb_cdc_frame_structure.md) · [Documents/dashboard/migration_to_frame_protocol.md](../Documents/dashboard/migration_to_frame_protocol.md) · Việc còn lại: [TODO.md](./TODO.md).
