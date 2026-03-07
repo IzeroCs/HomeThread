@@ -32,6 +32,8 @@ export function startCoapDeviceServer(): coap.Server {
     const url = req.url ?? "";
     const method = (req as { method?: string }).method ?? "POST";
     coapLog.info(`CoAP request ${method} ${url}`);
+    console.log('Source IP:', req.rsinfo.address);
+    console.log('Source Port:', req.rsinfo.port);
 
     if (!url.startsWith(DEVICE_PATH_PREFIX)) {
       coapLog.warn(`CoAP path not accepted: ${url} (expected /device/...)`);

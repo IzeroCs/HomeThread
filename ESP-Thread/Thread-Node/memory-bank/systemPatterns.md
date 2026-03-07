@@ -132,7 +132,8 @@ cbor_close_array()          // Break code (0xFF)
 | Task | Stack | Priority | Mục đích |
 |---|---|---|---|
 | `openthread` | 10240 | 5 | OpenThread stack (do ESP-IDF tạo) |
-| `thread_disc` | 4096 | 5 | Re-discovery 60s; cập nhật endpoint khi addr/port đổi; log "Backend discovered" / "Backend endpoint updated" chỉ khi lần đầu hoặc đổi; trigger_register |
+| `sys_evt` | 4096 (light_on_off) | — | Default event loop; handler OT event (LED, log_leader_data). Mặc định 2048 dễ stack overflow. |
+| `thread_disc` | 4096 | 5 | Discovery: delay **10s** khi chưa có backend, **60s** khi đã có; cập nhật endpoint khi addr/port đổi; log "Backend discovered" / "Backend endpoint updated" chỉ khi lần đầu hoặc đổi; trigger_register |
 | `backend_ping` | 4096 | 5 | GET /device/ping mỗi 10s; khi timestamp response khác → trigger_register |
 | `status_led_task` | 2048 | 2 | WS2812 LED |
 | `boot_btn_task` | 2048 | 2 | Poll GPIO, long press → factory reset |

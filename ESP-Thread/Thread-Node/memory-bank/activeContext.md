@@ -14,6 +14,10 @@ Dự án đang ở giai đoạn **hoàn thiện hạ tầng Backend communicatio
 - **GET /device/ping**: Node gửi GET /device/ping mỗi 10s; backend reply 4-byte timestamp (LE). Nếu timestamp khác lần trước → node gửi lại POST /device/register (backend restart / re-register).
 - **CoAP token**: Mọi request (register, ping) dùng CoAP token 2 byte (trong device_coap); tái sử dụng cho resource CoAP khác sau này.
 - **Backend discovery log**: Log backend IP **1 lần** khi có IP, **log lại khi IP thay đổi**. thread_node log INFO "Backend discovered" / "Backend endpoint updated". thread_discovery: "Discovered backend via SRP", "Using cached SRP backend endpoint", "Using static backend endpoint from NVS" chuyển sang LOGD để tránh spam.
+- **Discovery retry khi chưa có backend**: Task refresh dùng delay **10s** khi `!s_backend_ep_valid`, **60s** khi đã có backend (DEFAULT_DISCOVERY_RETRY_MS / DEFAULT_DISCOVERY_REFRESH_MS) — tránh đợi 60s mới retry lần đầu.
+- **sys_evt stack overflow**: Handler OpenThread event (on_openthread_event: update_attached_led_role, log_leader_data) chạy trong task "sys_evt"; mặc định stack 2048 gây Stack protection fault. **light_on_off** đặt CONFIG_ESP_SYSTEM_EVENT_TASK_STACK_SIZE=4096 trong sdkconfig.defaults.
+- **Log node IPv6 khi join xong**: Trong on_joined_wrapper, log Mesh-Local EID (otThreadGetMeshLocalEid) và RLOC16 (otThreadGetRloc16) ngay sau khi có instance.
+- **CoAP response / callback**: Backend phải **echo đúng CoAP token** từ request sang response (RFC 7252) thì OpenThread mới gọi response handler. thread_node gọi device_registry_register(ep, **NULL**, NULL) nên không có callback khi register xong. Ping callback (backend_on_ping_timestamp_changed) chỉ gọi khi **timestamp trong response thay đổi** so với lần trước (lần đầu nhận ping không gọi). Backend ping reply: **2.05 Content**, payload 4 byte timestamp LE.
 - **device_registry_is_registered()**: true khi Backend đã ACK (2.01/2.04/2.05) ít nhất một lần.
 
 ## Công việc đang pending

@@ -29,7 +29,7 @@
 
 - **Transport:** Kết nối **TCP** tới `BR_IP:port` (port mặc định 5000, cấu hình trong BR menuconfig).
 - **Giao thức:** Cùng [frame protocol](../protocol/usb_cdc_frame_structure.md) (SOF/Frame ID/CMD/LEN/DATA/CRC8/EOF) — gửi/nhận **byte stream** trên socket, không phải serial/USB.
-- **BR_IP và port:** BR đăng ký mDNS hostname **Thread-Host** (resolve `Thread-Host.local` → IP) và service **\_thread-frame.\_tcp** (port frame, mặc định 5000). Backend có thể: (1) resolve `Thread-Host.local` → BR_IP, port lấy từ config, hoặc (2) browse service `_thread-frame._tcp` → nhận luôn instance name, IP và port.
+- **BR_IP và port:** BR đăng ký mDNS hostname **Thread-Host** (resolve `Thread-Host.local` → IP) và service **\_thread-frame.\_tcp** (port frame, mặc định 5000). Backend có thể: (1) resolve `Thread-Host.local` → BR_IP, port lấy từ config, hoặc (2) browse service `_thread-frame._tcp` → nhận luôn instance name, IP và port. **Khi chạy Backend trong Docker:** mDNS thường không resolve được trong container → cấu **BR bằng IP** (vd. 192.168.31.3:5000) trong Settings hoặc dùng default (Dashboard-Thread migration mặc định 192.168.31.3:5000).
 
 ### 2.2. Không còn CMD_DATA push từ BR
 
@@ -93,6 +93,10 @@
 - **Resources:** Có thể giữ API tương tự legacy: POST `/device/register`, `/device/update`, GET `/device/ping` — nhưng **chạy trên Backend**, không trên BR. Payload format (CBOR với numeric map keys) có thể giữ để tương thích Thread-Node.
 - **ACK/NACK:** Backend trả response cho từng request (CoAP 2.01/2.04/2.05 hoặc 4xx/5.03) để Child không treo (xem lưu ý NoBufs trong [border_router_coap_server.md](../coap/border_router_coap_server.md)).
 
+### 4.1. Route Backend → Node (reply CoAP)
+
+Để **reply từ Backend tới Thread-Node** tới đích, máy chạy Backend cần **route** tới prefix Thread (OMR, vd. fdb8:.../fdd7:...) **via** BR (link-local IPv6 của BR trên backbone). BR gửi Router Advertisement (RA) có Route Information Option (RIO) nhưng với **router lifetime = 0** → nhiều kernel Linux không cài route từ RIO. **Cách làm:** Thêm route tay trên host: `ip -6 route add <PREFIX>::/64 via <BR_linklocal> dev <iface>`. Route mất sau reboot; có thể script/cron hoặc persistent. Sau **factory reset BR**, prefix và có thể cả link-local BR đổi → cập nhật lại route. **Backend chạy Docker:** Dùng `network_mode: host` để container dùng chung stack mạng (và route) với host; khi đó route thêm trên host có hiệu lực cho Backend trong container.
+
 ---
 
 ## 5. Debug: RX/TX logging (BR)
@@ -103,11 +107,33 @@
 
 ---
 
-## 6. Tài liệu liên quan
+## 6. Troubleshooting: CoAP response không tới node (ResponseTimeout)
+
+Khi Thread-Node báo **ResponseTimeout** (ping/register), response từ backend **chưa tới node**. Backend gửi UDP về đúng địa chỉ nguồn (rsinfo) của request; vấn đề nằm ở **routing và forwarding** giữa host backend và Thread mesh.
+
+### 6.1 Host chạy backend (Linux)
+
+- **Route:** Host cần có route IPv6 tới **prefix Thread (OMR)** qua BR. Kiểm tra: `ip -6 route get <địa_chỉ_ULA_node>` (vd. `fdb8:3795:e886:1:...`) → next-hop phải là BR (link-local hoặc ULA), dev = interface nối tới BR. Route thường học qua **Router Advertisement** từ BR (proto ra).
+- **IPv6 forwarding:** Nếu BR chạy trên **cùng host** (OTBR trên Linux) thì cần `net.ipv6.conf.all.forwarding=1`. Nếu BR là thiết bị riêng (vd. ESP32-S3), host backend chỉ cần route, không bắt buộc bật forwarding.
+
+### 6.2 Border Router (ESP32-S3 + RCP hoặc OTBR)
+
+- **BR phần cứng (ESP32-S3 + RCP):** Forwarding IPv6 giữa backhaul và Thread do **firmware BR** (border routing) đảm nhiệm. Đảm bảo border routing bật và BR quảng bá **OMR prefix** (fdb8:... hoặc prefix node đang dùng) ra backhaul; packet đích tới prefix đó phải được chuyển vào mesh tới đúng node.
+- **Hai prefix:** BR có **mesh-local prefix** (vd. fd18:2045:c1db:f85d::/64) và có thể có **OMR prefix** (vd. fdb8:3795:e886:1::/64) cho địa chỉ routable từ backbone. Node có cả mesh-local và OMR; backend nhận request từ OMR và gửi response về OMR.
+- **OTBR trên Linux:** Cần bật IPv6 forwarding; firewall (ip6tables) phải cho phép FORWARD vào interface Thread (vd. wpan0). Chi tiết OTBR: tài liệu OpenThread Border Router.
+
+### 6.3 Kiểm tra nhanh
+
+- Từ host backend: `ping6 <node_ULA>`. Nếu ping được thì path đã thông, CoAP response cũng đi cùng đường. Nếu "No route" hoặc timeout → sửa route / BR forwarding trước.
+
+---
+
+## 7. Tài liệu liên quan
 
 | Tài liệu | Nội dung |
 |----------|----------|
 | [../protocol/usb_cdc_frame_structure.md](../protocol/usb_cdc_frame_structure.md) | Frame protocol (transport: TCP; CMD, CRC8, error codes) |
 | [../protocol/table_data_format.md](../protocol/table_data_format.md) | Binary format Router/Child/Joiner Table |
 | [../coap/border_router_coap_server.md](../coap/border_router_coap_server.md) | Device registry (legacy trên BR; **hiện chạy trên Backend**), payload format, ACK/NACK |
+| [../coap/thread_node_coap.md](../coap/thread_node_coap.md) | CoAP /device/, GET ping, troubleshooting ResponseTimeout |
 | [../dashboard/migration_to_frame_protocol.md](../dashboard/migration_to_frame_protocol.md) | Dashboard: migration sang frame; **cập nhật: kết nối TCP tới BR** |

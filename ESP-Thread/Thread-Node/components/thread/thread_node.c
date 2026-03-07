@@ -31,7 +31,8 @@
 
 static const char *TAG = "thread_node";
 
-#define DEFAULT_DISCOVERY_REFRESH_MS  60000
+#define DEFAULT_DISCOVERY_REFRESH_MS  60000   /* Khi đã có backend: refresh 60s */
+#define DEFAULT_DISCOVERY_RETRY_MS    10000   /* Khi chưa có backend: retry mỗi 10s */
 #define DEFAULT_PING_INTERVAL_MS      10000
 
 static thread_node_config_t s_config;
@@ -105,10 +106,11 @@ static void backend_on_ping_timestamp_changed(void *ctx)
 static void backend_discovery_refresh_task(void *pvParameters)
 {
     (void)pvParameters;
-    const TickType_t delay_ticks = pdMS_TO_TICKS(DEFAULT_DISCOVERY_REFRESH_MS);
 
     for (;;) {
-        vTaskDelay(delay_ticks);
+        /* Chưa có backend: retry nhanh (10s). Đã có: refresh chậm (60s). */
+        uint32_t delay_ms = s_backend_ep_valid ? DEFAULT_DISCOVERY_REFRESH_MS : DEFAULT_DISCOVERY_RETRY_MS;
+        vTaskDelay(pdMS_TO_TICKS(delay_ms));
 
         thread_discovery_endpoint_t ep;
         esp_err_t err = thread_discovery_get_endpoint(&ep, false);
@@ -189,6 +191,19 @@ static void on_joined_wrapper(void *ctx)
     /* Set prefer not leader */
     if (s_config.prefer_not_leader) {
         thread_joiner_set_prefer_not_leader(true);
+    }
+
+    /* Log IPv6 (Mesh-Local EID) và RLOC16 của node khi join xong */
+    if (instance && esp_openthread_lock_acquire(pdMS_TO_TICKS(200))) {
+        const otIp6Address *ml_eid = otThreadGetMeshLocalEid(instance);
+        if (ml_eid) {
+            char addr_str[40];
+            otIp6AddressToString(ml_eid, addr_str, sizeof(addr_str));
+            ESP_LOGI(TAG, "Node joined, Mesh-Local EID: %s", addr_str);
+        }
+        uint16_t rloc16 = otThreadGetRloc16(instance);
+        esp_openthread_lock_release();
+        ESP_LOGI(TAG, "Node RLOC16: 0x%04x", rloc16);
     }
 
     /* Set Leader Weight = -16 để tránh trở thành Leader */

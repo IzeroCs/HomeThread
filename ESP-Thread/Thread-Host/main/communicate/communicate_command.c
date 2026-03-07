@@ -833,10 +833,6 @@ int communicate_command_handle_srp_register(uint8_t frame_id, const uint8_t *dat
         return -1;
     }
 
-    /* Lease: server requires key lease >= lease; use 60/120 to avoid server reject. */
-    // (void)otSrpClientSetLeaseInterval(instance, 60);
-    // (void)otSrpClientSetKeyLeaseInterval(instance, 120);
-
     if (!s_srp_dashboard_service_inited) {
         memset(&s_srp_dashboard_service, 0, sizeof(s_srp_dashboard_service));
         s_srp_dashboard_service.mName = "_dashboard._udp";

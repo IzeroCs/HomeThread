@@ -75,6 +75,9 @@
   - **Proxy trên BR:** Child gửi CoAP/HTTP tới BR; BR forward payload sang backend qua IPv4 rồi trả response lại cho child.
   - **NAT64:** BR (hoặc gateway khác) dịch IPv6 (child) ↔ IPv4 (backend), cho phép backend thuần IPv4. Đây là hướng mở rộng, chưa có trong Thread-Host hiện tại.
 
+#### Route backend → Node (reply CoAP)
+- Để backend trả reply về Node, **máy backend** cần route: prefix Thread (OMR, vd. fdb8:.../fdd7:...) **via** BR (link-local backbone). BR gửi RA với RIO nhưng router lifetime=0 → Linux có thể không cài route; thêm tay: `ip -6 route add <prefix>::/64 via <BR_fe80::> dev <iface>`. Chi tiết: activeContext.md, Documents/architecture/real_br_integration.md. **Dashboard-Thread Docker:** Backend chạy với `network_mode: host` để dùng route host; default BR IP 192.168.31.3 (mDNS trong container không ổn định).
+
 ### Logging (frame RX/TX)
 - Mặc định **INFO**: chỉ in frame RX/TX cho CMD không noisy (GET_DATASET, SET_*, COMMISSIONER_JOINER, …); CMD_STATE và *_TABLE không in.
 - Để xem **mọi frame RX/TX** và **byte stream TCP** (tcp rx/tx N bytes): set log level **DEBUG** cho tag `communicate` và `transport_tcp` (menuconfig hoặc `esp_log_level_set`).

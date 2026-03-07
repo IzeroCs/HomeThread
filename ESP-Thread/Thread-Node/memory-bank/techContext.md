@@ -85,9 +85,13 @@ CONFIG_ENTITY_MODEL_MAX_TYPES=16     # Số loại entity có thể đăng ký
 CONFIG_ENTITY_MODEL_MAX_ENTITIES=32  # Số entity tối đa trên một thiết bị
 ```
 
+### Example light_on_off (sdkconfig.defaults)
+
+- **CONFIG_ESP_SYSTEM_EVENT_TASK_STACK_SIZE=4096**: Task "sys_evt" (default event loop) chạy handler OpenThread event (update_attached_led_role, log_leader_data). Mặc định 2048 → Stack protection fault; example đặt 4096.
+
 ### Thread Node (thread_node_config_t)
 
-- **enable_device_registry** (bool): Khi `true`, thread_node gọi `device_registry_init()`, `thread_discovery_init()`, tạo task discovery refresh 60s và task ping 10s. App **không** gọi discovery/register/ping — chỉ implement on_joined (device + entities + entity_coap_server_start). Mặc định `true` khi `config == NULL`.
+- **enable_device_registry** (bool): Khi `true`, thread_node gọi `device_registry_init()`, `thread_discovery_init()`, tạo task discovery và task ping. **Discovery task**: delay **10s** khi chưa có backend (`!s_backend_ep_valid`), **60s** khi đã có (DEFAULT_DISCOVERY_RETRY_MS / DEFAULT_DISCOVERY_REFRESH_MS). Ping task: 10s. Trong on_joined_wrapper log Mesh-Local EID + RLOC16 của node. App **không** gọi discovery/register/ping — chỉ implement on_joined. Mặc định `true` khi `config == NULL`.
 
 ### Device (components/thread/device/)
 

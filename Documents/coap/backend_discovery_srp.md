@@ -47,7 +47,13 @@ Kết hợp hai cơ chế:
 
 2. **Task re-discovery (thread_node):** Task `thread_disc` mỗi 60s gọi `thread_discovery_get_endpoint(&ep, false)`. Nếu endpoint (addr + port) khác `s_backend_ep` thì cập nhật và log **"Backend discovered"** (lần đầu) hoặc **"Backend endpoint updated"** (khi đổi). Log backend IP chỉ 1 lần khi có IP và khi IP thay đổi (thread_node log INFO); thread_discovery khi trả cache/static/SRP dùng LOGD. Backend đổi IPv6 và gửi lại CMD_SRP_REGISTER lên BR thì tối đa sau 60s Thread-Node có endpoint mới.
 
+## CoAP ResponseTimeout (sau khi discovery thành công)
+
+Nếu discovery SRP thành công (node có backend IP/port) nhưng **CoAP ping/register báo ResponseTimeout**, nguyên nhân thường là **response từ backend không tới node** (routing/forwarding), không phải SRP. Cần kiểm tra route trên host backend tới prefix Thread qua BR và BR forward vào mesh. Chi tiết: [thread_node_coap.md](thread_node_coap.md#troubleshooting-responsetimeout).
+
 ## Tài liệu liên quan
 
 - [border_router_coap_server.md](border_router_coap_server.md) — Backend device registry (BR không còn chạy CoAP server; child gửi thẳng backend).
+- [thread_node_coap.md](thread_node_coap.md) — CoAP paths, GET ping, troubleshooting ResponseTimeout.
+- [real_br_integration.md](../architecture/real_br_integration.md) — Kiến trúc BR, troubleshooting CoAP response routing.
 - Memory-bank (Thread-Host): `progress.md`, `techContext.md`, `activeContext.md`.

@@ -6,6 +6,10 @@ _Cập nhật: 2026-03-06_
 
 Backhaul Ethernet W5500 đã có IPv6 trên backbone (link-local + ULA/global khi router gửi RA). SRP server + SRP client (CMD_SRP_REGISTER) đã bật: backend đăng ký `_dashboard._udp` qua frame TCP; child discovery service qua SRP. Child↔backend: ping/CoAP từ child tới IPv6 backend qua BR. BR không còn CoAP client (Leader Control GET `/network/stop` đã gỡ trong 0.17.0).
 
+### Backend reply → Thread-Node (route trên host)
+- Node gửi tới backend OK; **reply từ backend về Node** cần **route** trên máy backend: prefix Thread (vd. fdb8:.../fdd7:...) **via BR** (link-local BR trên backbone). BR gửi RA với Route Information (RIO) nhưng **router lifetime = 0** → nhiều kernel Linux không cài route từ RIO. **Cách làm:** Thêm route tay trên host: `ip -6 route add <PREFIX>::/64 via <BR_linklocal> dev <iface>`. Route mất sau reboot; có thể script/cron từ RA hoặc persistent. Sau **factory reset BR** prefix và có thể cả BR link-local đổi → cần cập nhật route.
+- **Dashboard-Thread Docker:** Backend chạy container với `network_mode: host` (dùng chung route host), bind mount `./backend/data` (DB), mount `/etc/resolv.conf` và `/etc/nsswitch.conf` (resolve mDNS). Trong Docker mDNS (Thread-Host.local) thường không ổn định → default BR connection đổi thành **192.168.31.3:5000** (migration) để dùng IP thay vì hostname.
+
 ## Thay đổi gần đây
 
 ### SRP (Service Registration Protocol) — Đã implement

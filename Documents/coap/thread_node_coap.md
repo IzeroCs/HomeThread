@@ -32,6 +32,8 @@ Backend       parse CBOR → log JSON, tra 2.01.     (khong push len frontend)
 - **Trigger**: (1) Lần đầu discovery thành công; (2) Refresh task 60s phát hiện endpoint (addr/port) đổi; (3) Ping task 10s nhận GET /device/ping response có timestamp khác (backend restart) → gửi lại register.
 - **Payload**: CBOR device model (device_registry build qua device_model + entity_serialization). Response: 2.01/2.04/2.05 (ACK). Backend phải trả response (xem [border_router_coap_server.md](border_router_coap_server.md)).
 - **API**: `device_registry_init()` (gọi từ thread_node); `device_registry_register(endpoint, callback, ctx)`; `device_registry_ping(endpoint, on_timestamp_changed, ctx)`.
+- **CoAP token (RFC 7252)**: Node gửi request với token 2 byte. Backend **phải echo đúng token** trong response thì OpenThread mới match và gọi response handler; nếu không echo token, node sẽ không nhận callback.
+- **Callback**: thread_node gọi `device_registry_register(ep, NULL, NULL)` nên không có user callback khi register xong. Ping callback (`on_timestamp_changed`) chỉ được gọi khi **timestamp trong response thay đổi** so với lần trước (lần đầu nhận ping không gọi).
 
 ## CoAP
 
@@ -68,6 +70,17 @@ POST: body = payload CBOR. GET /device/ping: không body.
 - **Ping:** `GET coap://[fd00::1]:5683/device/ping` → response 2.05, body 4 byte (timestamp LE). Node lưu; lần sau nếu timestamp khác → gửi lại register.
 - **Register:** `POST coap://[fd00::1]:5683/device/register`, body = CBOR (device model với key 0–9, role = 0|1|2).
 - Backend log: `CoAP device server listening on [::]:5683 (path /device/...)` khi khởi động; khi nhận request log CoAP request + CBOR JSON + structure + 2.01 hoặc 2.05.
+
+## Troubleshooting: ResponseTimeout
+
+Khi node báo **Ping response error: ResponseTimeout** hoặc **Register response error: ResponseTimeout**, handler vẫn được gọi nhưng với **lỗi timeout** (OpenThread không nhận được response trong thời gian chờ). Nguyên nhân thường là **response từ backend không tới được node** (routing/forwarding), không phải lỗi token/messageId hay backend logic.
+
+- **Backend (node-coap):** Gửi response về đúng **rsinfo** (source IP + port của request). Request từ node có source = địa chỉ OMR (vd. `fdb8:3795:e886:1:...`) và port 5683.
+- **Trên host chạy backend:** Cần có **route** tới prefix Thread (vd. `fdb8:3795:e886:1::/64`) qua BR. Kiểm tra: `ip -6 route get <node_ula>` → phải ra next-hop là BR (link-local hoặc ULA của BR) và dev đúng interface.
+- **Border Router:** BR phải **forward** packet từ backhaul (Ethernet/Wi‑Fi) vào Thread mesh. Với BR **ESP32-S3 + RCP (ESP32-H2)**: border routing trong firmware; đảm bảo BR quảng bá OMR prefix và forward đích đến prefix đó vào mesh. Với **OTBR trên Linux**: cần `net.ipv6.conf.all.forwarding=1` và firewall ip6tables cho phép FORWARD vào interface Thread (wpan0).
+- **Địa chỉ node:** Node có **mesh-local** (fd18:... theo MESH LOCAL PREFIX của BR) và **OMR** (fdb8:...); backend nhận request từ OMR và gửi response về OMR. Đảm bảo node join đúng mạng (cùng BR) và BR có prefix OMR tương ứng.
+
+Chi tiết kiến trúc BR và routing: [../architecture/real_br_integration.md](../architecture/real_br_integration.md) (phần 6 — Troubleshooting CoAP response).
 
 ## Tài liệu liên quan
 

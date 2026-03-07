@@ -101,10 +101,10 @@ const migrations: Migration[] = [
         CREATE INDEX IF NOT EXISTS idx_br_connection_config_created_at
         ON br_connection_config(created_at)
       `);
-      // Mặc định 1 record nếu bảng rỗng: Thread-Host.local:5000, use_mdns=1
+      // Mặc định 1 record nếu bảng rỗng: 192.168.31.3:5000 (tạm dùng IP, tránh mDNS trong Docker)
       db.exec(`
         INSERT INTO br_connection_config (br_host, br_port, use_mdns)
-        SELECT 'Thread-Host.local', 5000, 1
+        SELECT '192.168.31.3', 5000, 0
         WHERE (SELECT COUNT(*) FROM br_connection_config) = 0
       `);
     },

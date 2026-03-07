@@ -140,21 +140,21 @@ static void ping_response_handler(void *aContext, otMessage *aMessage, const otM
     (void)aMessageInfo;
 
     if (aError != OT_ERROR_NONE || aMessage == NULL) {
-        ESP_LOGD(TAG, "Ping response error: %s", otThreadErrorToString(aError));
+        ESP_LOGW(TAG, "Ping response error: %s", otThreadErrorToString(aError));
         return;
     }
 
     ESP_LOGW(TAG, "Ping handler");
     otCoapCode code = otCoapMessageGetCode(aMessage);
     if (code < OT_COAP_CODE_CREATED || code > OT_COAP_CODE_CONTENT) {
-        ESP_LOGD(TAG, "Ping response code %d.%02d", (int)(code >> 5), (int)(code & 0x1f));
+        ESP_LOGW(TAG, "Ping response code %d.%02d", (int)(code >> 5), (int)(code & 0x1f));
         return;
     }
 
     uint16_t offset = otMessageGetOffset(aMessage);
     uint16_t len = otMessageGetLength(aMessage);
     if (len < offset + 4) {
-        ESP_LOGD(TAG, "Ping payload too short");
+        ESP_LOGW(TAG, "Ping payload too short");
         return;
     }
 

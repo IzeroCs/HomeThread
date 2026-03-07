@@ -25,7 +25,7 @@ Dashboard-Thread/          # npm workspaces root
 | pino | ^9.5.0 | Structured logging |
 | pino-pretty | latest | Pretty console output |
 
-Transport: TCP (net.Socket) to BR; CoAP (UDP 5683, udp6 listen [::]) from Thread-Node. Dependencies: `coap`. CBOR payload decode bang **thu vien noi bo** `backend/src/cbor` (khong dung cbor2). Luu y: Thread-Node la ben **chu dong** (CoAP client) gui len backend; GET /device/ping nhan timestamp de phat hien backend restart va gui lai register.
+Transport: TCP (net.Socket) to BR; CoAP (UDP 5683, udp6 listen [::]) from Thread-Node. Dependencies: `coap`. CBOR payload decode bang **thu vien noi bo** `backend/src/cbor` (khong dung cbor2). Thread-Node la ben **chu dong** (CoAP client); GET /device/ping nhan timestamp de phat hien backend restart va gui lai register. Response CoAP phai **routable** toi node: host backend can route toi prefix Thread (OMR) qua BR; BR phai forward packet tu backhaul vao Thread (border routing). Neu node bao ResponseTimeout → xem docs troubleshooting (routing/BR).
 
 ### Frontend
 
@@ -108,8 +108,14 @@ npm run build         # backend then frontend
 SQLite (`better-sqlite3`, WAL mode). 6 migrations:
 - 001–004: legacy serial_config (da xoa bang boi migration 006)
 - `app_settings`: key-value (thread_run_on_connect)
-- `br_connection_config`: br_host, br_port, use_mdns (mac dinh Thread-Host.local:5000)
+- `br_connection_config`: br_host, br_port, use_mdns (mac dinh 192.168.31.3:5000 — dung khi chay Docker; co the doi qua Settings)
 - 006: DROP TABLE serial_config (BR chi dung TCP, khong con Serial)
+
+## Docker (backend)
+
+- **Vi tri:** `Dockerfile.backend`, `docker-compose.yml` o thu muc goc. Build: `docker compose up --build`.
+- **Cau hinh:** `network_mode: host` (reply CoAP ve Thread-Node can route prefix Thread tren host). Volume: `./backend/data:/app/data`, `/etc/resolv.conf`, `/etc/nsswitch.conf` (ro). Container name: `dashboard-thread-backend`.
+- **Default BR:** 192.168.31.3:5000 (mDNS trong container thuong khong resolve Thread-Host.local). Chi tiet: `backend/README.docker.md`.
 
 ## Configuration
 

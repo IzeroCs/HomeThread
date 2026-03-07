@@ -38,6 +38,7 @@ Backend (khi BR = leader) → log "SRP register: IPv6=... hostname=... port=..."
   - **Periodic refresh:** task goi discovery dinh ky (vd. 60s) + cache TTL de cap nhat endpoint.
   - **On failure:** neu CoAP timeout/ICMP unreachable → `force_refresh=true` → browse SRP lai → gui lai request.
 - **GET /device/ping:** Node gui GET dinh ky; backend tra 2.05 voi payload 4 byte = timestamp (uint32 LE, server start). Node so sanh timestamp; neu khac lan truoc (backend restart) → callback trigger gui lai POST /device/register.
+- **CoAP response path:** Backend (node-coap) tra response ve **rsinfo** (source IP:port cua request). Node gui request tu dia chi **OMR** (vd. fdb8:3795:e886:1:...) va port 5683; node con co **mesh-local** (fd18:... theo BR). Neu node bao **ResponseTimeout** = response khong toi node: kiem tra **route** tren host backend toi prefix Thread qua BR, va **BR forward** (border routing) tu backhaul vao Thread. BR ESP32-S3 + RCP: forward trong firmware; OTBR Linux: can IPv6 forwarding + ip6tables FORWARD.
 
 ## Backend Layer Responsibilities
 

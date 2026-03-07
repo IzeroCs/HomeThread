@@ -19,7 +19,7 @@ Examples                 █████████████░░░░░�
 | Component | File(s) | Mô tả |
 |---|---|---|
 | **Thread Joiner** | `thread_joiner.c/.h` | State machine hoàn chỉnh: existing dataset → reattach, no dataset → joiner start, retry logic (30s / 5s NotFound), factory reset |
-| **Thread Node** | `thread_node.c/.h` | Bootstrap: NVS → LED → btn → OT → joiner; khi enable_device_registry: device_registry_init(), thread_discovery_init(), tasks (refresh 60s, ping 10s). App chỉ on_joined (entities + entity_coap_server). |
+| **Thread Node** | `thread_node.c/.h` | Bootstrap: NVS → LED → btn → OT → joiner; khi enable_device_registry: device_registry_init(), thread_discovery_init(), tasks (discovery: **10s** khi chưa có backend, **60s** khi đã có; ping 10s). Log node Mesh-Local EID + RLOC16 trong on_joined_wrapper. App chỉ on_joined (entities + entity_coap_server). |
 | **Status LED** | `status_led.c/.h` | WS2812 via RMT. 6 trạng thái: Boot/NotJoined/Detached/Child/Router/Leader |
 | **Boot Button** | `boot_btn.c/.h` | Long press detection, gọi factory reset |
 | **CoAP Server Manager** | `thread_coap.c/.h` | Idempotent start, resource registration với lock, response helper |
@@ -70,7 +70,7 @@ Examples                 █████████████░░░░░�
 
 | Example | Trạng thái | Ghi chú |
 |---|---|---|
-| `examples/light_on_off/` | ✅ **Buildable và functional** | Thread join + LED + button + entity model. **thread_node** chạy discovery, refresh 60s, ping 10s; register khi có/đổi endpoint hoặc ping timestamp đổi. Log backend IP 1 lần / khi đổi. CoAP control 5.01 (stub). |
+| `examples/light_on_off/` | ✅ **Buildable và functional** | Thread join + LED + button + entity model. **thread_node** chạy discovery (retry 10s khi chưa có backend, 60s khi có), ping 10s; register khi có/đổi endpoint hoặc ping timestamp đổi. Log backend IP 1 lần / khi đổi; log node Mesh-Local EID + RLOC16 khi join xong. **CONFIG_ESP_SYSTEM_EVENT_TASK_STACK_SIZE=4096** (tránh sys_evt stack overflow). CoAP control 5.01 (stub). |
 
 ## Còn lại ❌
 
@@ -168,5 +168,6 @@ OpenThread core **không** forward `*.default.svc.arpa` ra upstream (dnssd_serve
 | 0.8.1 | **Register one-shot on ACK** (gửi 1 lần rồi dừng; gửi lại khi notify); **device_registry_is_registered()**; bỏ REGISTRY_PERIODIC_MS |
 | 0.8.2 | enable_device_registry; backend_discovery mHostNameBuffer; light_on_off device registry tắt; docs backend_discovery_srp.md |
 | **0.9.0** | Register chỉ tới Backend; thread_discovery; device registry bật trong thread_node; trigger_register khi discovery/endpoint đổi |
-| **0.9.1 (hiện tại)** | **thread_endpoint → thread_node**; **backend_discovery → thread_discovery**; **device_registry → device/** (folder) + **device_coap** (transport tách riêng); GET /device/ping 10s, timestamp → re-register; CoAP token 2B; backend IP log 1 lần / khi đổi (thread_node INFO, thread_discovery LOGD); app on_joined chỉ setup entities |
+| **0.9.1** | thread_node; thread_discovery; device/ + device_coap; GET /device/ping 10s, timestamp → re-register; CoAP token 2B; backend IP log 1 lần / khi đổi |
+| **0.9.2 (hiện tại)** | Discovery retry **10s** khi chưa có backend (60s khi đã có); **CONFIG_ESP_SYSTEM_EVENT_TASK_STACK_SIZE=4096** (light_on_off, tránh sys_evt stack fault); log node **Mesh-Local EID + RLOC16** trong on_joined_wrapper; docs: backend echo token, register callback NULL, ping callback khi timestamp đổi |
 | 1.0.0 (tiếp theo) | entity_coap_server implementation; CBOR switch/fan/climate/binary_sensor; main.c template; additional examples |

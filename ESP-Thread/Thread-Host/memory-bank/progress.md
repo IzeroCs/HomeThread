@@ -1,6 +1,6 @@
 # Progress — Thread-Host
 
-_Cập nhật: 2026-03-06_
+_Cập nhật: 2026-03-06 (backend route, Dashboard-Thread Docker)_
 
 ## Release history
 
@@ -80,6 +80,7 @@ _(Ghi phiên bản theo Semantic Versioning MAJOR.MINOR.PATCH, không dùng ti�
 - [x] Cursor rule (alwaysApply)
 - [x] README.md và TODO.md cập nhật đầy đủ
 - [x] Docs symlink từ project sang HomeThread/Documents/
+- [x] Docs: Backend reply→Node (route prefix Thread qua BR); Dashboard-Thread Docker (network host, default BR IP) — real_br_integration.md + Memory Bank
 
 ## Chưa làm ❌
 

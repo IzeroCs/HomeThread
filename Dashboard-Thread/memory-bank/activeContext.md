@@ -2,7 +2,7 @@
 
 ## Current Work Focus
 
-Project da on dinh voi BR qua TCP, trang Nodes (Router/Child/Joiner List), Toast dark theme, stable React keys. UI dark navy: Modal/ConfirmModal, System action cards, Sidebar settings icons. **SRP register**: Backend gui CMD_SRP_REGISTER (0x44) qua frame khi BR la leader; **Status**: section **System** (IPv4/IPv6 backend), da bo section "Child data (CoAP)". Tiep theo: bao tri, optional mDNS, security neu can.
+Project da on dinh voi BR qua TCP, trang Nodes (Router/Child/Joiner List), Toast dark theme, stable React keys. UI dark navy: Modal/ConfirmModal, System action cards, Sidebar settings icons. **SRP register**: Backend gui CMD_SRP_REGISTER (0x44) qua frame khi BR la leader; **Status**: section **System** (IPv4/IPv6 backend), da bo section "Child data (CoAP)". **Docker:** Backend chay duoc bang Docker (network host, bind DB, default BR IP 192.168.31.3). Tiep theo: bao tri, optional mDNS, security neu can.
 
 ## Recent Significant Changes
 
@@ -16,7 +16,8 @@ Project da on dinh voi BR qua TCP, trang Nodes (Router/Child/Joiner List), Toast
 ### CoAP device data (Thread-Node)
 - **Backend:** CoAP server UDP 5683 (**CoapDeviceServer.ts**), socket **udp6** listen `[::]:5683`. Path **/device/** (register, update, ping). **GET /device/ping**: tra **2.05 Content**, payload 4 byte = timestamp uint32 LE (gia tri luc khoi tao server; restart = timestamp moi → node so sanh va gui lai register). **POST /device/register**, update: nhan CBOR, parse bang **thu vien CBOR noi bo** (`backend/src/cbor`), log `CoAP CBOR -> JSON: ...` + structure (device_id, rloc16, role, entities); tra 2.01. Role trong payload la **so** (0=child, 1=router, 2=leader). **Khong emit** len frontend (da bo EVENTS.CHILD_DATA).
 - **Registration model:** Thread-Node la **CoAP client** chu dong: POST register/update; GET /device/ping dinh ky → nhan timestamp → neu khac lan truoc (backend restart) thi callback trigger re-register. Neu CoAP fail thi force SRP re-discovery va gui lai.
-- **Docs:** `docs/coap/thread_node_coap.md` — huong dan Thread-Node (path /device/, CBOR, GET ping, SRP discovery).
+- **CoAP ResponseTimeout (troubleshooting):** Neu node bao `Ping response error: ResponseTimeout` / `Register response error: ResponseTimeout` thi **nguyen nhan la routing/forwarding**, khong phai backend hay token/messageId. node-coap gui response ve dung `rsinfo` (source IP:port cua request). Can: (1) Host chay backend co **route** toi prefix Thread (vd. `fdb8:3795:e886:1::/64`) qua BR (next-hop link-local hoac ULA cua BR). (2) BR (vd. ESP32-S3 + RCP) phai **forward** packet tu backhaul vao Thread (border routing bat, OMR prefix duoc quang ba). Node co dia chi **mesh-local** (fd18:... theo BR) va **OMR** (fdb8:...) de backend gui response ve. Xem `docs/coap/thread_node_coap.md` (Troubleshooting) va `docs/architecture/real_br_integration.md`.
+- **Docs:** `docs/coap/thread_node_coap.md` — huong dan Thread-Node (path /device/, CBOR, GET ping, SRP discovery, troubleshooting ResponseTimeout).
 
 ### UI polish (dark navy, Settings, Modal)
 - **Modal / ConfirmModal:** Dark navy — overlay rgba + backdrop blur; box $card-dark, border $brand-border; title/body $text-dark, $text-dark-subtle; nut Cancel ghost, Confirm danger/warning (#ef4444, #f97316) voi hover glow.
@@ -30,11 +31,17 @@ Project da on dinh voi BR qua TCP, trang Nodes (Router/Child/Joiner List), Toast
 - **Leader row:** Chi badge "LEADER" trong cell, khong highlight nen xanh la.
 - **Version:** Subtitle Status lay tu `frontend/package.json` qua Vite `__APP_VERSION__`; dong bo voi progress.md (1.0.0).
 
+### Docker backend (chay backend bang container)
+- **Vi tri:** Dockerfile va docker-compose o **thu muc goc** Dashboard-Thread: `Dockerfile.backend`, `docker-compose.yml`, `.dockerignore`. Sau co the them frontend cung build.
+- **Cau hinh:** `network_mode: host` (dung chung route host — reply CoAP ve Thread-Node can route prefix Thread tren host). Volume: `./backend/data:/app/data` (dung chung DB voi local), `/etc/resolv.conf` va `/etc/nsswitch.conf` (ro) de thu resolve mDNS.
+- **Default BR:** Migration 005 mac dinh BR connection **192.168.31.3:5000** (use_mdns=0) thay Thread-Host.local vi mDNS trong Docker thuong khong on dinh. DB moi hoac cap nhat qua Settings neu can.
+- **Chay:** `docker compose up --build`; container name `dashboard-thread-backend`. Doc: `backend/README.docker.md`.
+
 ### Migration BR — Chi TCP, bo Serial (plan br_backend_communication)
 - **Backend:** Loai bo hoan toan Serial/USB/UART. Chi dung **TransportTcp** ket noi BR (host:port). Cau hinh: **BrConnectionConfigService** (brHost, brPort, useMdns) luu SQLite; migration 005 tao bang `br_connection_config`. Xoa SerialPort.ts, SerialConfigService.ts; go dependency serialport.
 - **CommunicateManager:** Chi TransportTcp + BrConnectionConfig; connectInternal(), onTransportDisconnected(), reconnect 3s. Status tra ve ConnectionStatus (isConnected, host, port).
 - **WebSocketServer:** CONFIG_GET/SAVE/UPDATE payload brHost/brPort; handleBrTest(host, port); message loi "BR not connected".
-- **Frontend:** BrConnectionForm (host + port, default Thread-Host.local:5000); Settings tab "BR Connection"; types BrConnectionConfigFromBackend, ConnectionStatus; useWebSocket saveConfig(brHost, brPort), testBrConnect. Navigation/Status/Commissioner/Console/Dashboard/SystemTab: message "BR" thay "Serial".
+- **Frontend:** BrConnectionForm (host + port); Settings tab "BR Connection"; types BrConnectionConfigFromBackend, ConnectionStatus; useWebSocket saveConfig(brHost, brPort), testBrConnect. Navigation/Status/Commissioner/Console/Dashboard/SystemTab: message "BR" thay "Serial".
 - **Docs:** migration_to_frame_protocol.md, README.md da cap nhat.
 
 ### Documentation (truoc do)
