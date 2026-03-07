@@ -4,7 +4,7 @@
 
 Thread-Host là firmware cho Border Router trong hệ thống **HomeThread** — một hệ thống IoT dùng Thread mesh network. BR là cầu nối giữa:
 - **Thread network** (các child/router devices 802.15.4)
-- **Backbone** (Wi‑Fi hoặc Ethernet) — BR có IP; **dashboard/backend** kết nối tới BR qua **TCP** (frame protocol), không qua USB/serial.
+- **Backbone** (Ethernet) — BR có IP; **dashboard/backend** kết nối tới BR qua **TCP** (frame protocol), không qua USB/serial.
 
 ## Vấn đề giải quyết
 
@@ -27,4 +27,4 @@ Child (Thread-Node) sau khi join và có IPv6 routable gửi register/update/pin
 - BR tự phục hồi khi mất kết nối (watchdog)
 - Factory reset an toàn qua lệnh hoặc nút bấm
 - LED hiển thị trạng thái network
-- Backhaul: Chỉ Ethernet W5500 khi bật (Wi‑Fi fallback đã tắt trong code)
+- Backhaul: Chỉ Ethernet W5500 khi bật (chỉ LAN, không Wi‑Fi)

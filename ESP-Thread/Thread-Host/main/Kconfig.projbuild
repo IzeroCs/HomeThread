@@ -22,8 +22,7 @@ config BR_ETH_W5500_ENABLE
     select ETH_USE_SPI_ETHERNET
     select ETH_SPI_ETHERNET_W5500
     help
-        BR dùng W5500 qua SPI làm backhaul. Nếu bật: thử Ethernet trước (link up + DHCP);
-        nếu không có cable/link thì fallback Wi-Fi STA (khi Wi-Fi cũng bật). ESP32-S3 không có EMAC.
+        BR dùng W5500 qua SPI làm backhaul (chỉ LAN, không Wi-Fi). ESP32-S3 không có EMAC.
 
 if BR_ETH_W5500_ENABLE
     config BR_ETH_SPI_HOST
@@ -69,31 +68,11 @@ if BR_ETH_W5500_ENABLE
             Chu kỳ poll khi không dùng interrupt; bỏ qua khi dùng INT.
 
     config BR_ETH_LINK_TIMEOUT_MS
-        int "Timeout chờ link up (ms)"
-        default 5000
+        int "Timeout chờ IP trên Ethernet (ms)"
+        default 15000
         help
-            Sau timeout không có link thì fallback Wi-Fi (nếu bật).
+            Chờ có IPv4 (DHCP) hoặc IPv6 (link-local/RA). Cắm trực tiếp BR-backend link có thể lên ~4–5s, IPv6 event sau đó; nên >= 10s.
 endif
-
-config BR_WIFI_STA_ENABLE
-    bool "Bật Wi-Fi STA (backhaul / fallback khi không Ethernet)"
-    default n
-    help
-        BR kết nối AP, lấy IP (DHCP). Dùng làm backhaul hoặc fallback khi Ethernet W5500 không link.
-
-config BR_WIFI_SSIDn
-    string "Wi-Fi SSID"
-    depends on BR_WIFI_STA_ENABLE
-    default "IzeroCs-IoT"
-    help
-        SSID của access point để BR kết nối.
-
-config BR_WIFI_PASSWORD
-    string "Wi-Fi mật khẩu"
-    depends on BR_WIFI_STA_ENABLE
-    default "khongnoi"
-    help
-        Mật khẩu WPA/WPA2 của AP.
 
 config BR_FRAME_TCP_PORT
     int "Port TCP cho kênh frame (BR listen)"

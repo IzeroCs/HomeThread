@@ -1,6 +1,7 @@
 /*
  * Ethernet W5500 (SPI) backhaul — Phase 2.6.
- * Init driver, netif, chờ link + DHCP; trả về netif cho backbone.
+ * Init driver, netif; chờ IPv4 (DHCP) hoặc IPv6 (link-local/RA), trả về netif cho backbone.
+ * Chỉ dùng LAN, không fallback Wi-Fi.
  */
 
 #include "backhaul/eth_w5500.h"
@@ -20,7 +21,8 @@
 
 #define TAG "eth_w5500"
 
-#define ETH_GOT_IP_BIT  BIT0
+#define ETH_GOT_IP_BIT   BIT0
+#define ETH_GOT_IP6_BIT  BIT1
 
 static EventGroupHandle_t s_eth_event_group;
 static esp_netif_t *s_eth_netif = NULL;
@@ -56,6 +58,7 @@ static void got_ip_handler(void *arg, esp_event_base_t event_base,
         ip_event_got_ip6_t *event = (ip_event_got_ip6_t *)event_data;
         if (event->esp_netif == s_eth_netif) {
             ESP_LOGI(TAG, "Ethernet got IPv6: " IPV6STR, IPV62STR(event->ip6_info.ip));
+            xEventGroupSetBits(s_eth_event_group, ETH_GOT_IP6_BIT);
         }
     }
 }
@@ -197,17 +200,16 @@ esp_err_t eth_w5500_init(void)
         goto fail;
     }
 
-    ESP_LOGI(TAG, "waiting for Ethernet IP (timeout %d ms)...", (int)CONFIG_BR_ETH_LINK_TIMEOUT_MS);
+    ESP_LOGI(TAG, "waiting for Ethernet IP (IPv4 or IPv6, timeout %d ms)...", (int)CONFIG_BR_ETH_LINK_TIMEOUT_MS);
     EventBits_t bits = xEventGroupWaitBits(s_eth_event_group,
-                                            ETH_GOT_IP_BIT,
+                                            ETH_GOT_IP_BIT | ETH_GOT_IP6_BIT,
                                             pdFALSE, pdFALSE,
                                             pdMS_TO_TICKS(CONFIG_BR_ETH_LINK_TIMEOUT_MS));
-    if (bits & ETH_GOT_IP_BIT) {
+    if (bits & (ETH_GOT_IP_BIT | ETH_GOT_IP6_BIT)) {
         ESP_LOGI(TAG, "Ethernet W5500 init OK");
         return ESP_OK;
     }
-    ESP_LOGW(TAG, "Ethernet IP timeout, fallback to Wi-Fi if enabled");
-    /* Deinit Ethernet so Wi-Fi can be used; caller will use wifi_sta as backbone */
+    ESP_LOGW(TAG, "Ethernet IP timeout");
     esp_eth_stop(s_eth_handle);
     esp_event_handler_unregister(IP_EVENT, IP_EVENT_GOT_IP6, got_ip_handler);
     esp_event_handler_unregister(IP_EVENT, IP_EVENT_ETH_GOT_IP, got_ip_handler);

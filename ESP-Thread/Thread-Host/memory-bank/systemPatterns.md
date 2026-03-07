@@ -9,7 +9,7 @@ BR không chạy CoAP server hay CoAP client (Device Registry và Leader Control
                                         |
                               [OpenThread Stack]
                                         |
-         [Backhaul: Ethernet W5500 only (Wi‑Fi fallback tắt)] → backbone netif
+         [Backhaul: Ethernet W5500 only, chỉ LAN] → backbone netif
                                         |
                     +-----------+-------+--------+-----------+
                     |           |                |           |
@@ -26,7 +26,7 @@ BR không chạy CoAP server hay CoAP client (Device Registry và Leader Control
 
 ```
 nvs_flash_init → esp_netif_init → esp_event_loop
-→ Backhaul: eth_w5500_init() (nếu CONFIG_BR_ETH_W5500_ENABLE); timeout thì không backbone (Wi‑Fi fallback đã tắt)
+→ Backhaul: eth_w5500_init() (nếu CONFIG_BR_ETH_W5500_ENABLE); timeout thì không backbone (chỉ LAN, không Wi‑Fi)
 → set_backbone_netif(backbone)   (trước OT start)
 → mdns("Thread-Host")
 → br_rcp_ctrl_init + br_rcp_reset + delay 500ms

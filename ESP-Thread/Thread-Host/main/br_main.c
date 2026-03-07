@@ -112,7 +112,7 @@ void app_main(void)
     ESP_ERROR_CHECK(esp_netif_init());
     ESP_ERROR_CHECK(esp_event_loop_create_default());
 
-    /* Backhaul: chỉ dùng Ethernet W5500 (không fallback Wi-Fi) */
+    /* Backhaul: chỉ LAN (Ethernet W5500) */
     esp_netif_t *backbone = NULL;
 #if CONFIG_BR_ETH_W5500_ENABLE
     if (eth_w5500_init() == ESP_OK) {

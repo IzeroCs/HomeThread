@@ -2,11 +2,11 @@
 
 ## Mục tiêu
 
-Firmware cho **ESP32-S3** chạy vai trò **Thread Border Router (BR)**, giao tiếp với RCP ESP32-H2 qua UART. BR là **BR thật**: route IPv6, prefix delegation, kết nối backbone (Wi‑Fi hoặc Ethernet W5500) và quản lý qua **frame protocol trên TCP** (không USB/UART với PC).
+Firmware cho **ESP32-S3** chạy vai trò **Thread Border Router (BR)**, giao tiếp với RCP ESP32-H2 qua UART. BR là **BR thật**: route IPv6, prefix delegation, kết nối backbone (Ethernet W5500, chỉ LAN) và quản lý qua **frame protocol trên TCP** (không USB/UART với PC).
 
 ## Phạm vi
 
-- **Backhaul:** **Ethernet W5500 (SPI)** khi bật; Wi‑Fi fallback đã tắt trong code. BR có IP (IPv4 + IPv6 link-local/global) trên backbone; kênh quản lý BR↔dashboard chỉ qua **TCP** (frame protocol).
+- **Backhaul:** **Ethernet W5500 (SPI)** khi bật (chỉ LAN, không Wi‑Fi). BR có IP (IPv4 + IPv6 link-local/global) trên backbone; kênh quản lý BR↔dashboard chỉ qua **TCP** (frame protocol).
 - **Không forward frame từ child lên backend** — child gửi register/update/ping trực tiếp tới backend qua IP; BR chỉ route và quản lý (state, dataset, Commissioner) qua frame với dashboard.
 - **OpenThread stack:** chạy trên Host (ESP32-S3), RCP chỉ làm radio.
 
@@ -14,7 +14,7 @@ Firmware cho **ESP32-S3** chạy vai trò **Thread Border Router (BR)**, giao ti
 
 1. **OpenThread Border Router** — stack OT đầy đủ, border routing + prefix, Commissioner, Border Agent
 2. **Frame protocol (communicate)** — binary frame qua **TCP** (BR listen port); dashboard kết nối BR_IP:port
-3. **Backhaul** — Ethernet W5500 (SPI); IPv6 link-local trên ETHERNET_EVENT_CONNECTED; Wi‑Fi fallback tắt
+3. **Backhaul** — Ethernet W5500 (SPI), chỉ LAN; IPv6 link-local trên ETHERNET_EVENT_CONNECTED
 4. **LED Status** — WS2812 hiển thị OT device role
 5. **Boot button** — long press 3s → factory reset
 

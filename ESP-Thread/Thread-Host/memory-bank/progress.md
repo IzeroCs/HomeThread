@@ -65,7 +65,7 @@ _(Ghi phiên bản theo Semantic Versioning MAJOR.MINOR.PATCH, không dùng ti�
 
 ### Backhaul
 - [x] Ethernet W5500 (SPI) — backbone khi bật; IPv6 link-local tạo trong ETHERNET_EVENT_CONNECTED (`eth_w5500.c`); br_main log backbone IPv6 (global + link-local) sau BR init
-- [x] Wi‑Fi STA (Kconfig) — code đã tắt fallback trong br_main; có thể bật lại nếu cần
+- [x] Backhaul chỉ LAN — Wi‑Fi backhaul đã gỡ (Kconfig + code); chỉ Ethernet W5500
 
 ### CoAP
 - [x] Device Registry — đã bỏ (Phase 1); child gửi thẳng backend qua IP

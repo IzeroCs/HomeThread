@@ -53,8 +53,7 @@
 - `esp_log_level_set` — runtime log level
 
 ### Backhaul
-- **Ethernet W5500 (SPI):** `backhaul/eth_w5500.c` — backbone khi `CONFIG_BR_ETH_W5500_ENABLE=y`. IPv6 link-local: gọi `esp_netif_create_ip6_linklocal(netif)` trong **ETHERNET_EVENT_CONNECTED** (không gọi ngay sau attach — netif chưa link up sẽ ESP_FAIL). Handler đăng ký với `s_eth_netif` làm `arg`. ESP32-S3 không có EMAC (không dùng LAN8720).
-- **Wi‑Fi STA:** `backhaul/wifi_sta.c` — hiện **không** được gọi trong `br_main.c` (fallback đã tắt); có thể bật lại nếu cần dual backhaul.
+- **Ethernet W5500 (SPI):** `backhaul/eth_w5500.c` — backbone khi `CONFIG_BR_ETH_W5500_ENABLE=y`. Backhaul chỉ LAN (không Wi‑Fi). IPv6 link-local: gọi `esp_netif_create_ip6_linklocal(netif)` trong **ETHERNET_EVENT_CONNECTED**. Handler đăng ký với `s_eth_netif` làm `arg`. ESP32-S3 không có EMAC (không dùng LAN8720).
 - **br_main:** Sau border router init, log backbone IPv6 qua `esp_netif_get_ip6_global()` và `esp_netif_get_ip6_linklocal()` (tag `br_main`).
 - **Kênh BR↔dashboard:** Chỉ **TCP** (frame protocol trên socket); không USB/UART.
 
@@ -112,8 +111,7 @@ Thread-Host/
 ├── main/
 │   ├── br_main.c                    ← app_main, backhaul chọn backbone, stack_monitor_task
 │   ├── backhaul/
-│   │   ├── wifi_sta.c               ← Wi‑Fi STA, DHCP, wifi_sta_get_netif()
-│   │   └── eth_w5500.c              ← Ethernet W5500 (SPI), ưu tiên, fallback Wi‑Fi
+│   │   └── eth_w5500.c              ← Ethernet W5500 (SPI), backhaul LAN
 │   ├── communicate/
 │   │   ├── communicate.c            ← frame parser/builder, log suppression
 │   │   ├── communicate_command.c    ← tất cả CMD handlers
@@ -126,7 +124,7 @@ Thread-Host/
 ├── include/
 │   ├── br_config.h                  ← TASK_NAME_*, TASK_STACK_* (centralized)
 │   ├── br_custom_config.h           ← OpenThread custom config (SRP server, CoAP API, …); cần HEADER_CUSTOM=y + path "include"
-│   ├── backhaul/wifi_sta.h, eth_w5500.h
+│   ├── backhaul/eth_w5500.h
 │   └── communicate/communicate.h   ← CMD defines, frame API
 ├── memory-bank/                     ← Memory Bank files
 ├── .cursor/rules/                   ← Cursor rules

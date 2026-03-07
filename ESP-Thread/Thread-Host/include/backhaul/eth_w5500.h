@@ -1,6 +1,6 @@
 /*
  * Ethernet W5500 (SPI) backhaul — Phase 2.6.
- * Ưu tiên Ethernet; khi không link thì dùng Wi-Fi fallback.
+ * Backhaul chỉ LAN (Ethernet W5500), không Wi-Fi.
  */
 
 #ifndef ETH_W5500_H
@@ -14,7 +14,7 @@ extern "C" {
 #endif
 
 /**
- * Khởi tạo W5500 (SPI), tạo netif, start driver, chờ link up + DHCP (timeout từ Kconfig).
+ * Khởi tạo W5500 (SPI), tạo netif, start driver, chờ IPv4 (DHCP) hoặc IPv6 (link-local/RA) (timeout từ Kconfig).
  * Gọi sau esp_netif_init() và esp_event_loop_create_default().
  * @return ESP_OK khi có link và có IP; ESP_ERR_TIMEOUT hoặc lỗi khác.
  */

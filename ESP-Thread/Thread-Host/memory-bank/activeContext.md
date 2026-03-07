@@ -28,8 +28,8 @@ Backhaul Ethernet W5500 đã có IPv6 trên backbone (link-local + ULA/global kh
 - **Cách làm theo esp-thread-br / protocol_examples_common:** Trong `eth_event_handler`, khi `ETHERNET_EVENT_CONNECTED` mới gọi `esp_netif_create_ip6_linklocal(netif)`; đăng ký handler với `s_eth_netif` làm `arg`.
 - Kết quả: BR có ít nhất link-local `fe80::` trên W5500; nếu MikroTik gửi RA thì có thêm ULA/global. Log: `Ethernet link up`, `Ethernet got IPv6: ...`; sau BR init: `backbone global IPv6` / `backbone link-local IPv6` trong `br_main.c`.
 
-### Backhaul: Wi‑Fi fallback tắt trong code
-- `br_main.c` không còn gọi `wifi_sta_init()`; bỏ `#include "backhaul/wifi_sta.h"`. Chỉ dùng Ethernet W5500 khi `CONFIG_BR_ETH_W5500_ENABLE=y`. Nếu Ethernet timeout thì không backbone (không fallback Wi‑Fi).
+### Backhaul: chỉ LAN
+- Backhaul chỉ Ethernet W5500 (`CONFIG_BR_ETH_W5500_ENABLE=y`). Không Wi‑Fi; không có wifi_sta. Nếu Ethernet timeout thì không backbone.
 
 ### CMD_IP_ADDR và Dashboard reply ACK
 - BR gửi ACK + 16 byte Leader RLOC; spec yêu cầu backend gửi lại **một ACK trống cùng frameId** để BR dừng retry. Dashboard-Thread hiện chỉ gọi `replyAck(ipRes.frameId)` trong `CommunicateManager.pullState()` khi `stateChangedOrFirst` → các lần fetch IP_ADDR khác (vd. fetchOtConfig, refresh) không gửi reply ACK → BR retry mãi. **Khuyến nghị:** Trong Dashboard-Thread, `CommandManager.handle()` khi nhận ACK của CMD_IP_ADDR (frameId trong ipAddrFrameIds, data.length === 16) tự gọi `replyAck(frame.frameId)` để mọi nguồn gọi fetchIpAddr đều trả ACK cho BR.
@@ -71,7 +71,7 @@ Backhaul Ethernet W5500 đã có IPv6 trên backbone (link-local + ULA/global kh
 
 - **Factory reset:** Dùng raw `esp_partition_erase_range` + KHÔNG stop OT trước (để tránh OT write-back dataset)
 - **Frame transport:** Chỉ TCP (BR listen port); đã bỏ USB/UART cho kênh BR↔dashboard
-- **Backhaul:** Chỉ Ethernet W5500 khi bật (`CONFIG_BR_ETH_W5500_ENABLE`); Wi‑Fi fallback đã tắt trong code
+- **Backhaul:** Chỉ Ethernet W5500 khi bật (`CONFIG_BR_ETH_W5500_ENABLE`); không Wi‑Fi
 - **Stack monitor:** Task `stk_mon` 3072 bytes, log mỗi 30s; `main` task luôn hiện "used full" sau `app_main()` exit — bình thường
 - **Backbone LAN:** Khi router (vd. MikroTik) gửi RA và BR tạo được IPv6 link-local (trên ETHERNET_EVENT_CONNECTED), BR có IPv6 backbone → ít log ND/RS fail. Nếu backbone không có RA thì vẫn có thể thấy `Failed to send ND6 message` / `RsSender: Failed to send RS`; khi đó BR vẫn có link-local `fe80::` nếu đã gọi `esp_netif_create_ip6_linklocal` đúng lúc.
 - **Backend ↔ child:** Mô hình ưu tiên là backend bật IPv6 (ít nhất link-local/ULA trên máy backend, không phụ thuộc ISP) để child nói chuyện trực tiếp bằng IPv6 qua BR. Nếu backend chỉ IPv4 thì cần NAT64 hoặc proxy ở BR (chưa implement, chỉ ghi nhận như hướng mở rộng).

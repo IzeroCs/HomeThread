@@ -38,5 +38,19 @@
     "titleBar.inactiveBackground": "#3ba57699",
     "titleBar.inactiveForeground": "#e7e7e799"
 },
-"peacock.color": "#3ba576"
+"peacock.color": "#3ba576",
+"files.exclude": {
+    "**/.git": true,
+    "**/.cursor": true,
+    "**/.cache": true,
+    "**/.svn": true,
+    "**/.hg": true,
+    "**/.DS_Store": true,
+    "**/Thumbs.db": true,
+    "**/memory-bank": true,
+    "**/managed_components": true,
+    "**/.clangd": true,
+    "**/dependencies.lock": true,
+
+}
 }

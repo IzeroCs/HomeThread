@@ -19,7 +19,7 @@ typedef void (*transport_tcp_rx_cb_t)(uint8_t *data, size_t len, void *ctx);
 
 /**
  * Khởi tạo TCP server: listen port (từ Kconfig), accept 1 client, RX task đọc socket.
- * Gọi sau khi BR đã có IP (vd. sau wifi_sta_init).
+ * Gọi sau khi BR đã có IP (vd. sau khi Ethernet W5500 link up).
  */
 esp_err_t transport_tcp_init(transport_tcp_rx_cb_t rx_cb, void *rx_ctx);
 
