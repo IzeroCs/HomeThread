@@ -1,14 +1,14 @@
 # Active Context — Thread-Host
 
-_Cập nhật: 2026-03-06_
+_Cập nhật: 2026-03-06 (Ethernet IPv4 + direct-connect, RA/route sysctl + RS)_
 
 ## Công việc hiện tại
 
 Backhaul Ethernet W5500 đã có IPv6 trên backbone (link-local + ULA/global khi router gửi RA). SRP server + SRP client (CMD_SRP_REGISTER) đã bật: backend đăng ký `_dashboard._udp` qua frame TCP; child discovery service qua SRP. Child↔backend: ping/CoAP từ child tới IPv6 backend qua BR. BR không còn CoAP client (Leader Control GET `/network/stop` đã gỡ trong 0.17.0).
 
 ### Backend reply → Thread-Node (route trên host)
-- Node gửi tới backend OK; **reply từ backend về Node** cần **route** trên máy backend: prefix Thread (vd. fdb8:.../fdd7:...) **via BR** (link-local BR trên backbone). BR gửi RA với Route Information (RIO) nhưng **router lifetime = 0** → nhiều kernel Linux không cài route từ RIO. **Cách làm:** Thêm route tay trên host: `ip -6 route add <PREFIX>::/64 via <BR_linklocal> dev <iface>`. Route mất sau reboot; có thể script/cron từ RA hoặc persistent. Sau **factory reset BR** prefix và có thể cả BR link-local đổi → cần cập nhật route.
-- **Dashboard-Thread Docker:** Backend chạy container với `network_mode: host` (dùng chung route host), bind mount `./backend/data` (DB), mount `/etc/resolv.conf` và `/etc/nsswitch.conf` (resolve mDNS). Trong Docker mDNS (Thread-Host.local) thường không ổn định → default BR connection đổi thành **192.168.31.3:5000** (migration) để dùng IP thay vì hostname.
+- Node gửi tới backend OK; **reply từ backend về Node** cần **route** trên máy backend: prefix Thread (vd. fdb8:.../fdd7:...) **via BR** (link-local BR trên backbone). BR gửi RA với RIO nhưng **router lifetime = 0** → Linux có thể cài route từ RIO nếu **accept_ra_rt_info_max_plen** đủ lớn (vd. 128). **Quan trọng:** set **per-interface**, không dùng `all`: `sysctl net.ipv6.conf.<iface>.accept_ra_rt_info_max_plen=128` (vd. `enp8s0`). `net.ipv6.conf.all.*` chỉ là mặc định cho interface mới, không áp dụng ngược lại cho interface đã tồn tại. Route từ RA mất sau reboot; có thể gửi **Router Solicitation (RS)** từ backend (vd. `rdisc6 -1 <iface>`) để BR trả RA sớm thay vì chờ chu kỳ. Sau **factory reset BR** prefix và có thể BR link-local đổi → cập nhật route/RS.
+- **Dashboard-Thread Docker:** Backend chạy container với `network_mode: host` (dùng chung route host), bind mount `./backend/data` (DB). mDNS trong container không ổn định → default BR **192.168.31.3:5000**. Nếu cần backend tự add route (IPv6 prefix via BR): chạy container với `--cap-add=NET_ADMIN` hoặc dùng host để add route.
 
 ## Thay đổi gần đây
 
@@ -28,8 +28,10 @@ Backhaul Ethernet W5500 đã có IPv6 trên backbone (link-local + ULA/global kh
 - **Cách làm theo esp-thread-br / protocol_examples_common:** Trong `eth_event_handler`, khi `ETHERNET_EVENT_CONNECTED` mới gọi `esp_netif_create_ip6_linklocal(netif)`; đăng ký handler với `s_eth_netif` làm `arg`.
 - Kết quả: BR có ít nhất link-local `fe80::` trên W5500; nếu MikroTik gửi RA thì có thêm ULA/global. Log: `Ethernet link up`, `Ethernet got IPv6: ...`; sau BR init: `backbone global IPv6` / `backbone link-local IPv6` trong `br_main.c`.
 
-### Backhaul: chỉ LAN
-- Backhaul chỉ Ethernet W5500 (`CONFIG_BR_ETH_W5500_ENABLE=y`). Không Wi‑Fi; không có wifi_sta. Nếu Ethernet timeout thì không backbone.
+### Backhaul: chỉ LAN, IPv4 + direct-connect
+- Backhaul chỉ Ethernet W5500 (`CONFIG_BR_ETH_W5500_ENABLE=y`). Không Wi‑Fi. Init **chờ IPv4** (DHCP) với timeout (mặc định 15s). Chỉ có IPv6 link-local không đủ — backend/dashboard cần IPv4 để kết nối BR.
+- **Cắm BR vào LAN (có router):** BR nhận IPv4 từ DHCP → init OK.
+- **Cắm trực tiếp BR–PC (không DHCP):** Timeout → nếu link up và `CONFIG_BR_ETH_DIRECT_CONNECT_DHCP_SERVER=y`: BR set static IPv4 (mặc định 192.168.4.1), thử bật DHCP server; netif ETH mặc định không có `dhcps` nên `dhcps_start` thường thất bại → BR vẫn 192.168.4.1, **PC cần cấu hình static** (vd. 192.168.4.2/24) để kết nối 192.168.4.1:5000.
 
 ### CMD_IP_ADDR và Dashboard reply ACK
 - BR gửi ACK + 16 byte Leader RLOC; spec yêu cầu backend gửi lại **một ACK trống cùng frameId** để BR dừng retry. Dashboard-Thread hiện chỉ gọi `replyAck(ipRes.frameId)` trong `CommunicateManager.pullState()` khi `stateChangedOrFirst` → các lần fetch IP_ADDR khác (vd. fetchOtConfig, refresh) không gửi reply ACK → BR retry mãi. **Khuyến nghị:** Trong Dashboard-Thread, `CommandManager.handle()` khi nhận ACK của CMD_IP_ADDR (frameId trong ipAddrFrameIds, data.length === 16) tự gọi `replyAck(frame.frameId)` để mọi nguồn gọi fetchIpAddr đều trả ACK cho BR.
@@ -73,7 +75,8 @@ Backhaul Ethernet W5500 đã có IPv6 trên backbone (link-local + ULA/global kh
 - **Frame transport:** Chỉ TCP (BR listen port); đã bỏ USB/UART cho kênh BR↔dashboard
 - **Backhaul:** Chỉ Ethernet W5500 khi bật (`CONFIG_BR_ETH_W5500_ENABLE`); không Wi‑Fi
 - **Stack monitor:** Task `stk_mon` 3072 bytes, log mỗi 30s; `main` task luôn hiện "used full" sau `app_main()` exit — bình thường
-- **Backbone LAN:** Khi router (vd. MikroTik) gửi RA và BR tạo được IPv6 link-local (trên ETHERNET_EVENT_CONNECTED), BR có IPv6 backbone → ít log ND/RS fail. Nếu backbone không có RA thì vẫn có thể thấy `Failed to send ND6 message` / `RsSender: Failed to send RS`; khi đó BR vẫn có link-local `fe80::` nếu đã gọi `esp_netif_create_ip6_linklocal` đúng lúc.
+- **Backbone LAN:** BR tạo IPv6 link-local trên ETHERNET_EVENT_CONNECTED. BR phát RA (Border Routing Manager) theo chu kỳ hoặc khi nhận RS; nếu backend cần route sớm, host nên gửi **Router Solicitation** (vd. `rdisc6 -1 <iface>`) thay vì chờ RA định kỳ (hoặc reset BR để link up → host có thể gửi RS).
+- **accept_ra_rt_info_max_plen:** Để kernel cài route từ RIO (prefix Thread), set **per-interface**: `sysctl net.ipv6.conf.<iface>.accept_ra_rt_info_max_plen=128`. Dùng `net.ipv6.conf.all.*` thường không có hiệu lực cho interface đã tồn tại (all chỉ là mặc định).
 - **Backend ↔ child:** Mô hình ưu tiên là backend bật IPv6 (ít nhất link-local/ULA trên máy backend, không phụ thuộc ISP) để child nói chuyện trực tiếp bằng IPv6 qua BR. Nếu backend chỉ IPv4 thì cần NAT64 hoặc proxy ở BR (chưa implement, chỉ ghi nhận như hướng mở rộng).
 
 ## Bước tiếp theo

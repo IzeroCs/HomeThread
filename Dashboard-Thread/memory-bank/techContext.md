@@ -114,8 +114,8 @@ SQLite (`better-sqlite3`, WAL mode). 6 migrations:
 ## Docker (backend)
 
 - **Vi tri:** `Dockerfile.backend`, `docker-compose.yml` o thu muc goc. Build: `docker compose up --build`.
-- **Cau hinh:** `network_mode: host` (reply CoAP ve Thread-Node can route prefix Thread tren host). Volume: `./backend/data:/app/data`, `/etc/resolv.conf`, `/etc/nsswitch.conf` (ro). Container name: `dashboard-thread-backend`.
-- **Default BR:** 192.168.31.3:5000 (mDNS trong container thuong khong resolve Thread-Host.local). Chi tiet: `backend/README.docker.md`.
+- **Cau hinh:** `network_mode: host` (reply CoAP ve Thread-Node dung **bang route cua host** — backend khong can doc/cau hinh route trong code). Volume chi `./backend/data:/app/data`. Container name: `dashboard-thread-backend`.
+- **Default BR:** 192.168.31.3:5000. **mDNS trong Docker khong dung duoc**; khi chay Docker phai dung IP. "Tim BR" sau co the lam bang quet dai IP (TCP 5000). Chi tiet: `backend/README.docker.md`.
 
 ## Configuration
 

@@ -75,7 +75,7 @@ idf.py build
   - Console/Log qua **UART0**
   - Flash baud rate **921600**
   - RCP control pins: GPIO7 (RESET), GPIO8 (BOOT)
-- **Backhaul:** `idf.py menuconfig` → **ESP Thread Border Router** — bật **Ethernet W5500** (SPI pins). Backhaul chỉ LAN (Ethernet). IPv6 trên backbone: link-local tự tạo khi link up; global/ULA nếu router gửi RA.
+- **Backhaul:** `idf.py menuconfig` → **ESP Thread Border Router** — bật **Ethernet W5500** (SPI pins). Backhaul chỉ LAN. Init chờ IPv4 (DHCP); cắm trực tiếp BR–PC dùng static (BR 192.168.4.1, PC 192.168.4.2). Backend route: xem [real_br_integration.md](../../Documents/architecture/real_br_integration.md) (accept_ra_rt_info_max_plen per-interface, RS).
 
 ### 3. Flash và chạy
 

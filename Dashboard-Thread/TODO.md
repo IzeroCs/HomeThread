@@ -27,7 +27,7 @@ Phần đã triển khai được mô tả trong [README.md](./README.md). Dư�
 
 ## Tích hợp & vận hành
 
-- [ ] **mDNS browse** *(tùy chọn)*: Backend browse `_thread-frame._tcp`, frontend nút "Tìm BR (mDNS)".
+- [ ] **Tìm BR** *(tùy chọn)*: Khi chạy trên host — mDNS browse `_thread-frame._tcp`. Khi chạy Docker mDNS không dùng được — có thể làm "Tìm BR" bằng quét dải IP (TCP port 5000).
 - [ ] **WebSocket log 2 lần khi dev**: Do React Strict Mode mount 2 lần — không phải lỗi, nhưng cần lưu ý khi debug.
 
 ---

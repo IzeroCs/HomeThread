@@ -53,9 +53,9 @@
 - `esp_log_level_set` — runtime log level
 
 ### Backhaul
-- **Ethernet W5500 (SPI):** `backhaul/eth_w5500.c` — backbone khi `CONFIG_BR_ETH_W5500_ENABLE=y`. Backhaul chỉ LAN (không Wi‑Fi). IPv6 link-local: gọi `esp_netif_create_ip6_linklocal(netif)` trong **ETHERNET_EVENT_CONNECTED**. Handler đăng ký với `s_eth_netif` làm `arg`. ESP32-S3 không có EMAC (không dùng LAN8720).
-- **br_main:** Sau border router init, log backbone IPv6 qua `esp_netif_get_ip6_global()` và `esp_netif_get_ip6_linklocal()` (tag `br_main`).
-- **Kênh BR↔dashboard:** Chỉ **TCP** (frame protocol trên socket); không USB/UART.
+- **Ethernet W5500 (SPI):** `backhaul/eth_w5500.c` — backbone khi `CONFIG_BR_ETH_W5500_ENABLE=y`. Backhaul chỉ LAN. Init chờ **IPv4** (DHCP) với timeout (CONFIG_BR_ETH_LINK_TIMEOUT_MS, default 15s); chỉ IPv6 không đủ. Khi timeout + link up + CONFIG_BR_ETH_DIRECT_CONNECT_DHCP_SERVER: set static IP (BR_ETH_DIRECT_IP_*, default 192.168.4.1), thử dhcps_start (thường fail vì netif ETH mặc định không có dhcps) → PC cần static (vd. 192.168.4.2). IPv6 link-local: `esp_netif_create_ip6_linklocal(netif)` trong ETHERNET_EVENT_CONNECTED. ESP32-S3 không có EMAC.
+- **br_main:** Sau border router init, log backbone IPv6 (tag `br_main`).
+- **Kênh BR↔dashboard:** Chỉ TCP (frame protocol); không USB/UART.
 
 #### Backbone IPv4-only vs IPv6
 - Mạng LAN nhà hiện tại chỉ cấp **IPv4** (router không cấp IPv6 từ ISP). Điều này **không cản trở** BR làm Border Router cho Thread:
@@ -75,7 +75,7 @@
   - **NAT64:** BR (hoặc gateway khác) dịch IPv6 (child) ↔ IPv4 (backend), cho phép backend thuần IPv4. Đây là hướng mở rộng, chưa có trong Thread-Host hiện tại.
 
 #### Route backend → Node (reply CoAP)
-- Để backend trả reply về Node, **máy backend** cần route: prefix Thread (OMR, vd. fdb8:.../fdd7:...) **via** BR (link-local backbone). BR gửi RA với RIO nhưng router lifetime=0 → Linux có thể không cài route; thêm tay: `ip -6 route add <prefix>::/64 via <BR_fe80::> dev <iface>`. Chi tiết: activeContext.md, Documents/architecture/real_br_integration.md. **Dashboard-Thread Docker:** Backend chạy với `network_mode: host` để dùng route host; default BR IP 192.168.31.3 (mDNS trong container không ổn định).
+- Backend cần route: prefix Thread **via** BR (link-local). BR gửi RA với RIO; để kernel cài route từ RIO: **per-interface** `sysctl net.ipv6.conf.<iface>.accept_ra_rt_info_max_plen=128` (vd. enp8s0). Không dùng `net.ipv6.conf.all.*` — all chỉ là mặc định, không áp dụng ngược cho interface đã có. Hoặc add tay: `ip -6 route add <prefix>::/64 via <BR_fe80::> dev <iface>`. BR phát RA theo chu kỳ hoặc khi nhận RS; backend có thể gửi **Router Solicitation** (vd. `rdisc6 -1 <iface>`) để nhận RA sớm. Chi tiết: activeContext.md, Documents/architecture/real_br_integration.md. **Docker:** `network_mode: host`; default BR 192.168.31.3. Add route trong container cần `--cap-add=NET_ADMIN`.
 
 ### Logging (frame RX/TX)
 - Mặc định **INFO**: chỉ in frame RX/TX cho CMD không noisy (GET_DATASET, SET_*, COMMISSIONER_JOINER, …); CMD_STATE và *_TABLE không in.

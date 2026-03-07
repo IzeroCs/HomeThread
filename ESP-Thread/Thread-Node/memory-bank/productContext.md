@@ -20,7 +20,7 @@ Border Router (Thread-Host) cần biết:
 - Các thuộc tính của từng entity
 - Trạng thái mạng của thiết bị (IP, RLOC, role)
 
-Thread-Node giải quyết bằng cách gửi CBOR-encoded device model lên **Backend** (không phải BR) qua CoAP POST `/device/register`. Địa chỉ Backend lấy từ **thread_discovery** (SRP/DNS-SD `_dashboard._udp`). **thread_node** khi `enable_device_registry` tự chạy discovery, refresh 60s, ping 10s; khi có endpoint hoặc endpoint đổi thì gửi register; khi GET `/device/ping` nhận timestamp backend khác thì gửi lại register. Mọi role **Child/Router/Leader** đều gửi được; CoAP token 2 byte cho mọi request; chờ ACK (2.01/2.04/2.05). Backend phải trả ACK/NACK (xem `docs/coap/border_router_coap_server.md`).
+Thread-Node giải quyết bằng cách gửi CBOR-encoded device model lên **Backend** (không phải BR) qua CoAP POST `/device/register`. Địa chỉ Backend lấy từ **thread_discovery** (SRP/DNS-SD `_dashboard._udp`). **thread_node** khi `enable_device_registry` tự chạy discovery (retry 10s khi chưa có backend, refresh 60s khi đã có), ping 10s; khi có endpoint hoặc endpoint đổi thì gửi register; khi GET `/device/ping` nhận timestamp backend khác thì gửi lại register. Mọi role **Child/Router/Leader** đều gửi được; CoAP token 2 byte cho mọi request; chờ ACK (2.01/2.04/2.05). Backend phải trả ACK/NACK (xem `docs/coap/border_router_coap_server.md`).
 
 ### 3. Quản lý Leader role
 
@@ -45,7 +45,7 @@ main()
                       ├─ thread_coap_start()
                       ├─ device_registry_init()          → (nếu enable_device_registry)
                       ├─ thread_discovery_init()        → (nếu enable_device_registry)
-                      ├─ Discovery lần đầu + task refresh 60s + task ping 10s (thread_node nội bộ)
+                      ├─ Discovery lần đầu + task discovery (10s/60s) + task ping 10s (thread_node nội bộ)
                       └─ on_joined_callback()           → App chỉ setup entities + entity_coap_server; không gọi discovery/register/ping
 ```
 

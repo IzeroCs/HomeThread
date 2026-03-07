@@ -45,7 +45,7 @@ Kết hợp hai cơ chế:
 
 1. **Cache TTL (`thread_discovery_cfg_t.cache_ttl_sec`):** Khi `thread_discovery_get_endpoint(out, false)` và có cache SRP trong NVS, nếu `cache_ttl_sec > 0` và `(now - cache_ts) > cache_ttl_sec` thì coi cache hết hạn và thực hiện SRP discovery lại (không trả cache cũ). Caller gọi get_endpoint định kỳ sẽ nhận endpoint mới khi cache hết TTL.
 
-2. **Task re-discovery (thread_node):** Task `thread_disc` mỗi 60s gọi `thread_discovery_get_endpoint(&ep, false)`. Nếu endpoint (addr + port) khác `s_backend_ep` thì cập nhật và log **"Backend discovered"** (lần đầu) hoặc **"Backend endpoint updated"** (khi đổi). Log backend IP chỉ 1 lần khi có IP và khi IP thay đổi (thread_node log INFO); thread_discovery khi trả cache/static/SRP dùng LOGD. Backend đổi IPv6 và gửi lại CMD_SRP_REGISTER lên BR thì tối đa sau 60s Thread-Node có endpoint mới.
+2. **Task re-discovery (thread_node):** Task `thread_disc` gọi `thread_discovery_get_endpoint(&ep, false)` với delay **10s** khi chưa có backend (`!s_backend_ep_valid`), **60s** khi đã có — tránh đợi 60s mới retry lần đầu. Nếu endpoint (addr + port) khác `s_backend_ep` thì cập nhật và log **"Backend discovered"** (lần đầu) hoặc **"Backend endpoint updated"** (khi đổi). Log backend IP chỉ 1 lần khi có IP và khi IP thay đổi (thread_node log INFO); thread_discovery khi trả cache/static/SRP dùng LOGD. Backend đổi IPv6 và gửi lại CMD_SRP_REGISTER lên BR thì tối đa sau một chu kỳ (10s hoặc 60s) Thread-Node có endpoint mới.
 
 ## CoAP ResponseTimeout (sau khi discovery thành công)
 

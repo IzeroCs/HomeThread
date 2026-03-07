@@ -29,7 +29,8 @@
 
 - **Transport:** Kết nối **TCP** tới `BR_IP:port` (port mặc định 5000, cấu hình trong BR menuconfig).
 - **Giao thức:** Cùng [frame protocol](../protocol/usb_cdc_frame_structure.md) (SOF/Frame ID/CMD/LEN/DATA/CRC8/EOF) — gửi/nhận **byte stream** trên socket, không phải serial/USB.
-- **BR_IP và port:** BR đăng ký mDNS hostname **Thread-Host** (resolve `Thread-Host.local` → IP) và service **\_thread-frame.\_tcp** (port frame, mặc định 5000). Backend có thể: (1) resolve `Thread-Host.local` → BR_IP, port lấy từ config, hoặc (2) browse service `_thread-frame._tcp` → nhận luôn instance name, IP và port. **Khi chạy Backend trong Docker:** mDNS thường không resolve được trong container → cấu **BR bằng IP** (vd. 192.168.31.3:5000) trong Settings hoặc dùng default (Dashboard-Thread migration mặc định 192.168.31.3:5000).
+- **BR Host và port:** Khi chạy trên host có thể dùng mDNS (`Thread-Host.local:5000`) nếu resolve được. **Khuyến nghị dùng IPv4** (vd. 192.168.31.3:5000): nhiều BR (vd. ESP32-S3) chỉ listen TCP trên IPv4 → dùng IPv6 (kể cả link-local) dễ **ECONNREFUSED**. Nếu dùng **IPv6 link-local** (fe80::...) bắt buộc có **zone ID** (vd. fe80::...%enp7s0), thiếu sẽ **EINVAL**. Cắm trực tiếp PC–BR (không qua router): trên link thường không có DHCP → đặt **IP tĩnh** trên PC cùng subnet với BR.
+- **mDNS / Tìm BR:** Khi chạy Docker, mDNS trong container không hoạt động → cấu hình BR bằng IP. Tính năng "Tìm BR" sau có thể làm bằng quét dải IP (TCP 5000) thay vì mDNS. **Khi chạy Backend trong Docker:** mDNS thường không resolve được trong container → cấu **BR bằng IP** (vd. 192.168.31.3:5000) trong Settings hoặc dùng default (Dashboard-Thread migration mặc định 192.168.31.3:5000).
 
 ### 2.2. Không còn CMD_DATA push từ BR
 
@@ -95,7 +96,12 @@
 
 ### 4.1. Route Backend → Node (reply CoAP)
 
-Để **reply từ Backend tới Thread-Node** tới đích, máy chạy Backend cần **route** tới prefix Thread (OMR, vd. fdb8:.../fdd7:...) **via** BR (link-local IPv6 của BR trên backbone). BR gửi Router Advertisement (RA) có Route Information Option (RIO) nhưng với **router lifetime = 0** → nhiều kernel Linux không cài route từ RIO. **Cách làm:** Thêm route tay trên host: `ip -6 route add <PREFIX>::/64 via <BR_linklocal> dev <iface>`. Route mất sau reboot; có thể script/cron hoặc persistent. Sau **factory reset BR**, prefix và có thể cả link-local BR đổi → cập nhật lại route. **Backend chạy Docker:** Dùng `network_mode: host` để container dùng chung stack mạng (và route) với host; khi đó route thêm trên host có hiệu lực cho Backend trong container.
+Để **reply từ Backend tới Thread-Node** tới đích, máy chạy Backend cần **route** tới prefix Thread (OMR) **via** BR (link-local IPv6 của BR trên backbone).
+
+- **Tự động từ RA (khuyến nghị):** BR gửi RA có RIO. Để kernel Linux **cài route từ RIO**, set **per-interface** (không dùng `all`): `sysctl net.ipv6.conf.<iface>.accept_ra_rt_info_max_plen=128` (vd. `enp8s0`). `net.ipv6.conf.all.*` chỉ là mặc định cho interface mới, không áp dụng ngược cho interface đã tồn tại. BR phát RA theo chu kỳ hoặc khi nhận **Router Solicitation (RS)**; nếu cần route sớm, host có thể gửi RS: `rdisc6 -1 <iface>` (gói ndisc6).
+- **Thêm route tay:** `ip -6 route add <PREFIX>::/64 via <BR_linklocal> dev <iface>`. Route mất sau reboot; sau factory reset BR prefix/link-local có thể đổi → cập nhật lại. Nếu backend trong Docker cần tự add route: chạy container với `--cap-add=NET_ADMIN`.
+
+**Backend chạy Docker:** Dùng `network_mode: host` để container dùng chung bảng routing với host. Route trên host có hiệu lực cho process trong container.
 
 ---
 

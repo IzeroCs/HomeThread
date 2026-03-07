@@ -55,7 +55,7 @@ Examples                 █████████████░░░░░�
 
 | Mục | Trạng thái |
 |---|---|
-| Đích: Backend (từ discovery) | ✅ App gọi device_registry_register(endpoint) với endpoint từ backend_discovery_get_endpoint(); trigger khi discovery thành công và khi endpoint đổi |
+| Đích: Backend (từ discovery) | ✅ thread_node gọi device_registry_register(endpoint) với endpoint từ thread_discovery_get_endpoint(); trigger khi discovery thành công, endpoint đổi, hoặc ping timestamp đổi |
 | Mọi role đều gửi được | ✅ Child, Router, Leader đều có thể gửi đăng ký tới backend |
 | Chờ ACK/NACK (callback) | ✅ on_registry_response + timeout 20s |
 | Retry khi NACK/timeout | ✅ Delay 2s rồi gửi lại |

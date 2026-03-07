@@ -33,9 +33,14 @@ Project da on dinh voi BR qua TCP, trang Nodes (Router/Child/Joiner List), Toast
 
 ### Docker backend (chay backend bang container)
 - **Vi tri:** Dockerfile va docker-compose o **thu muc goc** Dashboard-Thread: `Dockerfile.backend`, `docker-compose.yml`, `.dockerignore`. Sau co the them frontend cung build.
-- **Cau hinh:** `network_mode: host` (dung chung route host — reply CoAP ve Thread-Node can route prefix Thread tren host). Volume: `./backend/data:/app/data` (dung chung DB voi local), `/etc/resolv.conf` va `/etc/nsswitch.conf` (ro) de thu resolve mDNS.
-- **Default BR:** Migration 005 mac dinh BR connection **192.168.31.3:5000** (use_mdns=0) thay Thread-Host.local vi mDNS trong Docker thuong khong on dinh. DB moi hoac cap nhat qua Settings neu can.
+- **Cau hinh:** `network_mode: host` (dung chung bang route host — backend khong can doc route trong code). Volume chi `./backend/data:/app/data`.
+- **Default BR:** 192.168.31.3:5000. **mDNS trong Docker khong dung duoc**; khi Docker phai dung IP. "Tim BR" sau co the quet dai IP (TCP 5000).
 - **Chay:** `docker compose up --build`; container name `dashboard-thread-backend`. Doc: `backend/README.docker.md`.
+
+### BR connection (Settings)
+- **IPv4 khuyen nghi:** Nhieu BR (vd. ESP32-S3) chi listen TCP tren IPv4 (0.0.0.0:5000) → dung **IPv4** lam BR Host (vd. 192.168.31.3) tranh ECONNREFUSED.
+- **IPv6 link-local:** Neu dung fe80::... phai co **zone ID** (vd. fe80::...%enp7s0), neu khong se EINVAL.
+- **Cap truc tiep PC–BR (khong qua router):** Tren link khong co DHCP → PC can dat **IP tinh** cung subnet voi BR (BR thuong co IP co dinh trong firmware).
 
 ### Migration BR — Chi TCP, bo Serial (plan br_backend_communication)
 - **Backend:** Loai bo hoan toan Serial/USB/UART. Chi dung **TransportTcp** ket noi BR (host:port). Cau hinh: **BrConnectionConfigService** (brHost, brPort, useMdns) luu SQLite; migration 005 tao bang `br_connection_config`. Xoa SerialPort.ts, SerialConfigService.ts; go dependency serialport.
@@ -72,7 +77,7 @@ ROUTER_TABLE, CHILD_TABLE, JOINER_TABLE TX va ACK bi filter ra khoi console log 
 
 ## Next Steps (theo thu tu uu tien)
 
-1. **mDNS browse** *(tuy chon)* — Backend browse `_thread-frame._tcp`, frontend nut "Tim BR (mDNS)"
+1. **Tim BR** *(tuy chon)* — mDNS browse `_thread-frame._tcp` (khi chay tren host) hoac quet dai IP (TCP 5000) khi chay Docker
 2. **TCP keepalive** — Da co the bat de phat hien mat ket noi BR nhanh hon (backend TransportTcp)
 3. **Security** *(neu can)* — auth WS, HTTPS
 

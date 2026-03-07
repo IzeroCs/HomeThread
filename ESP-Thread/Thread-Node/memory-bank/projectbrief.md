@@ -14,7 +14,7 @@ Thread-Node là một **ESP-IDF component library framework** cho phép lập tr
 
 Thread-Node là **lớp thiết bị cuối** (End Device / Router Node) trong hệ thống:
 - Kết nối vào Thread mesh thông qua Border Router (Thread-Host)
-- Đăng ký thông tin thiết bị lên **Backend** qua CoAP POST `/device/register` (địa chỉ Backend lấy từ backend discovery SRP/DNS-SD)
+- Đăng ký thông tin thiết bị lên **Backend** qua CoAP POST `/device/register` (địa chỉ Backend lấy từ thread_discovery, SRP/DNS-SD `_dashboard._udp`)
 - Nhận lệnh điều khiển từ Border Router qua CoAP PUT `/entities/{id}/{attr}`
 
 ## Mục tiêu cốt lõi

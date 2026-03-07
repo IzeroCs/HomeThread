@@ -1,6 +1,6 @@
 # Progress — Thread-Host
 
-_Cập nhật: 2026-03-06 (backend route, Dashboard-Thread Docker)_
+_Cập nhật: 2026-03-06 (Ethernet IPv4-only, direct-connect, RA/route docs)_
 
 ## Release history
 
@@ -19,6 +19,7 @@ _Cập nhật: 2026-03-06 (backend route, Dashboard-Thread Docker)_
 | 0.15.0 | 2026-03-03 | SRP hostname lifetime: buffer tĩnh `s_srp_hostname` thay vì stack; copy hostname vào đó trước `otSrpClientSetHostName` vì OT SRP client chỉ lưu con trỏ — tránh dangling pointer và mojibake/empty host khi DNS update bất đồng bộ. |
 | 0.16.0 | 2026-03-03 | SRP IPv6 address lifetime: buffer tĩnh `s_srp_backend_addr` thay vì stack; copy 16 byte AAAA vào đó trước `otSrpClientSetHostAddresses` — tránh địa chỉ rác trên SRP server và discovery sai trên Thread-Node. |
 | 0.17.0 | 2026-03-06 | Loại bỏ Leader Control Client (CoAP GET `/network/stop`) và toàn bộ docs liên quan. |
+| 0.18.0 | 2026-03-06 | Ethernet init: chờ **IPv4** (DHCP) only; timeout 15s. Direct-connect: khi timeout + link up → BR static 192.168.4.1 (Kconfig BR_ETH_DIRECT_IP_*), thử dhcps_start (netif ETH không có dhcps → thường fail, PC set static 192.168.4.2). Backend route: accept_ra_rt_info_max_plen **per-interface** (vd. enp8s0), RS để BR phát RA sớm. |
 
 _(Ghi phiên bản theo Semantic Versioning MAJOR.MINOR.PATCH, không dùng tiền tố `v`. Nếu chỉ có major/minor thì PATCH = 0.)_
 
@@ -64,8 +65,9 @@ _(Ghi phiên bản theo Semantic Versioning MAJOR.MINOR.PATCH, không dùng ti�
 - [x] Boot button (GPIO0) — long press 3s → factory reset
 
 ### Backhaul
-- [x] Ethernet W5500 (SPI) — backbone khi bật; IPv6 link-local tạo trong ETHERNET_EVENT_CONNECTED (`eth_w5500.c`); br_main log backbone IPv6 (global + link-local) sau BR init
-- [x] Backhaul chỉ LAN — Wi‑Fi backhaul đã gỡ (Kconfig + code); chỉ Ethernet W5500
+- [x] Ethernet W5500 (SPI) — backbone khi bật; init chờ IPv4 (DHCP), timeout 15s; IPv6 link-local trên ETHERNET_EVENT_CONNECTED
+- [x] Direct-connect (BR–PC cable): timeout → static 192.168.4.1 (Kconfig); dhcps_start thường fail (ETH netif không có dhcps) → PC static 192.168.4.2
+- [x] Backhaul chỉ LAN — Wi‑Fi đã gỡ; chỉ Ethernet W5500
 
 ### CoAP
 - [x] Device Registry — đã bỏ (Phase 1); child gửi thẳng backend qua IP

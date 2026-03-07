@@ -24,12 +24,12 @@ Backend       parse CBOR → log JSON, tra 2.01.     (khong push len frontend)
 ### Ghi chú triển khai (Thread-Node)
 
 - **Discovery**: `components/thread/thread_discovery.c/.h` — `thread_discovery_init()`, `thread_discovery_get_endpoint(&ep, force_refresh)`. Endpoint: `thread_discovery_endpoint_t` (addr, port, from_srp).
-- **Device layer**: `components/thread/device/` — **device_registry** (build payload, API `device_registry_register`, `device_registry_ping`, `device_registry_is_registered`) và **device_coap** (transport: POST /device/register, GET /device/ping, CoAP token 2 byte). **thread_node** khi `enable_device_registry` chạy discovery, task refresh 60s, task ping 10s và gọi register/ping nội bộ; app không gọi discovery/register/ping.
+- **Device layer**: `components/thread/device/` — **device_registry** (build payload, API `device_registry_register`, `device_registry_ping`, `device_registry_is_registered`) và **device_coap** (transport: POST /device/register, GET /device/ping, CoAP token 2 byte). **thread_node** khi `enable_device_registry` chạy discovery (task delay 10s khi chưa có backend, 60s khi đã có), task ping 10s, và gọi register/ping nội bộ; app không gọi discovery/register/ping.
 
 ### Device register (`/device/register`) — gửi tới Backend
 
 - **Path**: POST `/device/register`. IP/port từ `thread_discovery_get_endpoint()` (thread_node giữ endpoint).
-- **Trigger**: (1) Lần đầu discovery thành công; (2) Refresh task 60s phát hiện endpoint (addr/port) đổi; (3) Ping task 10s nhận GET /device/ping response có timestamp khác (backend restart) → gửi lại register.
+- **Trigger**: (1) Lần đầu discovery thành công; (2) Task discovery (10s/60s) phát hiện endpoint (addr/port) đổi; (3) Ping task 10s nhận GET /device/ping response có timestamp khác (backend restart) → gửi lại register.
 - **Payload**: CBOR device model (device_registry build qua device_model + entity_serialization). Response: 2.01/2.04/2.05 (ACK). Backend phải trả response (xem [border_router_coap_server.md](border_router_coap_server.md)).
 - **API**: `device_registry_init()` (gọi từ thread_node); `device_registry_register(endpoint, callback, ctx)`; `device_registry_ping(endpoint, on_timestamp_changed, ctx)`.
 - **CoAP token (RFC 7252)**: Node gửi request với token 2 byte. Backend **phải echo đúng token** trong response thì OpenThread mới match và gọi response handler; nếu không echo token, node sẽ không nhận callback.

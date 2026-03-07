@@ -1,6 +1,6 @@
 # Dashboard-Thread
 
-Backend + Frontend điều khiển **OpenThread Border Router** qua **TCP** (frame protocol). Kết nối tới BR tại BR_IP:port (mặc định Thread-Host.local:5000, mDNS). Một project chung cho cả API và giao diện web.
+Backend + Frontend điều khiển **OpenThread Border Router** qua **TCP** (frame protocol). Kết nối tới BR tại BR_IP:port (khi chạy trên host: Thread-Host.local:5000 nếu mDNS có; khi chạy Docker dùng IP vd. 192.168.31.3:5000 — mDNS trong container không hoạt động). Khuyến nghị dùng **IPv4** cho BR Host (nhiều BR chỉ listen IPv4); nếu dùng IPv6 link-local cần zone ID (vd. fe80::...%enp7s0). Một project chung cho cả API và giao diện web.
 
 ## Stack
 
@@ -15,7 +15,7 @@ Backend + Frontend điều khiển **OpenThread Border Router** qua **TCP** (fra
 - **Status**: Trạng thái kết nối BR (host:port), OpenThread (PAN ID, Channel, Network Name, Version, IP Address, dataset đầy đủ), thread state; **System**: IPv4 và IPv6 của backend (từ backend, dùng cho SRP/Thread-Node). Khi chưa kết nối BR: card compact (icon đỏ + DISCONNECTED), OpenThread ghost grid + overlay "No Network Data Available" và nút "Configure Border Router". Phiên bản hiển thị lấy từ `frontend/package.json`. Backend tự gửi SRP register (CMD 0x44) khi BR là leader để Thread-Node có thể discovery `_dashboard._udp`; khi gửi, backend log IPv6/hostname/port ra console (transportLogger).
 - **Nodes**: Router Table & Child Table; **Joiner List** (thiết bị đang chờ join, bên dưới Child Table) với TIMEOUT đếm ngược MM:SS (local countdown từ dữ liệu mới). Nút "Commission Node" mở modal thêm joiner (EUI64, PSKd, timeout). Click một dòng bảng → Modal chi tiết theo RLOC16. Dòng leader có badge "LEADER". Cột Age đếm lên realtime.
 - **Settings**:
-  - *BR Connection*: Cấu hình host (vd. Thread-Host.local), port (5000), test connect trước khi lưu.
+  - *BR Connection*: Cấu hình host (IPv4 khuyến nghị, vd. 192.168.31.3; hoặc Thread-Host.local khi mDNS có; IPv6 link-local cần zone ID %interface), port (5000), test connect trước khi lưu.
   - *OpenThread*: PAN ID, Channel, Network Name, Extended PAN ID, Network Key; toggle khởi động/dừng Thread; nút "Lấy lại" fetch config từ thiết bị.
   - *System*: Hai action cards (Khởi động lại, Factory Reset) với image panel và nút Reset/Factory Reset; divider "Vùng nguy hiểm"; modal xác nhận + đếm ngược 5 giây.
 
