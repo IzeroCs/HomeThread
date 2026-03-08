@@ -22,6 +22,7 @@ Version notation in this file uses Semantic Versioning `MAJOR.MINOR.PATCH` (no l
 | 1.7.0   | Supervisor: thu muc `supervisor/` (Python stdlib) — Unix socket `/var/run/izerocs/supervisor.sock` (backend goi restart-otbr/health) + thread watch device (DEVICE_PATH mat → docker restart OTBR). Install script `install-supervisor-service.sh` (systemd dashboard-thread-supervisor, IP forwarding). Backend: mkdir /var/run/izerocs luc khoi dong; `backend/src/supervisor/socketClient.ts` (requestSupervisor, restartOtbr). Xoa otbr/install-otbr-watch-service.sh, otbr/otbr-watch-device.sh; otbr/README tro sang supervisor. |
 | 1.8.0   | OTBR D-Bus: Bo TCP/frame. Backend OtbrDbusClient (dbus-next), OtbrManager chi dung D-Bus. BR Connection UI = OTBR status + Test. D-Bus signals: subscribe PropertiesChanged (state thay doi) → pull state/dataset khi co signal; fallback poll cham (30s) chi kiem tra OTBR con song. Xoa TransportTcp, CommandManager, frame/. Tables van poll 6s khi co frontend + state active. |
 | 1.9.0   | Bo BrConnectionConfigService: xoa backend BrConnectionConfigService.ts; OtbrManager/WebSocketServer/index khong con BR config service. Frontend: useWebSocket bo config, configError, getConfig, saveConfig; xoa CONFIG_* listeners (CONFIG_CURRENT = null); xoa BrConnectionConfig.ts, type BrConnectionConfigFromBackend. CONFIG_SAVE chi trigger connect; CONFIG_UPDATE no-op. OTBR Docker: mount D-Bus host vao container da thu — otbr-agent khong dang ky tren host bus (dbus-daemon host tu choi ket noi tu container). Khuyen nghi: chay backend trong Docker voi volume otbr-dbus chung de backend thay OTBR. |
+| 2.0.0   | OTBR REST: Thay D-Bus bang REST API. Backend OtbrRestClient (otbr-rest-client.ts), OtbrManager dung REST; xoa OtbrDbusClient, dbus-next. OTBR_REST_URL (mac dinh http://127.0.0.1:8081). Frontend: cau truc folder kebab-case + suffix (.component.tsx, .style.scss, .context.tsx, .hook.ts, .type.ts, .util.ts); import cap nhat; BR Connection = "OTBR (REST)". Backend + frontend doi ten file kebab-case/suffix (otbr.manager, websocket.server, app-settings.service, socket.client, logger.util, ...). Docker: bo volume otbr-dbus; README + memory-bank cap nhat REST. |
 
 
 ## What Works (Completed)
@@ -35,18 +36,17 @@ Version notation in this file uses Semantic Versioning `MAJOR.MINOR.PATCH` (no l
 - Cursor Memory Bank (memory-bank/)
 - Symlink docs → HomeThread/Documents/ (Dashboard-Thread + ESP-Thread/Thread-Host)
 
-### Backend — OTBR D-Bus
+### Backend — OTBR REST
 
-- OtbrDbusClient (dbus-next): isAvailable(), getState(), getActiveDataset(), attach/detach, setActiveDataset, table getters (getRouterTable, getChildTable, getJoinerTable), addJoiner, reset/factoryReset
-- Subscribe D-Bus signal PropertiesChanged (org.freedesktop.DBus.Properties) → khi state/property thay doi goi callback; OtbrManager pull state/dataset mot lan
-- Fallback poll cham (30s) chi de kiem tra OTBR con song, khong dung de cap nhat state thuong xuyen
-- OtbrManager: dieu phoi OtbrDbusClient, PollingManager (tables 6s khi frontend + state active)
+- OtbrRestClient (otbr-rest-client.ts): isAvailable(), getState(), getActiveDataset(), attach/detach, setActiveDataset, table getters (getRouterTable, getChildTable tu /api/devices; getJoinerTable tu /node/commissioner/joiner), addJoiner, factoryReset (DELETE /node)
+- Poll state 30s (khong con D-Bus signal)
+- OtbrManager (otbr.manager.ts): dieu phoi OtbrRestClient, PollingManager (tables 6s khi frontend + state active)
 - BR connection config da bo: khong con BrConnectionConfigService; CONFIG_CURRENT emit null; bang br_connection_config (migration 005) van ton tai nhung khong dung
-- Auto-reconnect (5s) khi isAvailable() false
+- Auto-reconnect (5s) khi isAvailable() false; env OTBR_REST_URL
 
-### Backend — Operations (qua D-Bus)
+### Backend — Operations (qua REST)
 
-- State/dataset: getState(), getActiveDataset(); cap nhat khi nhan PropertiesChanged hoac fallback interval
+- State/dataset: getState(), getActiveDataset(); cap nhat qua poll 30s
 - Set config: setActiveDataset (TLV hex), attach/detach
 - Tables: getRouterTable, getChildTable, getJoinerTable (poll 6s khi can)
 - Commissioner: addJoiner (EUI64, PSKd, timeout)
@@ -67,9 +67,9 @@ Version notation in this file uses Semantic Versioning `MAJOR.MINOR.PATCH` (no l
 
 ### Frontend — Pages
 
-- Status: Ket noi OTBR (D-Bus), OT config, thread state, version (package.json); section **System** (IPv4/IPv6 backend tu systemInfo)
+- Status: Ket noi OTBR (REST), OT config, thread state, version (package.json); section **System** (IPv4/IPv6 backend tu systemInfo)
 - Nodes: Router Table + Child Table + Joiner List (pending commissioning); nut "Commission Node" mo CommissionNodeModal; leader badge, age counter, empty states; overlay khi OTBR disconnect (blur, khong boc box)
-- Settings / BR Connection: trang thai OTBR (D-Bus) + nut Test connection
+- Settings / BR Connection: trang thai OTBR (REST) + nut Test connection
 - Settings / OpenThread: cau hinh network + toggle Thread + nut "Lay lai"
 - Settings / System: action cards (Khoi dong lai, Factory Reset) voi image panel, danger divider "Vung nguy hiem"; nut Reset/Factory Reset; ConfirmModal countdown 5s
 
@@ -85,7 +85,7 @@ Console da bo. Commissioner gop vao Nodes (modal + Joiner List).
 ### Integration & Operations (Supervisor, OTBR)
 
 - **Supervisor** (`supervisor/`): Daemon Python stdlib — listen Unix socket `/var/run/izerocs/supervisor.sock`; backend goi `restartOtbr()` qua socketClient. Neu set `DEVICE_PATH` (vd. /dev/ttyACM0), thread poll device; mat → docker restart container. Mot systemd service: `sudo bash ./supervisor/install-supervisor-service.sh [container] [device]`. ExecStartPre bat IP forwarding. Doc: supervisor/README.md.
-- **OTBR Docker** (`otbr/`): Entrypoint doi RCP (by-id) roi exec /init; compose mount /dev, volume otbr-data. Rut RCP → dung supervisor (watch device) restart container. **Backend thay OTBR:** Backend chay tren host khong thay otbr-agent khi OTBR dung D-Bus trong container (da thu mount host /run/dbus vao container + DBUS_SYSTEM_BUS_ADDRESS — otbr-agent khong xuat hien tren host ListNames). Cach dung: chay **backend trong Docker** voi volume `otbr-dbus:/run/dbus` cung OTBR va env `DBUS_SYSTEM_BUS_ADDRESS=unix:path=/run/dbus/system_bus_socket`; dev co the mount source backend vao container de tranh build lai moi lan sua code.
+- **OTBR Docker** (`otbr/`): Entrypoint doi RCP (by-id) roi exec /init; compose mount /dev, volume otbr-data. Rut RCP → dung supervisor (watch device) restart container. **Backend thay OTBR:** Ket noi qua REST (OTBR_REST_URL, port 8081). OTBR can build OTBR_REST=ON, listen 0.0.0.0:8081.
 
 ### Documentation
 

@@ -27,7 +27,7 @@ Dashboard-Thread/          # npm workspaces root
 | pino | ^9.5.0 | Structured logging |
 | pino-pretty | latest | Pretty console output |
 
-Transport: **D-Bus** (dbus-next) toi OTBR (otbr-agent); CoAP (UDP 5683, udp6 listen [::]) from Thread-Node. Dependencies: `dbus-next`, `coap`. CBOR payload decode bang **thu vien noi bo** `backend/src/cbor`. Thread-Node la ben **chu dong** (CoAP client); GET /device/ping nhan timestamp de phat hien backend restart va gui lai register. Response CoAP phai **routable** toi node: host backend can route toi prefix Thread (OMR) qua BR; BR phai forward packet tu backhaul vao Thread (border routing). Neu node bao ResponseTimeout → xem docs troubleshooting (routing/BR).
+Transport: **REST API** (HTTP, OTBR_REST_URL port 8081) toi OTBR (otbr-agent, OTBR_REST=ON); CoAP (UDP 5683, udp6 listen [::]) from Thread-Node. Dependencies: `coap`. CBOR payload decode bang **thu vien noi bo** `backend/src/cbor`. Thread-Node la ben **chu dong** (CoAP client); GET /device/ping nhan timestamp de phat hien backend restart va gui lai register. Response CoAP phai **routable** toi node: host backend can route toi prefix Thread (OMR) qua BR; BR phai forward packet tu backhaul vao Thread (border routing). Neu node bao ResponseTimeout → xem docs troubleshooting (routing/BR).
 
 ### Frontend
 
@@ -123,12 +123,12 @@ SQLite (`better-sqlite3`, WAL mode). 6 migrations:
 
 ## Docker (backend, OTBR)
 
-- **Backend:** `Dockerfile.backend`, `docker-compose.yml` o thu muc goc. De backend **thay OTBR**: chay backend trong Docker voi volume `otbr-dbus:/run/dbus` (cung OTBR), env `DBUS_SYSTEM_BUS_ADDRESS=unix:path=/run/dbus/system_bus_socket`; `network_mode: host`, volume `./backend/data:/app/data`. Optional: mount source backend de dev khong can build lai. Backend chay **tren host** (`npm run dev:backend`) **khong** thay OTBR khi OTBR dung D-Bus trong container — da thu mount host /run/dbus vao OTBR container, otbr-agent khong dang ky tren host bus. Chi tiet: `backend/README.docker.md` (neu co).
-- **OTBR:** Service `otbr` — entrypoint doi RCP (by-id) roi exec /init; mount /dev, volume `otbr-data`; volume `otbr-dbus:/run/dbus` khi can backend container ket noi. Rut RCP → supervisor (watch device) restart container. Doc: `otbr/README.md`.
+- **Backend:** Backend (host hoac Docker) ket noi OTBR qua REST (OTBR_REST_URL, mac dinh http://127.0.0.1:8081). OTBR can build OTBR_REST=ON, listen 0.0.0.0:8081.
+- **OTBR:** Service `otbr` — entrypoint doi RCP (by-id) roi exec /init; mount /dev, volume `otbr-data`. Rut RCP → supervisor (watch device) restart container. Doc: `otbr/README.md`.
 
 ## Configuration
 
-- **Backend**: `.env` — PORT. Ket noi OTBR qua D-Bus (volume otbr-dbus); khi chay container set `DBUS_SYSTEM_BUS_ADDRESS=unix:path=/run/dbus/system_bus_socket`.
+- **Backend**: `.env` — PORT. Ket noi OTBR qua REST: `OTBR_REST_URL` (mac dinh http://127.0.0.1:8081).
 - **Frontend**: `vite.config.ts` proxy `/api` + `/socket.io` → backend. Override WS URL bang `VITE_WS_URL`
 
 ## Styling Convention
@@ -156,4 +156,4 @@ Frontend dev server: `host: true` → lang nghe `0.0.0.0:5173`. Tu may khac: `ht
 ## Known Technical Constraints
 
 - React Strict Mode → double mount → double WS connection trong dev (expected, khong phai bug)
-- OtbrDbusClient dung ten method/property D-Bus theo ot-br-posix; neu image OTBR khac co the can dieu chinh
+- OtbrRestClient dung path REST theo OpenAPI ot-br-posix (/node/state, /node/dataset/active, /node/commissioner/joiner, /api/devices)

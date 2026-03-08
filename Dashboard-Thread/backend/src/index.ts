@@ -7,14 +7,14 @@ import "dotenv/config";
 import { mkdirSync } from "fs";
 import { createServer } from "http";
 import { Server } from "socket.io";
-import { getDatabase, closeDatabase } from "./database/Database";
-import { runMigrations } from "./database/migrations";
+import { getDatabase, closeDatabase } from "./database/database.db";
+import { runMigrations } from "./database/database.migrations";
 import { OtbrManager } from "./otbr";
-import { AppSettingsService } from "./services/AppSettingsService";
-import { WebSocketServer } from "./server/WebSocketServer";
-import { startCoapDeviceServer } from "./server/CoapDeviceServer";
-import { SUPERVISOR_SOCK_DIR } from "./supervisor/socketClient";
-import { logger } from "./utils/logger";
+import { AppSettingsService } from "./services/app-settings.service";
+import { WebSocketServer } from "./server/websocket.server";
+import { startCoapDeviceServer } from "./server/coap-device.server";
+import { SUPERVISOR_SOCK_DIR } from "./supervisor/socket.client";
+import { logger } from "./utils/logger.util";
 
 const serverLog = logger.child("Server");
 

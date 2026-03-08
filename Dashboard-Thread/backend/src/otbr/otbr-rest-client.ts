@@ -3,8 +3,8 @@
  * Path theo OpenAPI ot-br-posix: kebab-case + suffix (/node/state, /node/dataset/active, ...).
  */
 
-import type { OtConfig } from "./ot-config-manager";
-import type { TableData } from "./thread-data-manager";
+import type { OtConfig } from "./ot-config.manager";
+import type { TableData } from "./thread-data.manager";
 
 const DEFAULT_BASE_URL = "http://127.0.0.1:8081";
 

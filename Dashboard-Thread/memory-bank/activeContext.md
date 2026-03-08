@@ -2,13 +2,13 @@
 
 ## Current Work Focus
 
-Backend giao tiep **OTBR qua D-Bus**. OtbrManager dung OtbrDbusClient; subscribe D-Bus signal **PropertiesChanged**; fallback poll 30s. Frontend BR Connection = "OTBR (D-Bus)" + Test. **BrConnectionConfigService da bo** (backend + frontend): CONFIG_CURRENT = null, khong config/getConfig/saveConfig. **Supervisor** van dung: Unix socket restart-otbr + watch device.
+Backend giao tiep **OTBR qua REST API**. OtbrManager dung OtbrRestClient; poll state 30s (khong con D-Bus signal). Frontend BR Connection = "OTBR (REST)" + Test. **BrConnectionConfigService da bo** (backend + frontend): CONFIG_CURRENT = null, khong config/getConfig/saveConfig. **Supervisor** van dung: Unix socket restart-otbr + watch device.
 
 ## Recent Significant Changes
 
-### OTBR D-Bus + signals (1.8.0)
-- **OtbrDbusClient:** Subscribe `org.freedesktop.DBus.Properties` signal **PropertiesChanged** tren object path OTBR; khi nhan signal (vd. State thay doi) goi callback → OtbrManager pull state/dataset mot lan.
-- **OtbrManager:** State interval doi thanh **fallback 30s** (chi kiem tra OTBR con song); cap nhat state chinh bang signal. Tables van poll 6s khi co frontend + state active.
+### OTBR REST (thay D-Bus)
+- **OtbrRestClient:** HTTP toi OTBR (OTBR_REST_URL, port 8081). GET /node/state, /node/dataset/active, PUT /node/state, setActiveDataset, addJoiner qua /node/commissioner/joiner; router/child table tu /api/devices.
+- **OtbrManager:** Poll state 30s (khong con signal). Tables van poll 6s khi co frontend + state active.
 
 ### CoAP device data (Thread-Node)
 - **Backend:** CoAP server UDP 5683 (**CoapDeviceServer.ts**), socket **udp6** listen `[::]:5683`. Path **/device/** (register, update, ping). **GET /device/ping**: tra **2.05 Content**, payload 4 byte = timestamp uint32 LE (gia tri luc khoi tao server; restart = timestamp moi → node so sanh va gui lai register). **POST /device/register**, update: nhan CBOR, parse bang **thu vien CBOR noi bo** (`backend/src/cbor`), log `CoAP CBOR -> JSON: ...` + structure (device_id, rloc16, role, entities); tra 2.01. Role trong payload la **so** (0=child, 1=router, 2=leader). **Khong emit** len frontend (da bo EVENTS.CHILD_DATA).
@@ -35,9 +35,8 @@ Backend giao tiep **OTBR qua D-Bus**. OtbrManager dung OtbrDbusClient; subscribe
 - **Backend:** Khoi dong tao folder `/var/run/izerocs` (mkdirSync). `backend/src/supervisor/socketClient.ts`: `requestSupervisor(cmd)`, `restartOtbr()`; env `SUPERVISOR_SOCK_DIR`. Backend Docker can mount `/var/run/izerocs:/var/run/izerocs` de thay sock.
 - **OTBR:** Da xoa `otbr/install-otbr-watch-service.sh`, `otbr/otbr-watch-device.sh`. Chi con `otbr-entrypoint.sh` (doi RCP roi exec /init). Doc `otbr/README.md` tro sang supervisor.
 
-### Docker backend + OTBR D-Bus
-- **Backend tren host khong thay OTBR:** Mount D-Bus host vao container OTBR da thu — otbr-agent co env DBUS_SYSTEM_BUS_ADDRESS nhung **khong dang ky** tren host bus (ListNames tren host khong co io.openthread.BorderRouter.wpan0). Nguyen nhan kha nang: dbus-daemon host tu choi ket noi tu process trong container.
-- **Cach dung:** Chay **backend trong Docker** voi volume `otbr-dbus:/run/dbus` cung service OTBR, env `DBUS_SYSTEM_BUS_ADDRESS=unix:path=/run/dbus/system_bus_socket`. Compose can co service backend (build Dockerfile.backend) mount otbr-dbus. Dev: mount source backend vao container (vd. `.:/app`) de sua code tren host khong can build lai image. Doc: `backend/README.docker.md` (neu co).
+### Docker + OTBR REST
+- **Backend thay OTBR:** Ket noi qua REST (OTBR_REST_URL, mac dinh http://127.0.0.1:8081). OTBR can build OTBR_REST=ON, listen 0.0.0.0:8081. Compose bo volume otbr-dbus; backend (host hoac container) goi HTTP toi OTBR:8081.
 
 ### Documentation (truoc do)
 - Tao `HomeThread/Documents/`, symlink docs, Memory Bank
@@ -71,18 +70,17 @@ Lay tu getActiveDataset / IP hoac dataset (OtConfig.leaderRloc16).
 
 - `supervisor/server.py` — socket + watch device; env DEVICE_PATH, OTBR_CONTAINER_NAME, INTERVAL
 - `supervisor/install-supervisor-service.sh` — systemd unit dashboard-thread-supervisor
-- `backend/src/supervisor/socketClient.ts` — requestSupervisor(), restartOtbr(); SUPERVISOR_SOCK_DIR
-- `backend/src/otbr/OtbrDbusClient.ts` — D-Bus client, subscribe PropertiesChanged
-- `backend/src/otbr/OtbrManager.ts` — pullStateOtbr(), state signal callback, fallback interval 30s
-- `backend/src/server/CoapDeviceServer.ts` — CoAP device (path /device/); GET ping → 2.05 + 4-byte timestamp; POST → CBOR decode (backend/src/cbor), log JSON, tra 2.01
-- `backend/src/utils/ipv6.ts` — getBackendAddresses()
-- `docs/otbr/dbus_backend.md` — OTBR D-Bus API
-- `frontend/src/components/Nodes/Nodes.tsx` — Router/Child table, JoinerList, CommissionNodeModal
-- `frontend/src/components/Nodes/JoinerList.tsx` — joiner cards, countdown (snapshot + now)
-- `frontend/src/components/common/ToastContainer.tsx` + `ToastContainer.scss` — toast dark
-- `frontend/src/components/common/Modal.scss`, `ConfirmModal.scss` — dark navy theme
-- `frontend/src/components/common/Sidebar.tsx` + `Sidebar.scss` — nav, Settings sub-items icons
-- `frontend/src/components/Settings/SystemTab.tsx` + `SystemTab.scss` — action cards, danger divider
-- `frontend/src/components/Settings/OpenThreadConfigForm.scss` — ot-card, footer layout
+- `backend/src/supervisor/socket.client.ts` — requestSupervisor(), restartOtbr(); SUPERVISOR_SOCK_DIR
+- `backend/src/otbr/otbr-rest-client.ts` — REST client (GET /node/state, dataset, PUT, POST commissioner)
+- `backend/src/otbr/otbr.manager.ts` — pullStateOtbr(), poll 30s
+- `backend/src/server/coap-device.server.ts` — CoAP device (path /device/); GET ping → 2.05 + 4-byte timestamp; POST → CBOR decode (backend/src/cbor), log JSON, tra 2.01
+- `backend/src/utils/ipv6.util.ts` — getBackendAddresses()
+- `frontend/src/components/nodes/nodes.component.tsx` — Router/Child table, JoinerList, CommissionNodeModal
+- `frontend/src/components/nodes/joiner-list/joiner-list.component.tsx` — joiner cards, countdown
+- `frontend/src/components/common/toast-container/` — toast dark
+- `frontend/src/components/common/modal/`, `confirm-modal/` — dark navy theme
+- `frontend/src/components/common/sidebar/` — nav, Settings sub-items icons
+- `frontend/src/components/settings/system-tab/` — action cards, danger divider
+- `frontend/src/components/settings/openthread-config-form/openthread-config-form.style.scss` — ot-card, footer layout
 - `shared/src/events.ts`, `shared/src/types.ts` — thêm field/event cập nhật cả hai
 - `memory-bank/progress.md` — cập nhật khi hoàn thành task

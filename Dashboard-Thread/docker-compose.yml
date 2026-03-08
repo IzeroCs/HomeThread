@@ -1,9 +1,8 @@
 # Dashboard-Thread — backend + OTBR (tùy chọn).
 # Từ thư mục Dashboard-Thread: docker compose up --build
 #
-# Backend: chạy trên host (npm run dev:backend). OTBR container dùng D-Bus của host (mount socket)
-# để backend trên host thấy otbr-agent — dev không cần build/chạy backend trong Docker.
-# OTBR: entrypoint đợi RCP (by-id) rồi start; network_mode: host.
+# Backend: chạy trên host (npm run dev:backend). Kết nối OTBR qua REST API (OTBR_REST_URL, mặc định http://127.0.0.1:8081).
+# OTBR: entrypoint đợi RCP (by-id) rồi start; cần build với OTBR_REST=ON và listen 0.0.0.0:8081 để backend gọi REST.
 
 services:
   otbr:
@@ -21,14 +20,11 @@ services:
     volumes:
       - /dev:/dev
       - otbr-data:/var/lib/otbr
-      - /run/dbus-otbr:/run/dbus-otbr  # socket của container expose ra host
     environment:
       - OT_RCP_DEVICE=spinel+hdlc+uart:///dev/serial/by-id/usb-1a86_USB_Single_Serial_579B026391-if00?uart-baudrate=460800
       - OT_INFRA_IF=enp8s0
       - OT_THREAD_IF=wpan0
       - OT_LOG_LEVEL=7
-      # Dùng system bus của host (socket mount ở trên)
-      # - DBUS_SYSTEM_BUS_ADDRESS=unix:path=/run/dbus/system_bus_socket
     restart: unless-stopped
 
 volumes:

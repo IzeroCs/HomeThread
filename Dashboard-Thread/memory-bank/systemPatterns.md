@@ -3,21 +3,21 @@
 ## High-Level Data Flow
 
 ```
-OTBR (container)   otbr-agent, D-Bus system bus (socket trong volume otbr-dbus khi dung backend container)
-    ↓ D-Bus (dbus-next)
-OtbrDbusClient    (backend/src/otbr/OtbrDbusClient.ts)
-    ↓ isAvailable(), getState(), getActiveDataset(), attach/detach, table getters, setActiveDataset, addJoiner, reset/factoryReset
-OtbrManager (backend/src/otbr/OtbrManager.ts)
+OTBR (container)   otbr-agent, REST API (port 8081, OTBR_REST=ON)
+    ↓ HTTP (fetch)
+OtbrRestClient    (backend/src/otbr/otbr-rest-client.ts)
+    ↓ isAvailable(), getState(), getActiveDataset(), attach/detach, table getters, setActiveDataset, addJoiner, factoryReset
+OtbrManager (backend/src/otbr/otbr.manager.ts)
     ↓ OtConfigManager.update() + onBroadcast(event, data)
-WebSocketServer    (backend/src/server/WebSocketServer.ts)
+WebSocketServer    (backend/src/server/websocket.server.ts)
     ↓ io.emit(EVENTS.xxx, payload)
-useWebSocket hook  (frontend/src/hooks/useWebSocket.ts)
+useWebSocket hook  (frontend/src/hooks/use-websocket.hook.ts)
     ↓ React state update
 UI Components      (frontend/src/components/)
 
 Thread-Node  -- CoAP UDP 5683 (IPv6 [::]), path /device/
     ↓ GET /device/ping → 2.05 + 4-byte timestamp (server start); POST /device/register, update → CBOR payload
-CoapDeviceServer (backend/src/server/CoapDeviceServer.ts)
+CoapDeviceServer (backend/src/server/coap-device.server.ts)
     ↓ GET ping: tra timestamp (uint32 LE). POST: parse CBOR (backend/src/cbor), log JSON + structure, tra 2.01. Khong emit len frontend.
 
 Backend (os.networkInterfaces) → getBackendAddresses() → io.emit(SYSTEM_INFO) khi CONFIG_CURRENT
@@ -26,7 +26,7 @@ Frontend             subscribe SYSTEM_INFO → systemInfo → Status section "Sy
 
 Backend (khi can restart OTBR) → socketClient.restartOtbr() → Unix socket /var/run/izerocs/supervisor.sock → Supervisor (Python, host) → docker restart <container>. Supervisor doc lap: thread watch DEVICE_PATH; device mat thi tu goi docker restart.
 
-**OTBR D-Bus + Backend:** Backend tren host dung system bus mac dinh; OTBR trong container co D-Bus rieng. Mount host /run/dbus vao container + DBUS_SYSTEM_BUS_ADDRESS da thu — otbr-agent **khong xuat hien** tren host ListNames (dbus host tu choi). De backend thay OTBR: chay backend trong Docker voi volume otbr-dbus chung (OTBR + backend cung mount otbr-dbus:/run/dbus).
+**OTBR REST + Backend:** Backend (host hoac container) goi HTTP toi OTBR:8081 (OTBR_REST_URL). OTBR build OTBR_REST=ON, listen 0.0.0.0:8081.
 ```
 
 ## Node Registration Patterns (Thread-Node → Backend)
@@ -42,13 +42,13 @@ Backend (khi can restart OTBR) → socketClient.restartOtbr() → Unix socket /v
 
 | Module | File | Vai tro — TUYET DOI KHONG vi pham |
 |---|---|---|
-| `WebSocketServer` | `backend/src/server/WebSocketServer.ts` | CHI relay socket events ↔ OtbrManager. KHONG chua business logic hay transport logic |
-| `OtbrManager` | `backend/src/otbr/OtbrManager.ts` | Owner OTBR + polling. Dieu phoi OtbrDbusClient, pullState, broadcast |
-| `OtbrDbusClient` | `backend/src/otbr/OtbrDbusClient.ts` | D-Bus client: isAvailable(), getState(), getActiveDataset(), attach/detach, table getters, setActiveDataset, addJoiner |
-| `OtConfigManager` | `backend/src/otbr/OtConfigManager.ts` | In-memory store. `.update(partial)` de merge, `.get()` de doc, `.clear()` khi disconnect |
-| `PollingManager` | `backend/src/otbr/PollingManager.ts` | Poll table 6s (child +1.5s delay). CHI khi frontend connected + state = leader/router/child |
-| `AppSettingsService` | `backend/src/services/AppSettingsService.ts` | SQLite key-value cho app settings (thread_run_on_connect) |
-| `CoapDeviceServer` | `backend/src/server/CoapDeviceServer.ts` | CoAP server UDP 5683 (udp6, listen [::]). GET /device/ping → 2.05, payload 4-byte timestamp (server start). POST /device/register, update → decode CBOR (backend/src/cbor), log JSON + structure; tra 2.01; khong emit qua io |
+| `WebSocketServer` | `backend/src/server/websocket.server.ts` | CHI relay socket events ↔ OtbrManager. KHONG chua business logic hay transport logic |
+| `OtbrManager` | `backend/src/otbr/otbr.manager.ts` | Owner OTBR + polling. Dieu phoi OtbrRestClient, pullState, broadcast |
+| `OtbrRestClient` | `backend/src/otbr/otbr-rest-client.ts` | REST client: isAvailable(), getState(), getActiveDataset(), attach/detach, table getters, setActiveDataset, addJoiner |
+| `OtConfigManager` | `backend/src/otbr/ot-config.manager.ts` | In-memory store. `.update(partial)` de merge, `.get()` de doc, `.clear()` khi disconnect |
+| `PollingManager` | `backend/src/otbr/polling.manager.ts` | Poll table 6s (child +1.5s delay). CHI khi frontend connected + state = leader/router/child |
+| `AppSettingsService` | `backend/src/services/app-settings.service.ts` | SQLite key-value cho app settings (thread_run_on_connect) |
+| `CoapDeviceServer` | `backend/src/server/coap-device.server.ts` | CoAP server UDP 5683 (udp6, listen [::]). GET /device/ping → 2.05, payload 4-byte timestamp (server start). POST /device/register, update → decode CBOR (backend/src/cbor), log JSON + structure; tra 2.01; khong emit qua io |
 
 ## Frame Protocol
 
