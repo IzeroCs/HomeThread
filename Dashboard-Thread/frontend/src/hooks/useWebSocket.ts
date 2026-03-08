@@ -5,7 +5,6 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { io, Socket } from "socket.io-client";
 import type {
-  BrConnectionConfigFromBackend,
   ConnectionStatus,
   OtConfig,
   OtThreadState,
@@ -22,13 +21,9 @@ const WS_URL =
 export interface UseWebSocketReturn {
   connected: boolean;
   serialStatus: ConnectionStatus | null;
-  config: BrConnectionConfigFromBackend | null;
-  configError: string | null;
   serialError: string | null;
   connect: () => void;
   disconnect: () => void;
-  getConfig: () => void;
-  saveConfig: (data: { brHost: string; brPort: number; useMdns?: boolean }) => void;
   connectSerial: () => void;
   disconnectSerial: () => void;
   testBrConnect: (data: { brHost: string; brPort: number }) => Promise<{ success: boolean; error?: string }>;
@@ -64,8 +59,6 @@ export function useWebSocket(): UseWebSocketReturn {
   const socketRef = useRef<Socket | null>(null);
   const [connected, setConnected] = useState(false);
   const [serialStatus, setSerialStatus] = useState<ConnectionStatus | null>(null);
-  const [config, setConfig] = useState<BrConnectionConfigFromBackend | null>(null);
-  const [configError, setConfigError] = useState<string | null>(null);
   const [serialError, setSerialError] = useState<string | null>(null);
   const [otConfig, setOtConfigState] = useState<OtConfig | null>(null);
   const [threadRunning, setThreadRunningState] = useState<boolean | null>(null);
@@ -92,9 +85,7 @@ export function useWebSocket(): UseWebSocketReturn {
 
     socket.on("connect", () => {
       setConnected(true);
-      setConfigError(null);
       setSerialError(null);
-      socket.emit(EVENTS.CONFIG_GET);
       socket.emit(EVENTS.SERIAL_STATUS);
       socket.emit(EVENTS.OT_GET_THREAD_RUN_ON_CONNECT);
     });
@@ -110,25 +101,6 @@ export function useWebSocket(): UseWebSocketReturn {
     socket.on("connect_error", (err) => {
       setConnected(false);
       setSerialError(err.message);
-    });
-
-    socket.on(EVENTS.CONFIG_CURRENT, (data: BrConnectionConfigFromBackend | null) => {
-      setConfig(data);
-      setConfigError(null);
-    });
-
-    socket.on(EVENTS.CONFIG_SAVED, (data: BrConnectionConfigFromBackend) => {
-      setConfig(data);
-      setConfigError(null);
-    });
-
-    socket.on(EVENTS.CONFIG_UPDATED, (data: BrConnectionConfigFromBackend) => {
-      setConfig(data);
-      setConfigError(null);
-    });
-
-    socket.on(EVENTS.CONFIG_ERROR, (data: { error?: string }) => {
-      setConfigError(data?.error ?? "Config error");
     });
 
     socket.on(EVENTS.SERIAL_STATUS, (data: ConnectionStatus) => {
@@ -200,20 +172,8 @@ export function useWebSocket(): UseWebSocketReturn {
       socketRef.current = null;
       setConnected(false);
       setSerialStatus(null);
-      setConfig(null);
     }
   }, []);
-
-  const getConfig = useCallback(() => {
-    socketRef.current?.emit(EVENTS.CONFIG_GET);
-  }, []);
-
-  const saveConfig = useCallback(
-    (data: { brHost: string; brPort: number; useMdns?: boolean }) => {
-      socketRef.current?.emit(EVENTS.CONFIG_SAVE, data);
-    },
-    []
-  );
 
   const connectSerial = useCallback(() => {
     socketRef.current?.emit(EVENTS.SERIAL_CONNECT);
@@ -430,20 +390,15 @@ export function useWebSocket(): UseWebSocketReturn {
       }
       setConnected(false);
       setSerialStatus(null);
-      setConfig(null);
     };
   }, [connect]);
 
   return {
     connected,
     serialStatus,
-    config,
-    configError,
     serialError,
     connect,
     disconnect,
-    getConfig,
-    saveConfig,
     connectSerial,
     disconnectSerial,
     testBrConnect,

@@ -1,6 +1,6 @@
 /**
- * Backend: WebSocket server cho OpenThread qua UART (ESP32-H2, frame protocol).
- * Khởi tạo giao tiếp (CommunicateManager) ở đây; WebSocketServer chỉ emit dữ liệu tới frontend.
+ * Backend: WebSocket server cho OpenThread qua OTBR REST API.
+ * Khởi tạo OtbrManager ở đây; WebSocketServer relay event tới frontend.
  */
 
 import "dotenv/config";
@@ -9,7 +9,7 @@ import { createServer } from "http";
 import { Server } from "socket.io";
 import { getDatabase, closeDatabase } from "./database/Database";
 import { runMigrations } from "./database/migrations";
-import { BrConnectionConfigService, CommunicateManager } from "./communicate";
+import { OtbrManager } from "./otbr";
 import { AppSettingsService } from "./services/AppSettingsService";
 import { WebSocketServer } from "./server/WebSocketServer";
 import { startCoapDeviceServer } from "./server/CoapDeviceServer";
@@ -29,7 +29,6 @@ try {
   // Ignore (e.g. read-only fs, không mount sock)
 }
 
-const brConnectionConfigService = new BrConnectionConfigService();
 const appSettingsService = new AppSettingsService();
 
 const httpServer = createServer();
@@ -47,13 +46,9 @@ const io = new Server(httpServer, {
   allowRequest: (_req, callback) => callback(null, true),
 });
 
-const communicateManager = new CommunicateManager(
-  brConnectionConfigService,
-  appSettingsService,
-  (event, data) => io.emit(event, data)
-);
+const otbrManager = new OtbrManager(appSettingsService, (event, data) => io.emit(event, data));
 
-const wsServer = new WebSocketServer(io, brConnectionConfigService, appSettingsService, communicateManager);
+const wsServer = new WebSocketServer(io, appSettingsService, otbrManager);
 
 startCoapDeviceServer();
 
@@ -63,31 +58,24 @@ httpServer.listen(PORT, () => {
   serverLog.info(`Listening on ws://localhost:${PORT}`);
   serverLog.info("=".repeat(50));
 
-  const config = brConnectionConfigService.getLatest();
-  if (config) {
-    serverLog.info("Current BR connection config:");
-    serverLog.info(`  Host: ${config.brHost}`);
-    serverLog.info(`  Port: ${config.brPort}`);
-    communicateManager.connectIfConfigured().catch((err) => {
-      serverLog.error(`BR auto-connect failed: ${err?.message ?? err}`);
-    });
-  } else {
-    serverLog.info("No BR config. Configure via frontend WebSocket.");
-  }
+  serverLog.info("OTBR: connecting via REST...");
+  otbrManager.connectIfConfigured().catch((err) => {
+    serverLog.error(`OTBR auto-connect failed: ${err?.message ?? err}`);
+  });
 
   serverLog.info("=".repeat(50));
 });
 
 process.on("SIGINT", () => {
   serverLog.info("Shutting down...");
-  communicateManager.shutdown();
+  otbrManager.shutdown();
   closeDatabase();
   httpServer.close(() => process.exit(0));
 });
 
 process.on("SIGTERM", () => {
   serverLog.info("Shutting down...");
-  communicateManager.shutdown();
+  otbrManager.shutdown();
   closeDatabase();
   httpServer.close(() => process.exit(0));
 });

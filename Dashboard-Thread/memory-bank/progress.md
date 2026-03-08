@@ -20,6 +20,8 @@ Version notation in this file uses Semantic Versioning `MAJOR.MINOR.PATCH` (no l
 | 1.5.0   | CoAP: CBOR decode **noi bo** (backend/src/cbor), bo dependency cbor2. GET /device/ping → 2.05 Content, payload 4 byte timestamp uint32 LE (gia tri luc khoi tao server; restart = timestamp moi). Thread-Node so sanh timestamp → neu doi goi lai register. Payload register: role la **so** (0=child, 1=router, 2=leader). Log structure: device_id, device_name, device_type, rloc16, role, entities. |
 | 1.6.0   | Docker backend: Dockerfile.backend + docker-compose o root (sau them frontend). network_mode: host, volume backend/data. Default BR 192.168.31.3:5000 (migration 005) — mDNS trong Docker khong dung duoc, phai dung IP. Doc backend/README.docker.md. |
 | 1.7.0   | Supervisor: thu muc `supervisor/` (Python stdlib) — Unix socket `/var/run/izerocs/supervisor.sock` (backend goi restart-otbr/health) + thread watch device (DEVICE_PATH mat → docker restart OTBR). Install script `install-supervisor-service.sh` (systemd dashboard-thread-supervisor, IP forwarding). Backend: mkdir /var/run/izerocs luc khoi dong; `backend/src/supervisor/socketClient.ts` (requestSupervisor, restartOtbr). Xoa otbr/install-otbr-watch-service.sh, otbr/otbr-watch-device.sh; otbr/README tro sang supervisor. |
+| 1.8.0   | OTBR D-Bus: Bo TCP/frame. Backend OtbrDbusClient (dbus-next), OtbrManager chi dung D-Bus. BR Connection UI = OTBR status + Test. D-Bus signals: subscribe PropertiesChanged (state thay doi) → pull state/dataset khi co signal; fallback poll cham (30s) chi kiem tra OTBR con song. Xoa TransportTcp, CommandManager, frame/. Tables van poll 6s khi co frontend + state active. |
+| 1.9.0   | Bo BrConnectionConfigService: xoa backend BrConnectionConfigService.ts; OtbrManager/WebSocketServer/index khong con BR config service. Frontend: useWebSocket bo config, configError, getConfig, saveConfig; xoa CONFIG_* listeners (CONFIG_CURRENT = null); xoa BrConnectionConfig.ts, type BrConnectionConfigFromBackend. CONFIG_SAVE chi trigger connect; CONFIG_UPDATE no-op. OTBR Docker: mount D-Bus host vao container da thu — otbr-agent khong dang ky tren host bus (dbus-daemon host tu choi ket noi tu container). Khuyen nghi: chay backend trong Docker voi volume otbr-dbus chung de backend thay OTBR. |
 
 
 ## What Works (Completed)
@@ -29,38 +31,27 @@ Version notation in this file uses Semantic Versioning `MAJOR.MINOR.PATCH` (no l
 - npm workspaces monorepo (backend + frontend + shared)
 - SQLite database (WAL mode, 6 migrations: app_settings, br_connection_config; migration 006 drop serial_config)
 - Shared package: types, events, constants, validation
-- pino logging voi child loggers (transportLogger, frameLogger, wsLogger)
-- Table log filtering (ROUTER/CHILD/JOINER TX + ACK bi an)
+- pino logging voi child loggers (transportLogger, wsLogger, coapLog)
 - Cursor Memory Bank (memory-bank/)
 - Symlink docs → HomeThread/Documents/ (Dashboard-Thread + ESP-Thread/Thread-Host)
 
-### Backend — Frame Protocol
+### Backend — OTBR D-Bus
 
-- Frame parser (state machine, streaming)
-- Frame builder + CRC8-Maxim
-- CommandManager: pending map, frameId rotation, timeout, ACK/NACK routing
-- CommunicateManager: orchestrates TransportTcp + frame (khong con Serial)
-- TransportTcp: TCP client (open/close/writeRaw/onRawData/setOnDisconnect)
-- BrConnectionConfigService: SQLite br_host, br_port, use_mdns
-- PollingManager: poll 6s (chi khi frontend connected + state active)
-- BR auto-reconnect (3s interval)
-- Consecutive failure guard (5 lan → close + reconnect)
-- TCP KHONG dong khi server shutdown
+- OtbrDbusClient (dbus-next): isAvailable(), getState(), getActiveDataset(), attach/detach, setActiveDataset, table getters (getRouterTable, getChildTable, getJoinerTable), addJoiner, reset/factoryReset
+- Subscribe D-Bus signal PropertiesChanged (org.freedesktop.DBus.Properties) → khi state/property thay doi goi callback; OtbrManager pull state/dataset mot lan
+- Fallback poll cham (30s) chi de kiem tra OTBR con song, khong dung de cap nhat state thuong xuyen
+- OtbrManager: dieu phoi OtbrDbusClient, PollingManager (tables 6s khi frontend + state active)
+- BR connection config da bo: khong con BrConnectionConfigService; CONFIG_CURRENT emit null; bang br_connection_config (migration 005) van ton tai nhung khong dung
+- Auto-reconnect (5s) khi isAvailable() false
 
-### Backend — Commands
+### Backend — Operations (qua D-Bus)
 
-- CMD_STATE (poll 5s, device role parse)
-- CMD_DATASET_ACTIVE (fetch khi state thay doi, parse TLV)
-- CMD_IP_ADDR (fetch khi state active, extract leaderRloc16 tu byte 14-15)
-- CMD_THREAD_VERSION (fetch 1 lan)
-- CMD_SET_PANID, SET_CHANNEL, SET_NETWORK_NAME, SET_EXTENDED_PANID, SET_NETWORK_KEY
-- CMD_THREAD_START, CMD_THREAD_STOP
-- CMD_ROUTER_TABLE, CMD_CHILD_TABLE, CMD_JOINER_TABLE (binary parse)
-- CMD_COMMISSIONER_JOINER (EUI64 + PSKd Thread Base32 + timeout)
-- CMD_SRP_REGISTER (0x44) — dang ky _dashboard._udp len SRP server qua BR (hostname, backend IPv6, port)
-- CMD_RESET, CMD_FACTORY
-- Auto-start Thread (thread_run_on_connect + portClosedWhileRunning flag)
-- SRP register khi BR chuyen sang leader (BACKEND_IPV6 hoac getPreferredBackendIPv6()); log "SRP register: IPv6=... hostname=... port=..." truoc khi gui
+- State/dataset: getState(), getActiveDataset(); cap nhat khi nhan PropertiesChanged hoac fallback interval
+- Set config: setActiveDataset (TLV hex), attach/detach
+- Tables: getRouterTable, getChildTable, getJoinerTable (poll 6s khi can)
+- Commissioner: addJoiner (EUI64, PSKd, timeout)
+- Reset / FactoryReset
+- Auto-start Thread (thread_run_on_connect + state = disabled → attach)
 
 ### Backend — WebSocket
 
@@ -76,9 +67,9 @@ Version notation in this file uses Semantic Versioning `MAJOR.MINOR.PATCH` (no l
 
 ### Frontend — Pages
 
-- Status: BR connection (host:port), OT config, thread state, version (package.json); section **System** (IPv4/IPv6 backend tu systemInfo)
-- Nodes: Router Table + Child Table + Joiner List (pending commissioning); nut "Commission Node" mo CommissionNodeModal; leader badge, age counter, empty states; overlay khi BR disconnect (blur, khong boc box)
-- Settings / BR Connection: host + port + test connect
+- Status: Ket noi OTBR (D-Bus), OT config, thread state, version (package.json); section **System** (IPv4/IPv6 backend tu systemInfo)
+- Nodes: Router Table + Child Table + Joiner List (pending commissioning); nut "Commission Node" mo CommissionNodeModal; leader badge, age counter, empty states; overlay khi OTBR disconnect (blur, khong boc box)
+- Settings / BR Connection: trang thai OTBR (D-Bus) + nut Test connection
 - Settings / OpenThread: cau hinh network + toggle Thread + nut "Lay lai"
 - Settings / System: action cards (Khoi dong lai, Factory Reset) voi image panel, danger divider "Vung nguy hiem"; nut Reset/Factory Reset; ConfirmModal countdown 5s
 
@@ -94,7 +85,7 @@ Console da bo. Commissioner gop vao Nodes (modal + Joiner List).
 ### Integration & Operations (Supervisor, OTBR)
 
 - **Supervisor** (`supervisor/`): Daemon Python stdlib — listen Unix socket `/var/run/izerocs/supervisor.sock`; backend goi `restartOtbr()` qua socketClient. Neu set `DEVICE_PATH` (vd. /dev/ttyACM0), thread poll device; mat → docker restart container. Mot systemd service: `sudo bash ./supervisor/install-supervisor-service.sh [container] [device]`. ExecStartPre bat IP forwarding. Doc: supervisor/README.md.
-- **OTBR Docker** (`otbr/`): Entrypoint doi RCP (by-id) roi exec /init; compose mount /dev, env OT_RCP_DEVICE. Rut RCP → dung supervisor (watch device) restart container. Da xoa script otbr-watch rieng (gom vao supervisor).
+- **OTBR Docker** (`otbr/`): Entrypoint doi RCP (by-id) roi exec /init; compose mount /dev, volume otbr-data. Rut RCP → dung supervisor (watch device) restart container. **Backend thay OTBR:** Backend chay tren host khong thay otbr-agent khi OTBR dung D-Bus trong container (da thu mount host /run/dbus vao container + DBUS_SYSTEM_BUS_ADDRESS — otbr-agent khong xuat hien tren host ListNames). Cach dung: chay **backend trong Docker** voi volume `otbr-dbus:/run/dbus` cung OTBR va env `DBUS_SYSTEM_BUS_ADDRESS=unix:path=/run/dbus/system_bus_socket`; dev co the mount source backend vao container de tranh build lai moi lan sua code.
 
 ### Documentation
 
@@ -106,10 +97,6 @@ Console da bo. Commissioner gop vao Nodes (modal + Joiner List).
 
 ## What's Left to Build
 
-### Frame Protocol
-
-- **CMD_DATA**: Da bo. Child gui register/update/ping thang backend qua **CoAP** (UDP 5683, payload CBOR). BR chi route IP. Xem docs/coap/thread_node_coap.md.
-
 ### Backend
 
 - **Bao mat** *(neu can)*: Auth cho API/WebSocket, HTTPS, IP restriction
@@ -120,16 +107,12 @@ Console da bo. Commissioner gop vao Nodes (modal + Joiner List).
 
 ### Integration & Operations
 
-- **Tim BR** *(tuy chon)*: mDNS browse (khi chay tren host) hoac quet dai IP TCP 5000 (phu hop Docker)
 - **Docker**: Build frontend thanh rieng image (backend da co)
-- **OTBR config tu backend** *(tuy chon)*: Backend ghi file config (serial/baudrate/interface), goi supervisor restart; entrypoint OTBR doc file luc start
+- **OTBR config tu backend** *(tuy chon)*: Backend ghi file config (serial/baudrate/interface), goi supervisor restart; entrypoint OTBR doc file luc start. Thiết kế: `docs/otbr/otbr_config_from_backend.md`.
 
 ## Known Issues / Notes
 
 - **React Strict Mode double mount**: Dev mode → double WebSocket connection → backend log "Client connected" 2 lan. Expected behavior, khong phai bug.
-- **CMD_DATA da bo**: Child gui thang backend qua CoAP (port 5683, CBOR). BR chi route IP. Thread-Node doc: docs/coap/thread_node_coap.md.
 - **CoAP ResponseTimeout**: Neu Thread-Node bao `Ping/Register response error: ResponseTimeout` thi handler duoc goi voi **loi timeout** (node khong nhan duoc response), khong phai loi logic backend. Nguyen nhan thuong la **routing/forwarding**: response tu backend gui ve dia chi nguon (rsinfo) nhung packet khong toi node. Kiem tra: (1) Host backend co route toi prefix Thread qua BR (`ip -6 route get <node_ula>`); (2) BR (ESP32-S3 + RCP hoac OTBR) bat border routing va forward prefix OMR vao Thread; (3) Neu BR la Linux OTBR thi can `net.ipv6.conf.all.forwarding=1` va firewall ip6tables cho phep FORWARD vao interface Thread. Chi tiet: docs/coap/thread_node_coap.md (Troubleshooting), docs/architecture/real_br_integration.md.
-- **Log filter**: TABLE commands bi filter khoi console. Can xem log file de debug table data.
-- **Channel la uint8_t**: 1 byte (11-26), KHONG phai 3 byte. Da sua trong CommandManager.
-- **BR connection:** IPv6 link-local (fe80::) can zone ID (vd. %enp7s0) tranh EINVAL; nhieu BR chi listen IPv4 → dung IPv4 lam BR Host tranh ECONNREFUSED. Cap truc tiep PC–BR (khong router): PC can IP tinh cung subnet voi BR.
+- **OTBR D-Bus**: Method/property ten co the khac tuy image otbr-agent; neu khong nhan signal PropertiesChanged thi fallback poll 30s van cap nhat state.
 

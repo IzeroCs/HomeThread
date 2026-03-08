@@ -1,6 +1,6 @@
 export {
   logger,
-  transportLogger,
+  otbrConnectionLogger,
   frameLogger,
   setLogAdapter,
   getLogAdapter,

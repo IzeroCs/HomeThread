@@ -8,8 +8,13 @@ Chạy một service systemd là đủ (thay otbr-watch-device).
 import os
 import socket
 import subprocess
+import sys
 import threading
 import time
+
+# Unbuffered stdout để log ra journal/systemd ngay (khi không chạy trên TTY)
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(line_buffering=True)
 
 SOCK_DIR = os.environ.get("SUPERVISOR_SOCK_DIR", "/var/run/izerocs")
 SOCK_PATH = os.path.join(SOCK_DIR, "supervisor.sock")
@@ -51,6 +56,9 @@ def watch_device():
         except Exception as e:
             print(f"watch error: {e}")
         time.sleep(INTERVAL)
+        # Log mỗi chu kỳ để journalctl -f thấy hoạt động
+        status = "ok" if os.path.exists(DEVICE_PATH) else "gone"
+        print(f"watch: {DEVICE_PATH} {status}")
 
 
 def handle(conn):

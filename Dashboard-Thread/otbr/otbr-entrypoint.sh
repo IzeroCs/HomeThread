@@ -1,7 +1,4 @@
 #!/bin/bash
-# Đợi RCP (by-id) có mặt rồi start OTBR. Rút RCP → host udev rule (98-otbr-rcp-remove.rules) chạy script
-# kill container → Docker restart policy start lại → entrypoint đợi device lại. Không poll trong container.
-
 set -e
 echo "Waiting for RCP device (OT_RCP_DEVICE=$OT_RCP_DEVICE)..."
 DEVICE=$(echo "$OT_RCP_DEVICE" | grep -oE '/dev/[^?]+' | head -1)
@@ -16,4 +13,15 @@ while [ ! -e "$DEVICE" ]; do
 done
 
 echo "Device $DEVICE ready, starting OTBR..."
+
+# Generate machine-id nếu chưa có
+dbus-uuidgen --ensure 2>/dev/null || true
+
+# Start dbus với socket riêng để share ra host
+mkdir -p /run/dbus-otbr
+dbus-daemon --config-file=/usr/share/dbus-1/system.conf \
+  --address=unix:path=/run/dbus-otbr/system_bus_socket \
+  --nopidfile --nofork &
+sleep 1
+
 exec /init

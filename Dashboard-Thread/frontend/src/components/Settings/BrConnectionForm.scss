@@ -71,3 +71,44 @@
   background: #22c55e;
   box-shadow: 0 0 6px #22c55e;
 }
+
+.otbr-status-card {
+  .otbr-status-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1rem 0;
+  }
+  .otbr-status-label {
+    color: var(--text-dark-muted, #94a3b8);
+    font-size: 0.9rem;
+  }
+  .otbr-status-value {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-weight: 500;
+    &.connected {
+      color: #22c55e;
+    }
+    &.disconnected {
+      color: var(--text-dark-muted, #94a3b8);
+    }
+  }
+  .otbr-status-value .status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: currentColor;
+  }
+  .otbr-test-message {
+    padding: 0.5rem 0;
+    font-size: 0.875rem;
+    &.error {
+      color: #f87171;
+    }
+    &.success {
+      color: #22c55e;
+    }
+  }
+}

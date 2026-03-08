@@ -1,65 +1,58 @@
 /**
- * WebSocket Server - Chỉ emit dữ liệu tới frontend.
- * Dữ liệu và khởi tạo giao tiếp nằm ở CommunicateManager; lấy qua getter.
+ * WebSocket Server - Relay event tới frontend.
+ * Dữ liệu và OTBR logic nằm ở OtbrManager; lấy qua getter.
  */
 
 import { Server, Socket } from "socket.io";
-import type { BrConnectionConfigService, CommunicateManager } from "../communicate";
+import type { OtbrManager } from "../otbr";
 import { AppSettingsService } from "../services/AppSettingsService";
 import { logger } from "../utils/logger";
 import { getBackendAddresses } from "../utils/ipv6";
 import { EVENTS } from "shared/src/events";
-import { validateBrConnectionConfig, validateOtSetConfig } from "shared/src/validation";
+import { validateOtSetConfig } from "shared/src/validation";
 
 const wsLog = logger.child("WS");
 
 export class WebSocketServer {
   private io: Server;
-  private brConnectionConfigService: BrConnectionConfigService;
   private appSettingsService: AppSettingsService;
-  private communicate: CommunicateManager;
+  private otbrManager: OtbrManager;
 
-  constructor(
-    io: Server,
-    brConnectionConfigService: BrConnectionConfigService,
-    appSettingsService: AppSettingsService,
-    communicate: CommunicateManager
-  ) {
+  constructor(io: Server, appSettingsService: AppSettingsService, otbrManager: OtbrManager) {
     this.io = io;
-    this.brConnectionConfigService = brConnectionConfigService;
     this.appSettingsService = appSettingsService;
-    this.communicate = communicate;
+    this.otbrManager = otbrManager;
     this.setupEventHandlers();
   }
 
   /** Gọi khi server khởi động: nếu đã có config thì tự kết nối BR (ở main). */
   async connectSerialIfConfigured(): Promise<void> {
-    await this.communicate.connectIfConfigured();
+    await this.otbrManager.connectIfConfigured();
   }
 
   async close(): Promise<void> {
-    await this.communicate.close();
+    await this.otbrManager.close();
   }
 
   private setupEventHandlers(): void {
     this.io.on("connection", (socket: Socket) => {
       wsLog.info(`Client connected: ${socket.id}`);
 
-      // Notify CommunicateManager về frontend connection
-      this.communicate.onFrontendConnected();
+      // Notify OtbrManager về frontend connection
+      this.otbrManager.onFrontendConnected();
 
       this.sendCurrentConfig(socket);
       this.sendSerialStatus(socket);
 
-      const lastThreadState = this.communicate.getLastThreadState();
+      const lastThreadState = this.otbrManager.getLastThreadState();
       if (lastThreadState != null) socket.emit(EVENTS.OT_THREAD_STATE, lastThreadState);
-      const lastOtConfig = this.communicate.getLastOtConfig();
+      const lastOtConfig = this.otbrManager.getLastOtConfig();
       if (lastOtConfig != null) socket.emit(EVENTS.OT_CONFIG, lastOtConfig);
-      const lastRouterTable = this.communicate.getLastRouterTable();
+      const lastRouterTable = this.otbrManager.getLastRouterTable();
       if (lastRouterTable != null) socket.emit(EVENTS.OT_ROUTER_TABLE, lastRouterTable);
-      const lastChildTable = this.communicate.getLastChildTable();
+      const lastChildTable = this.otbrManager.getLastChildTable();
       if (lastChildTable != null) socket.emit(EVENTS.OT_CHILD_TABLE, lastChildTable);
-      const lastJoinerTable = this.communicate.getLastJoinerTable();
+      const lastJoinerTable = this.otbrManager.getLastJoinerTable();
       if (lastJoinerTable != null) socket.emit(EVENTS.OT_JOINER_TABLE, lastJoinerTable);
 
       socket.on(EVENTS.CONFIG_GET, () => this.sendCurrentConfig(socket));
@@ -106,43 +99,28 @@ export class WebSocketServer {
 
       socket.on("disconnect", () => {
         wsLog.info(`Client disconnected: ${socket.id}`);
-        // Notify CommunicateManager về frontend disconnection
-        this.communicate.onFrontendDisconnected();
+        // Notify OtbrManager về frontend disconnection
+        this.otbrManager.onFrontendDisconnected();
       });
     });
   }
 
   private sendCurrentConfig(socket: Socket): void {
-    socket.emit(EVENTS.CONFIG_CURRENT, this.brConnectionConfigService.getLatest());
+    socket.emit(EVENTS.CONFIG_CURRENT, null);
     socket.emit(EVENTS.SYSTEM_INFO, getBackendAddresses());
   }
 
   private sendSerialStatus(socket: Socket): void {
-    socket.emit(EVENTS.SERIAL_STATUS, this.communicate.getStatus());
+    socket.emit(EVENTS.SERIAL_STATUS, this.otbrManager.getStatus());
   }
-
-  private validateConfig = validateBrConnectionConfig;
 
   private async handleConfigSave(
     socket: Socket,
-    data: { brHost: string; brPort: number; useMdns?: boolean }
+    _data: { brHost: string; brPort: number; useMdns?: boolean }
   ): Promise<void> {
-    const err = this.validateConfig(data);
-    if (err) {
-      socket.emit(EVENTS.CONFIG_ERROR, { error: err });
-      return;
-    }
     try {
-      await this.communicate.resetTransport();
-      const config = this.brConnectionConfigService.saveOrUpdate({
-        brHost: data.brHost.trim(),
-        brPort: Number(data.brPort),
-        useMdns: data.useMdns,
-      });
-      socket.emit(EVENTS.CONFIG_SAVED, config);
-      this.io.emit(EVENTS.CONFIG_CURRENT, config);
-      await this.communicate.connect();
-      socket.emit(EVENTS.SERIAL_STATUS, this.communicate.getStatus());
+      await this.otbrManager.connect();
+      socket.emit(EVENTS.SERIAL_STATUS, this.otbrManager.getStatus());
     } catch (error) {
       socket.emit(EVENTS.CONFIG_ERROR, { error: error instanceof Error ? error.message : "Unknown error" });
     }
@@ -150,40 +128,16 @@ export class WebSocketServer {
 
   private async handleConfigUpdate(
     socket: Socket,
-    data: { id: number; brHost?: string; brPort?: number; useMdns?: boolean }
+    _data: { id: number; brHost?: string; brPort?: number; useMdns?: boolean }
   ): Promise<void> {
-    if (typeof data.id !== "number" || !Number.isInteger(data.id) || data.id < 1) {
-      socket.emit(EVENTS.CONFIG_ERROR, { error: "Invalid config id" });
-      return;
-    }
-    const err = this.validateConfig(data);
-    if (err) {
-      socket.emit(EVENTS.CONFIG_ERROR, { error: err });
-      return;
-    }
-    try {
-      const updates: { brHost?: string; brPort?: number; useMdns?: boolean } = {};
-      if (data.brHost !== undefined) updates.brHost = data.brHost.trim();
-      if (data.brPort !== undefined) updates.brPort = Number(data.brPort);
-      if (data.useMdns !== undefined) updates.useMdns = data.useMdns;
-      const config = this.brConnectionConfigService.update(data.id, updates);
-      if (config) {
-        await this.communicate.resetTransport();
-        socket.emit(EVENTS.CONFIG_UPDATED, config);
-        this.io.emit(EVENTS.CONFIG_CURRENT, config);
-      } else {
-        socket.emit(EVENTS.CONFIG_ERROR, { error: "Config not found" });
-      }
-    } catch (error) {
-      socket.emit(EVENTS.CONFIG_ERROR, { error: error instanceof Error ? error.message : "Unknown error" });
-    }
+    socket.emit(EVENTS.CONFIG_CURRENT, null);
   }
 
   private async handleSerialConnect(socket: Socket): Promise<void> {
     try {
-      await this.communicate.connect();
-      socket.emit(EVENTS.SERIAL_CONNECTED, { success: true, status: this.communicate.getStatus() });
-      this.io.emit(EVENTS.SERIAL_STATUS, this.communicate.getStatus());
+      await this.otbrManager.connect();
+      socket.emit(EVENTS.SERIAL_CONNECTED, { success: true, status: this.otbrManager.getStatus() });
+      this.io.emit(EVENTS.SERIAL_STATUS, this.otbrManager.getStatus());
     } catch (error) {
       socket.emit(EVENTS.SERIAL_ERROR, {
         success: false,
@@ -194,9 +148,9 @@ export class WebSocketServer {
 
   private async handleSerialDisconnect(socket: Socket): Promise<void> {
     try {
-      await this.communicate.disconnect();
+      await this.otbrManager.disconnect();
       socket.emit(EVENTS.SERIAL_DISCONNECTED, { success: true });
-      this.io.emit(EVENTS.SERIAL_STATUS, this.communicate.getStatus());
+      this.io.emit(EVENTS.SERIAL_STATUS, this.otbrManager.getStatus());
     } catch (error) {
       socket.emit("serial:error", {
         success: false,
@@ -207,18 +161,11 @@ export class WebSocketServer {
 
   private async handleBrTest(
     socket: Socket,
-    data: { brHost: string; brPort: number }
+    _data: { brHost: string; brPort: number }
   ): Promise<void> {
-    const err = this.validateConfig(data);
-    if (err) {
-      socket.emit(EVENTS.SERIAL_TEST_RESULT, { success: false, error: err });
-      return;
-    }
-    const host = data.brHost.trim();
-    const port = Number(data.brPort);
     try {
-      const result = await this.communicate.testConnection(host, port);
-      socket.emit(EVENTS.SERIAL_TEST_RESULT, result);
+      const ok = await this.otbrManager.testOtbrConnection();
+      socket.emit(EVENTS.SERIAL_TEST_RESULT, ok ? { success: true } : { success: false, error: "OTBR not available on D-Bus" });
     } catch (error) {
       socket.emit(EVENTS.SERIAL_TEST_RESULT, {
         success: false,
@@ -228,13 +175,13 @@ export class WebSocketServer {
   }
 
   private async handleOtGetConfig(socket: Socket): Promise<void> {
-    const status = this.communicate.getStatus();
+    const status = this.otbrManager.getStatus();
     if (!status.isConnected) {
-      socket.emit(EVENTS.OT_CONFIG, { error: "BR not connected. Connect to BR first." });
+      socket.emit(EVENTS.OT_CONFIG, { error: "OTBR not available. Connect to OTBR first." });
       return;
     }
     try {
-      const config = await this.communicate.fetchOtConfig();
+      const config = await this.otbrManager.fetchOtConfig();
       socket.emit(EVENTS.OT_CONFIG, config);
     } catch (error) {
       socket.emit(EVENTS.OT_CONFIG, { error: error instanceof Error ? error.message : "Unknown error" });
@@ -247,8 +194,8 @@ export class WebSocketServer {
     socket: Socket,
     data: { panid?: string; channel?: number; networkName?: string; extendedPanId?: string; networkKey?: string }
   ): Promise<void> {
-    if (!this.communicate.getStatus().isConnected) {
-      socket.emit(EVENTS.OT_SET_CONFIG_RESULT, { success: false, error: "BR not connected." });
+    if (!this.otbrManager.getStatus().isConnected) {
+      socket.emit(EVENTS.OT_SET_CONFIG_RESULT, { success: false, error: "OTBR not available." });
       return;
     }
     const err = this.validateOtSetConfigMethod(data);
@@ -263,7 +210,7 @@ export class WebSocketServer {
     try {
       // Set PAN ID nếu có
       if (data.panid != null && data.panid !== "") {
-        const panidResult = await this.communicate.setPanid(data.panid);
+        const panidResult = await this.otbrManager.setPanid(data.panid);
         if (panidResult.ack) {
           results.push({ field: "PAN ID", success: true });
         } else {
@@ -274,7 +221,7 @@ export class WebSocketServer {
 
       // Set Channel nếu có
       if (data.channel != null) {
-        const channelResult = await this.communicate.setChannel(data.channel);
+        const channelResult = await this.otbrManager.setChannel(data.channel);
         if (channelResult.ack) {
           results.push({ field: "Channel", success: true });
         } else {
@@ -285,7 +232,7 @@ export class WebSocketServer {
 
       // Set Network Name nếu có
       if (data.networkName != null && data.networkName !== "") {
-        const networkNameResult = await this.communicate.setNetworkName(data.networkName);
+        const networkNameResult = await this.otbrManager.setNetworkName(data.networkName);
         if (networkNameResult.ack) {
           results.push({ field: "Network Name", success: true });
         } else {
@@ -296,7 +243,7 @@ export class WebSocketServer {
 
       // Set Extended PAN ID nếu có
       if (data.extendedPanId != null && data.extendedPanId !== "") {
-        const extendedPanIdResult = await this.communicate.setExtendedPanid(data.extendedPanId);
+        const extendedPanIdResult = await this.otbrManager.setExtendedPanid(data.extendedPanId);
         if (extendedPanIdResult.ack) {
           results.push({ field: "Extended PAN ID", success: true });
         } else {
@@ -307,7 +254,7 @@ export class WebSocketServer {
 
       // Set Network Key nếu có
       if (data.networkKey != null && data.networkKey !== "") {
-        const networkKeyResult = await this.communicate.setNetworkKey(data.networkKey);
+        const networkKeyResult = await this.otbrManager.setNetworkKey(data.networkKey);
         if (networkKeyResult.ack) {
           results.push({ field: "Network Key", success: true });
         } else {
@@ -326,7 +273,7 @@ export class WebSocketServer {
         });
       } else if (results.length > 0) {
         // Tất cả thành công, fetch lại config để cập nhật
-        await this.communicate.fetchOtConfig();
+        await this.otbrManager.fetchOtConfig();
         socket.emit(EVENTS.OT_SET_CONFIG_RESULT, { success: true });
       } else {
         // Không có field nào để set
@@ -341,33 +288,33 @@ export class WebSocketServer {
   }
 
   private async handleOtGetThreadState(socket: Socket): Promise<void> {
-    if (!this.communicate.getStatus().isConnected) {
-      socket.emit(EVENTS.OT_THREAD_STATE, { error: "BR not connected. Connect to BR first." });
+    if (!this.otbrManager.getStatus().isConnected) {
+      socket.emit(EVENTS.OT_THREAD_STATE, { error: "OTBR not available. Connect to OTBR first." });
       return;
     }
-    const state = this.communicate.getLastThreadState();
+    const state = this.otbrManager.getLastThreadState();
     if (state != null) {
       socket.emit(EVENTS.OT_THREAD_STATE, state);
       return;
     }
-    socket.emit(EVENTS.OT_THREAD_STATE, { error: "Use frame protocol." });
+    socket.emit(EVENTS.OT_THREAD_STATE, { error: "OTBR not available." });
   }
 
   private async handleOtSetThreadRunning(socket: Socket, _data: { running: boolean }): Promise<void> {
-    if (!this.communicate.getStatus().isConnected) {
-      socket.emit(EVENTS.OT_SET_THREAD_RUNNING_RESULT, { success: false, error: "BR not connected." });
+    if (!this.otbrManager.getStatus().isConnected) {
+      socket.emit(EVENTS.OT_SET_THREAD_RUNNING_RESULT, { success: false, error: "OTBR not available." });
       return;
     }
-    socket.emit(EVENTS.OT_SET_THREAD_RUNNING_RESULT, { success: false, error: "Use frame protocol." });
+    socket.emit(EVENTS.OT_SET_THREAD_RUNNING_RESULT, { success: false, error: "OTBR not available." });
   }
 
   private async handleOtStartThread(socket: Socket): Promise<void> {
-    if (!this.communicate.getStatus().isConnected) {
-      socket.emit(EVENTS.OT_START_THREAD_RESULT, { success: false, error: "BR not connected." });
+    if (!this.otbrManager.getStatus().isConnected) {
+      socket.emit(EVENTS.OT_START_THREAD_RESULT, { success: false, error: "OTBR not available." });
       return;
     }
     try {
-      const result = await this.communicate.startThread();
+      const result = await this.otbrManager.startThread();
       if (result.ack) {
         socket.emit(EVENTS.OT_START_THREAD_RESULT, { success: true });
       } else {
@@ -383,12 +330,12 @@ export class WebSocketServer {
   }
 
   private async handleOtStopThread(socket: Socket): Promise<void> {
-    if (!this.communicate.getStatus().isConnected) {
-      socket.emit(EVENTS.OT_STOP_THREAD_RESULT, { success: false, error: "BR not connected." });
+    if (!this.otbrManager.getStatus().isConnected) {
+      socket.emit(EVENTS.OT_STOP_THREAD_RESULT, { success: false, error: "OTBR not available." });
       return;
     }
     try {
-      const result = await this.communicate.stopThread();
+      const result = await this.otbrManager.stopThread();
       if (result.ack) {
         socket.emit(EVENTS.OT_STOP_THREAD_RESULT, { success: true });
       } else {
@@ -404,29 +351,29 @@ export class WebSocketServer {
   }
 
   private async handleOtGetRouterTable(socket: Socket): Promise<void> {
-    if (!this.communicate.getStatus().isConnected) {
-      socket.emit(EVENTS.OT_ROUTER_TABLE, { error: "BR not connected. Connect to BR first." });
+    if (!this.otbrManager.getStatus().isConnected) {
+      socket.emit(EVENTS.OT_ROUTER_TABLE, { error: "OTBR not available. Connect to OTBR first." });
       return;
     }
-    const table = this.communicate.getLastRouterTable();
+    const table = this.otbrManager.getLastRouterTable();
     socket.emit(EVENTS.OT_ROUTER_TABLE, table ?? { error: "No data." });
   }
 
   private async handleOtGetChildTable(socket: Socket): Promise<void> {
-    if (!this.communicate.getStatus().isConnected) {
-      socket.emit(EVENTS.OT_CHILD_TABLE, { error: "BR not connected. Connect to BR first." });
+    if (!this.otbrManager.getStatus().isConnected) {
+      socket.emit(EVENTS.OT_CHILD_TABLE, { error: "OTBR not available. Connect to OTBR first." });
       return;
     }
-    const table = this.communicate.getLastChildTable();
+    const table = this.otbrManager.getLastChildTable();
     socket.emit(EVENTS.OT_CHILD_TABLE, table ?? { error: "No data." });
   }
 
   private async handleCommissionerGetJoinerTable(socket: Socket): Promise<void> {
-    if (!this.communicate.getStatus().isConnected) {
-      socket.emit(EVENTS.OT_JOINER_TABLE, { error: "BR not connected. Connect to BR first." });
+    if (!this.otbrManager.getStatus().isConnected) {
+      socket.emit(EVENTS.OT_JOINER_TABLE, { error: "OTBR not available. Connect to OTBR first." });
       return;
     }
-    const table = this.communicate.getLastJoinerTable();
+    const table = this.otbrManager.getLastJoinerTable();
     socket.emit(EVENTS.OT_JOINER_TABLE, table ?? { error: "No data." });
   }
 
@@ -434,8 +381,8 @@ export class WebSocketServer {
     socket: Socket,
     data: { eui64?: string; psk?: string; timeout?: number }
   ): Promise<void> {
-    if (!this.communicate.getStatus().isConnected) {
-      socket.emit(EVENTS.COMMISSIONER_CONNECT_RESULT, { success: false, error: "BR not connected. Connect to BR first." });
+    if (!this.otbrManager.getStatus().isConnected) {
+      socket.emit(EVENTS.COMMISSIONER_CONNECT_RESULT, { success: false, error: "OTBR not available. Connect to OTBR first." });
       return;
     }
     const eui64 = (data.eui64 ?? "").trim();
@@ -446,7 +393,7 @@ export class WebSocketServer {
       return;
     }
     try {
-      const result = await this.communicate.commissionerJoiner(eui64, psk, timeoutSeconds);
+      const result = await this.otbrManager.commissionerJoiner(eui64, psk, timeoutSeconds);
       if (result.ack) {
         socket.emit(EVENTS.COMMISSIONER_CONNECT_RESULT, { success: true });
       } else {
@@ -472,8 +419,8 @@ export class WebSocketServer {
     socket: Socket,
     data: { hostname?: string; backendIPv6: string; port?: number }
   ): Promise<void> {
-    if (!this.communicate.getStatus().isConnected) {
-      socket.emit(EVENTS.SRP_REGISTER_RESULT, { success: false, error: "BR not connected. Connect to BR first." });
+    if (!this.otbrManager.getStatus().isConnected) {
+      socket.emit(EVENTS.SRP_REGISTER_RESULT, { success: false, error: "OTBR not available. Connect to OTBR first." });
       return;
     }
     const backendIPv6 = (data.backendIPv6 ?? "").trim();
@@ -484,7 +431,7 @@ export class WebSocketServer {
     const hostname = (data.hostname ?? "dashboard").trim() || "dashboard";
     const port = typeof data.port === "number" ? data.port : 5683;
     try {
-      const result = await this.communicate.srpRegister(hostname, backendIPv6, port);
+      const result = await this.otbrManager.srpRegister(hostname, backendIPv6, port);
       if (result.ack) {
         socket.emit(EVENTS.SRP_REGISTER_RESULT, { success: true });
       } else {
@@ -508,12 +455,12 @@ export class WebSocketServer {
   }
 
   private async handleDeviceReset(socket: Socket): Promise<void> {
-    if (!this.communicate.getStatus().isConnected) {
-      socket.emit(EVENTS.DEVICE_RESET_RESULT, { success: false, error: "BR not connected." });
+    if (!this.otbrManager.getStatus().isConnected) {
+      socket.emit(EVENTS.DEVICE_RESET_RESULT, { success: false, error: "OTBR not available." });
       return;
     }
     try {
-      const result = await this.communicate.reset();
+      const result = await this.otbrManager.reset();
       if (result.ack) {
         socket.emit(EVENTS.DEVICE_RESET_RESULT, { success: true });
       } else {
@@ -529,12 +476,12 @@ export class WebSocketServer {
   }
 
   private async handleDeviceFactoryReset(socket: Socket): Promise<void> {
-    if (!this.communicate.getStatus().isConnected) {
-      socket.emit(EVENTS.DEVICE_FACTORY_RESET_RESULT, { success: false, error: "BR not connected." });
+    if (!this.otbrManager.getStatus().isConnected) {
+      socket.emit(EVENTS.DEVICE_FACTORY_RESET_RESULT, { success: false, error: "OTBR not available." });
       return;
     }
     try {
-      const result = await this.communicate.factoryReset();
+      const result = await this.otbrManager.factoryReset();
       if (result.ack) {
         socket.emit(EVENTS.DEVICE_FACTORY_RESET_RESULT, { success: true });
       } else {

@@ -3,12 +3,20 @@
  * Cập nhật qua set() (thay thế) hoặc update() (merge partial); không tự broadcast.
  */
 
-import type { ParsedDataset } from "./frame";
-
-export type OtConfig = ParsedDataset & {
-  // Additional fields (không có trong ParsedDataset)
+export type OtConfig = {
+  activeTimestamp?: string;
+  channel?: number;
+  wakeUpChannel?: number;
+  channelMask?: string;
+  extendedPanId?: string;
+  meshLocalPrefix?: string;
+  networkKey?: string;
+  networkName?: string;
+  panid?: string;
+  pskc?: string;
+  securityPolicy?: string;
   ipaddr?: string;
-  datasetActive?: string; // Hex string gốc (để giữ lại cho compatibility)
+  datasetActive?: string;
   threadVersion?: string;
   error?: string;
 };

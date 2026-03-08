@@ -8,10 +8,12 @@ function formatPanId(panid: string | null | undefined): string {
 }
 
 export default function Status() {
-  const { serialStatus, otConfig, config: brConfig, testBrConnect, systemInfo } = useWebSocketContext();
+  const { serialStatus, otConfig, testBrConnect, systemInfo } = useWebSocketContext();
   const [networkKeyVisible, setNetworkKeyVisible] = useState(false);
   const isConnected = serialStatus?.isConnected ?? false;
   const ipaddr = otConfig?.ipaddr?.trim() || null;
+
+  const handleTestConnection = () => void testBrConnect({ brHost: "", brPort: 5000 });
 
   return (
     <div className="status-page">
@@ -36,22 +38,14 @@ export default function Status() {
               </div>
               <div className="status-card-br-fields">
                 <div className="status-field">
-                  <span className="status-field-label">Host Address</span>
-                  <span className="status-field-value status-field-value--accent mono-text">
-                    {serialStatus?.host != null
-                      ? `${serialStatus.host}:${serialStatus.port ?? "—"}`
-                      : "—"}
-                  </span>
-                </div>
-                <div className="status-field">
-                  <span className="status-field-label">Uptime</span>
-                  <span className="status-field-value">—</span>
+                  <span className="status-field-label">Border Router</span>
+                  <span className="status-field-value status-field-value--accent mono-text">OTBR (D-Bus)</span>
                 </div>
               </div>
               <button
                 type="button"
                 className="status-btn-refresh"
-                onClick={() => brConfig && testBrConnect({ brHost: brConfig.brHost, brPort: brConfig.brPort })}
+                onClick={handleTestConnection}
               >
                 <span className="material-symbols-outlined">refresh</span>
                 Refresh Connection
@@ -73,18 +67,14 @@ export default function Status() {
               </div>
               <div className="status-card-br-fields">
                 <div className="status-field">
-                  <span className="status-field-label">Host Address</span>
-                  <span className="status-field-value mono-text status-field-value--muted">---</span>
-                </div>
-                <div className="status-field">
-                  <span className="status-field-label">Uptime</span>
-                  <span className="status-field-value status-field-value--muted">N/A</span>
+                  <span className="status-field-label">Border Router</span>
+                  <span className="status-field-value mono-text status-field-value--muted">OTBR (D-Bus)</span>
                 </div>
               </div>
               <button
                 type="button"
                 className="status-btn-refresh"
-                onClick={() => brConfig && testBrConnect({ brHost: brConfig.brHost, brPort: brConfig.brPort })}
+                onClick={handleTestConnection}
               >
                 <span className="material-symbols-outlined">sync</span>
                 Try Reconnecting

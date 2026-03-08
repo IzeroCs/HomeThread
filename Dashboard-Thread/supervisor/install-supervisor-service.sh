@@ -28,7 +28,7 @@ Environment=DEVICE_PATH=$DEVICE_PATH
 Environment=INTERVAL=5
 ExecStartPre=-/usr/sbin/sysctl -w net.ipv4.ip_forward=1
 ExecStartPre=-/usr/sbin/sysctl -w net.ipv6.conf.all.forwarding=1
-ExecStart=/usr/bin/python3 $SERVER_PY
+ExecStart=/usr/bin/python3 -u $SERVER_PY
 Restart=always
 RestartSec=5
 

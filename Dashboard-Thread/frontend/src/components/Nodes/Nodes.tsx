@@ -39,7 +39,6 @@ export default function Nodes() {
   const {
     serialStatus,
     otConfig,
-    config: brConfig,
     testBrConnect,
     routerTable,
     childTable,
@@ -148,10 +147,7 @@ export default function Nodes() {
   const hasChildData =
     childTable && !childTable.error && (cH.length > 0 || childRows.length > 0);
 
-  const handleTryReconnect = () => {
-    if (!brConfig) return;
-    void testBrConnect({ brHost: brConfig.brHost, brPort: brConfig.brPort });
-  };
+  const handleTryReconnect = () => void testBrConnect({ brHost: "", brPort: 5000 });
 
   return (
     <div className="nodes-page">
@@ -169,7 +165,6 @@ export default function Nodes() {
               type="button"
               className="nodes-disconnected-btn"
               onClick={handleTryReconnect}
-              disabled={!brConfig}
             >
               <span className="material-symbols-outlined">refresh</span>
               <span>Try Reconnecting</span>

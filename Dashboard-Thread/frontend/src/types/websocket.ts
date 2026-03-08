@@ -1,11 +1,10 @@
 /**
- * Types cho WebSocket (backend BR connection config và status)
- * Một số types đã được move sang shared package
+ * Types cho WebSocket (connection status, OT config, tables).
+ * Một số types re-export từ shared package.
  */
 
 // Re-export từ shared
 export type {
-  BrConnectionConfig as BrConnectionConfigFromBackend,
   ConnectionStatus,
   OtConfig,
   OtThreadState,

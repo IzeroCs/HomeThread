@@ -1,26 +1,11 @@
 # Dashboard-Thread — backend + OTBR (tùy chọn).
 # Từ thư mục Dashboard-Thread: docker compose up --build
 #
-# Backend: WebSocket/HTTP :3000, CoAP UDP :5683
-# OTBR: entrypoint đợi RCP (by-id) rồi mới start; không cần cắm RCP lúc chạy container. Rút RCP → container exit → restart.
-# network_mode: host — dùng chung stack mạng với host (route prefix Thread qua BR có hiệu lực).
+# Backend: chạy trên host (npm run dev:backend). OTBR container dùng D-Bus của host (mount socket)
+# để backend trên host thấy otbr-agent — dev không cần build/chạy backend trong Docker.
+# OTBR: entrypoint đợi RCP (by-id) rồi start; network_mode: host.
 
 services:
-  # backend:
-  #   container_name: dashboard-thread-backend
-  #   build:
-  #     context: .
-  #     dockerfile: Dockerfile.backend
-  #   network_mode: host
-  #   environment:
-  #     - PORT=3000
-  #     - NODE_ENV=production
-  #   volumes:
-  #     - ./backend/data:/app/data
-  #     # Socket supervisor (host): backend tạo folder nếu chạy trước, supervisor tạo sock
-  #     - /var/run/izerocs:/var/run/izerocs
-  #   restart: unless-stopped
-
   otbr:
     container_name: dashboard-thread-otbr
     build:
@@ -30,19 +15,20 @@ services:
     network_mode: host
     cap_add:
       - NET_ADMIN
-    # Cho phép mở serial USB (ttyACM 166, ttyUSB 188) khi dùng volume /dev — tránh "Operation not permitted"
     device_cgroup_rules:
       - 'c 166:* rwm'
       - 'c 188:* rwm'
     volumes:
       - /dev:/dev
       - otbr-data:/var/lib/otbr
+      - /run/dbus-otbr:/run/dbus-otbr  # socket của container expose ra host
     environment:
-      # CH340 → ttyUSB (by-id ổn định). Nếu RCP native USB (ttyACM) thì đổi sang /dev/ttyACM0 và cấu hình supervisor (DEVICE_PATH) cùng device.
       - OT_RCP_DEVICE=spinel+hdlc+uart:///dev/serial/by-id/usb-1a86_USB_Single_Serial_579B026391-if00?uart-baudrate=460800
       - OT_INFRA_IF=enp8s0
       - OT_THREAD_IF=wpan0
       - OT_LOG_LEVEL=7
+      # Dùng system bus của host (socket mount ở trên)
+      # - DBUS_SYSTEM_BUS_ADDRESS=unix:path=/run/dbus/system_bus_socket
     restart: unless-stopped
 
 volumes:

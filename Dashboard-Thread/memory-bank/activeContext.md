@@ -2,16 +2,13 @@
 
 ## Current Work Focus
 
-Project da on dinh voi BR qua TCP, trang Nodes, Toast dark theme, UI dark navy. **Supervisor** (thu muc `supervisor/`): daemon Python stdlib — Unix socket `/var/run/izerocs/supervisor.sock` (backend goi restart-otbr) + thread watch device (RCP mat thi docker restart OTBR). Mot systemd service thay cho otbr-watch-device; da xoa `otbr/install-otbr-watch-service.sh` va `otbr/otbr-watch-device.sh`. Tiep theo: bao tri, optional mDNS, security neu can.
+Backend giao tiep **OTBR qua D-Bus**. OtbrManager dung OtbrDbusClient; subscribe D-Bus signal **PropertiesChanged**; fallback poll 30s. Frontend BR Connection = "OTBR (D-Bus)" + Test. **BrConnectionConfigService da bo** (backend + frontend): CONFIG_CURRENT = null, khong config/getConfig/saveConfig. **Supervisor** van dung: Unix socket restart-otbr + watch device.
 
 ## Recent Significant Changes
 
-### SRP register (frame CMD 0x44) + System section
-- **Backend:** Khi BR chuyen sang **leader** (poll CMD_STATE), tu dong gui **CMD_SRP_REGISTER** (0x44) qua frame: DATA = hostname_len(1) + hostname(N) + backend_ipv6(16) + port(2 BE). IPv6 lay tu `BACKEND_IPV6` env hoac `getPreferredBackendIPv6()` (utils/ipv6). CommunicateManager.pullState() → stateChangedOrFirst && roleByte === LEADER → srpRegister(). **Log khi gui:** `transportLogger.info("SRP register: IPv6=... hostname=... port=...")` truoc khi goi srpRegister() de hien thi backend IPv6 dang dung. WebSocket handler `srp:register` / `srp:register:result` cho trigger thu cong.
-- **Frame:** CMD_SRP_REGISTER = 0x44 trong constants; CommandManager.sendSrpRegister(), CommunicateManager.srpRegister(). NACK 0x02/0x03/0x04 (Not ready, Timeout, Invalid param).
-- **Status:** Bo section "Child data (CoAP)". Them section **System** (cung giao dien bang nhu OpenThread Network): IPv4 (backend), IPv6 (backend) tu event `system:info`; backend gui getBackendAddresses() khi send CONFIG_CURRENT.
-- **Shared:** EVENTS.SRP_REGISTER, SRP_REGISTER_RESULT, SYSTEM_INFO. useWebSocket tra ve systemInfo (khong con childDataEvents).
-- **Da xoa:** DashboardSrpClient.ts (UDP SRP), register-srp.ts script, STATE_FAKE_PAYLOAD (sendState gui payload rong khi khong data).
+### OTBR D-Bus + signals (1.8.0)
+- **OtbrDbusClient:** Subscribe `org.freedesktop.DBus.Properties` signal **PropertiesChanged** tren object path OTBR; khi nhan signal (vd. State thay doi) goi callback → OtbrManager pull state/dataset mot lan.
+- **OtbrManager:** State interval doi thanh **fallback 30s** (chi kiem tra OTBR con song); cap nhat state chinh bang signal. Tables van poll 6s khi co frontend + state active.
 
 ### CoAP device data (Thread-Node)
 - **Backend:** CoAP server UDP 5683 (**CoapDeviceServer.ts**), socket **udp6** listen `[::]:5683`. Path **/device/** (register, update, ping). **GET /device/ping**: tra **2.05 Content**, payload 4 byte = timestamp uint32 LE (gia tri luc khoi tao server; restart = timestamp moi → node so sanh va gui lai register). **POST /device/register**, update: nhan CBOR, parse bang **thu vien CBOR noi bo** (`backend/src/cbor`), log `CoAP CBOR -> JSON: ...` + structure (device_id, rloc16, role, entities); tra 2.01. Role trong payload la **so** (0=child, 1=router, 2=leader). **Khong emit** len frontend (da bo EVENTS.CHILD_DATA).
@@ -38,23 +35,9 @@ Project da on dinh voi BR qua TCP, trang Nodes, Toast dark theme, UI dark navy. 
 - **Backend:** Khoi dong tao folder `/var/run/izerocs` (mkdirSync). `backend/src/supervisor/socketClient.ts`: `requestSupervisor(cmd)`, `restartOtbr()`; env `SUPERVISOR_SOCK_DIR`. Backend Docker can mount `/var/run/izerocs:/var/run/izerocs` de thay sock.
 - **OTBR:** Da xoa `otbr/install-otbr-watch-service.sh`, `otbr/otbr-watch-device.sh`. Chi con `otbr-entrypoint.sh` (doi RCP roi exec /init). Doc `otbr/README.md` tro sang supervisor.
 
-### Docker backend (chay backend bang container)
-- **Vi tri:** Dockerfile va docker-compose o **thu muc goc** Dashboard-Thread: `Dockerfile.backend`, `docker-compose.yml`, `.dockerignore`. Sau co the them frontend cung build.
-- **Cau hinh:** `network_mode: host` (dung chung bang route host — backend khong can doc route trong code). Volume chi `./backend/data:/app/data`.
-- **Default BR:** 192.168.31.3:5000. **mDNS trong Docker khong dung duoc**; khi Docker phai dung IP. "Tim BR" sau co the quet dai IP (TCP 5000).
-- **Chay:** `docker compose up --build`; container name `dashboard-thread-backend`. Doc: `backend/README.docker.md`.
-
-### BR connection (Settings)
-- **IPv4 khuyen nghi:** Nhieu BR (vd. ESP32-S3) chi listen TCP tren IPv4 (0.0.0.0:5000) → dung **IPv4** lam BR Host (vd. 192.168.31.3) tranh ECONNREFUSED.
-- **IPv6 link-local:** Neu dung fe80::... phai co **zone ID** (vd. fe80::...%enp7s0), neu khong se EINVAL.
-- **Cap truc tiep PC–BR (khong qua router):** Tren link khong co DHCP → PC can dat **IP tinh** cung subnet voi BR (BR thuong co IP co dinh trong firmware).
-
-### Migration BR — Chi TCP, bo Serial (plan br_backend_communication)
-- **Backend:** Loai bo hoan toan Serial/USB/UART. Chi dung **TransportTcp** ket noi BR (host:port). Cau hinh: **BrConnectionConfigService** (brHost, brPort, useMdns) luu SQLite; migration 005 tao bang `br_connection_config`. Xoa SerialPort.ts, SerialConfigService.ts; go dependency serialport.
-- **CommunicateManager:** Chi TransportTcp + BrConnectionConfig; connectInternal(), onTransportDisconnected(), reconnect 3s. Status tra ve ConnectionStatus (isConnected, host, port).
-- **WebSocketServer:** CONFIG_GET/SAVE/UPDATE payload brHost/brPort; handleBrTest(host, port); message loi "BR not connected".
-- **Frontend:** BrConnectionForm (host + port); Settings tab "BR Connection"; types BrConnectionConfigFromBackend, ConnectionStatus; useWebSocket saveConfig(brHost, brPort), testBrConnect. Navigation/Status/Commissioner/Console/Dashboard/SystemTab: message "BR" thay "Serial".
-- **Docs:** migration_to_frame_protocol.md, README.md da cap nhat.
+### Docker backend + OTBR D-Bus
+- **Backend tren host khong thay OTBR:** Mount D-Bus host vao container OTBR da thu — otbr-agent co env DBUS_SYSTEM_BUS_ADDRESS nhung **khong dang ky** tren host bus (ListNames tren host khong co io.openthread.BorderRouter.wpan0). Nguyen nhan kha nang: dbus-daemon host tu choi ket noi tu process trong container.
+- **Cach dung:** Chay **backend trong Docker** voi volume `otbr-dbus:/run/dbus` cung service OTBR, env `DBUS_SYSTEM_BUS_ADDRESS=unix:path=/run/dbus/system_bus_socket`. Compose can co service backend (build Dockerfile.backend) mount otbr-dbus. Dev: mount source backend vao container (vd. `.:/app`) de sua code tren host khong can build lai image. Doc: `backend/README.docker.md` (neu co).
 
 ### Documentation (truoc do)
 - Tao `HomeThread/Documents/`, symlink docs, Memory Bank
@@ -77,29 +60,23 @@ Frontend chi check "khong trong" — backend xu ly moi validation chi tiet. Khon
 Channel la `uint8_t` (1 byte), khong phai 3 byte. Range 11-26. Constant trong `shared/src/constants.ts`.
 
 ### leaderRloc16 Source
-Lay tu CMD_IP_ADDR ACK (16-byte IPv6), byte 14-15 big-endian → format "0xXXXX". Luu trong `OtConfig.leaderRloc16`.
-
-### Table Log Filtering
-ROUTER_TABLE, CHILD_TABLE, JOINER_TABLE TX va ACK bi filter ra khoi console log (giu lai trong log file neu co). Giam noise.
+Lay tu getActiveDataset / IP hoac dataset (OtConfig.leaderRloc16).
 
 ## Next Steps (theo thu tu uu tien)
 
-1. **Tim BR** *(tuy chon)* — mDNS browse `_thread-frame._tcp` (khi chay tren host) hoac quet dai IP (TCP 5000) khi chay Docker
-2. **TCP keepalive** — Da co the bat de phat hien mat ket noi BR nhanh hon (backend TransportTcp)
-3. **Security** *(neu can)* — auth WS, HTTPS
-4. **OTBR config tu backend** *(neu can)* — Backend ghi file config (serial, baudrate, interface), goi `restartOtbr()` qua supervisor socket; entrypoint OTBR doc file khi start
+1. **Security** *(neu can)* — auth WS, HTTPS
+2. **OTBR config tu backend** *(neu can)* — Backend ghi file config (serial, baudrate, interface), goi `restartOtbr()` qua supervisor socket; entrypoint OTBR doc file khi start
 
 ## Files to Watch
 
 - `supervisor/server.py` — socket + watch device; env DEVICE_PATH, OTBR_CONTAINER_NAME, INTERVAL
 - `supervisor/install-supervisor-service.sh` — systemd unit dashboard-thread-supervisor
 - `backend/src/supervisor/socketClient.ts` — requestSupervisor(), restartOtbr(); SUPERVISOR_SOCK_DIR
-- `otbr/README.md` — tro sang supervisor cho "Rut RCP"
+- `backend/src/otbr/OtbrDbusClient.ts` — D-Bus client, subscribe PropertiesChanged
+- `backend/src/otbr/OtbrManager.ts` — pullStateOtbr(), state signal callback, fallback interval 30s
 - `backend/src/server/CoapDeviceServer.ts` — CoAP device (path /device/); GET ping → 2.05 + 4-byte timestamp; POST → CBOR decode (backend/src/cbor), log JSON, tra 2.01
-- `backend/src/utils/ipv6.ts` — getPreferredBackendIPv6(), getBackendAddresses()
-- `docs/coap/thread_node_coap.md`, `docs/architecture/real_br_integration.md` — Thread-Node, SRP discovery
-- `backend/src/communicate/CommunicateManager.ts` — pullState(), SRP register khi leader
-- `backend/src/communicate/CommandManager.ts` — frame handling, sendSrpRegister, sendState (no fake payload)
+- `backend/src/utils/ipv6.ts` — getBackendAddresses()
+- `docs/otbr/dbus_backend.md` — OTBR D-Bus API
 - `frontend/src/components/Nodes/Nodes.tsx` — Router/Child table, JoinerList, CommissionNodeModal
 - `frontend/src/components/Nodes/JoinerList.tsx` — joiner cards, countdown (snapshot + now)
 - `frontend/src/components/common/ToastContainer.tsx` + `ToastContainer.scss` — toast dark

@@ -1,6 +1,6 @@
 /**
  * PollingManager - Quản lý các interval poll (router table, child table, joiner list).
- * Thread state và OT config (dataset, ipaddr) do CommunicateManager xử lý (pullState / khi state đổi).
+ * Thread state và OT config (dataset, ipaddr) do OtbrManager xử lý (pullState / khi state đổi).
  */
 
 export interface PollingManagerCallbacks {
