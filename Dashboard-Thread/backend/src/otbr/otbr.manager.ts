@@ -296,7 +296,10 @@ export class OtbrManager {
     this.otbrClient
       .getState()
       .then((state) => {
-        if (!state) return;
+        if (!state) {
+          if (!this.otbrClient.isConnected()) this.onOtbrConnectionLost();
+          return;
+        }
         this.threadDataManager.setThreadState({ running: state.running, state: state.state });
         this.broadcast(EVENTS.OT_THREAD_STATE, this.threadDataManager.getThreadState());
         const isLeaderRouterOrChild =
@@ -308,7 +311,16 @@ export class OtbrManager {
             .catch((err) => log.warn(`Auto-start Thread: ${(err as Error)?.message ?? err}`));
         }
       })
-      .catch(() => {});
+      .catch(() => {
+        if (!this.otbrClient.isConnected()) this.onOtbrConnectionLost();
+      });
+  }
+
+  /** Gọi khi phát hiện mất kết nối OTBR (fetch failed): báo UI + log + vào vòng retry. */
+  private onOtbrConnectionLost(): void {
+    this.broadcast(EVENTS.SERIAL_STATUS, { isConnected: false });
+    otbrLog.warn("OTBR connection lost (REST unreachable), will retry in 5s...");
+    this.scheduleReconnect();
   }
 
   private clearReconnectTimer(): void {

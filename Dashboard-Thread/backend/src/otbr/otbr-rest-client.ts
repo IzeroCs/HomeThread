@@ -5,7 +5,9 @@
 
 import type { OtConfig } from "./ot-config.manager";
 import type { TableData } from "./thread-data.manager";
+import { logger } from "../utils/logger.util";
 
+const log = logger.child("OtbrRestClient");
 const DEFAULT_BASE_URL = "http://127.0.0.1:8081";
 
 const ROLE_TO_STATE: Record<string, string> = {
@@ -52,17 +54,24 @@ export class OtbrRestClient {
       }
       return { ok: res.ok, status: res.status, data, text };
     } catch (e) {
+      this.connected = false;
       return { ok: false, status: 0, text: (e as Error)?.message };
     }
   }
 
   async isAvailable(): Promise<boolean> {
-    const res = await this.request<string>("/node/state", { parseText: true });
-    if (res.ok && res.text != null) {
+    const url = `${this.baseUrl}/node/state`;
+    const res = await this.request<string>("/node/state", { headers: { Accept: "application/json" } });
+    if (res.ok) {
       this.connected = true;
       return true;
     }
     this.connected = false;
+    if (res.status === 0) {
+      log.warn(`OTBR REST unreachable: ${url} — ${res.text ?? "connection failed"}`);
+    } else {
+      log.warn(`OTBR REST ${res.status}: ${url} — ${(res.text ?? "").slice(0, 120)}`);
+    }
     return false;
   }
 
@@ -71,15 +80,18 @@ export class OtbrRestClient {
   }
 
   async getState(): Promise<{ running: boolean; state: string } | null> {
-    const res = await this.request<string>("/node/state", { parseText: true });
-    if (!res.ok || res.text == null) return null;
-    const raw = String(res.text).trim().toLowerCase();
+    const res = await this.request<string>("/node/state", { headers: { Accept: "application/json" } });
+    if (!res.ok) return null;
+    // OpenAPI: GET /node/state returns 200 application/json with string body (e.g. "leader")
+    const raw = String(res.data ?? res.text ?? "").trim().toLowerCase();
+    if (!raw) return null;
     const state = ROLE_TO_STATE[raw] ?? raw;
     const running = state !== "disabled" && state !== "detached";
     return { running, state };
   }
 
   async getActiveDataset(): Promise<OtConfig | null> {
+    // OpenAPI: GET /node/dataset/active returns 200 text/plain (hex TLV) or application/json, or 204 no dataset
     const res = await this.request<unknown>("/node/dataset/active", {
       headers: { Accept: "text/plain" },
       parseJson: false,
@@ -92,12 +104,18 @@ export class OtbrRestClient {
   }
 
   async attach(): Promise<OtbrResult> {
+    // OpenAPI: PUT /node/state body application/json string "enable" | "disable"
     const res = await this.request("/node/state", {
       method: "PUT",
       body: JSON.stringify("enable"),
       headers: { "Content-Type": "application/json" },
     });
-    return res.ok ? { ack: true } : { ack: false, errorCode: 0x03 };
+    if (!res.ok) {
+      log.warn(`PUT /node/state enable failed: ${res.status} — ${(res.text ?? "").slice(0, 200)}`);
+      const errorCode = res.status === 409 ? 0x09 : res.status >= 500 ? 0x02 : 0x03;
+      return { ack: false, errorCode };
+    }
+    return { ack: true };
   }
 
   async detach(): Promise<OtbrResult> {
@@ -106,7 +124,12 @@ export class OtbrRestClient {
       body: JSON.stringify("disable"),
       headers: { "Content-Type": "application/json" },
     });
-    return res.ok ? { ack: true } : { ack: false, errorCode: 0x03 };
+    if (!res.ok) {
+      log.warn(`PUT /node/state disable failed: ${res.status} — ${(res.text ?? "").slice(0, 200)}`);
+      const errorCode = res.status === 409 ? 0x09 : res.status >= 500 ? 0x02 : 0x03;
+      return { ack: false, errorCode };
+    }
+    return { ack: true };
   }
 
   async permitUnsecureJoin(_expirationSeconds: number): Promise<OtbrResult> {
@@ -114,8 +137,9 @@ export class OtbrRestClient {
   }
 
   async addJoiner(eui64: string, pskd: string, timeoutSeconds: number): Promise<OtbrResult> {
-    const commissionerRes = await this.request("/node/commissioner/state", { parseText: true });
-    if (!commissionerRes.ok || commissionerRes.text?.trim().toLowerCase() !== "active") {
+    const commissionerRes = await this.request<string>("/node/commissioner/state", { headers: { Accept: "application/json" } });
+    const commissionerState = String(commissionerRes.data ?? commissionerRes.text ?? "").trim().toLowerCase();
+    if (!commissionerRes.ok || commissionerState !== "active") {
       const putRes = await this.request("/node/commissioner/state", {
         method: "PUT",
         body: JSON.stringify("enable"),
@@ -183,6 +207,7 @@ export class OtbrRestClient {
   }
 
   async setActiveDataset(hexTlvs: string): Promise<OtbrResult> {
+    // OpenAPI: PUT /node/dataset/active accepts text/plain (hex TLV) or application/json
     const hex = hexTlvs.replace(/[^0-9a-fA-F]/g, "");
     const res = await this.request("/node/dataset/active", {
       method: "PUT",

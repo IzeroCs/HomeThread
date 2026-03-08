@@ -309,44 +309,46 @@ export class WebSocketServer {
   }
 
   private async handleOtStartThread(socket: Socket): Promise<void> {
-    if (!this.otbrManager.getStatus().isConnected) {
-      socket.emit(EVENTS.OT_START_THREAD_RESULT, { success: false, error: "OTBR not available." });
-      return;
-    }
     try {
       const result = await this.otbrManager.startThread();
       if (result.ack) {
         socket.emit(EVENTS.OT_START_THREAD_RESULT, { success: true });
       } else {
-        const errorMsg = result.errorCode === 0x04 ? "Invalid parameter" : result.errorCode === 0x02 ? "Not ready" : "Failed to start Thread";
+        const errorMsg =
+          result.errorCode === 0x04
+            ? "Invalid parameter"
+            : result.errorCode === 0x02
+              ? "Not ready"
+              : result.errorCode === 0x09
+                ? "Thread interface in wrong state (409)"
+                : "Failed to start Thread";
         socket.emit(EVENTS.OT_START_THREAD_RESULT, { success: false, error: errorMsg });
       }
     } catch (error) {
-      socket.emit(EVENTS.OT_START_THREAD_RESULT, {
-        success: false,
-        error: error instanceof Error ? error.message : "Unknown error",
-      });
+      const msg = error instanceof Error ? error.message : "Unknown error";
+      socket.emit(EVENTS.OT_START_THREAD_RESULT, { success: false, error: msg });
     }
   }
 
   private async handleOtStopThread(socket: Socket): Promise<void> {
-    if (!this.otbrManager.getStatus().isConnected) {
-      socket.emit(EVENTS.OT_STOP_THREAD_RESULT, { success: false, error: "OTBR not available." });
-      return;
-    }
     try {
       const result = await this.otbrManager.stopThread();
       if (result.ack) {
         socket.emit(EVENTS.OT_STOP_THREAD_RESULT, { success: true });
       } else {
-        const errorMsg = result.errorCode === 0x04 ? "Invalid parameter" : result.errorCode === 0x02 ? "Not ready" : "Failed to stop Thread";
+        const errorMsg =
+          result.errorCode === 0x04
+            ? "Invalid parameter"
+            : result.errorCode === 0x02
+              ? "Not ready"
+              : result.errorCode === 0x09
+                ? "Thread interface in wrong state (409)"
+                : "Failed to stop Thread";
         socket.emit(EVENTS.OT_STOP_THREAD_RESULT, { success: false, error: errorMsg });
       }
     } catch (error) {
-      socket.emit(EVENTS.OT_STOP_THREAD_RESULT, {
-        success: false,
-        error: error instanceof Error ? error.message : "Unknown error",
-      });
+      const msg = error instanceof Error ? error.message : "Unknown error";
+      socket.emit(EVENTS.OT_STOP_THREAD_RESULT, { success: false, error: msg });
     }
   }
 
