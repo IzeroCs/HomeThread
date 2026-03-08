@@ -3,46 +3,41 @@
  *
  * SPDX-License-Identifier: CC0-1.0
  *
- * OpenThread Border Router — ESP32-S3 Host + ESP32-H2 RCP over UART.
- * UART: 460800, Host RX=GPIO4, Host TX=GPIO5 (recommended for S3).
+ * OpenThread Border Router — ESP32-S3 Host + ESP32-H2 RCP qua SPI.
+ * UART dành sau cho flash/update RCP. Pin trong menuconfig (BR_RCP_*).
  */
 
 #pragma once
 
 #include "sdkconfig.h"
 
-/* Standalone: pin names are "to RCP" — Host RX receives from RCP TX, Host TX sends to RCP RX */
-#ifndef CONFIG_PIN_TO_RCP_TX
-#define CONFIG_PIN_TO_RCP_TX  4   /* Host RX (connected to RCP TX) */
-#endif
-#ifndef CONFIG_PIN_TO_RCP_RX
-#define CONFIG_PIN_TO_RCP_RX  5   /* Host TX (connected to RCP RX) */
-#endif
+/* RCP control pins (RESET/BOOT) — từ Kconfig */
+#define CONFIG_PIN_TO_RCP_RESET  CONFIG_BR_RCP_RESET_GPIO
+#define CONFIG_PIN_TO_RCP_BOOT   CONFIG_BR_RCP_BOOT_GPIO
 
-/* RCP control pins: RESET and BOOT (optional, for auto-flash feature) */
-#ifndef CONFIG_PIN_TO_RCP_RESET
-#define CONFIG_PIN_TO_RCP_RESET  7   /* Host GPIO to control RCP RESET pin */
-#endif
-#ifndef CONFIG_PIN_TO_RCP_BOOT
-#define CONFIG_PIN_TO_RCP_BOOT  8    /* Host GPIO to control RCP BOOT pin */
-#endif
+#include "driver/spi_master.h"
+#include "driver/spi_common.h"
 
 #define ESP_OPENTHREAD_DEFAULT_RADIO_CONFIG() \
 { \
-    .radio_mode = RADIO_MODE_UART_RCP, \
-    .radio_uart_config = { \
-        .port = 1, \
-        .uart_config = { \
-            .baud_rate = 460800, \
-            .data_bits = UART_DATA_8_BITS, \
-            .parity = UART_PARITY_DISABLE, \
-            .stop_bits = UART_STOP_BITS_1, \
-            .flow_ctrl = UART_HW_FLOWCTRL_DISABLE, \
-            .rx_flow_ctrl_thresh = 0, \
-            .source_clk = UART_SCLK_DEFAULT, \
+    .radio_mode = RADIO_MODE_SPI_RCP, \
+    .radio_spi_config = { \
+        .host_device = (spi_host_device_t)CONFIG_BR_RCP_SPI_HOST, \
+        .dma_channel = SPI_DMA_CH_AUTO, \
+        .spi_interface = { \
+            .miso_io_num = CONFIG_BR_RCP_SPI_MISO_GPIO, \
+            .mosi_io_num = CONFIG_BR_RCP_SPI_MOSI_GPIO, \
+            .sclk_io_num = CONFIG_BR_RCP_SPI_SCLK_GPIO, \
+            .quadwp_io_num = -1, \
+            .quadhd_io_num = -1, \
         }, \
-        .rx_pin = CONFIG_PIN_TO_RCP_TX, \
-        .tx_pin = CONFIG_PIN_TO_RCP_RX, \
+        .spi_device = { \
+            .clock_speed_hz = CONFIG_BR_RCP_SPI_CLOCK_MHZ * 1000 * 1000, \
+            .spics_io_num = CONFIG_BR_RCP_SPI_CS_GPIO, \
+            .queue_size = 4, \
+            .mode = 0, \
+        }, \
+        .intr_pin = (CONFIG_BR_RCP_SPI_IRQ_GPIO >= 0) ? (gpio_num_t)CONFIG_BR_RCP_SPI_IRQ_GPIO : (gpio_num_t)-1, \
     }, \
 }
 

@@ -1,11 +1,11 @@
 {
   "C_Cpp.intelliSenseEngine": "default",
-  "idf.espIdfPath": "/home/izerocs/esp/v5.5.2/esp-idf",
+  "idf.espIdfPath": "/home/izerocs/esp/v5.5.3/esp-idf",
   "idf.pythonInstallPath": "/usr/bin/python3",
   "idf.openOcdConfigs": [
     "board/esp32h2-bridge.cfg"
   ],
-  "idf.port": "/dev/ttyACM1",
+  "idf.port": "/dev/ttyACM0",
   "idf.toolsPath": "/home/izerocs/esp/.espressif",
   "idf.customExtraVars": {
     "IDF_TARGET": "esp32h2"

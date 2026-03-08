@@ -95,7 +95,7 @@ esp_err_t eth_w5500_init(void)
     eth_mac_config_t mac_config = ETH_MAC_DEFAULT_CONFIG();
     eth_phy_config_t phy_config = ETH_PHY_DEFAULT_CONFIG();
     phy_config.phy_addr = 1;
-    phy_config.reset_gpio_num = -1;
+    phy_config.reset_gpio_num = (CONFIG_BR_ETH_RST_GPIO >= 0) ? CONFIG_BR_ETH_RST_GPIO : -1;
 
     eth_w5500_config_t w5500_config = ETH_W5500_DEFAULT_CONFIG(CONFIG_BR_ETH_SPI_HOST, &devcfg);
     w5500_config.int_gpio_num = CONFIG_BR_ETH_INT_GPIO;
