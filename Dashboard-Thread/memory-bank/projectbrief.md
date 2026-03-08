@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-Dashboard-Thread là backend + frontend để **điều khiển OpenThread Border Router qua TCP** (frame protocol) — không còn CLI text, không dùng Serial/UART. BR kết nối tại host:port (vd. Thread-Host.local:5000). Monorepo npm workspaces: `backend/`, `frontend/`, `shared/`.
+Dashboard-Thread là backend + frontend để **điều khiển OpenThread Border Router qua D-Bus** — giao tiếp với otbr-agent (trong container) qua socket D-Bus dùng chung. Monorepo npm workspaces: `backend/`, `frontend/`, `shared/`.
 
 ## Core Goal
 
@@ -16,13 +16,13 @@ Cung cấp giao diện web quản lý Thread network:
 ## Scope
 
 ### In Scope
-- Backend Node.js: TCP client (BR host:port), frame protocol, WebSocket relay
+- Backend Node.js: D-Bus client (OtbrDbusClient) gọi otbr-agent, WebSocket relay
 - Backend CoAP server (UDP 5683, IPv6): nhận dữ liệu từ Thread-Node qua path /device/ (register, update, ping), payload CBOR; parse CBOR → log JSON, trả 2.01; không emit lên frontend
-- Frontend React: Status (BR, OpenThread, System IPv4/IPv6), Nodes (Router/Child/Joiner List + Commission Node modal), Settings
-- Backend SRP register: CMD_SRP_REGISTER (0x44) qua frame khi BR là leader; IPv6 từ env hoặc auto-detect
-- Shared package: types, events, validation, constants (EVENTS: SRP_REGISTER, SYSTEM_INFO, …)
-- SQLite: lưu BR connection config và app settings
-- Real-time polling: table data, thread state
+- Frontend React: Status (OTBR, OpenThread, System IPv4/IPv6), Nodes (Router/Child/Joiner List + Commission Node modal), Settings
+- Shared package: types, events, validation, constants (EVENTS: SYSTEM_INFO, …)
+- SQLite: app settings (thread_run_on_connect)
+- Real-time: D-Bus signals (PropertiesChanged) khi state thay đổi; poll tables khi có frontend và state active
+- Không còn BrConnectionConfigService / form lưu BR host-port; kết nối OTBR chỉ qua D-Bus (backend container dùng volume otbr-dbus chung với OTBR để thấy otbr-agent)
 
 ### Out of Scope (hiện tại)
 - Authentication / HTTPS (để sau nếu cần)
@@ -31,19 +31,16 @@ Cung cấp giao diện web quản lý Thread network:
 
 ## Target Device
 
-- **OpenThread Border Router** (vd. ESP32-H2 hoặc thiết bị chạy BR firmware), giao tiếp qua **TCP** (frame protocol), listen port 5000.
-- **Thread-Node** (child/endpoint): gửi dữ liệu lên backend qua **CoAP** (UDP 5683), payload **CBOR**. BR chỉ route IP. Hướng dẫn tích hợp: [docs/coap/thread_node_coap.md](../docs/coap/thread_node_coap.md).
+- **OpenThread Border Router** (otbr-agent trong container): giao tiếp qua **D-Bus** (volume socket chung với backend).
+- **Thread-Node** (child/endpoint): gửi dữ liệu lên backend qua **CoAP** (UDP 5683), payload **CBOR**. BR chỉ route IP. Hướng dẫn: [docs/coap/thread_node_coap.md](../docs/coap/thread_node_coap.md) (nếu có).
 
 ## Key Constraints
 
-- Giao tiếp HOÀN TOÀN qua frame protocol — không dùng CLI OpenThread
-- Frame ID phải unique per request, wrap 0–0xFF
+- Giao tiếp với OTBR qua D-Bus (dbus-next); không dùng CLI OpenThread trực tiếp
 - Frontend phải hoạt động từ LAN (Vite host: true)
-- Không đóng TCP khi server restart — BR vẫn chạy
 
 ## Documents
 
-- Protocol: `HomeThread/Documents/protocol/usb_cdc_frame_structure.md`
-- Table format: `HomeThread/Documents/protocol/table_data_format.md`
-- Migration: `HomeThread/Documents/dashboard/migration_to_frame_protocol.md`
+- OTBR D-Bus: `docs/otbr/dbus_backend.md`
+- OTBR config từ backend (tùy chọn): `docs/otbr/otbr_config_from_backend.md`
 - Thread-Node CoAP: `docs/coap/thread_node_coap.md` — hướng dẫn child gửi dữ liệu (CoAP + CBOR) lên backend.

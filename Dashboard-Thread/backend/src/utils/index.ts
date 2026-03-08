@@ -1,6 +1,6 @@
 export {
   logger,
-  transportLogger,
+  otbrConnectionLogger,
   frameLogger,
   setLogAdapter,
   getLogAdapter,
@@ -8,4 +8,4 @@ export {
   type LogAdapter,
   type Logger,
   type LogLevel,
-} from "./logger";
+} from "./logger.util";

@@ -1,8 +1,8 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
-import { WebSocketProvider } from "./contexts/WebSocketContext";
-import { ToastProvider } from "./contexts/ToastContext";
-import App from "./App";
+import { WebSocketProvider } from "./contexts/websocket.context";
+import { ToastProvider } from "./contexts/toast.context";
+import App from "./app.component";
 import "./index.scss";
 
 createRoot(document.getElementById("root")!).render(

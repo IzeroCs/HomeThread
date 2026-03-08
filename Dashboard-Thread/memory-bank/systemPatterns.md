@@ -3,32 +3,30 @@
 ## High-Level Data Flow
 
 ```
-BR (Thread-Host)   listen TCP port 5000
-    ↓ TCP (binary frame protocol)
-TransportTcp       (backend/src/communicate/TransportTcp.ts)
-    ↓ raw bytes stream
-FrameParser        (backend/src/communicate/frame/frameParser.ts)
-    ↓ parsed Frame { frameId, cmd, data }
-CommandManager     (backend/src/communicate/CommandManager.ts)
-    ↓ ACK/NACK resolved via pending map (frameId → Promise)
-CommunicateManager (backend/src/communicate/CommunicateManager.ts)
+OTBR (container)   otbr-agent, REST API (port 8081, OTBR_REST=ON)
+    ↓ HTTP (fetch)
+OtbrRestClient    (backend/src/otbr/otbr-rest-client.ts)
+    ↓ isAvailable(), getState(), getActiveDataset(), attach/detach, table getters, setActiveDataset, addJoiner, factoryReset
+OtbrManager (backend/src/otbr/otbr.manager.ts)
     ↓ OtConfigManager.update() + onBroadcast(event, data)
-WebSocketServer    (backend/src/server/WebSocketServer.ts)
+WebSocketServer    (backend/src/server/websocket.server.ts)
     ↓ io.emit(EVENTS.xxx, payload)
-useWebSocket hook  (frontend/src/hooks/useWebSocket.ts)
+useWebSocket hook  (frontend/src/hooks/use-websocket.hook.ts)
     ↓ React state update
 UI Components      (frontend/src/components/)
 
 Thread-Node  -- CoAP UDP 5683 (IPv6 [::]), path /device/
     ↓ GET /device/ping → 2.05 + 4-byte timestamp (server start); POST /device/register, update → CBOR payload
-CoapDeviceServer (backend/src/server/CoapDeviceServer.ts)
+CoapDeviceServer (backend/src/server/coap-device.server.ts)
     ↓ GET ping: tra timestamp (uint32 LE). POST: parse CBOR (backend/src/cbor), log JSON + structure, tra 2.01. Khong emit len frontend.
 
 Backend (os.networkInterfaces) → getBackendAddresses() → io.emit(SYSTEM_INFO) khi CONFIG_CURRENT
     ↓
 Frontend             subscribe SYSTEM_INFO → systemInfo → Status section "System" (IPv4, IPv6).
 
-Backend (khi BR = leader) → log "SRP register: IPv6=... hostname=... port=..." (transportLogger.info) → sendSrpRegister() qua frame CMD_SRP_REGISTER (0x44) → BR dang ky _dashboard._udp len SRP server.
+Backend (khi can restart OTBR) → socketClient.restartOtbr() → Unix socket /var/run/izerocs/supervisor.sock → Supervisor (Python, host) → docker restart <container>. Supervisor doc lap: thread watch DEVICE_PATH; device mat thi tu goi docker restart.
+
+**OTBR REST + Backend:** Backend (host hoac container) goi HTTP toi OTBR:8081 (OTBR_REST_URL). OTBR build OTBR_REST=ON, listen 0.0.0.0:8081.
 ```
 
 ## Node Registration Patterns (Thread-Node → Backend)
@@ -44,15 +42,13 @@ Backend (khi BR = leader) → log "SRP register: IPv6=... hostname=... port=..."
 
 | Module | File | Vai tro — TUYET DOI KHONG vi pham |
 |---|---|---|
-| `WebSocketServer` | `backend/src/server/WebSocketServer.ts` | CHI relay socket events ↔ CommunicateManager. KHONG chua business logic hay transport logic |
-| `CommunicateManager` | `backend/src/communicate/CommunicateManager.ts` | Owner cua toan bo transport + frame. Dieu phoi TransportTcp, polling, broadcast |
-| `TransportTcp` | `backend/src/communicate/TransportTcp.ts` | TCP client: open(host, port), writeRaw, onRawData, setOnDisconnect |
-| `BrConnectionConfigService` | `backend/src/communicate/BrConnectionConfigService.ts` | SQLite CRUD cho cau hinh BR (brHost, brPort, useMdns) |
-| `CommandManager` | `backend/src/communicate/CommandManager.ts` | Frame TX/RX. Pending map (frameId → resolve/reject). ACK/NACK routing. Timeout |
-| `OtConfigManager` | `backend/src/communicate/OtConfigManager.ts` | In-memory store. `.update(partial)` de merge, `.get()` de doc, `.clear()` khi disconnect |
-| `PollingManager` | `backend/src/communicate/PollingManager.ts` | Poll table 6s (child +1.5s delay). CHI khi frontend connected + state = leader/router/child |
-| `AppSettingsService` | `backend/src/services/AppSettingsService.ts` | SQLite key-value cho app settings (thread_run_on_connect) |
-| `CoapDeviceServer` | `backend/src/server/CoapDeviceServer.ts` | CoAP server UDP 5683 (udp6, listen [::]). GET /device/ping → 2.05, payload 4-byte timestamp (server start). POST /device/register, update → decode CBOR (backend/src/cbor), log JSON + structure; tra 2.01; khong emit qua io |
+| `WebSocketServer` | `backend/src/server/websocket.server.ts` | CHI relay socket events ↔ OtbrManager. KHONG chua business logic hay transport logic |
+| `OtbrManager` | `backend/src/otbr/otbr.manager.ts` | Owner OTBR + polling. Dieu phoi OtbrRestClient, pullState, broadcast |
+| `OtbrRestClient` | `backend/src/otbr/otbr-rest-client.ts` | REST client: isAvailable(), getState(), getActiveDataset(), attach/detach, table getters, setActiveDataset, addJoiner |
+| `OtConfigManager` | `backend/src/otbr/ot-config.manager.ts` | In-memory store. `.update(partial)` de merge, `.get()` de doc, `.clear()` khi disconnect |
+| `PollingManager` | `backend/src/otbr/polling.manager.ts` | Poll table 6s (child +1.5s delay). CHI khi frontend connected + state = leader/router/child |
+| `AppSettingsService` | `backend/src/services/app-settings.service.ts` | SQLite key-value cho app settings (thread_run_on_connect) |
+| `CoapDeviceServer` | `backend/src/server/coap-device.server.ts` | CoAP server UDP 5683 (udp6, listen [::]). GET /device/ping → 2.05, payload 4-byte timestamp (server start). POST /device/register, update → decode CBOR (backend/src/cbor), log JSON + structure; tra 2.01; khong emit qua io |
 
 ## Frame Protocol
 
@@ -60,7 +56,7 @@ Backend (khi BR = leader) → log "SRP register: IPv6=... hostname=... port=..."
 
 **CRC8-Maxim** tinh tren `[FrameID, CMD, LEN_H, LEN_L, ...DATA]`
 
-**Nguon chinh xac:** `backend/src/communicate/frame/constants.ts` — TUYET DOI KHONG hardcode hex literal.
+*(Frame protocol da bo — backend chi dung D-Bus.)*
 
 ### CMD Codes (quan trong)
 
@@ -175,8 +171,8 @@ Status dot tren Sidebar (header) dung chung mapping mau:
 
 ### Status Page — Connected vs Disconnected
 
-- **Connected:** BR card với vùng icon lớn (router), badge Connected, Host Address, Uptime, nút Refresh; OpenThread grid 3×4 (label UPPERCASE, giá trị accent cho Network Name / IP), Channel có badge "2.4 GHz", Network Key có nút show/hide; **System** section (cùng style bảng): IPv4 (backend), IPv6 (backend) từ systemInfo.
-- **Disconnected:** BR card layout ngang: icon tròn 48px đỏ (link_off) + label "BR Connection Status" + chữ "DISCONNECTED" + chấm đỏ pulse + nút Refresh. OpenThread: ghost grid (opacity 0.4, blur) + overlay card (backdrop-blur) "No Network Data Available" + nút "Configure Border Router" gọi `onConfigureBr` (App truyền `() => setPage("settings")`).
+- **Connected:** Border Router card hiển thị "OTBR (D-Bus)" với badge Connected, nút Refresh; OpenThread grid 3×4 (label UPPERCASE, giá trị accent cho Network Name / IP), Channel có badge "2.4 GHz", Network Key có nút show/hide; **System** section (cùng style bảng): IPv4 (backend), IPv6 (backend) từ systemInfo.
+- **Disconnected:** BR card layout ngang: icon tròn 48px đỏ (link_off) + label "BR Connection Status" + chữ "DISCONNECTED" / "Unavailable" + chấm đỏ pulse + nút Refresh. OpenThread: ghost grid (opacity 0.4, blur) + overlay card (backdrop-blur) "No Network Data Available" + nút "Configure Border Router" gọi `onConfigureBr` (App truyền `() => setPage("settings")`).
 
 ### Version Display
 

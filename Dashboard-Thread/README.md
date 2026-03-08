@@ -1,6 +1,6 @@
 # Dashboard-Thread
 
-Backend + Frontend điều khiển **OpenThread Border Router** qua **TCP** (frame protocol). Kết nối tới BR tại BR_IP:port (khi chạy trên host: Thread-Host.local:5000 nếu mDNS có; khi chạy Docker dùng IP vd. 192.168.31.3:5000 — mDNS trong container không hoạt động). Khuyến nghị dùng **IPv4** cho BR Host (nhiều BR chỉ listen IPv4); nếu dùng IPv6 link-local cần zone ID (vd. fe80::...%enp7s0). Một project chung cho cả API và giao diện web.
+Backend + Frontend điều khiển **OpenThread Border Router (OTBR)** qua **REST API**. Backend giao tiếp với otbr-agent (port 8081, OTBR_REST=ON). Một project chung cho cả API và giao diện web.
 
 ## Stack
 
@@ -12,11 +12,11 @@ Backend + Frontend điều khiển **OpenThread Border Router** qua **TCP** (fra
 
 ## Tính năng chính
 
-- **Status**: Trạng thái kết nối BR (host:port), OpenThread (PAN ID, Channel, Network Name, Version, IP Address, dataset đầy đủ), thread state; **System**: IPv4 và IPv6 của backend (từ backend, dùng cho SRP/Thread-Node). Khi chưa kết nối BR: card compact (icon đỏ + DISCONNECTED), OpenThread ghost grid + overlay "No Network Data Available" và nút "Configure Border Router". Phiên bản hiển thị lấy từ `frontend/package.json`. Backend tự gửi SRP register (CMD 0x44) khi BR là leader để Thread-Node có thể discovery `_dashboard._udp`; khi gửi, backend log IPv6/hostname/port ra console (transportLogger).
-- **Nodes**: Router Table & Child Table; **Joiner List** (thiết bị đang chờ join, bên dưới Child Table) với TIMEOUT đếm ngược MM:SS (local countdown từ dữ liệu mới). Nút "Commission Node" mở modal thêm joiner (EUI64, PSKd, timeout). Click một dòng bảng → Modal chi tiết theo RLOC16. Dòng leader có badge "LEADER". Cột Age đếm lên realtime.
+- **Status**: Trạng thái kết nối OTBR (REST), OpenThread (PAN ID, Channel, Network Name, dataset, thread state); **System**: IPv4 và IPv6 của backend (dùng cho SRP/Thread-Node). Khi OTBR không có: card compact (icon đỏ + Disconnected), OpenThread ghost grid + overlay "No Network Data Available". Phiên bản hiển thị lấy từ `frontend/package.json`.
+- **Nodes**: Router Table & Child Table; **Joiner List** (thiết bị đang chờ join) với TIMEOUT đếm ngược MM:SS. Nút "Commission Node" mở modal thêm joiner (EUI64, PSKd, timeout). Click một dòng bảng → Modal chi tiết theo RLOC16. Dòng leader có badge "LEADER". Cột Age đếm lên realtime.
 - **Settings**:
-  - *BR Connection*: Cấu hình host (IPv4 khuyến nghị, vd. 192.168.31.3; hoặc Thread-Host.local khi mDNS có; IPv6 link-local cần zone ID %interface), port (5000), test connect trước khi lưu.
-  - *OpenThread*: PAN ID, Channel, Network Name, Extended PAN ID, Network Key; toggle khởi động/dừng Thread; nút "Lấy lại" fetch config từ thiết bị.
+  - *BR Connection*: Trạng thái "OTBR (REST)" (Connected / Unavailable) và nút Test connection.
+  - *OpenThread*: PAN ID, Channel, Network Name, Extended PAN ID, Network Key; toggle khởi động/dừng Thread; nút "Lấy lại" fetch config từ OTBR.
   - *System*: Hai action cards (Khởi động lại, Factory Reset) với image panel và nút Reset/Factory Reset; divider "Vùng nguy hiểm"; modal xác nhận + đếm ngược 5 giây.
 
 Giao diện: **dark navy** theme, SCSS only (không Tailwind). Sidebar trái brand **OpenThread** với chấm trạng thái BR/Thread. Nav: Status, Nodes, Settings (icon `speed`, `account_tree`, `settings`); dropdown Settings có 3 mục con với icon: BR Connection `lan`, OpenThread `device_hub`, System `warning`. Toast: dark card, thanh dọc trái màu theo type. **Modal / ConfirmModal**: dark navy (overlay blur, nền card-dark, nút Cancel ghost, Confirm danger/warning với hover glow). Component dùng chung: **Modal**, **ConfirmModal**, **Sidebar**, **ToastContainer** trong `frontend/src/components/common/`.
@@ -26,28 +26,30 @@ Giao diện: **dark navy** theme, SCSS only (không Tailwind). Sidebar trái bra
 - 🟣 **Tím** — router
 - 🔵 **Xanh dương** — child
 - 🟠 **Cam** — disabled/detached hoặc chưa bật "tự chạy Thread"
-- ⚪ **Xám** — chưa kết nối BR
+- ⚪ **Xám** — chưa kết nối OTBR
 
 ## Cấu trúc project
 
 ```
 Dashboard-Thread/
 ├── package.json          # Root: workspaces, scripts chạy cả BE + FE
-├── backend/              # Node.js + TypeScript (WebSocket, TCP frame protocol)
+├── backend/              # Node.js + TypeScript (WebSocket, REST OTBR)
 │   ├── src/
-│   │   ├── server/       # WebSocketServer, CoapDeviceServer (UDP 5683, Thread-Node CoAP+CBOR)
-│   │   ├── communicate/ # TransportTcp, BrConnectionConfigService, frame (parser/builder/crc8), CommandManager (incl. sendSrpRegister), CommunicateManager, OtConfigManager, PollingManager
+│   │   ├── server/       # websocket.server, coap-device.server (UDP 5683, Thread-Node CoAP+CBOR)
+│   │   ├── otbr/         # otbr.manager, otbr-rest-client, ot-config.manager, polling.manager
+│   │   ├── supervisor/   # socketClient (restartOtbr qua Unix socket)
 │   │   ├── database/     # SQLite (Database, migrations)
 │   │   ├── services/     # AppSettings
-│   │   └── utils/        # logger, ipv6 (getPreferredBackendIPv6, getBackendAddresses)
+│   │   └── utils/        # logger, ipv6 (getBackendAddresses)
 │   └── package.json
 ├── frontend/
 │   ├── src/
-│   │   ├── components/   # Status, Nodes (Router/Child/JoinerList, CommissionNodeModal), Settings
-│   │   │   └── common/   # Modal, ConfirmModal, Sidebar, ToastContainer
-│   │   └── hooks/        # useWebSocket, useWebSocketContext
+│   │   ├── components/   # status/, nodes/, settings/ (.*.component.tsx + .*.style.scss), common/
+│   │   └── hooks/        # use-websocket.hook, use-websocket-context.hook
 │   └── package.json
-├── docs/                 # coap/thread_node_coap.md (hướng dẫn Thread-Node gửi dữ liệu CoAP+CBOR)
+├── supervisor/            # Daemon Python (stdlib): Unix socket + watch RCP device → restart OTBR
+├── otbr/                  # OTBR Docker (entrypoint đợi RCP, compose)
+├── docs/                  # otbr/dbus_backend.md, otbr/otbr_config_from_backend.md, ...
 ├── TODO.md
 └── README.md
 ```
@@ -85,28 +87,19 @@ Dashboard-Thread/
 
 ## Cấu hình
 
-- **Backend**: `backend/.env.example` — PORT. Cấu hình BR (host, port) lưu SQLite qua Settings.
+- **Backend**: `backend/.env` — PORT. Kết nối OTBR qua **REST API**: env `OTBR_REST_URL` (mặc định `http://127.0.0.1:8081`). OTBR cần build với `OTBR_REST=ON` và listen 0.0.0.0:8081.
 - **Frontend**: Proxy trong `vite.config.ts` (`/api`, `/socket.io` → backend). Có thể set `VITE_WS_URL` nếu cần URL backend khác.
 
-## Backend – TCP & frame protocol
+## Backend – OTBR qua REST API
 
-- **Giao tiếp:** Frame protocol qua **TCP** tới BR (host:port, mặc định Thread-Host.local:5000). Cấu trúc frame: SOF, Frame ID, CMD, LEN, DATA, CRC8, EOF (xem `Documents/protocol/usb_cdc_frame_structure.md` ở thư mục gốc HomeThread).
-- **Kiến trúc:** `CommunicateManager` điều phối TransportTcp + frame; `CommandManager` gửi/nhận frame, quản lý pending theo Frame ID + timeout; `BrConnectionConfigService` lưu cấu hình BR; `PollingManager` poll table định kỳ. `WebSocketServer` chỉ relay event.
-- **Khi kết nối BR:** Pull state định kỳ (CMD_STATE, 5s). Dataset active + IP chỉ fetch khi state thay đổi hoặc lần đầu. Thread version (CMD_THREAD_VERSION) fetch một lần sau lần đầu nhận ACK state. Nếu `thread_run_on_connect` bật và state = disabled → tự gửi CMD_THREAD_START.
-- **Polling tables:** Router/Child/Joiner table poll mỗi 6s (child delay 1.5s) — chỉ khi có frontend kết nối và state là leader/router/child.
-- **CMD hỗ trợ:**
+- **Giao tiếp:** Backend gọi **otbr-agent** qua **REST API** (HTTP, port 8081). Path theo OpenAPI ot-br-posix: `/node/state`, `/node/dataset/active`, `/node/commissioner/joiner`, `/api/devices`, v.v.
+- **Backend thấy OTBR:** Backend (host hoặc container) cần HTTP tới OTBR:8081. Khi OTBR chạy với `network_mode: host`, backend trên host dùng `OTBR_REST_URL=http://127.0.0.1:8081`.
+- **Kiến trúc:** `OtbrManager` điều phối `OtbrRestClient`; state poll định kỳ (30s); `PollingManager` poll Router/Child/Joiner table khi có frontend và state active. `WebSocketServer` relay event.
+- **Khi OTBR có trên REST:** Pull state định kỳ; cập nhật dataset/config từ GET `/node/dataset/active`; nếu `thread_run_on_connect` bật và state = disabled → tự gọi PUT `/node/state` enable.
+- **Database:** SQLite (app settings `thread_run_on_connect`). Bảng `br_connection_config` (migration 005) vẫn tồn tại nhưng không dùng.
 
-| Nhóm | CMD |
-|---|---|
-| Đọc trạng thái | CMD_STATE, CMD_DATASET_ACTIVE, CMD_IP_ADDR, CMD_THREAD_VERSION |
-| Đọc tables | CMD_ROUTER_TABLE, CMD_CHILD_TABLE, CMD_JOINER_TABLE |
-| Set config | CMD_SET_PANID, CMD_SET_CHANNEL, CMD_SET_NETWORK_NAME, CMD_SET_EXTENDED_PANID, CMD_SET_NETWORK_KEY |
-| Thread | CMD_THREAD_START, CMD_THREAD_STOP |
-| Commissioner | CMD_COMMISSIONER_JOINER (EUI64 + PSKd + timeout) |
-| Hệ thống | CMD_RESET, CMD_FACTORY |
+**Thread-Node gửi dữ liệu:** CoAP UDP port 5683 (IPv6 [::]), path `/device/register`, `/device/update`, `/device/ping`, payload CBOR. Backend parse CBOR, log JSON, trả 2.01; không gửi lên frontend. Xem [docs/coap/thread_node_coap.md](./docs/coap/thread_node_coap.md) (nếu có).
 
-- **Database:** SQLite (BR connection config, app settings `thread_run_on_connect`). Migration 006 đã xóa bảng legacy `serial_config`.
+**OTBR (Docker):** Compose có service `otbr`; entrypoint đợi RCP (by-id) rồi start. Rút RCP → **supervisor** trên host (socket + watch device) restart container. Cài service: `sudo bash ./supervisor/install-supervisor-service.sh`. Xem [supervisor/README.md](./supervisor/README.md), [otbr/README.md](./otbr/README.md).
 
-**Thread-Node gửi dữ liệu:** CoAP UDP port 5683 (IPv6 [::]), path `/device/register`, `/device/update`, `/device/ping`, payload CBOR. Backend parse CBOR, log JSON, trả 2.01; không gửi lên frontend. Xem [docs/coap/thread_node_coap.md](./docs/coap/thread_node_coap.md).
-
-Chi tiết: [Documents/protocol/usb_cdc_frame_structure.md](../Documents/protocol/usb_cdc_frame_structure.md) · [Documents/dashboard/migration_to_frame_protocol.md](../Documents/dashboard/migration_to_frame_protocol.md) · Việc còn lại: [TODO.md](./TODO.md).
+Việc còn lại: [TODO.md](./TODO.md).
