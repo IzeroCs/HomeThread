@@ -12,8 +12,10 @@
 #include "esp_event.h"
 #include "esp_netif_ip_addr.h"
 #include "driver/spi_master.h"
+#include "driver/gpio.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/event_groups.h"
+#include "sdkconfig.h"
 #include "esp_mac.h"
 #include <string.h>
 
@@ -85,6 +87,18 @@ esp_err_t eth_w5500_init(void)
         return err;
     }
 
+#if CONFIG_BR_ETH_RST_GPIO >= 0
+    /* Reset W5500: hold low, delay, release, delay (thời gian cấu hình trong Kconfig). */
+    gpio_reset_pin((gpio_num_t)CONFIG_BR_ETH_RST_GPIO);
+    gpio_set_direction((gpio_num_t)CONFIG_BR_ETH_RST_GPIO, GPIO_MODE_OUTPUT);
+    gpio_set_level((gpio_num_t)CONFIG_BR_ETH_RST_GPIO, 0);
+    vTaskDelay(pdMS_TO_TICKS(CONFIG_BR_ETH_RST_HOLD_MS));
+    gpio_set_level((gpio_num_t)CONFIG_BR_ETH_RST_GPIO, 1);
+    vTaskDelay(pdMS_TO_TICKS(CONFIG_BR_ETH_RST_RELEASE_MS));
+    ESP_LOGI(TAG, "W5500 RST: hold %d ms, release delay %d ms",
+             (int)CONFIG_BR_ETH_RST_HOLD_MS, (int)CONFIG_BR_ETH_RST_RELEASE_MS);
+#endif
+
     spi_device_interface_config_t devcfg = {
         .mode = 0,
         .clock_speed_hz = CONFIG_BR_ETH_SPI_CLOCK_MHZ * 1000 * 1000,
@@ -95,7 +109,8 @@ esp_err_t eth_w5500_init(void)
     eth_mac_config_t mac_config = ETH_MAC_DEFAULT_CONFIG();
     eth_phy_config_t phy_config = ETH_PHY_DEFAULT_CONFIG();
     phy_config.phy_addr = 1;
-    phy_config.reset_gpio_num = (CONFIG_BR_ETH_RST_GPIO >= 0) ? CONFIG_BR_ETH_RST_GPIO : -1;
+    /* Reset đã làm tay ở trên với thời gian cấu hình; driver không reset nữa. */
+    phy_config.reset_gpio_num = -1;
 
     eth_w5500_config_t w5500_config = ETH_W5500_DEFAULT_CONFIG(CONFIG_BR_ETH_SPI_HOST, &devcfg);
     w5500_config.int_gpio_num = CONFIG_BR_ETH_INT_GPIO;
@@ -200,16 +215,17 @@ esp_err_t eth_w5500_init(void)
         goto fail;
     }
 
-    ESP_LOGI(TAG, "waiting for Ethernet IP (IPv4 or IPv6, timeout %d ms)...", (int)CONFIG_BR_ETH_LINK_TIMEOUT_MS);
+    /* Chờ IPv4 (DHCP); không coi chỉ IPv6 là đủ — backend cần IPv4 để kết nối BR. */
+    ESP_LOGI(TAG, "waiting for Ethernet IPv4 (DHCP, timeout %d ms)...", (int)CONFIG_BR_ETH_LINK_TIMEOUT_MS);
     EventBits_t bits = xEventGroupWaitBits(s_eth_event_group,
-                                            ETH_GOT_IP_BIT | ETH_GOT_IP6_BIT,
+                                            ETH_GOT_IP_BIT,
                                             pdFALSE, pdFALSE,
                                             pdMS_TO_TICKS(CONFIG_BR_ETH_LINK_TIMEOUT_MS));
-    if (bits & (ETH_GOT_IP_BIT | ETH_GOT_IP6_BIT)) {
-        ESP_LOGI(TAG, "Ethernet W5500 init OK");
+    if (bits & ETH_GOT_IP_BIT) {
+        ESP_LOGI(TAG, "Ethernet W5500 init OK (IPv4)");
         return ESP_OK;
     }
-    ESP_LOGW(TAG, "Ethernet IP timeout");
+    ESP_LOGW(TAG, "Ethernet IPv4 timeout");
     esp_eth_stop(s_eth_handle);
     esp_event_handler_unregister(IP_EVENT, IP_EVENT_GOT_IP6, got_ip_handler);
     esp_event_handler_unregister(IP_EVENT, IP_EVENT_ETH_GOT_IP, got_ip_handler);

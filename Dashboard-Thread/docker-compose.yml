@@ -1,31 +1,20 @@
-# Dashboard-Thread — backend + OTBR (tùy chọn).
+# Dashboard-Thread — backend (sau có thể thêm frontend).
 # Từ thư mục Dashboard-Thread: docker compose up --build
 #
-# Backend: chạy trên host (npm run dev:backend). Kết nối OTBR qua REST API (OTBR_REST_URL, mặc định http://127.0.0.1:8081).
-# OTBR: entrypoint đợi RCP (by-id) rồi start; cần build với OTBR_REST=ON và listen 0.0.0.0:8081 để backend gọi REST.
+# Backend: WebSocket/HTTP :3000, CoAP UDP :5683
+# network_mode: host — dùng chung stack mạng với host (route prefix Thread qua BR có hiệu lực).
 
 services:
-  otbr:
-    container_name: dashboard-thread-otbr
+  backend:
+    container_name: dashboard-thread-backend
     build:
-      context: ./otbr
-      dockerfile: Dockerfile
-    image: dashboard-thread-otbr
+      context: .
+      dockerfile: Dockerfile.backend
     network_mode: host
-    cap_add:
-      - NET_ADMIN
-    device_cgroup_rules:
-      - 'c 166:* rwm'
-      - 'c 188:* rwm'
-    volumes:
-      - /dev:/dev
-      - otbr-data:/var/lib/otbr
     environment:
-      - OT_RCP_DEVICE=spinel+hdlc+uart:///dev/serial/by-id/usb-1a86_USB_Single_Serial_579B026391-if00?uart-baudrate=460800
-      - OT_INFRA_IF=enp8s0
-      - OT_THREAD_IF=wpan0
-      - OT_LOG_LEVEL=7
+      - PORT=3000
+      - NODE_ENV=production
+    volumes:
+      # Bind thư mục backend/data trên host — dùng chung DB (config BR, node) với lúc chạy local
+      - ./backend/data:/app/data
     restart: unless-stopped
-
-volumes:
-  otbr-data:

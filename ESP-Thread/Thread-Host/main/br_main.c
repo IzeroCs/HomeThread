@@ -94,9 +94,12 @@ void app_main(void)
 {
   esp_log_level_set("OPENTHREAD", ESP_LOG_WARN);
 
-  esp_vfs_eventfd_config_t eventfd_config = {
-        .max_fds = 3,
-    };
+  /* eventfd: netif, task queue, border router; +1 khi dùng RCP SPI (Spinel). Giống esp-thread-br. */
+  size_t max_eventfd = 3;
+#if CONFIG_OPENTHREAD_RADIO_SPINEL_SPI
+  max_eventfd++;
+#endif
+  esp_vfs_eventfd_config_t eventfd_config = { .max_fds = max_eventfd };
 
     esp_openthread_config_t openthread_config = {
         .netif_config = ESP_NETIF_DEFAULT_OPENTHREAD(),
@@ -128,11 +131,15 @@ void app_main(void)
     /* Quảng bá port frame qua mDNS để backend dò được BR_IP:port */
     ESP_ERROR_CHECK(mdns_service_add(NULL, "_thread-frame", "_tcp", CONFIG_BR_FRAME_TCP_PORT, NULL, 0));
 
-    // Initialize RCP control pins (RESET/BOOT) and reset RCP to ensure clean state
+    // RCP control pins (RESET/BOOT): nếu không nối dây, RCP tự boot từ flash; nếu nối thì reset RCP cho clean state
     ESP_ERROR_CHECK(br_rcp_ctrl_init());
     br_rcp_reset();
-    // Wait for RCP to boot and be ready (ESP32-H2 needs ~500ms to boot)
-    vTaskDelay(pdMS_TO_TICKS(500));
+    vTaskDelay(pdMS_TO_TICKS(500));  // Đợi RCP (H2) boot và sẵn sàng
+
+    ESP_LOGI(TAG, "RCP over SPI: host=%d SCLK=%d MOSI=%d MISO=%d CS=%d IRQ=%d clk=%d MHz",
+             (int)CONFIG_BR_RCP_SPI_HOST, CONFIG_BR_RCP_SPI_SCLK_GPIO, CONFIG_BR_RCP_SPI_MOSI_GPIO,
+             CONFIG_BR_RCP_SPI_MISO_GPIO, CONFIG_BR_RCP_SPI_CS_GPIO, CONFIG_BR_RCP_SPI_IRQ_GPIO,
+             CONFIG_BR_RCP_SPI_CLOCK_MHZ);
 
     launch_openthread_border_router(&openthread_config);
 

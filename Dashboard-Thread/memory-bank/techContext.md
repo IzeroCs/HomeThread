@@ -8,8 +8,6 @@ Dashboard-Thread/          # npm workspaces root
 ├── backend/               # Node.js + TypeScript server
 ├── frontend/              # React + Vite + SCSS
 ├── shared/                # Pure TypeScript, shared by both
-├── supervisor/            # Python stdlib daemon: socket + watch device (khong thuoc npm workspaces)
-├── otbr/                  # OTBR Docker (Dockerfile, entrypoint, README)
 └── memory-bank/           # Cursor Memory Bank files
 ```
 
@@ -27,7 +25,7 @@ Dashboard-Thread/          # npm workspaces root
 | pino | ^9.5.0 | Structured logging |
 | pino-pretty | latest | Pretty console output |
 
-Transport: **REST API** (HTTP, OTBR_REST_URL port 8081) toi OTBR (otbr-agent, OTBR_REST=ON); CoAP (UDP 5683, udp6 listen [::]) from Thread-Node. Dependencies: `coap`. CBOR payload decode bang **thu vien noi bo** `backend/src/cbor`. Thread-Node la ben **chu dong** (CoAP client); GET /device/ping nhan timestamp de phat hien backend restart va gui lai register. Response CoAP phai **routable** toi node: host backend can route toi prefix Thread (OMR) qua BR; BR phai forward packet tu backhaul vao Thread (border routing). Neu node bao ResponseTimeout → xem docs troubleshooting (routing/BR).
+Transport: TCP (net.Socket) to BR; CoAP (UDP 5683, udp6 listen [::]) from Thread-Node. Dependencies: `coap`. CBOR payload decode bang **thu vien noi bo** `backend/src/cbor` (khong dung cbor2). Thread-Node la ben **chu dong** (CoAP client); GET /device/ping nhan timestamp de phat hien backend restart va gui lai register. Response CoAP phai **routable** toi node: host backend can route toi prefix Thread (OMR) qua BR; BR phai forward packet tu backhaul vao Thread (border routing). Neu node bao ResponseTimeout → xem docs troubleshooting (routing/BR).
 
 ### Frontend
 
@@ -110,25 +108,18 @@ npm run build         # backend then frontend
 SQLite (`better-sqlite3`, WAL mode). 6 migrations:
 - 001–004: legacy serial_config (da xoa bang boi migration 006)
 - `app_settings`: key-value (thread_run_on_connect)
-- `br_connection_config`: bang van ton tai (migration 005) nhung khong dung — ket noi OTBR chi qua D-Bus; BrConnectionConfigService da xoa
-- 006: DROP TABLE serial_config
+- `br_connection_config`: br_host, br_port, use_mdns (mac dinh 192.168.31.3:5000 — dung khi chay Docker; co the doi qua Settings)
+- 006: DROP TABLE serial_config (BR chi dung TCP, khong con Serial)
 
-## Supervisor (host daemon)
+## Docker (backend)
 
-- **Vi tri:** `supervisor/` — Python 3 stdlib only (khong pip). `server.py`: Unix socket `/var/run/izerocs/supervisor.sock` + thread watch device (neu set `DEVICE_PATH`).
-- **Socket:** Backend hoac supervisor (ai chay truoc) tao folder `/var/run/izerocs`; supervisor bind sock, nhan lenh `restart-otbr` / `health`, tra `ok` hoac `error: ...`. Xac thuc bang quyen file (khong token).
-- **Watch device:** Env `DEVICE_PATH` (vd. /dev/ttyACM0), `INTERVAL` (giay), `OTBR_CONTAINER_NAME`, `DOCKER`. Device mat → `docker restart`.
-- **Backend:** `backend/src/supervisor/socketClient.ts` — `restartOtbr()`, `requestSupervisor(cmd)`; env `SUPERVISOR_SOCK_DIR`. Backend khoi dong mkdir `/var/run/izerocs`. Backend Docker can volume `/var/run/izerocs:/var/run/izerocs`.
-- **Systemd:** `sudo bash ./supervisor/install-supervisor-service.sh [container] [device]` → unit `dashboard-thread-supervisor.service` (ExecStartPre IP forwarding). Doc: `supervisor/README.md`.
-
-## Docker (backend, OTBR)
-
-- **Backend:** Backend (host hoac Docker) ket noi OTBR qua REST (OTBR_REST_URL, mac dinh http://127.0.0.1:8081). OTBR can build OTBR_REST=ON, listen 0.0.0.0:8081.
-- **OTBR:** Service `otbr` — entrypoint doi RCP (by-id) roi exec /init; mount /dev, volume `otbr-data`. Rut RCP → supervisor (watch device) restart container. Doc: `otbr/README.md`.
+- **Vi tri:** `Dockerfile.backend`, `docker-compose.yml` o thu muc goc. Build: `docker compose up --build`.
+- **Cau hinh:** `network_mode: host` (reply CoAP ve Thread-Node dung **bang route cua host** — backend khong can doc/cau hinh route trong code). Volume chi `./backend/data:/app/data`. Container name: `dashboard-thread-backend`.
+- **Default BR:** 192.168.31.3:5000. **mDNS trong Docker khong dung duoc**; khi chay Docker phai dung IP. "Tim BR" sau co the lam bang quet dai IP (TCP 5000). Chi tiet: `backend/README.docker.md`.
 
 ## Configuration
 
-- **Backend**: `.env` — PORT. Ket noi OTBR qua REST: `OTBR_REST_URL` (mac dinh http://127.0.0.1:8081).
+- **Backend**: `.env` — PORT; BACKEND_IPV6 (tuy chon, cho SRP register; neu khong set thi tu lay IPv6 qua getPreferredBackendIPv6()). Cau hinh BR (brHost, brPort) luu SQLite qua Settings.
 - **Frontend**: `vite.config.ts` proxy `/api` + `/socket.io` → backend. Override WS URL bang `VITE_WS_URL`
 
 ## Styling Convention
@@ -143,7 +134,8 @@ SQLite (`better-sqlite3`, WAL mode). 6 migrations:
 ## Logging (pino)
 
 Backend dung pino voi child loggers:
-- `transportLogger` — OTBR/D-Bus events
+- `transportLogger` — transport/TCP events; khi gui SRP register: log "SRP register: IPv6=... hostname=... port=..."
+- `frameLogger` — frame TX/RX (TABLE commands bi filter khoi console)
 - `wsLogger` — WebSocket events
 - `coapLog` (CoapDeviceServer) — CoAP request, path, CBOR→JSON log, 2.01 response
 
@@ -156,4 +148,5 @@ Frontend dev server: `host: true` → lang nghe `0.0.0.0:5173`. Tu may khac: `ht
 ## Known Technical Constraints
 
 - React Strict Mode → double mount → double WS connection trong dev (expected, khong phai bug)
-- OtbrRestClient dung path REST theo OpenAPI ot-br-posix (/node/state, /node/dataset/active, /node/commissioner/joiner, /api/devices)
+- TCP socket KHONG duoc dong khi server shutdown — BR van chay
+- FrameID tu dong tang, wrap 0-0xFF; pending map giu Promise cho moi frameId

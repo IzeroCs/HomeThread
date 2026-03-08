@@ -69,6 +69,20 @@ if BR_ETH_W5500_ENABLE
         help
             Chân reset W5500. -1 = không nối RST (power-on reset). Mặc định 6 (tránh conflict RCP 7/8).
 
+    config BR_ETH_RST_HOLD_MS
+        int "W5500 RST hold time (ms)"
+        default 200
+        range 10 2000
+        help
+            Thời gian giữ RST ở mức low trước khi thả. Tăng nếu link/init không ổn định.
+
+    config BR_ETH_RST_RELEASE_MS
+        int "W5500 RST release delay (ms)"
+        default 100
+        range 10 1000
+        help
+            Thời gian đợi sau khi thả RST trước khi init SPI/driver.
+
     config BR_ETH_POLLING_MS
         int "W5500 polling period (ms, khi INT=-1)"
         default 20
@@ -76,10 +90,10 @@ if BR_ETH_W5500_ENABLE
             Chu kỳ poll khi không dùng interrupt; bỏ qua khi dùng INT.
 
     config BR_ETH_LINK_TIMEOUT_MS
-        int "Timeout chờ IP trên Ethernet (ms)"
-        default 15000
+        int "Timeout chờ IPv4 (DHCP) trên Ethernet (ms)"
+        default 25000
         help
-            Chờ có IPv4 (DHCP) hoặc IPv6 (link-local/RA). Cắm trực tiếp BR-backend link có thể lên ~4–5s, IPv6 event sau đó; nên >= 10s.
+            Chờ có IPv4 (DHCP). Backend cần IPv4 để kết nối BR. IPv6 link-local thường có trước nhưng không đủ; init chỉ thành công khi có DHCP. Nên >= 20s nếu router chậm.
 endif
 
 config BR_FRAME_TCP_PORT
@@ -93,8 +107,8 @@ config BR_FRAME_TCP_PORT
 # RCP: giao tiếp BR ↔ RCP chỉ qua SPI. UART dành sau cho flash/update RCP.
 #
 config BR_RCP_SPI_HOST
-    int "SPI host cho RCP (0=SPI1, 1=SPI2, 2=SPI3)"
-    range 0 2
+    int "SPI host cho RCP (1=SPI2, 2=SPI3)"
+    range 1 2
     default 1
     help
         Thường dùng SPI1 (1) nếu W5500 dùng SPI2 để tránh conflict.

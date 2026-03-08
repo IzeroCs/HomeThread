@@ -12,15 +12,9 @@ docker compose up --build
 - WebSocket/HTTP: http://localhost:3000
 - CoAP: UDP 5683 (Thread-Node gửi register/ping tới đây)
 
-## Kết nối OTBR khi chạy Docker
+## Kết nối BR khi chạy Docker
 
-Backend nói chuyện với OTBR qua **D-Bus**. Cần volume chung giữa backend và OTBR:
-
-- Trong `docker-compose.yml`: volume `otbr-dbus:/run/dbus` mount vào cả service **otbr** và **backend** (nếu chạy backend bằng container).
-- OTBR (otbr-agent) tạo socket D-Bus tại `/run/dbus/system_bus_socket` trong volume.
-- Backend container cần env: `DBUS_SYSTEM_BUS_ADDRESS=unix:path=/run/dbus/system_bus_socket`.
-
-Khi chạy backend **trên host** (không trong container): set `DBUS_SYSTEM_BUS_ADDRESS` trỏ tới socket D-Bus mà OTBR container expose (vd. bind mount host path vào volume otbr-dbus).
+**mDNS không dùng được trong container:** Dù dùng `network_mode: host` hay bind resolv/nsswitch, resolve `Thread-Host.local` trong container thường thất bại. **Khuyến nghị:** Cấu hình BR connection bằng **IP** (vd. `192.168.31.3:5000`) trong Settings. Migration mặc định 192.168.31.3:5000 khi dùng Docker. Tính năng "Tìm BR" (sau này) có thể làm bằng **quét dải IP** (TCP port 5000) thay vì mDNS, hoạt động ổn trong Docker.
 
 ## Reply từ backend → Thread-Node
 
