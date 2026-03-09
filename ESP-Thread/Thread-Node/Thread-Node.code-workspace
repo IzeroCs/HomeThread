@@ -7,9 +7,6 @@
     {
         "name": "light_on_off (build)",
         "path": "examples/light_on_off"
-    },
-    {
-        "path": "../../../../../esp/v5.5.3/esp-idf"
     }
 ],
   "settings": {
