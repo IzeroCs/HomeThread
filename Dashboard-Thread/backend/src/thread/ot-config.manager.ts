@@ -3,7 +3,7 @@
  * Cập nhật qua set() (thay thế) hoặc update() (merge partial); không tự broadcast.
  */
 
-import type { ParsedDataset } from "../communicate/frame";
+import type { ParsedDataset } from "@communicate/frame";
 
 export type OtConfig = ParsedDataset & {
   // Additional fields (không có trong ParsedDataset)

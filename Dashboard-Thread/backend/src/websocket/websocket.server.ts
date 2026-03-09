@@ -4,10 +4,10 @@
  */
 
 import { Server, Socket } from "socket.io";
-import type { BrConnectionConfigService, CommunicateManager } from "../communicate";
-import { AppSettingsService } from "../settings/app-settings.service";
-import { logger } from "../utils/logger.util";
-import { getBackendAddresses } from "../utils/ipv6.util";
+import type { BrConnectionConfigService, CommunicateManager } from "@communicate";
+import { AppSettingsService } from "@settings/app-settings.service";
+import { logger } from "@utils/logger.util";
+import { getBackendAddresses } from "@utils/ipv6.util";
 import { EVENTS } from "shared/src/events";
 import { validateBrConnectionConfig, validateOtSetConfig } from "shared/src/validation";
 

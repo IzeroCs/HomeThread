@@ -4,24 +4,24 @@
  * Có thể đăng ký onBroadcast để push event (serial:data, serial:status, ot:config, ...) ra ngoài.
  */
 
-import { BrConnectionConfigService } from "../settings/br-connection-config.service";
+import { BrConnectionConfigService } from "@settings/br-connection-config.service";
 import { TransportTcp } from "./transport-tcp.transport";
 import { CommandManager } from "./command.manager";
-import { OtConfigManager, type OtConfig } from "../thread/ot-config.manager";
-import { ThreadDataManager, type ThreadState, type TableData } from "../thread/thread-data.manager";
-import { PollingManager } from "../thread/polling.manager";
+import { OtConfigManager, type OtConfig } from "@thread/ot-config.manager";
+import { ThreadDataManager, type ThreadState, type TableData } from "@thread/thread-data.manager";
+import { PollingManager } from "@thread/polling.manager";
 import { FrameParser, type ParsedFrame } from "./frame";
-import { AppSettingsService } from "../settings/app-settings.service";
-import { transportLogger } from "../utils/logger.util";
-import { getPreferredBackendIPv6 } from "../utils/ipv6.util";
-import { DEVICE_ROLE, DEVICE_ROLE_NAMES } from "../thread/device-role";
-import type { DeviceRole } from "../thread/device-role";
+import { AppSettingsService } from "@settings/app-settings.service";
+import { transportLogger } from "@utils/logger.util";
+import { getPreferredBackendIPv6 } from "@utils/ipv6.util";
+import { DEVICE_ROLE, DEVICE_ROLE_NAMES } from "@thread/device-role";
+import type { DeviceRole } from "@thread/device-role";
 import { EVENTS, type EventName } from "shared/src/events";
 import type { ConnectionStatus } from "shared/src/types";
 import { parseRouterTable, parseChildTable, parseJoinerTable } from "./frame";
 
-export type { OtConfig } from "../thread/ot-config.manager";
-export type { ThreadState, TableData } from "../thread/thread-data.manager";
+export type { OtConfig } from "@thread/ot-config.manager";
+export type { ThreadState, TableData } from "@thread/thread-data.manager";
 export type { ConnectionStatus };
 
 const RECONNECT_INTERVAL_MS = 3000;

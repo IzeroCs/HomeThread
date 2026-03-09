@@ -3,7 +3,7 @@
  * Thay SerialConfigService; host/port có thể từ mDNS (Thread-Host.local, _thread-frame._tcp)
  */
 
-import { getDatabase } from "../database/database.db";
+import { getDatabase } from "@database/database.db";
 import type { BrConnectionConfig } from "shared/src/types";
 import { BR_CONNECTION } from "shared/src/constants";
 

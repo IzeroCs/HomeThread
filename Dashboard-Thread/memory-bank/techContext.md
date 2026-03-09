@@ -33,7 +33,8 @@ Dashboard-Thread/          # npm workspaces root
 |---|---|---|
 | Node.js | >=18 | Runtime |
 | TypeScript | ^5.7.2 | Language |
-| tsx | ^4.19.2 | Dev runner (watch mode) |
+| tsx | ^4.19.2 | Dev runner (watch mode); tự resolve path alias từ tsconfig |
+| tsc-alias | ^1.8.10 | Sau build: thay alias trong dist/ bằng relative path (Node chạy được) |
 | socket.io | ^4.7.5 | WebSocket server |
 | better-sqlite3 | ^11.7.0 | SQLite (WAL mode) |
 | pino | ^9.5.0 | Structured logging |
@@ -110,12 +111,17 @@ npm run install:all
 npm run dev
 
 # Individual
-npm run dev:backend   # tsx watch
+npm run dev:backend   # tsx watch src/index.ts — alias tự resolve
 npm run dev:frontend  # vite
 
 # Build
-npm run build         # backend then frontend
+npm run build         # backend: tsc && tsc-alias (alias → relative trong dist/), rồi frontend
 ```
+
+**Backend scripts (backend/package.json):**
+- `dev`: `tsx watch src/index.ts` — tsx tự đọc baseUrl/paths trong tsconfig, không cần tsconfig-paths.
+- `build`: `tsc && tsc-alias -p tsconfig.json` — tsc compile ra dist/ (giữ nguyên alias trong JS); tsc-alias thay alias bằng relative path để `node dist/index.js` chạy được.
+- `start`: `node dist/index.js`
 
 ## Database
 
@@ -136,12 +142,20 @@ SQLite (`better-sqlite3`, WAL mode). 6 migrations:
 - **Backend**: `.env` — PORT; BACKEND_IPV6 (tuy chon, cho SRP register; neu khong set thi tu lay IPv6 qua getPreferredBackendIPv6()). Cau hinh BR (brHost, brPort) luu SQLite qua Settings.
 - **Frontend**: `vite.config.ts` proxy `/api` + `/socket.io` → backend. Override WS URL bang `VITE_WS_URL`
 
-## Path Aliases (Frontend)
+## Path Aliases
+
+### Frontend
 
 - **tsconfig.json** `baseUrl` + `paths`: `@/*` → src, `@shared/*`, `@features/*`, `@nodes/*`, `@settings/*`, `@status/*`.
 - **vite.config.ts** `resolve.alias`: cùng mapping (resolve(__dirname, "src/...")).
 - **SCSS:** `css.preprocessorOptions.scss.loadPaths: [resolve(__dirname, "src")]` — trong .scss dùng `@use "shared/styles/variables"` hoặc `@use "shared/styles/form"` (đường dẫn từ `src/`).
 - Toàn bộ import TS/TSX dùng alias; không dùng relative `../../` qua nhiều cấp.
+
+### Backend
+
+- **tsconfig.json** `baseUrl: "."` + `paths`: `@utils/*`, `@cbor`, `@cbor/*`, `@database`, `@database/*`, `@communicate`, `@communicate/*`, `@coap/*`, `@settings/*`, `@thread/*`, `@websocket/*` → `src/...`.
+- **Dev:** tsx tự resolve alias (không cần tsconfig-paths).
+- **Build:** tsc giữ nguyên alias trong dist; `tsc-alias -p tsconfig.json` thay alias bằng relative path trong các file dist trước khi chạy `node dist/index.js`.
 
 ## Styling Convention
 

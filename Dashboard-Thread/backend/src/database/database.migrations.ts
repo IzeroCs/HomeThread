@@ -3,7 +3,7 @@
  */
 
 import { getDatabase } from "./database.db";
-import { logger } from "../utils/logger.util";
+import { logger } from "@utils/logger.util";
 
 const migrationLog = logger.child("Migration");
 

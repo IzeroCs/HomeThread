@@ -4,7 +4,7 @@
  */
 
 import * as net from "net";
-import { transportLogger } from "../utils/logger.util";
+import { transportLogger } from "@utils/logger.util";
 
 export interface TransportTcpConfig {
   host: string;
@@ -95,7 +95,7 @@ export class TransportTcp {
       this.isConnected = false;
       this.config = null;
 
-      if (sock.destroyed) {
+      if (!sock || sock.destroyed) {
         resolve();
         return;
       }

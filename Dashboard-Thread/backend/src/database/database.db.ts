@@ -5,7 +5,7 @@
 import Database from "better-sqlite3";
 import path from "path";
 import fs from "fs";
-import { logger } from "../utils/logger.util";
+import { logger } from "@utils/logger.util";
 
 const dbLog = logger.child("DB");
 

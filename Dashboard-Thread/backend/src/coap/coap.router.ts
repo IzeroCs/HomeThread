@@ -3,7 +3,7 @@
  */
 
 import type { Server } from "coap";
-import { logger } from "../utils/logger.util";
+import { logger } from "@utils/logger.util";
 import { getCoapRoutes } from "./coap.type";
 
 const coapLog = logger.child("CoAP");
@@ -24,7 +24,7 @@ export function registerCoapControllers(
 
   for (let i = 0; i < controllers.length; i++) {
     const Ctor = controllers[i];
-    const instance = instances[i];
+    const instance = instances[i] as object;
     const routes = getCoapRoutes(Ctor);
     for (const r of routes) {
       routeList.push({
@@ -55,7 +55,7 @@ export function registerCoapControllers(
       if (typeof handler !== "function") continue;
 
       try {
-        const result = handler.call(instance, req, res);
+        const result = handler.call(instance, req, res) as unknown;
         if (result instanceof Promise) {
           result.catch((err: unknown) => {
             res.statusCode = "5.00";

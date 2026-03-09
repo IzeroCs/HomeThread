@@ -1,10 +1,10 @@
 idf_component_register(
     SRCS
-        "thread_joiner.c"
-        "thread_node.c"
-        "thread_coap.c"
-        "thread_discovery.c"
-    INCLUDE_DIRS "include"
+        "core/thread_joiner.c"
+        "core/thread_node.c"
+        "core/thread_coap.c"
+        "core/thread_discovery.c"
+    INCLUDE_DIRS "core/include" "include"
     REQUIRES
         esp_event
         esp_netif

@@ -2,7 +2,7 @@
  * AppSettings Service - Cài đặt app lưu SQLite (vd: có tự chạy Thread khi serial connect không)
  */
 
-import { getDatabase } from "../database/database.db";
+import { getDatabase } from "@database/database.db";
 
 const KEY_THREAD_RUN_ON_CONNECT = "thread_run_on_connect";
 

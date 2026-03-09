@@ -115,6 +115,10 @@ CMD_STATE that bai **5 lan lien tiep** → dong transport + bat dau reconnect.
 - Socket URL: `window.location.origin` (LAN-friendly via Vite proxy)
 - **Path alias:** Import dung `@shared/*`, `@nodes/*`, `@settings/*`, `@status/*`, `@/` (tsconfig + Vite alias). SCSS: `loadPaths: [src]` → `@use "shared/styles/variables"` / `shared/styles/form`.
 
+### Backend path aliases
+
+- Backend dung **path alias** trong tsconfig (`baseUrl` + `paths`): `@utils/*`, `@cbor`, `@database`, `@communicate`, `@coap/*`, `@settings/*`, `@thread/*`, `@websocket/*` → `src/...`. Dev: **tsx** tu resolve; build: **tsc** compile roi **tsc-alias** thay alias bang relative path trong dist/.
+
 ### Event System
 
 **TUYET DOI KHONG dung string literal** trong socket emit/on:

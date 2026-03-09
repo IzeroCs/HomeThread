@@ -17,7 +17,7 @@
 #include "openthread/thread.h"
 #include "sdkconfig.h"
 /* Include OpenThread custom config để có OPENTHREAD_CONFIG_MLE_DEVICE_PROPERTY_LEADER_WEIGHT_ENABLE */
-#include "../../openthread_custom_config.h"
+#include "../../../openthread_custom_config.h"
 #if OPENTHREAD_FTD && OPENTHREAD_CONFIG_MLE_DEVICE_PROPERTY_LEADER_WEIGHT_ENABLE
 #include "openthread/thread_ftd.h"
 #endif

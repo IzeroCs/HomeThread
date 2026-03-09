@@ -4,8 +4,8 @@
 
 import type { CoapRequest, CoapResponse } from "./coap.type";
 import { CoapGet, CoapPost } from "./coap.decorator";
-import { cborDecode } from "../cbor";
-import { logger } from "../utils/logger.util";
+import { cborDecode } from "@cbor";
+import { logger } from "@utils/logger.util";
 import {
   asDeviceRegisterPayload,
   getPayloadField,

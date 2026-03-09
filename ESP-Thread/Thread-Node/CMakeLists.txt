@@ -5,7 +5,7 @@ cmake_minimum_required(VERSION 3.16)
 # Entity: model, serialization, coap_server (mỗi thư mục con là một component)
 set(EXTRA_COMPONENT_DIRS 
     "${CMAKE_CURRENT_SOURCE_DIR}/components/thread"
-    "${CMAKE_CURRENT_SOURCE_DIR}/components/thread/device"
+    "${CMAKE_CURRENT_SOURCE_DIR}/components/device"
     "${CMAKE_CURRENT_SOURCE_DIR}/components/thread/status_led"
     "${CMAKE_CURRENT_SOURCE_DIR}/components/thread/boot_btn"
     "${CMAKE_CURRENT_SOURCE_DIR}/components/entity/model"

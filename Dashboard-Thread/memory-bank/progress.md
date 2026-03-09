@@ -20,6 +20,7 @@ Version notation in this file uses Semantic Versioning `MAJOR.MINOR.PATCH` (no l
 | 1.5.0   | CoAP: CBOR decode **noi bo** (backend/src/cbor), bo dependency cbor2. GET /device/ping → 2.05 Content, payload 4 byte timestamp uint32 LE (gia tri luc khoi tao server; restart = timestamp moi). Thread-Node so sanh timestamp → neu doi goi lai register. Payload register: role la **so** (0=child, 1=router, 2=leader). Log structure: device_id, device_name, device_type, rloc16, role, entities. |
 | 1.6.0   | Docker backend: Dockerfile.backend + docker-compose o root (sau them frontend). network_mode: host, volume backend/data. Default BR 192.168.31.3:5000 (migration 005) — mDNS trong Docker khong dung duoc, phai dung IP. Doc backend/README.docker.md. |
 | 1.7.0   | **Cau truc & path alias:** Frontend feature-based: `src/features/nodes|settings|status`, `src/shared` (components, contexts, hooks, types, styles). Backend domain: `coap/`, `communicate/`, `settings/`, `thread/`, `websocket/`, `cbor/`, `database/`, `utils/`. File naming kebab-case (vd. `command.manager.ts`, `commission-node-modal.component.tsx`, `*.style.scss`). **Path alias frontend:** tsconfig + Vite alias `@/`, `@shared/`, `@nodes/`, `@settings/`, `@status/`; toan bo import TS/TSX/SCSS chuyen sang alias hoac `@use "shared/styles/..."` (SCSS loadPaths: src). **CoAP decorator:** CoAP server refactor — `coap/` module voi `DeviceCoapController`, decorator `@CoapGet`/`@CoapPost`, `registerCoapControllers(server, [DeviceCoapController])`, types va router trong coap/. |
+| 1.8.0   | **Backend path alias + build:** tsconfig backend them `baseUrl` va `paths` (`@utils/*`, `@cbor`, `@database`, `@communicate`, `@coap/*`, `@settings/*`, `@thread/*`, `@websocket/*`). Toan bo import backend doi sang alias. Dev: `tsx watch` tu resolve; build: `tsc && tsc-alias -p tsconfig.json` (tsc-alias thay alias trong dist bang relative path). Fix TS: `coap.router.ts` (instance as object, handler result as unknown); `transport-tcp.transport.ts` (sock null check). |
 
 
 ## What Works (Completed)
@@ -73,6 +74,10 @@ Version notation in this file uses Semantic Versioning `MAJOR.MINOR.PATCH` (no l
 
 - CoAP server (coap/coap-device.server.ts): listen UDP 5683 on [::] (udp6). **Decorator pattern:** registerCoapControllers(server, [DeviceCoapController]); DeviceCoapController dung @CoapGet("/device/ping"), @CoapPost("/device/register"), @CoapPost("/device/update"). **GET /device/ping**: tra 2.05 Content, payload 4 byte timestamp uint32 LE. **POST /device/register**, update: parse CBOR (backend/src/cbor), log JSON + structure; tra 2.01; khong emit len frontend.
 - System info: getBackendAddresses() (utils/ipv6.util); gui SYSTEM_INFO khi CONFIG_GET/CONFIG_CURRENT. Frontend Status section System (IPv4/IPv6).
+
+### Backend — Path aliases & build
+
+- Path alias trong tsconfig (baseUrl + paths): @utils/*, @cbor, @database, @communicate, @coap/*, @settings/*, @thread/*, @websocket/*. Dev: tsx watch tu resolve; build: tsc && tsc-alias -p tsconfig.json (alias trong dist duoc thay bang relative path).
 
 ### Frontend — Pages
 

@@ -74,7 +74,7 @@ Dashboard-Thread/
    - Frontend: `npm run dev:frontend`
 
 4. Build production:
-   - `npm run build` — build cả hai
+   - `npm run build` — build cả hai (backend: `tsc && tsc-alias` để thay path alias trong dist; frontend: Vite)
    - `npm run build:backend` / `npm run build:frontend` — build từng phần
 
 ## Truy cập từ LAN
@@ -95,6 +95,7 @@ Dashboard-Thread/
 
 - **Giao tiếp:** Frame protocol qua **TCP** tới BR (host:port, mặc định Thread-Host.local:5000). Cấu trúc frame: SOF, Frame ID, CMD, LEN, DATA, CRC8, EOF (xem `Documents/protocol/usb_cdc_frame_structure.md` ở thư mục gốc HomeThread).
 - **Kiến trúc:** `CommunicateManager` điều phối TransportTcp + frame; `CommandManager` gửi/nhận frame, quản lý pending theo Frame ID + timeout; `BrConnectionConfigService` lưu cấu hình BR; `PollingManager` poll table định kỳ. `WebSocketServer` chỉ relay event.
+- **Backend path alias:** tsconfig có `baseUrl` + `paths` (`@utils/*`, `@database`, `@communicate`, `@coap/*`, …). Dev dùng `tsx watch` (tự resolve alias); build: `tsc` rồi `tsc-alias` để thay alias trong dist bằng relative path.
 - **Khi kết nối BR:** Pull state định kỳ (CMD_STATE, 5s). Dataset active + IP chỉ fetch khi state thay đổi hoặc lần đầu. Thread version (CMD_THREAD_VERSION) fetch một lần sau lần đầu nhận ACK state. Nếu `thread_run_on_connect` bật và state = disabled → tự gửi CMD_THREAD_START.
 - **Polling tables:** Router/Child/Joiner table poll mỗi 6s (child delay 1.5s) — chỉ khi có frontend kết nối và state là leader/router/child.
 - **CMD hỗ trợ:**
