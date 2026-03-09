@@ -4,7 +4,7 @@
 
 import type { Server } from "coap";
 import { logger } from "@utils/logger.util";
-import { getCoapRoutes } from "./coap.type";
+import { getCoapRoutes, CoapStatus } from "./coap.type";
 
 const coapLog = logger.child("CoAP");
 
@@ -43,7 +43,7 @@ export function registerCoapControllers(
 
     if (!path.startsWith(DEVICE_PATH_PREFIX)) {
       coapLog.warn(`CoAP path not accepted: ${url} (expected /device/...)`);
-      res.statusCode = "4.04";
+      res.statusCode = CoapStatus.NOT_FOUND;
       res.end();
       return;
     }
@@ -58,20 +58,20 @@ export function registerCoapControllers(
         const result = handler.call(instance, req, res) as unknown;
         if (result instanceof Promise) {
           result.catch((err: unknown) => {
-            res.statusCode = "5.00";
+            res.statusCode = CoapStatus.SERVER_ERROR;
             res.end();
             console.error(`CoAP ${method} ${path} handler error:`, err);
           });
         }
       } catch (err) {
-        res.statusCode = "5.00";
+        res.statusCode = CoapStatus.SERVER_ERROR;
         res.end();
         console.error(`CoAP ${method} ${path} handler error:`, err);
       }
       return;
     }
 
-    res.statusCode = "4.04";
+    res.statusCode = CoapStatus.NOT_FOUND;
     res.end();
   });
 }

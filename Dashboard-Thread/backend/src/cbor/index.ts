@@ -3,3 +3,4 @@
  */
 
 export { cborDecode, CborDecodeError } from "./cbor.decoder";
+export { cborEncode } from "./cbor.encoder";

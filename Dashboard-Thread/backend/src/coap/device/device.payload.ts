@@ -52,6 +52,7 @@ export const ENTITY_KEYS = {
   COLOR_TEMP: 10,
   VALUE: 11,
   UNIT: 12,
+  RESTORE_MODE: 13,
 } as const;
 
 export interface DeviceRegisterNetwork {

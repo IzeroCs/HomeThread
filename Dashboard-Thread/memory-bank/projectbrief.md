@@ -17,7 +17,7 @@ Cung cấp giao diện web quản lý Thread network:
 
 ### In Scope
 - Backend Node.js: TCP client (BR host:port), frame protocol, WebSocket relay
-- Backend CoAP server (UDP 5683, IPv6): nhận dữ liệu từ Thread-Node qua path /device/ (register, update, ping), payload CBOR; parse CBOR → log JSON, trả 2.01; không emit lên frontend
+- Backend CoAP server (UDP 5683, IPv6): nhận dữ liệu từ Thread-Node qua path /device/ (ping, register/info, register/entity, update/info, update/entity, update/topology, update/state), payload CBOR; parse CBOR, lưu 6 bảng SQLite; có thể trả restore state CBOR; không emit lên frontend
 - Frontend React: Status (BR, OpenThread, System IPv4/IPv6), Nodes (Router/Child/Joiner List + Commission Node modal), Settings
 - Backend SRP register: CMD_SRP_REGISTER (0x44) qua frame khi BR là leader; IPv6 từ env hoặc auto-detect
 - Shared package: types, events, validation, constants (EVENTS: SRP_REGISTER, SYSTEM_INFO, …)
@@ -32,7 +32,7 @@ Cung cấp giao diện web quản lý Thread network:
 ## Target Device
 
 - **OpenThread Border Router** (vd. ESP32-H2 hoặc thiết bị chạy BR firmware), giao tiếp qua **TCP** (frame protocol), listen port 5000.
-- **Thread-Node** (child/endpoint): gửi dữ liệu lên backend qua **CoAP** (UDP 5683), payload **CBOR**. BR chỉ route IP. Hướng dẫn tích hợp: [docs/coap/thread_node_coap.md](../docs/coap/thread_node_coap.md).
+- **Thread-Node** (child/endpoint): gửi dữ liệu lên backend qua **CoAP** (UDP 5683), path /device/ping, register/info, register/entity, update/info, update/entity, update/topology, update/state, payload **CBOR**. BR chỉ route IP. Hướng dẫn tích hợp: [docs/coap/thread_node_coap.md](../docs/coap/thread_node_coap.md).
 
 ## Key Constraints
 

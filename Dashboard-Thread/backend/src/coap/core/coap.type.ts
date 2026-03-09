@@ -1,11 +1,22 @@
 /**
- * CoAP request/response types for decorator-based handlers.
+ * CoAP request/response types and status constants for decorator-based handlers.
  */
 
 import type { IncomingMessage, OutgoingMessage } from "coap";
 
 export type CoapRequest = IncomingMessage;
 export type CoapResponse = OutgoingMessage;
+
+/** CoAP response status (RFC 7252). */
+export const CoapStatus = {
+  CREATED: "2.01",
+  CHANGED: "2.04",
+  CONTENT: "2.05",
+  NOT_FOUND: "4.04",
+  SERVER_ERROR: "5.00",
+} as const;
+
+export type CoapStatusValue = (typeof CoapStatus)[keyof typeof CoapStatus];
 
 export type CoapHandler = (
   req: CoapRequest,

@@ -7,7 +7,7 @@ Dashboard-Thread/          # npm workspaces root
 ├── package.json           # Root: scripts + workspaces config
 ├── backend/               # Node.js + TypeScript server
 │   └── src/
-│       ├── coap/          # CoAP server (decorator router), DeviceCoapController, device-register payload
+│       ├── coap/          # CoAP server (decorator), CoapStatus, coap.response (sendCoapResponse), DeviceCoapController, device-coap.service, device-register payload
 │       ├── communicate/   # TransportTcp, CommandManager, CommunicateManager, frame (parser/builder/constants)
 │       ├── settings/      # BrConnectionConfigService, AppSettingsService
 │       ├── thread/        # OtConfigManager, PollingManager, device-role, thread-data
@@ -40,7 +40,7 @@ Dashboard-Thread/          # npm workspaces root
 | pino | ^9.5.0 | Structured logging |
 | pino-pretty | latest | Pretty console output |
 
-Transport: TCP (net.Socket) to BR; CoAP (UDP 5683, udp6 listen [::]) from Thread-Node. Dependencies: `coap`. CBOR decode bang **thu vien noi bo** `backend/src/cbor`. Thread-Node la **CoAP client**: GET /device/ping (timestamp), POST /device/register (keys 0–8), POST /device/entities (key 0 + key 9). Backend luu device_info, device_entity; tra 2.01/2.04 va **echo token** (RFC 7252). Response phai routable toi node (host route toi prefix Thread qua BR; BR forward). ResponseTimeout → docs troubleshooting (routing/BR).
+Transport: TCP (net.Socket) to BR; CoAP (UDP 5683, udp6 listen [::]) from Thread-Node. Dependencies: `coap`. CBOR decode/encode noi bo (`backend/src/cbor`). Thread-Node la **CoAP client**: GET /device/ping; POST /device/register/info (keys 0–8, mac 7), /device/register/entity (mac + key 9), /device/update/info|entity|topology|state. Backend luu 6 bang (device_info, device_topology, device_entity, device_entity_state + history); tra qua **sendCoapResponse** (CoapStatus, echo token). Response phai routable toi node. ResponseTimeout → docs troubleshooting (routing/BR).
 
 ### Frontend
 
@@ -130,8 +130,9 @@ SQLite (`better-sqlite3`, WAL mode). Migrations:
 - `app_settings`: key-value (thread_run_on_connect)
 - `br_connection_config`: br_host, br_port, use_mdns (mac dinh 192.168.31.3:5000 — dung khi chay Docker; co the doi qua Settings)
 - 006: DROP TABLE serial_config (BR chi dung TCP, khong con Serial)
-- 007: **device_info** (device tu POST /device/register, keys 0–8), **device_entity** (entity tu POST /device/entities, merge theo device_id + entity_id)
+- 007: device_info, device_entity (legacy register/entities)
 - 008: doi ten coap_device → device_info, coap_entity → device_entity neu da chay 007 voi ten cu
+- 009: **schema 6 bang**: device_info (mac_address TEXT UNIQUE, device_slug), device_topology, device_topology_history, device_entity (restore_mode, deleted_at), device_entity_state, device_entity_state_history
 
 ## Docker (backend)
 

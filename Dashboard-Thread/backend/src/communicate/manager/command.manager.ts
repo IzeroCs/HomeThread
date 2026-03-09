@@ -6,7 +6,7 @@
 import { buildFrame, CMD, type ParsedFrame } from "./frame";
 import { CMD_NAMES } from "./frame/frame.constants";
 import { transportLogger, frameLogger } from "@utils/logger.util";
-import { DEVICE_ROLE } from "@thread/device-role";
+import { DEVICE_ROLE } from "@thread/thread-role";
 import { bytes16ToIPv6String, ipv6StringToBytes } from "@utils/ipv6.util";
 import { parseDatasetActive, type ParsedDataset } from "./frame";
 import { EVENTS, type EventName } from "shared/src/events";

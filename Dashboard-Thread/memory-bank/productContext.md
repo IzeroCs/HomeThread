@@ -51,4 +51,4 @@ Console đã bỏ. Commissioner gộp vào Nodes (modal Commission Node + Joiner
 
 ## Thread-Node gửi dữ liệu
 
-Thiết bị **Thread-Node** (router/child/endpoint) gửi dữ liệu **trực tiếp tới backend** qua IP: **CoAP** (UDP 5683, IPv6), path **/device/register**, **/device/update**, **/device/ping**, payload **CBOR**. BR chỉ route IP. Backend parse CBOR, log JSON ra console, trả CoAP 2.01; không gửi lên frontend. Hướng dẫn: [docs/coap/thread_node_coap.md](../docs/coap/thread_node_coap.md).
+Thiết bị **Thread-Node** (router/child/endpoint) gửi dữ liệu **trực tiếp tới backend** qua IP: **CoAP** (UDP 5683, IPv6), path **/device/** (ping, register/info, register/entity, update/info, update/entity, update/topology, update/state), payload **CBOR**. BR chỉ route IP. Backend parse CBOR, lưu device/entity/topology/state vào SQLite (6 bảng); có thể trả **restore state** CBOR trong response register/entity; không gửi lên frontend. Hướng dẫn: [docs/coap/thread_node_coap.md](../docs/coap/thread_node_coap.md).
