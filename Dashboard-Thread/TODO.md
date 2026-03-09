@@ -6,8 +6,9 @@ Phần đã triển khai được mô tả trong [README.md](./README.md). Dư�
 
 ## Frame protocol & kiến trúc
 
-- [x] **Child data**: Đã triển khai — Thread-Node gửi trực tiếp tới backend qua **CoAP** (UDP 5683), payload **CBOR**. Backend parse, emit subset. Xem [docs/coap/thread_node_coap.md](./docs/coap/thread_node_coap.md).
+- [x] **Child data**: Đã triển khai — Thread-Node gửi trực tiếp tới backend qua **CoAP** (UDP 5683), payload **CBOR**. Backend parse, log JSON; không emit lên frontend. Xem [docs/coap/thread_node_coap.md](./docs/coap/thread_node_coap.md).
 - [x] **SRP register**: Backend gửi CMD_SRP_REGISTER (0x44) qua frame khi BR là leader; Thread-Node có thể discovery `_dashboard._udp`. Status section **System** (IPv4/IPv6 backend). Backend log IPv6/hostname/port khi gửi (transportLogger).
+- [x] **Cấu trúc & path alias**: Frontend feature-based (`src/features/nodes|settings|status`, `src/shared`); backend domain (`coap/`, `communicate/`, `settings/`, `thread/`, `websocket/`). Path alias frontend: `@/`, `@shared/`, `@nodes/`, `@settings/`, `@status/` (tsconfig + Vite). CoAP server refactor decorator (DeviceCoapController, @CoapGet/@CoapPost).
 
 ---
 

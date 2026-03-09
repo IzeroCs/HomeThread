@@ -19,6 +19,7 @@ Version notation in this file uses Semantic Versioning `MAJOR.MINOR.PATCH` (no l
 | 1.4.0   | CoAP device: Doi ten CoapChildDataServer → CoapDeviceServer; path chi /device/ (register, update, ping). Bo EVENTS.CHILD_DATA, ChildDataPayload; backend khong emit len frontend. CoAP server udp6 listen [::]:5683 (nhan IPv6 Thread-Node). Parse CBOR (cbor2), log "CoAP CBOR -> JSON: ...". Migration 006: DROP TABLE serial_config. |
 | 1.5.0   | CoAP: CBOR decode **noi bo** (backend/src/cbor), bo dependency cbor2. GET /device/ping → 2.05 Content, payload 4 byte timestamp uint32 LE (gia tri luc khoi tao server; restart = timestamp moi). Thread-Node so sanh timestamp → neu doi goi lai register. Payload register: role la **so** (0=child, 1=router, 2=leader). Log structure: device_id, device_name, device_type, rloc16, role, entities. |
 | 1.6.0   | Docker backend: Dockerfile.backend + docker-compose o root (sau them frontend). network_mode: host, volume backend/data. Default BR 192.168.31.3:5000 (migration 005) — mDNS trong Docker khong dung duoc, phai dung IP. Doc backend/README.docker.md. |
+| 1.7.0   | **Cau truc & path alias:** Frontend feature-based: `src/features/nodes|settings|status`, `src/shared` (components, contexts, hooks, types, styles). Backend domain: `coap/`, `communicate/`, `settings/`, `thread/`, `websocket/`, `cbor/`, `database/`, `utils/`. File naming kebab-case (vd. `command.manager.ts`, `commission-node-modal.component.tsx`, `*.style.scss`). **Path alias frontend:** tsconfig + Vite alias `@/`, `@shared/`, `@nodes/`, `@settings/`, `@status/`; toan bo import TS/TSX/SCSS chuyen sang alias hoac `@use "shared/styles/..."` (SCSS loadPaths: src). **CoAP decorator:** CoAP server refactor — `coap/` module voi `DeviceCoapController`, decorator `@CoapGet`/`@CoapPost`, `registerCoapControllers(server, [DeviceCoapController])`, types va router trong coap/. |
 
 
 ## What Works (Completed)
@@ -70,8 +71,8 @@ Version notation in this file uses Semantic Versioning `MAJOR.MINOR.PATCH` (no l
 
 ### Backend — CoAP device & System
 
-- CoapDeviceServer: listen UDP 5683 on [::] (udp6). **GET /device/ping**: tra 2.05 Content, payload 4 byte timestamp uint32 LE (gia tri luc khoi tao server; backend restart = timestamp moi; node so sanh va gui lai register). **POST /device/register**, update: parse CBOR bang thu vien noi bo (backend/src/cbor), log "CoAP CBOR -> JSON" + structure (device_id, rloc16, role, entities); role la so 0=child 1=router 2=leader; tra 2.01; khong emit len frontend.
-- System info: getBackendAddresses() (utils/ipv6); gui SYSTEM_INFO khi CONFIG_GET/CONFIG_CURRENT. Frontend Status section System (IPv4/IPv6).
+- CoAP server (coap/coap-device.server.ts): listen UDP 5683 on [::] (udp6). **Decorator pattern:** registerCoapControllers(server, [DeviceCoapController]); DeviceCoapController dung @CoapGet("/device/ping"), @CoapPost("/device/register"), @CoapPost("/device/update"). **GET /device/ping**: tra 2.05 Content, payload 4 byte timestamp uint32 LE. **POST /device/register**, update: parse CBOR (backend/src/cbor), log JSON + structure; tra 2.01; khong emit len frontend.
+- System info: getBackendAddresses() (utils/ipv6.util); gui SYSTEM_INFO khi CONFIG_GET/CONFIG_CURRENT. Frontend Status section System (IPv4/IPv6).
 
 ### Frontend — Pages
 
@@ -83,11 +84,15 @@ Version notation in this file uses Semantic Versioning `MAJOR.MINOR.PATCH` (no l
 
 Console da bo. Commissioner gop vao Nodes (modal + Joiner List).
 
+### Frontend — Structure & path alias
+
+- Cau truc: `src/features/nodes|settings|status` (page + components), `src/shared` (components, contexts, hooks, types, styles). Import dung alias: `@/`, `@shared/`, `@nodes/`, `@settings/`, `@status/` (tsconfig paths + Vite resolve.alias). SCSS: loadPaths [src] → `@use "shared/styles/variables"` / `shared/styles/form`.
+
 ### Frontend — Common Components
 
-- Toast: dark theme, thanh doc trai theo type, title (Thanh cong/Loi/Canh bao/Tro giup), message muted, nut dong; slide-in phai, fade-out exit
-- Modal / ConfirmModal: dark navy (overlay blur, card-dark, border brand-border; Cancel ghost, Confirm danger/warning voi hover glow); ConfirmModal countdown 5s
-- Sidebar: brand "OpenThread", nav Status / Nodes / Settings (icon `speed` / `account_tree` / `settings`); Settings dropdown sub-items voi icon `lan` (BR Connection), `device_hub` (OpenThread), `warning` (System); status dot mau theo thread state + BR connection
+- Toast: dark theme (shared/components/toast-container); thanh doc trai theo type, title (Thanh cong/Loi/Canh bao/Tro giup), message muted, nut dong; slide-in phai, fade-out exit
+- Modal / ConfirmModal (shared/components/modal, confirm-modal): dark navy (overlay blur, card-dark, border brand-border; Cancel ghost, Confirm danger/warning voi hover glow); ConfirmModal countdown 5s
+- Sidebar (shared/components/sidebar): brand "OpenThread", nav Status / Nodes / Settings (icon `speed` / `account_tree` / `settings`); Settings dropdown sub-items voi icon `lan` (BR Connection), `device_hub` (OpenThread), `warning` (System); status dot mau theo thread state + BR connection
 - Toggle switch custom
 
 ### Documentation

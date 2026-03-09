@@ -19,7 +19,7 @@ Backend + Frontend điều khiển **OpenThread Border Router** qua **TCP** (fra
   - *OpenThread*: PAN ID, Channel, Network Name, Extended PAN ID, Network Key; toggle khởi động/dừng Thread; nút "Lấy lại" fetch config từ thiết bị.
   - *System*: Hai action cards (Khởi động lại, Factory Reset) với image panel và nút Reset/Factory Reset; divider "Vùng nguy hiểm"; modal xác nhận + đếm ngược 5 giây.
 
-Giao diện: **dark navy** theme, SCSS only (không Tailwind). Sidebar trái brand **OpenThread** với chấm trạng thái BR/Thread. Nav: Status, Nodes, Settings (icon `speed`, `account_tree`, `settings`); dropdown Settings có 3 mục con với icon: BR Connection `lan`, OpenThread `device_hub`, System `warning`. Toast: dark card, thanh dọc trái màu theo type. **Modal / ConfirmModal**: dark navy (overlay blur, nền card-dark, nút Cancel ghost, Confirm danger/warning với hover glow). Component dùng chung: **Modal**, **ConfirmModal**, **Sidebar**, **ToastContainer** trong `frontend/src/components/common/`.
+Giao diện: **dark navy** theme, SCSS only (không Tailwind). Sidebar trái brand **OpenThread** với chấm trạng thái BR/Thread. Nav: Status, Nodes, Settings (icon `speed`, `account_tree`, `settings`); dropdown Settings có 3 mục con với icon: BR Connection `lan`, OpenThread `device_hub`, System `warning`. Toast: dark card, thanh dọc trái màu theo type. **Modal / ConfirmModal**: dark navy (overlay blur, nền card-dark, nút Cancel ghost, Confirm danger/warning với hover glow). Component dùng chung: **Modal**, **ConfirmModal**, **Sidebar**, **ToastContainer** trong `frontend/src/shared/components/`. Frontend dùng **path alias** (`@/`, `@shared/`, `@nodes/`, `@settings/`, `@status/`) — cấu hình trong `tsconfig.json` và `vite.config.ts`.
 
 **Sidebar status dot màu sắc**: Chấm trạng thái trên Sidebar đổi màu theo thread state:
 - 🟢 **Xanh lá** — leader
@@ -33,21 +33,24 @@ Giao diện: **dark navy** theme, SCSS only (không Tailwind). Sidebar trái bra
 ```
 Dashboard-Thread/
 ├── package.json          # Root: workspaces, scripts chạy cả BE + FE
-├── backend/              # Node.js + TypeScript (WebSocket, TCP frame protocol)
-│   ├── src/
-│   │   ├── server/       # WebSocketServer, CoapDeviceServer (UDP 5683, Thread-Node CoAP+CBOR)
-│   │   ├── communicate/ # TransportTcp, BrConnectionConfigService, frame (parser/builder/crc8), CommandManager (incl. sendSrpRegister), CommunicateManager, OtConfigManager, PollingManager
-│   │   ├── database/     # SQLite (Database, migrations)
-│   │   ├── services/     # AppSettings
-│   │   └── utils/        # logger, ipv6 (getPreferredBackendIPv6, getBackendAddresses)
-│   └── package.json
+├── backend/               # Node.js + TypeScript (WebSocket, TCP frame protocol)
+│   └── src/
+│       ├── coap/         # CoAP server (decorator router), DeviceCoapController, path /device/
+│       ├── communicate/  # TransportTcp, CommandManager, CommunicateManager, frame (parser/builder/constants)
+│       ├── settings/     # BrConnectionConfigService, AppSettingsService
+│       ├── thread/       # OtConfigManager, PollingManager, device-role
+│       ├── websocket/     # WebSocketServer
+│       ├── database/     # SQLite, migrations
+│       ├── cbor/         # CBOR decode nội bộ
+│       └── utils/        # logger, ipv6 (getPreferredBackendIPv6, getBackendAddresses)
 ├── frontend/
-│   ├── src/
-│   │   ├── components/   # Status, Nodes (Router/Child/JoinerList, CommissionNodeModal), Settings
-│   │   │   └── common/   # Modal, ConfirmModal, Sidebar, ToastContainer
-│   │   └── hooks/        # useWebSocket, useWebSocketContext
-│   └── package.json
-├── docs/                 # coap/thread_node_coap.md (hướng dẫn Thread-Node gửi dữ liệu CoAP+CBOR)
+│   └── src/
+│       ├── features/     # nodes, settings, status (page + components)
+│       ├── shared/       # components (Modal, ConfirmModal, Sidebar, ToastContainer), contexts, hooks, types, styles
+│       ├── app.component.tsx
+│       └── main.tsx
+├── shared/                # Package TypeScript chung (types, events, constants, validation)
+├── docs/                  # coap/thread_node_coap.md (hướng dẫn Thread-Node CoAP+CBOR)
 ├── TODO.md
 └── README.md
 ```

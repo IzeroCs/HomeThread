@@ -8,4 +8,4 @@ export {
   type LogAdapter,
   type Logger,
   type LogLevel,
-} from "./logger";
+} from "./logger.util";

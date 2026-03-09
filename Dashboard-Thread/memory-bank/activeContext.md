@@ -2,9 +2,16 @@
 
 ## Current Work Focus
 
-Project da on dinh voi BR qua TCP, trang Nodes (Router/Child/Joiner List), Toast dark theme, stable React keys. UI dark navy: Modal/ConfirmModal, System action cards, Sidebar settings icons. **SRP register**: Backend gui CMD_SRP_REGISTER (0x44) qua frame khi BR la leader; **Status**: section **System** (IPv4/IPv6 backend), da bo section "Child data (CoAP)". **Docker:** Backend chay duoc bang Docker (network host, bind DB, default BR IP 192.168.31.3). Tiep theo: bao tri, optional mDNS, security neu can.
+Project da on dinh voi BR qua TCP, trang Nodes (Router/Child/Joiner List), Toast dark theme, stable React keys. UI dark navy: Modal/ConfirmModal, System action cards, Sidebar settings icons. **SRP register**: Backend gui CMD_SRP_REGISTER (0x44) qua frame khi BR la leader; **Status**: section **System** (IPv4/IPv6 backend). **Cau truc:** Frontend feature-based (`src/features/nodes|settings|status`, `src/shared`), backend domain-based (`coap/`, `communicate/`, `settings/`, `thread/`, `websocket/`); **path alias** frontend (`@/`, `@shared/`, `@nodes/`, `@settings/`, `@status/`); CoAP server refactor decorator (`DeviceCoapController`, `@CoapGet`/`@CoapPost`, `registerCoapControllers`). **Docker:** Backend chay duoc bang Docker (network host, default BR 192.168.31.3). Tiep theo: bao tri, optional mDNS, security neu can.
 
 ## Recent Significant Changes
+
+### Path aliases & frontend structure
+- **Frontend:** Toan bo import dung **path alias**: `@/` (src), `@shared/`, `@features/`, `@nodes/`, `@settings/`, `@status/` (tsconfig.json `paths` + vite.config.ts `resolve.alias`). SCSS: `css.preprocessorOptions.scss.loadPaths: [resolve(__dirname, "src")]` — trong file .scss dung `@use "shared/styles/variables"` / `@use "shared/styles/form"` (duong dan tu `src/`).
+- **Cau truc frontend:** `src/features/nodes`, `src/features/settings`, `src/features/status`; `src/shared/components`, `src/shared/contexts`, `src/shared/hooks`, `src/shared/types`, `src/shared/styles`. Component/file dat ten kebab-case (vd. `commission-node-modal.component.tsx`, `*.style.scss`).
+
+### CoAP server — decorator pattern
+- **Backend coap/** (domain): `coap-device.server.ts` goi `registerCoapControllers(server, [DeviceCoapController])`. Controller dung decorator `@CoapGet("/device/ping")`, `@CoapPost("/device/register")`, `@CoapPost("/device/update")`. Metadata route luu tren constructor qua `coap.type.ts` (getCoapRoutes, appendCoapRoute); `coap.router.ts` doc routes, dispatch request → handler. File: `coap.type.ts`, `coap.decorator.ts`, `coap.router.ts`, `device-coap.controller.ts`, `device-register.payload.ts`.
 
 ### SRP register (frame CMD 0x44) + System section
 - **Backend:** Khi BR chuyen sang **leader** (poll CMD_STATE), tu dong gui **CMD_SRP_REGISTER** (0x44) qua frame: DATA = hostname_len(1) + hostname(N) + backend_ipv6(16) + port(2 BE). IPv6 lay tu `BACKEND_IPV6` env hoac `getPreferredBackendIPv6()` (utils/ipv6). CommunicateManager.pullState() → stateChangedOrFirst && roleByte === LEADER → srpRegister(). **Log khi gui:** `transportLogger.info("SRP register: IPv6=... hostname=... port=...")` truoc khi goi srpRegister() de hien thi backend IPv6 dang dung. WebSocket handler `srp:register` / `srp:register:result` cho trigger thu cong.
@@ -83,17 +90,18 @@ ROUTER_TABLE, CHILD_TABLE, JOINER_TABLE TX va ACK bi filter ra khoi console log 
 
 ## Files to Watch
 
-- `backend/src/server/CoapDeviceServer.ts` — CoAP device (path /device/); GET ping → 2.05 + 4-byte timestamp; POST → CBOR decode (backend/src/cbor), log JSON, tra 2.01
-- `backend/src/utils/ipv6.ts` — getPreferredBackendIPv6(), getBackendAddresses()
+- `backend/src/coap/coap-device.server.ts` — CoAP server entry; registerCoapControllers, DeviceCoapController
+- `backend/src/coap/device-coap.controller.ts` — GET /device/ping, POST /device/register, update; CBOR decode (backend/src/cbor), log JSON, tra 2.01/2.05
+- `backend/src/utils/ipv6.util.ts` — getPreferredBackendIPv6(), getBackendAddresses()
 - `docs/coap/thread_node_coap.md`, `docs/architecture/real_br_integration.md` — Thread-Node, SRP discovery
-- `backend/src/communicate/CommunicateManager.ts` — pullState(), SRP register khi leader
-- `backend/src/communicate/CommandManager.ts` — frame handling, sendSrpRegister, sendState (no fake payload)
-- `frontend/src/components/Nodes/Nodes.tsx` — Router/Child table, JoinerList, CommissionNodeModal
-- `frontend/src/components/Nodes/JoinerList.tsx` — joiner cards, countdown (snapshot + now)
-- `frontend/src/components/common/ToastContainer.tsx` + `ToastContainer.scss` — toast dark
-- `frontend/src/components/common/Modal.scss`, `ConfirmModal.scss` — dark navy theme
-- `frontend/src/components/common/Sidebar.tsx` + `Sidebar.scss` — nav, Settings sub-items icons
-- `frontend/src/components/Settings/SystemTab.tsx` + `SystemTab.scss` — action cards, danger divider
-- `frontend/src/components/Settings/OpenThreadConfigForm.scss` — ot-card, footer layout
+- `backend/src/communicate/communicate.manager.ts` — pullState(), SRP register khi leader
+- `backend/src/communicate/command.manager.ts` — frame handling, sendSrpRegister, replyAck (IP_ADDR)
+- `frontend/src/features/nodes/nodes.component.tsx` — Router/Child table, JoinerList, CommissionNodeModal
+- `frontend/src/features/nodes/components/joiner-list/joiner-list.component.tsx` — joiner cards, countdown
+- `frontend/src/shared/components/toast-container/` — toast dark
+- `frontend/src/shared/components/modal/`, `confirm-modal/` — dark navy theme
+- `frontend/src/shared/components/sidebar/` — nav, Settings sub-items icons
+- `frontend/src/features/settings/components/system-tab/` — action cards, danger divider
+- `frontend/src/features/settings/components/openthread-config-form/` — ot-card, footer layout
 - `shared/src/events.ts`, `shared/src/types.ts` — thêm field/event cập nhật cả hai
 - `memory-bank/progress.md` — cập nhật khi hoàn thành task

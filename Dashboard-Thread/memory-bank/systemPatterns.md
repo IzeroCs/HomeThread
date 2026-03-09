@@ -5,24 +5,24 @@
 ```
 BR (Thread-Host)   listen TCP port 5000
     ↓ TCP (binary frame protocol)
-TransportTcp       (backend/src/communicate/TransportTcp.ts)
+TransportTcp       (backend/src/communicate/transport-tcp.transport.ts)
     ↓ raw bytes stream
-FrameParser        (backend/src/communicate/frame/frameParser.ts)
+FrameParser        (backend/src/communicate/frame/frame.parser.ts)
     ↓ parsed Frame { frameId, cmd, data }
-CommandManager     (backend/src/communicate/CommandManager.ts)
+CommandManager     (backend/src/communicate/command.manager.ts)
     ↓ ACK/NACK resolved via pending map (frameId → Promise)
-CommunicateManager (backend/src/communicate/CommunicateManager.ts)
+CommunicateManager (backend/src/communicate/communicate.manager.ts)
     ↓ OtConfigManager.update() + onBroadcast(event, data)
-WebSocketServer    (backend/src/server/WebSocketServer.ts)
+WebSocketServer    (backend/src/websocket/websocket.server.ts)
     ↓ io.emit(EVENTS.xxx, payload)
-useWebSocket hook  (frontend/src/hooks/useWebSocket.ts)
+useWebSocket hook  (frontend/src/shared/hooks/use-websocket.hook.ts)
     ↓ React state update
-UI Components      (frontend/src/components/)
+UI Components      (frontend/src/features/*, frontend/src/shared/components/)
 
 Thread-Node  -- CoAP UDP 5683 (IPv6 [::]), path /device/
     ↓ GET /device/ping → 2.05 + 4-byte timestamp (server start); POST /device/register, update → CBOR payload
-CoapDeviceServer (backend/src/server/CoapDeviceServer.ts)
-    ↓ GET ping: tra timestamp (uint32 LE). POST: parse CBOR (backend/src/cbor), log JSON + structure, tra 2.01. Khong emit len frontend.
+CoAP server        (backend/src/coap/coap-device.server.ts) + DeviceCoapController (decorator @CoapGet/@CoapPost)
+    ↓ registerCoapControllers(server, [DeviceCoapController]); GET ping: tra timestamp (uint32 LE). POST: parse CBOR (backend/src/cbor), log JSON + structure, tra 2.01. Khong emit len frontend.
 
 Backend (os.networkInterfaces) → getBackendAddresses() → io.emit(SYSTEM_INFO) khi CONFIG_CURRENT
     ↓
@@ -44,15 +44,15 @@ Backend (khi BR = leader) → log "SRP register: IPv6=... hostname=... port=..."
 
 | Module | File | Vai tro — TUYET DOI KHONG vi pham |
 |---|---|---|
-| `WebSocketServer` | `backend/src/server/WebSocketServer.ts` | CHI relay socket events ↔ CommunicateManager. KHONG chua business logic hay transport logic |
-| `CommunicateManager` | `backend/src/communicate/CommunicateManager.ts` | Owner cua toan bo transport + frame. Dieu phoi TransportTcp, polling, broadcast |
-| `TransportTcp` | `backend/src/communicate/TransportTcp.ts` | TCP client: open(host, port), writeRaw, onRawData, setOnDisconnect |
-| `BrConnectionConfigService` | `backend/src/communicate/BrConnectionConfigService.ts` | SQLite CRUD cho cau hinh BR (brHost, brPort, useMdns) |
-| `CommandManager` | `backend/src/communicate/CommandManager.ts` | Frame TX/RX. Pending map (frameId → resolve/reject). ACK/NACK routing. Timeout |
-| `OtConfigManager` | `backend/src/communicate/OtConfigManager.ts` | In-memory store. `.update(partial)` de merge, `.get()` de doc, `.clear()` khi disconnect |
-| `PollingManager` | `backend/src/communicate/PollingManager.ts` | Poll table 6s (child +1.5s delay). CHI khi frontend connected + state = leader/router/child |
-| `AppSettingsService` | `backend/src/services/AppSettingsService.ts` | SQLite key-value cho app settings (thread_run_on_connect) |
-| `CoapDeviceServer` | `backend/src/server/CoapDeviceServer.ts` | CoAP server UDP 5683 (udp6, listen [::]). GET /device/ping → 2.05, payload 4-byte timestamp (server start). POST /device/register, update → decode CBOR (backend/src/cbor), log JSON + structure; tra 2.01; khong emit qua io |
+| `WebSocketServer` | `backend/src/websocket/websocket.server.ts` | CHI relay socket events ↔ CommunicateManager. KHONG chua business logic hay transport logic |
+| `CommunicateManager` | `backend/src/communicate/communicate.manager.ts` | Owner cua toan bo transport + frame. Dieu phoi TransportTcp, polling, broadcast |
+| `TransportTcp` | `backend/src/communicate/transport-tcp.transport.ts` | TCP client: open(host, port), writeRaw, onRawData, setOnDisconnect |
+| `BrConnectionConfigService` | `backend/src/settings/br-connection-config.service.ts` | SQLite CRUD cho cau hinh BR (brHost, brPort, useMdns) |
+| `CommandManager` | `backend/src/communicate/command.manager.ts` | Frame TX/RX. Pending map (frameId → resolve/reject). ACK/NACK routing. Timeout; replyAck cho IP_ADDR |
+| `OtConfigManager` | `backend/src/thread/ot-config.manager.ts` | In-memory store. `.update(partial)` de merge, `.get()` de doc, `.clear()` khi disconnect |
+| `PollingManager` | `backend/src/thread/polling.manager.ts` | Poll table 6s (child +1.5s delay). CHI khi frontend connected + state = leader/router/child |
+| `AppSettingsService` | `backend/src/settings/app-settings.service.ts` | SQLite key-value cho app settings (thread_run_on_connect) |
+| CoAP server | `backend/src/coap/coap-device.server.ts` + `device-coap.controller.ts` | CoAP UDP 5683 (udp6, [::]). registerCoapControllers(server, [DeviceCoapController]). GET /device/ping → 2.05 + 4-byte timestamp; POST register/update → CBOR decode (backend/src/cbor), log JSON, tra 2.01; khong emit qua io |
 
 ## Frame Protocol
 
@@ -110,9 +110,10 @@ CMD_STATE that bai **5 lan lien tiep** → dong transport + bat dau reconnect.
 
 ### State Management
 
-- `useWebSocket` (`frontend/src/hooks/useWebSocket.ts`) = **source of truth duy nhat**
+- `useWebSocket` (`frontend/src/shared/hooks/use-websocket.hook.ts`) = **source of truth duy nhat**
 - Tat ca component dung `useWebSocketContext()` — KHONG tao socket rieng
 - Socket URL: `window.location.origin` (LAN-friendly via Vite proxy)
+- **Path alias:** Import dung `@shared/*`, `@nodes/*`, `@settings/*`, `@status/*`, `@/` (tsconfig + Vite alias). SCSS: `loadPaths: [src]` → `@use "shared/styles/variables"` / `shared/styles/form`.
 
 ### Event System
 

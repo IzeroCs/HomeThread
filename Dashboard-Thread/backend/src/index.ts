@@ -6,13 +6,13 @@
 import "dotenv/config";
 import { createServer } from "http";
 import { Server } from "socket.io";
-import { getDatabase, closeDatabase } from "./database/Database";
-import { runMigrations } from "./database/migrations";
+import { getDatabase, closeDatabase } from "./database/database.db";
+import { runMigrations } from "./database/database.migrations";
 import { BrConnectionConfigService, CommunicateManager } from "./communicate";
-import { AppSettingsService } from "./services/AppSettingsService";
-import { WebSocketServer } from "./server/WebSocketServer";
-import { startCoapDeviceServer } from "./server/CoapDeviceServer";
-import { logger } from "./utils/logger";
+import { AppSettingsService } from "./settings/app-settings.service";
+import { WebSocketServer } from "./websocket/websocket.server";
+import { startCoapDeviceServer } from "./coap/coap-device.server";
+import { logger } from "./utils/logger.util";
 
 const serverLog = logger.child("Server");
 

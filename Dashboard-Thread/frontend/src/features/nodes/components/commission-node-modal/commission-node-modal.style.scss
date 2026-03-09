@@ -1,0 +1,569 @@
+@use "sass:color";
+@use "shared/styles/form";
+@use "shared/styles/variables" as *;
+
+// Commission Node modal-style card (mockup: surface #1d2633, input #111821, border #334155, footer #18202b, primary #1978e5)
+$cn-surface: #1d2633;
+$cn-input-bg: #111821;
+$cn-border: #334155;
+$cn-footer: #18202b;
+$cn-primary: #1978e5;
+
+.commissioner-card {
+  .form-page-description {
+    margin-top: 0;
+  }
+}
+
+// ----- Commission Node modal overlay -----
+.commission-node-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(4px);
+}
+
+.commission-node-modal-card {
+  max-width: 32rem;
+  width: 100%;
+}
+
+.commission-node-close {
+  flex-shrink: 0;
+  padding: 0.25rem;
+  border-radius: 9999px;
+  border: none;
+  background: transparent;
+  color: $text-dark-muted;
+  cursor: pointer;
+  transition: color 0.15s, background 0.15s;
+
+  &:hover:not(:disabled) {
+    color: $text-dark;
+    background: rgba(255, 255, 255, 0.05);
+  }
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+
+  .material-symbols-outlined {
+    font-size: 1.25rem;
+  }
+}
+
+// ----- Commission Node card -----
+.commission-node-card {
+  max-width: 32rem;
+  overflow: hidden;
+  background: $cn-surface;
+  border-radius: 0.75rem;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.commission-node-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.25rem 1.5rem;
+  border-bottom: 1px solid $cn-border;
+  background: $cn-surface;
+}
+
+.commission-node-header-text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.commission-node-title {
+  margin: 0;
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: $text-dark;
+}
+
+.commission-node-subtitle {
+  margin: 0;
+  font-size: 0.875rem;
+  color: $text-dark-muted;
+}
+
+.commission-node-body {
+  padding: 1.5rem;
+}
+
+.commission-node-alert {
+  margin: 0 0 1rem;
+  padding: 0.75rem 1rem;
+  border-radius: 0.5rem;
+  font-size: 0.875rem;
+
+  &.commission-node-alert-warn {
+    background: rgba(245, 158, 11, 0.1);
+    border: 1px solid rgba(245, 158, 11, 0.3);
+    color: #fbbf24;
+  }
+
+  &.commission-node-alert-error {
+    background: rgba(239, 68, 68, 0.1);
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    color: #f87171;
+  }
+
+  &.commission-node-alert-success {
+    background: rgba(34, 197, 94, 0.1);
+    border: 1px solid rgba(34, 197, 94, 0.3);
+    color: #4ade80;
+  }
+}
+
+.commission-node-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.commission-node-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.commission-node-label {
+  display: block;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: $text-dark-muted;
+}
+
+.commission-node-required {
+  color: #f87171;
+}
+
+.commission-node-input-wrap {
+  position: relative;
+  display: block;
+
+  .commission-node-input-icon {
+    position: absolute;
+    left: 0.75rem;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 1.25rem;
+    color: $text-dark-subtle;
+    pointer-events: none;
+  }
+}
+
+.commission-node-input {
+  display: block;
+  width: 100%;
+  padding: 0.625rem 1rem 0.625rem 2.5rem;
+  font-size: 0.875rem;
+  line-height: 1.5;
+  color: $text-dark;
+  background: $cn-input-bg;
+  border: 1px solid $cn-border;
+  border-radius: 0.5rem;
+  font-family: ui-monospace, monospace;
+  transition: border-color 0.15s, box-shadow 0.15s;
+
+  &::placeholder {
+    color: $text-dark-subtle;
+  }
+
+  &:focus {
+    outline: none;
+    border-color: $cn-primary;
+    box-shadow: 0 0 0 1px $cn-primary;
+  }
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+}
+
+.commission-node-helper {
+  margin: 0;
+  font-size: 0.75rem;
+  color: $text-dark-subtle;
+}
+
+.commission-node-select-wrap {
+  position: relative;
+  display: block;
+
+  .commission-node-select-icon {
+    position: absolute;
+    right: 0.75rem;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 1.25rem;
+    color: $text-dark-subtle;
+    pointer-events: none;
+  }
+}
+
+.commission-node-select {
+  display: block;
+  width: 100%;
+  padding: 0.625rem 2.5rem 0.625rem 0.75rem;
+  font-size: 0.875rem;
+  line-height: 1.5;
+  color: $text-dark;
+  background: $cn-input-bg;
+  border: 1px solid $cn-border;
+  border-radius: 0.5rem;
+  cursor: pointer;
+  appearance: none;
+  transition: border-color 0.15s, box-shadow 0.15s;
+
+  &:focus {
+    outline: none;
+    border-color: $cn-primary;
+    box-shadow: 0 0 0 1px $cn-primary;
+  }
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+}
+
+.commission-node-info {
+  display: flex;
+  gap: 0.75rem;
+  padding: 1rem;
+  border-radius: 0.5rem;
+  background: rgba(59, 130, 246, 0.1);
+  border: 1px solid rgba(59, 130, 246, 0.2);
+}
+
+.commission-node-info-icon {
+  flex-shrink: 0;
+  font-size: 1.25rem;
+  color: #60a5fa;
+}
+
+.commission-node-info-text {
+  margin: 0;
+  font-size: 0.875rem;
+  color: #93c5fd;
+}
+
+.commission-node-footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  padding: 1rem 1.5rem;
+  background: $cn-footer;
+  border-top: 1px solid $cn-border;
+}
+
+.commission-node-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.625rem 1rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  border-radius: 0.5rem;
+  border: none;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+}
+
+.commission-node-btn-secondary {
+  color: $text-dark-muted;
+  background: transparent;
+
+  &:hover:not(:disabled) {
+    background: rgba(255, 255, 255, 0.05);
+    color: $text-dark;
+  }
+}
+
+.commission-node-btn-primary {
+  color: white;
+  background: $cn-primary;
+  box-shadow: 0 10px 15px -3px rgba(25, 120, 229, 0.3);
+
+  &:hover:not(:disabled) {
+    background: color.adjust($cn-primary, $lightness: -5%);
+  }
+}
+
+.commission-node-btn-icon {
+  font-size: 1.125rem;
+}
+
+.commission-node-connect-dots {
+  display: inline-block;
+  margin-right: 0.25rem;
+
+  span {
+    animation: commissioner-dot-blink 1.2s ease-in-out infinite;
+    opacity: 0;
+
+    &:nth-child(1) {
+      animation-delay: 0s;
+    }
+    &:nth-child(2) {
+      animation-delay: 0.4s;
+    }
+    &:nth-child(3) {
+      animation-delay: 0.8s;
+    }
+  }
+}
+
+.commissioner-tabs {
+  display: flex;
+  gap: 0;
+  margin-top: 20px;
+  margin-bottom: 0;
+  border-bottom: 1px solid $border-color;
+}
+
+.commissioner-tab {
+  padding: 10px 16px;
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  font-size: 14px;
+  font-weight: 500;
+  color: $text-secondary;
+  cursor: pointer;
+
+  &:hover {
+    color: $text-primary;
+  }
+
+  &.commissioner-tab-active {
+    color: $text-primary;
+    font-weight: 600;
+    border-bottom-color: $text-primary;
+  }
+}
+
+.commissioner-tab-panels {
+  margin-top: 20px;
+}
+
+.commissioner-tab-panel {
+  &:not([hidden]) {
+    display: block;
+  }
+}
+
+/* Segmented control: thời gian hết hạn (30s, 60s, 120s, 180s) */
+.commissioner-timeout-group {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.commissioner-timeout-label {
+  font-weight: 600;
+  color: $text-primary;
+  font-size: 14px;
+  display: block;
+}
+
+.commissioner-segmented {
+  display: flex;
+  border: 2px solid $border-color;
+  border-radius: 999px;
+  padding: 3px;
+  background: $bg-light;
+  width: 100%;
+}
+
+.commissioner-segmented-option {
+  flex: 1;
+  min-width: 0;
+  padding: 10px 14px;
+  border: none;
+  border-radius: 999px;
+  font-size: 14px;
+  font-weight: 500;
+  color: $text-secondary;
+  background: transparent;
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s;
+
+  &:hover:not(:disabled) {
+    color: $text-primary;
+    background: color.adjust($bg-light, $lightness: -2%);
+  }
+
+  &.commissioner-segmented-option-active {
+    background: $primary-color;
+    color: white;
+    font-weight: 600;
+
+    &:hover:not(:disabled) {
+      background: color.adjust($primary-color, $lightness: -5%);
+      color: white;
+    }
+  }
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+}
+
+.commissioner-joiner-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 12px;
+  margin-top: 4px;
+}
+
+.commissioner-joiner-title {
+  margin: 0;
+  color: $text-primary;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.commissioner-joiner-refresh {
+  padding: 8px 16px;
+  background: $bg-light;
+  border: 1px solid $border-color;
+  border-radius: $border-radius-small;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  color: $text-primary;
+
+  &:hover:not(:disabled) {
+    background: color.adjust($bg-light, $lightness: -3%);
+  }
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+}
+
+.commissioner-joiner-table-wrap {
+  overflow-x: auto;
+}
+
+.commissioner-joiner-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+  border-radius: 4px;
+  overflow: hidden;
+
+  th,
+  td {
+    padding: 10px 12px;
+    text-align: left;
+    border-bottom: 1px solid $border-color;
+  }
+
+  thead tr:first-child th:first-child {
+    border-top-left-radius: 4px;
+  }
+  thead tr:first-child th:last-child {
+    border-top-right-radius: 4px;
+  }
+  tbody tr:last-child td:first-child {
+    border-bottom-left-radius: 4px;
+  }
+  tbody tr:last-child td:last-child {
+    border-bottom-right-radius: 4px;
+  }
+
+  th {
+    font-weight: 600;
+    color: $text-primary;
+    background: color.mix(white, $primary-color, 82%);
+  }
+
+  td {
+    color: $text-primary;
+    font-family: ui-monospace, monospace;
+    font-size: 13px;
+    background: $bg-light;
+  }
+
+  tbody tr:last-child td {
+    border-bottom: none;
+  }
+
+  tbody tr:hover td {
+    background: color.adjust($bg-light, $lightness: -3%);
+  }
+}
+
+.commissioner-joiner-muted {
+  margin: 0;
+  color: $text-muted;
+  font-size: 14px;
+}
+
+.commissioner-joiner-error {
+  margin: 0;
+  color: #721c24;
+  font-size: 14px;
+}
+
+.commissioner-connect-dots {
+  display: inline-block;
+  margin-left: 2px;
+
+  span {
+    animation: commissioner-dot-blink 1.2s ease-in-out infinite;
+    opacity: 0;
+
+    &:nth-child(1) {
+      animation-delay: 0s;
+    }
+    &:nth-child(2) {
+      animation-delay: 0.4s;
+    }
+    &:nth-child(3) {
+      animation-delay: 0.8s;
+    }
+  }
+}
+
+@keyframes commissioner-dot-blink {
+  0% {
+    opacity: 0;
+  }
+  25% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 1;
+  }
+  75%,
+  100% {
+    opacity: 0;
+  }
+}

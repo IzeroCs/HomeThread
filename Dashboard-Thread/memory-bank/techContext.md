@@ -6,8 +6,22 @@
 Dashboard-Thread/          # npm workspaces root
 ├── package.json           # Root: scripts + workspaces config
 ├── backend/               # Node.js + TypeScript server
+│   └── src/
+│       ├── coap/          # CoAP server (decorator router), DeviceCoapController, device-register payload
+│       ├── communicate/   # TransportTcp, CommandManager, CommunicateManager, frame (parser/builder/constants)
+│       ├── settings/      # BrConnectionConfigService, AppSettingsService
+│       ├── thread/        # OtConfigManager, PollingManager, device-role, thread-data
+│       ├── websocket/     # WebSocketServer
+│       ├── database/      # SQLite, migrations
+│       ├── cbor/          # CBOR decode (noi bo)
+│       └── utils/         # logger, ipv6
 ├── frontend/              # React + Vite + SCSS
-├── shared/                # Pure TypeScript, shared by both
+│   └── src/
+│       ├── features/      # nodes, settings, status (page + components)
+│       ├── shared/        # components, contexts, hooks, types, styles
+│       ├── app.component.tsx
+│       └── main.tsx
+├── shared/                # Pure TypeScript package (types, events, constants, validation)
 └── memory-bank/           # Cursor Memory Bank files
 ```
 
@@ -80,7 +94,7 @@ interface OtTableData {
 }
 ```
 
-## Device Roles (backend/src/openthread/deviceRole.ts)
+## Device Roles (backend/src/thread/device-role.ts)
 
 ```typescript
 enum DEVICE_ROLE { DISABLED=0, DETACHED=1, CHILD=2, ROUTER=3, LEADER=4 }
@@ -122,10 +136,17 @@ SQLite (`better-sqlite3`, WAL mode). 6 migrations:
 - **Backend**: `.env` — PORT; BACKEND_IPV6 (tuy chon, cho SRP register; neu khong set thi tu lay IPv6 qua getPreferredBackendIPv6()). Cau hinh BR (brHost, brPort) luu SQLite qua Settings.
 - **Frontend**: `vite.config.ts` proxy `/api` + `/socket.io` → backend. Override WS URL bang `VITE_WS_URL`
 
+## Path Aliases (Frontend)
+
+- **tsconfig.json** `baseUrl` + `paths`: `@/*` → src, `@shared/*`, `@features/*`, `@nodes/*`, `@settings/*`, `@status/*`.
+- **vite.config.ts** `resolve.alias`: cùng mapping (resolve(__dirname, "src/...")).
+- **SCSS:** `css.preprocessorOptions.scss.loadPaths: [resolve(__dirname, "src")]` — trong .scss dùng `@use "shared/styles/variables"` hoặc `@use "shared/styles/form"` (đường dẫn từ `src/`).
+- Toàn bộ import TS/TSX dùng alias; không dùng relative `../../` qua nhiều cấp.
+
 ## Styling Convention
 
 - **SCSS only** — không dùng Tailwind. Design theo mockup (ThreadDash) implement bằng SCSS; theme **dark navy** (card-dark, brand-border, text-dark).
-- SCSS co-located với component (VD: `Nodes/Nodes.scss`, `Status.scss`); biến chung `frontend/src/styles/_variables.scss` (dark: $bg-dark, $card-dark, $primary-blue, $brand-border, $text-dark, $lq-good, $lq-warn).
+- SCSS co-located với component (VD: `features/nodes/nodes.style.scss`, `shared/components/modal/modal.style.scss`); biến chung `frontend/src/shared/styles/variables` (dark: $bg-dark, $card-dark, $primary-blue, $brand-border, $text-dark, $lq-good, $lq-warn). Import trong SCSS: `@use "shared/styles/variables" as *`.
 - **Modal/ConfirmModal:** Dark navy — overlay blur, box $card-dark, nút Cancel ghost, Confirm danger/warning với hover glow.
 - **Icons:** Material Symbols (Google Fonts); Sidebar nav dùng `speed`, `account_tree`, `settings`; Settings sub-items `lan`, `device_hub`, `warning`.
 - Font: Inter hoặc IBM Plex Sans (Google Fonts link trong index.html); `_fonts.scss` nếu dùng local.

@@ -1,0 +1,554 @@
+@use "shared/styles/variables" as *;
+
+.status-page {
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.status-page-title {
+  margin: 0 0 4px 0;
+  font-size: 30px;
+  font-weight: 700;
+  color: $text-dark;
+  letter-spacing: -0.025em;
+}
+
+.status-page-subtitle {
+  margin: 0 0 32px 0;
+  font-size: 14px;
+  color: $text-dark-muted;
+}
+
+.status-section {
+  margin-bottom: 24px;
+
+  &:last-child {
+    margin-bottom: 0;
+  }
+}
+
+// BR Connection card (connected: large icon + content)
+.status-card-br {
+  display: flex;
+  flex-direction: column;
+  background: $card-dark;
+  border: 1px solid $brand-border;
+  border-radius: $border-radius;
+  overflow: hidden;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+}
+
+@media (min-width: 640px) {
+  .status-card-br {
+    flex-direction: row;
+    align-items: stretch;
+  }
+}
+
+.status-card-br-icon {
+  flex-shrink: 0;
+  width: 100%;
+  min-height: 160px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(30, 41, 59, 0.5);
+  position: relative;
+  overflow: hidden;
+
+  &::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, rgba(37, 99, 235, 0.2) 0%, transparent 60%);
+    pointer-events: none;
+  }
+
+  .material-symbols-outlined {
+    font-size: 60px;
+    color: rgba(37, 99, 235, 0.4);
+    position: relative;
+    z-index: 1;
+  }
+}
+
+@media (min-width: 640px) {
+  .status-card-br-icon {
+    width: 33.333%;
+    max-width: 280px;
+    min-height: auto;
+  }
+}
+
+// BR card when disconnected: same layout, left panel red + signal_disconnected
+.status-card-br-icon--disconnected {
+  background: rgba(127, 29, 29, 0.15);
+
+  &::before {
+    background: linear-gradient(135deg, rgba(239, 68, 68, 0.1) 0%, transparent 60%);
+  }
+
+  .material-symbols-outlined {
+    font-size: 60px;
+    color: rgba(239, 68, 68, 0.5);
+  }
+}
+
+.status-card-br-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 16px;
+  padding: 24px;
+}
+
+.status-card-br-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.status-card-br-title {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 700;
+  color: $text-dark;
+}
+
+.status-card-br-fields {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 16px;
+}
+
+@media (min-width: 1024px) {
+  .status-card-br-fields {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  border-radius: 9999px;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  width: fit-content;
+
+  &.connected {
+    background: $connected-badge-bg;
+    border: 1px solid $connected-badge-border;
+    color: $connected-badge-text;
+  }
+
+  &.disconnected {
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid $brand-border;
+    color: $text-dark-muted;
+  }
+
+  &--disconnected {
+    background: rgba(127, 0, 0, 0.2);
+    border: 1px solid rgba(185, 28, 28, 0.5);
+    color: #f87171;
+  }
+}
+
+.status-badge-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: $connected-badge-text;
+  flex-shrink: 0;
+  animation: status-badge-pulse 1.5s ease-in-out infinite;
+
+  &--red {
+    background: #ef4444;
+  }
+}
+
+@keyframes status-badge-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+.status-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+
+  &.status-field-with-action {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+
+    .status-field-value {
+      flex: 1;
+      min-width: 0;
+    }
+  }
+}
+
+.status-field-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: $text-dark-subtle;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.status-field-value {
+  font-size: 14px;
+  color: $text-dark;
+  word-break: break-all;
+
+  &--accent {
+    color: #93c5fd;
+  }
+
+  &--muted {
+    color: $text-dark-subtle;
+  }
+
+  &--mono-small {
+    font-size: 10px;
+    line-height: 1.4;
+    color: $text-dark-muted;
+  }
+}
+
+.status-channel-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.status-channel-badge {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  padding: 2px 8px;
+  border-radius: 4px;
+  background: rgba(37, 99, 235, 0.15);
+  color: #93c5fd;
+  border: 1px solid rgba(37, 99, 235, 0.25);
+}
+
+.status-field-toggle {
+  padding: 4px;
+  border: none;
+  background: transparent;
+  color: $text-dark-muted;
+  cursor: pointer;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  .material-symbols-outlined {
+    font-size: 20px;
+  }
+
+  &:hover {
+    color: $text-dark;
+    background: rgba(255, 255, 255, 0.06);
+  }
+}
+
+.status-btn-refresh {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 18px;
+  margin-top: 4px;
+  border: none;
+  background: $primary-blue;
+  color: white;
+  font-size: 14px;
+  font-weight: 700;
+  border-radius: 8px;
+  cursor: pointer;
+  width: fit-content;
+  box-shadow: 0 4px 14px rgba(37, 99, 235, 0.35);
+  transition: background 0.2s, filter 0.2s;
+
+  .material-symbols-outlined {
+    font-size: 18px;
+  }
+
+  &:hover {
+    background: #3b82f6;
+    filter: brightness(1.05);
+  }
+}
+
+// OpenThread Network section
+.status-section-ot-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.status-section-ot-title {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 700;
+  color: $text-dark;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+
+  .material-symbols-outlined {
+    font-size: 22px;
+    color: $primary-blue;
+  }
+}
+
+.status-section-ot-snapshot {
+  font-size: 12px;
+  font-weight: 500;
+  color: $text-dark-muted;
+  letter-spacing: 0.02em;
+}
+
+.status-section-ot-header--faded {
+  opacity: 0.5;
+}
+
+.status-card-ot {
+  background: $card-dark;
+  border: 1px solid $brand-border;
+  border-radius: $border-radius;
+  overflow: hidden;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+  position: relative;
+}
+
+// Disconnected: same grid with placeholder values, dimmed + grayscale
+.status-ot-grid--placeholder {
+  opacity: 0.3;
+  filter: grayscale(1);
+  pointer-events: none;
+  user-select: none;
+}
+
+.status-ot-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+  padding: 24px;
+}
+
+.status-ot-overlay {
+  background: rgba(10, 15, 28, 0.6);
+  backdrop-filter: blur(1px);
+}
+
+.status-ot-overlay-card {
+  background: rgba(17, 24, 39, 0.95);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  padding: 32px;
+  max-width: 28rem;
+  text-align: center;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+
+  &--compact {
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+  }
+}
+
+.status-ot-overlay-icon {
+  width: 64px;
+  height: 64px;
+  margin: 0 auto 16px;
+  border-radius: 50%;
+  background: rgba(37, 99, 235, 0.12);
+  color: $primary-blue;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  .material-symbols-outlined {
+    font-size: 40px;
+  }
+
+  &--muted {
+    background: rgba(100, 116, 139, 0.15);
+    color: $text-dark-subtle;
+
+    .material-symbols-outlined {
+      font-size: 40px;
+    }
+  }
+}
+
+.status-ot-overlay-card--compact .status-ot-overlay-icon--muted {
+  margin: 0;
+}
+
+.status-ot-overlay-text-only {
+  font-size: 14px;
+  font-weight: 500;
+  color: $text-dark-muted;
+}
+
+.status-ot-overlay-title {
+  margin: 0 0 8px 0;
+  font-size: 20px;
+  font-weight: 700;
+  color: $text-dark;
+}
+
+.status-ot-overlay-text {
+  margin: 0 0 24px 0;
+  font-size: 14px;
+  line-height: 1.5;
+  color: $text-dark-muted;
+}
+
+.status-ot-overlay-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  padding: 10px 20px;
+  border: 1px solid rgba(37, 99, 235, 0.25);
+  background: rgba(37, 99, 235, 0.1);
+  color: $primary-blue;
+  font-size: 14px;
+  font-weight: 600;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.2s, border-color 0.2s;
+
+  .material-symbols-outlined {
+    font-size: 18px;
+  }
+
+  &:hover {
+    background: rgba(37, 99, 235, 0.18);
+    border-color: rgba(37, 99, 235, 0.35);
+  }
+}
+
+// Grid 3×4 (12 cells) so each row has equal height across columns
+.status-ot-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  grid-auto-rows: minmax(100px, auto);
+  border-top: 1px solid $brand-border;
+
+  > .status-field {
+    min-height: 100px;
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 8px;
+    border-top: 1px solid $brand-border;
+
+    &:nth-child(-n+1) {
+      border-top: none;
+    }
+  }
+
+  > .status-field:nth-child(n+2) {
+    border-top: 1px solid $brand-border;
+  }
+}
+
+@media (min-width: 768px) {
+  .status-ot-grid {
+    grid-template-columns: repeat(2, 1fr);
+    grid-template-rows: repeat(4, minmax(100px, 1fr));
+    grid-auto-rows: unset;
+    border-top: none;
+
+    > .status-field {
+      border-top: 1px solid $brand-border;
+      border-left: 1px solid $brand-border;
+
+      &:nth-child(-n+2) {
+        border-top: none;
+      }
+      &:nth-child(2n+1) {
+        border-left: none;
+      }
+    }
+  }
+}
+
+@media (min-width: 1024px) {
+  .status-ot-grid {
+    grid-template-columns: repeat(3, 1fr);
+    grid-template-rows: repeat(4, minmax(100px, 1fr));
+
+    > .status-field {
+      &:nth-child(-n+3) {
+        border-top: none;
+      }
+      &:nth-child(3n+1) {
+        border-left: none;
+      }
+      &:not(:nth-child(3n+1)) {
+        border-left: 1px solid $brand-border;
+      }
+    }
+  }
+}
+
+.status-error {
+  margin: 0;
+  color: #f87171;
+  font-size: 14px;
+}
+
+.status-muted {
+  margin: 0;
+  color: $text-dark-muted;
+  font-size: 14px;
+}
+
+// System section — cùng bảng/grid như OpenThread Network, chỉ 2 ô
+.status-section-system .status-section-ot-header {
+  margin-bottom: 16px;
+}
+
+.status-ot-grid--system {
+  @media (min-width: 768px) {
+    grid-template-rows: minmax(100px, auto);
+    grid-auto-rows: unset;
+  }
+
+  @media (min-width: 1024px) {
+    grid-template-rows: minmax(100px, auto);
+  }
+}
+
+.status-field-value--wrap {
+  word-break: break-all;
+}

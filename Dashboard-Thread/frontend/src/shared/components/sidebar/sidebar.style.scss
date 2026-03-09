@@ -1,0 +1,258 @@
+@use "shared/styles/variables" as *;
+
+.sidebar {
+  width: 260px;
+  height: 100vh;
+  background: $card-dark;
+  display: flex;
+  flex-direction: column;
+  padding: 24px 18px;
+  box-shadow: 0 14px 40px rgba(0, 0, 0, 0.45);
+  position: fixed;
+  top: 0;
+  left: 0;
+  font-family: inherit;
+}
+
+.sidebar-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+  margin-bottom: 80px;
+}
+
+.sidebar-brand-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+  min-width: 0;
+}
+
+.sidebar-logo {
+  width: 40px;
+  height: 40px;
+  border-radius: $border-radius-small;
+  background: $primary-blue;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  flex-shrink: 0;
+
+  .material-symbols-outlined {
+    font-size: 24px;
+  }
+}
+
+.sidebar-brand-text {
+  font-size: 18px;
+  font-weight: 600;
+  color: $text-dark;
+}
+
+@keyframes status-dot-ripple {
+  0% {
+    transform: translate(-50%, -50%) scale(1);
+    opacity: 0.6;
+  }
+  100% {
+    transform: translate(-50%, -50%) scale(2.5);
+    opacity: 0;
+  }
+}
+
+.sidebar-status-dot {
+  position: relative;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+
+  &::after {
+    content: "";
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    border: 2px solid;
+    background: transparent;
+    animation: status-dot-ripple 1.5s ease-out infinite;
+    pointer-events: none;
+  }
+
+  &.status-disconnected {
+    background: $text-dark-subtle;
+
+    &::after {
+      border-color: $text-dark-subtle;
+    }
+  }
+
+  &.status-serial {
+    background: #ed6c02;
+
+    &::after {
+      border-color: #ed6c02;
+    }
+  }
+
+  &.status-thread-blue {
+    background: $primary-blue;
+
+    &::after {
+      border-color: $primary-blue;
+    }
+  }
+
+  &.status-thread-purple {
+    background: #7b1fa2;
+
+    &::after {
+      border-color: #7b1fa2;
+    }
+  }
+
+  &.status-thread-green {
+    background: $connected-badge-text;
+
+    &::after {
+      border-color: $connected-badge-text;
+    }
+  }
+}
+
+.sidebar-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  flex: 1;
+  min-height: 0;
+}
+
+.sidebar-nav-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 18px;
+  border: none;
+  background: transparent;
+  color: $text-dark-muted;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  border-radius: 9999px;
+  transition: color 0.2s, background 0.2s;
+  text-align: left;
+  width: 100%;
+  font-family: inherit;
+
+  .material-symbols-outlined {
+    font-size: 20px;
+    flex-shrink: 0;
+  }
+
+  &.active {
+    background: rgba(255, 255, 255, 0.08);
+    color: $primary-blue;
+
+    .material-symbols-outlined {
+      color: $primary-blue;
+    }
+  }
+
+  &:hover:not(.active) {
+    color: $text-dark;
+    background: rgba(255, 255, 255, 0.03);
+  }
+}
+
+.sidebar-section {
+  margin-left: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.sidebar-section-items {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-left: 8px;
+  max-height: 0;
+  opacity: 0;
+  overflow: hidden;
+  transform: translateY(-4px);
+  transition:
+    max-height 0.2s ease,
+    opacity 0.2s ease,
+    transform 0.2s ease;
+  pointer-events: none;
+}
+
+.sidebar-section--open .sidebar-section-items {
+  max-height: 120px;
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
+}
+
+.sidebar-section-title {
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: $text-dark-muted;
+}
+
+.sidebar-nav-item--nested {
+  padding: 6px 0 6px 10px;
+  border-radius: 0;
+  background: transparent;
+  gap: 8px;
+
+  .sidebar-nav-nested-icon {
+    font-size: 16px;
+  }
+
+  .sidebar-nav-label {
+    font-size: 13px;
+  }
+
+  &.active {
+    background: transparent;
+    color: $primary-blue;
+  }
+
+  &:hover:not(.active) {
+    background: transparent;
+    color: $text-dark;
+  }
+}
+
+.sidebar-nav-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sidebar-expand-icon {
+  margin-left: auto;
+  font-size: 18px;
+  color: $text-dark-muted;
+  transition: transform 0.2s ease, color 0.2s ease;
+}
+
+.sidebar-expand-icon--open {
+  transform: rotate(180deg);
+  color: $text-dark;
+}
+
+.sidebar-footer {
+  padding-top: 16px;
+  flex-shrink: 0;
+  border-top: 1px solid $brand-border;
+}
