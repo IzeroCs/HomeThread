@@ -11,7 +11,7 @@ import { runMigrations } from "@database/database.migrations";
 import { BrConnectionConfigService, CommunicateManager } from "@communicate";
 import { AppSettingsService } from "@settings/app-settings.service";
 import { WebSocketServer } from "@websocket/websocket.server";
-import { startCoapDeviceServer } from "@coap/coap-device.server";
+import { startCoapDeviceServer as startDeviceCoapServer } from "@coap/device/device-coap.server";
 import { logger } from "@utils/logger.util";
 
 const serverLog = logger.child("Server");
@@ -47,7 +47,7 @@ const communicateManager = new CommunicateManager(
 
 const wsServer = new WebSocketServer(io, brConnectionConfigService, appSettingsService, communicateManager);
 
-startCoapDeviceServer();
+startDeviceCoapServer();
 
 httpServer.listen(PORT, () => {
   serverLog.info("=".repeat(50));

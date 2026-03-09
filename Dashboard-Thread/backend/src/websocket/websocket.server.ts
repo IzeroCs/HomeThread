@@ -150,12 +150,8 @@ export class WebSocketServer {
 
   private async handleConfigUpdate(
     socket: Socket,
-    data: { id: number; brHost?: string; brPort?: number; useMdns?: boolean }
+    data: { id?: number; brHost?: string; brPort?: number; useMdns?: boolean }
   ): Promise<void> {
-    if (typeof data.id !== "number" || !Number.isInteger(data.id) || data.id < 1) {
-      socket.emit(EVENTS.CONFIG_ERROR, { error: "Invalid config id" });
-      return;
-    }
     const err = this.validateConfig(data);
     if (err) {
       socket.emit(EVENTS.CONFIG_ERROR, { error: err });
@@ -166,7 +162,7 @@ export class WebSocketServer {
       if (data.brHost !== undefined) updates.brHost = data.brHost.trim();
       if (data.brPort !== undefined) updates.brPort = Number(data.brPort);
       if (data.useMdns !== undefined) updates.useMdns = data.useMdns;
-      const config = this.brConnectionConfigService.update(data.id, updates);
+      const config = this.brConnectionConfigService.update(data.id ?? 0, updates);
       if (config) {
         await this.communicate.resetTransport();
         socket.emit(EVENTS.CONFIG_UPDATED, config);

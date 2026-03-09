@@ -9,7 +9,7 @@
 
 import * as coap from "coap";
 import { logger } from "@utils/logger.util";
-import { registerCoapControllers, DeviceCoapController } from "./index";
+import { registerCoapControllers, DeviceCoapController } from "../index";
 
 const coapLog = logger.child("CoAP");
 const COAP_PORT = 5683;
