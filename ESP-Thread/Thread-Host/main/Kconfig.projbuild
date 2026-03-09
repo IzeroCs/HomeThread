@@ -78,7 +78,7 @@ if BR_ETH_W5500_ENABLE
 
     config BR_ETH_RST_RELEASE_MS
         int "W5500 RST release delay (ms)"
-        default 100
+        default 1000
         range 10 1000
         help
             Thời gian đợi sau khi thả RST trước khi init SPI/driver.

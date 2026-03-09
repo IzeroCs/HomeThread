@@ -1,6 +1,6 @@
 # Active Context — Thread-Host
 
-_Cập nhật: 2026-03-06 (Ethernet IPv4 + direct-connect, RA/route sysctl + RS)_
+_Cập nhật: 2026-03-08 (W5500 init IPv4-only, timeout restart, RST hold/release)_
 
 ## Công việc hiện tại
 
@@ -28,10 +28,12 @@ Backhaul Ethernet W5500 đã có IPv6 trên backbone (link-local + ULA/global kh
 - **Cách làm theo esp-thread-br / protocol_examples_common:** Trong `eth_event_handler`, khi `ETHERNET_EVENT_CONNECTED` mới gọi `esp_netif_create_ip6_linklocal(netif)`; đăng ký handler với `s_eth_netif` làm `arg`.
 - Kết quả: BR có ít nhất link-local `fe80::` trên W5500; nếu MikroTik gửi RA thì có thêm ULA/global. Log: `Ethernet link up`, `Ethernet got IPv6: ...`; sau BR init: `backbone global IPv6` / `backbone link-local IPv6` trong `br_main.c`.
 
-### Backhaul: chỉ LAN, IPv4 + direct-connect
-- Backhaul chỉ Ethernet W5500 (`CONFIG_BR_ETH_W5500_ENABLE=y`). Không Wi‑Fi. Init **chờ IPv4** (DHCP) với timeout (mặc định 15s). Chỉ có IPv6 link-local không đủ — backend/dashboard cần IPv4 để kết nối BR.
-- **Cắm BR vào LAN (có router):** BR nhận IPv4 từ DHCP → init OK.
-- **Cắm trực tiếp BR–PC (không DHCP):** Timeout → nếu link up và `CONFIG_BR_ETH_DIRECT_CONNECT_DHCP_SERVER=y`: BR set static IPv4 (mặc định 192.168.4.1), thử bật DHCP server; netif ETH mặc định không có `dhcps` nên `dhcps_start` thường thất bại → BR vẫn 192.168.4.1, **PC cần cấu hình static** (vd. 192.168.4.2/24) để kết nối 192.168.4.1:5000.
+### Backhaul: chỉ LAN, W5500 init IPv4-only + restart on timeout
+- Backhaul chỉ Ethernet W5500 (`CONFIG_BR_ETH_W5500_ENABLE=y`). Không Wi‑Fi. Init **chỉ chờ IPv4** (DHCP); không coi chỉ IPv6 link-local là thành công (IPv6 thường có trước nhưng backend cần IPv4). Timeout cấu hình `BR_ETH_LINK_TIMEOUT_MS` (mặc định **25s**). **Nếu IPv4 timeout:** `br_main.c` gọi `esp_restart()` để thử lại.
+- **W5500 RST:** Reset do code thực hiện trước khi tạo MAC/PHY: giữ RST low `BR_ETH_RST_HOLD_MS` (default 200ms), thả rồi đợi `BR_ETH_RST_RELEASE_MS` (default 100ms) rồi mới init SPI/driver. `phy_config.reset_gpio_num = -1` để driver không reset lần nữa. Tăng hold/release nếu link/init không ổn định.
+- **GPIO ISR:** Hiện không gọi `gpio_install_isr_service()` trong `app_main`. Khi init thành công thì không sao; **khi IPv4 timeout** driver tear-down gọi `gpio_isr_handler_remove` → log "GPIO isr service is not installed". Có thể cài service trên core 0 trước eth nếu cần tránh lỗi đó khi timeout.
+- **Cắm BR vào LAN (có router):** BR nhận IPv4 từ DHCP trong timeout → init OK.
+- **Cắm trực tiếp BR–PC (không DHCP):** Timeout → restart; nếu có direct-connect path (BR_ETH_DIRECT_*) thì BR set static 192.168.4.1, PC static 192.168.4.2.
 
 ### CMD_IP_ADDR và Dashboard reply ACK
 - BR gửi ACK + 16 byte Leader RLOC; spec yêu cầu backend gửi lại **một ACK trống cùng frameId** để BR dừng retry. Dashboard-Thread hiện chỉ gọi `replyAck(ipRes.frameId)` trong `CommunicateManager.pullState()` khi `stateChangedOrFirst` → các lần fetch IP_ADDR khác (vd. fetchOtConfig, refresh) không gửi reply ACK → BR retry mãi. **Khuyến nghị:** Trong Dashboard-Thread, `CommandManager.handle()` khi nhận ACK của CMD_IP_ADDR (frameId trong ipAddrFrameIds, data.length === 16) tự gọi `replyAck(frame.frameId)` để mọi nguồn gọi fetchIpAddr đều trả ACK cho BR.

@@ -6,7 +6,7 @@
 
 ## 1. Tổng quan kiến trúc
 
-- **BR (Thread-Host):** Border Router thật: backhaul **Ethernet W5500** (khi bật; Wi‑Fi fallback đã tắt), border routing + prefix. IPv6 trên backbone: link-local tạo khi Ethernet link up; global/ULA nếu router gửi RA. Child có IPv6 routable.
+- **BR (Thread-Host):** Border Router thật: backhaul **Ethernet W5500** (khi bật; Wi‑Fi fallback đã tắt), border routing + prefix. Init chờ **IPv4 (DHCP)** (timeout mặc định 25s); nếu timeout thì BR restart. IPv6 trên backbone: link-local tạo khi Ethernet link up; global/ULA nếu router gửi RA. Child có IPv6 routable.
 - **Kênh quản lý BR ↔ Dashboard:** Chỉ qua **TCP** (frame protocol). BR listen một port (mặc định 5000); Dashboard kết nối tới **BR_IP:port**. Không dùng USB/serial.
 - **Child ↔ Backend:** Child (Thread-Node) gửi register/update/ping **trực tiếp tới Backend** (IP:port). BR **không** làm proxy; BR chỉ route IP.
 

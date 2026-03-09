@@ -19,13 +19,10 @@ Documents/
 │   ├── entity_model_specification.md  # Firmware spec (ESP-IDF + OpenThread)
 │   └── entity_model_schema.md         # SQLite schema (backend / border router)
 │
-├── coap/                        # CoAP docs (ESP-IDF + OpenThread)
-│   ├── border_router_coap_server.md   # CoAP server BR (device registry)
-│   ├── backend_discovery_srp.md      # Thread-Node SRP/DNS-SD backend discovery
-│   └── coap_client_snippet.md         # Snippet CoAP client thuần (tham khảo)
-│
-└── dashboard/                   # Dashboard-Thread specific
-    └── migration_to_frame_protocol.md  # Migration CLI → Frame, tiến độ và kiến trúc
+└── coap/                        # CoAP docs (ESP-IDF + OpenThread)
+    ├── border_router_coap_server.md   # Payload format; Backend nhận register từ Child
+    ├── backend_discovery_srp.md      # Thread-Node SRP/DNS-SD backend discovery
+    └── coap_client_snippet.md         # Snippet CoAP client thuần (tham khảo)
 ```
 
 ---
@@ -59,9 +56,3 @@ Documents/
 | [coap/border_router_coap_server.md](coap/border_router_coap_server.md) | Device registry (legacy trên BR; **hiện Backend** nhận register từ Child). Payload format, ACK/NACK. |
 | [coap/backend_discovery_srp.md](coap/backend_discovery_srp.md) | Thread-Node: Backend discovery qua SRP/DNS-SD (_dashboard._udp.default.svc.arpa), cấu hình DNS client, otDnsServiceInfo (mHostNameBuffer), phụ thuộc BR SRP đăng ký service. |
 | [coap/coap_client_snippet.md](coap/coap_client_snippet.md) | Snippet CoAP client thuần: NON-CONFIRMABLE GET /ping đến Leader RLOC |
-
-### Dashboard-Thread
-
-| Tài liệu | Mô tả |
-|----------|-------|
-| [dashboard/migration_to_frame_protocol.md](dashboard/migration_to_frame_protocol.md) | Migration từ CLI sang Frame Protocol; **kết nối TCP tới BR** (BR_IP:port); CMD_DATA bỏ (child→backend) |

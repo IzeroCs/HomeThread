@@ -1,6 +1,6 @@
 # Progress — Thread-Host
 
-_Cập nhật: 2026-03-06 (Ethernet IPv4-only, direct-connect, RA/route docs)_
+_Cập nhật: 2026-03-08 (W5500 IPv4-only init, timeout restart, RST hold/release)_
 
 ## Release history
 
@@ -20,6 +20,7 @@ _Cập nhật: 2026-03-06 (Ethernet IPv4-only, direct-connect, RA/route docs)_
 | 0.16.0 | 2026-03-03 | SRP IPv6 address lifetime: buffer tĩnh `s_srp_backend_addr` thay vì stack; copy 16 byte AAAA vào đó trước `otSrpClientSetHostAddresses` — tránh địa chỉ rác trên SRP server và discovery sai trên Thread-Node. |
 | 0.17.0 | 2026-03-06 | Loại bỏ Leader Control Client (CoAP GET `/network/stop`) và toàn bộ docs liên quan. |
 | 0.18.0 | 2026-03-06 | Ethernet init: chờ **IPv4** (DHCP) only; timeout 15s. Direct-connect: khi timeout + link up → BR static 192.168.4.1 (Kconfig BR_ETH_DIRECT_IP_*), thử dhcps_start (netif ETH không có dhcps → thường fail, PC set static 192.168.4.2). Backend route: accept_ra_rt_info_max_plen **per-interface** (vd. enp8s0), RS để BR phát RA sớm. |
+| 0.19.0 | 2026-03-08 | W5500: init **chỉ** chờ IPv4 (DHCP), không chấp nhận chỉ IPv6; timeout default **25s** (BR_ETH_LINK_TIMEOUT_MS). **IPv4 timeout → esp_restart()** trong br_main. W5500 RST do code: hold (BR_ETH_RST_HOLD_MS, default 200ms) + release delay (BR_ETH_RST_RELEASE_MS); phy reset_gpio_num = -1. Bỏ INT diagnostic (counter/task). |
 
 _(Ghi phiên bản theo Semantic Versioning MAJOR.MINOR.PATCH, không dùng tiền tố `v`. Nếu chỉ có major/minor thì PATCH = 0.)_
 
@@ -65,8 +66,9 @@ _(Ghi phiên bản theo Semantic Versioning MAJOR.MINOR.PATCH, không dùng ti�
 - [x] Boot button (GPIO0) — long press 3s → factory reset
 
 ### Backhaul
-- [x] Ethernet W5500 (SPI) — backbone khi bật; init chờ IPv4 (DHCP), timeout 15s; IPv6 link-local trên ETHERNET_EVENT_CONNECTED
-- [x] Direct-connect (BR–PC cable): timeout → static 192.168.4.1 (Kconfig); dhcps_start thường fail (ETH netif không có dhcps) → PC static 192.168.4.2
+- [x] Ethernet W5500 (SPI) — backbone khi bật; init **chỉ** chờ IPv4 (DHCP), timeout 25s default; IPv4 timeout → esp_restart(); IPv6 link-local trên ETHERNET_EVENT_CONNECTED
+- [x] W5500 RST: hold + release delay (Kconfig BR_ETH_RST_HOLD_MS / BR_ETH_RST_RELEASE_MS); reset trong code, driver không reset (phy reset_gpio_num = -1)
+- [x] Direct-connect (BR–PC cable): timeout → restart hoặc static 192.168.4.1 (Kconfig); PC static 192.168.4.2
 - [x] Backhaul chỉ LAN — Wi‑Fi đã gỡ; chỉ Ethernet W5500
 
 ### CoAP

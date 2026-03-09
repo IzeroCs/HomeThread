@@ -53,7 +53,7 @@
 - `esp_log_level_set` — runtime log level
 
 ### Backhaul
-- **Ethernet W5500 (SPI):** `backhaul/eth_w5500.c` — backbone khi `CONFIG_BR_ETH_W5500_ENABLE=y`. Backhaul chỉ LAN. Init chờ **IPv4** (DHCP) với timeout (CONFIG_BR_ETH_LINK_TIMEOUT_MS, default 15s); chỉ IPv6 không đủ. Khi timeout + link up + CONFIG_BR_ETH_DIRECT_CONNECT_DHCP_SERVER: set static IP (BR_ETH_DIRECT_IP_*, default 192.168.4.1), thử dhcps_start (thường fail vì netif ETH mặc định không có dhcps) → PC cần static (vd. 192.168.4.2). IPv6 link-local: `esp_netif_create_ip6_linklocal(netif)` trong ETHERNET_EVENT_CONNECTED. ESP32-S3 không có EMAC.
+- **Ethernet W5500 (SPI):** `backhaul/eth_w5500.c` — backbone khi `CONFIG_BR_ETH_W5500_ENABLE=y`. Backhaul chỉ LAN. Init **chỉ** chờ **IPv4** (DHCP); timeout CONFIG_BR_ETH_LINK_TIMEOUT_MS (default **25s**). Nếu timeout: `br_main.c` gọi `esp_restart()`. W5500 RST: code reset trước init (hold BR_ETH_RST_HOLD_MS, release delay BR_ETH_RST_RELEASE_MS); `phy_config.reset_gpio_num = -1`. IPv6 link-local: `esp_netif_create_ip6_linklocal(netif)` trong ETHERNET_EVENT_CONNECTED. ESP32-S3 không có EMAC.
 - **br_main:** Sau border router init, log backbone IPv6 (tag `br_main`).
 - **Kênh BR↔dashboard:** Chỉ TCP (frame protocol); không USB/UART.
 

@@ -118,8 +118,12 @@ void app_main(void)
     /* Backhaul: chỉ LAN (Ethernet W5500) */
     esp_netif_t *backbone = NULL;
 #if CONFIG_BR_ETH_W5500_ENABLE
-    if (eth_w5500_init() == ESP_OK) {
+    esp_err_t eth_err = eth_w5500_init();
+    if (eth_err == ESP_OK) {
         backbone = eth_w5500_get_netif();
+    } else if (eth_err == ESP_ERR_TIMEOUT) {
+        ESP_LOGW(TAG, "Ethernet IPv4 timeout, restarting...");
+        esp_restart();
     }
 #endif
     if (backbone != NULL) {

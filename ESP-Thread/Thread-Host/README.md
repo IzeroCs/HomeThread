@@ -1,11 +1,11 @@
 # Thread Border Router — ESP32-S3 (Host) + ESP32-H2 (RCP)
 
-Project **Thread Border Router thật** chạy trên **ESP32-S3** (Host), giao tiếp với **ESP32-H2** (RCP) qua UART. BR có **backhaul Ethernet W5500** (chỉ LAN), **border routing + prefix**, IPv6 trên backbone (link-local tạo khi Ethernet link up), kênh quản lý BR↔dashboard qua **TCP** (frame protocol).
+Project **Thread Border Router thật** chạy trên **ESP32-S3** (Host), giao tiếp với **ESP32-H2** (RCP) qua **SPI**. BR có **backhaul Ethernet W5500** (chỉ LAN), **border routing + prefix**, IPv6 trên backbone (link-local tạo khi Ethernet link up), kênh quản lý BR↔dashboard qua **TCP** (frame protocol).
 
 ## BR thật là gì?
 
 - **Thread Border Router (BR)** nối mạng Thread (802.15.4) với backbone (Ethernet), cung cấp IPv6 routable, prefix delegation, service discovery…
-- **Kiến trúc Host + RCP**: Host (ESP32-S3) chạy OpenThread + ứng dụng BR; RCP (ESP32-H2) làm radio. Giao tiếp Host–RCP qua **UART** (460800 baud).
+- **Kiến trúc Host + RCP**: Host (ESP32-S3) chạy OpenThread + ứng dụng BR; RCP (ESP32-H2) làm radio. Giao tiếp Host–RCP qua **SPI** (RCP SPI slave).
 - **Backhaul:** **Ethernet W5500 (SPI)** khi bật — chỉ LAN, không Wi‑Fi. IPv6 link-local được tạo khi Ethernet link up (ETHERNET_EVENT_CONNECTED). Kênh quản lý **chỉ qua TCP** (BR listen port; dashboard kết nối BR_IP:port).
 
 ## Phần cứng
@@ -17,30 +17,48 @@ Project **Thread Border Router thật** chạy trên **ESP32-S3** (Host), giao t
 
 ### Nối dây (standalone)
 
-**UART communication (RCP):**
-- **ESP32-S3** (Host) — **ESP32-H2** (RCP):
-  - GND ↔ GND  
-  - **GPIO5 (S3 TX)** → **RX (H2)**  
-  - **GPIO4 (S3 RX)** ← **TX (H2)**  
-- Cấu hình khuyến nghị cho S3: dùng **GPIO4 (RX)** và **GPIO5 (TX)** (tránh GPIO17/18 vì dòng driver khác, dễ lỗi timeout).
+#### Sơ đồ chân BR (ESP32-S3) → RCP (ESP32-H2)
+
+Giao tiếp Host–RCP qua **SPI** (RCP SPI slave). Pin lấy từ menuconfig, mặc định:
+
+| ESP32-S3 (BR) | Tín hiệu   | ESP32-H2 (RCP) | Ghi chú |
+|---------------|------------|----------------|---------|
+| GPIO4         | SCLK       | **GPIO0**      | SPI clock |
+| GPIO5         | MOSI       | **GPIO3**      | Host → RCP |
+| GPIO2         | MISO       | **GPIO1**      | RCP → Host |
+| GPIO3         | CS         | **GPIO2**      | Chip select |
+| GPIO1         | IRQ        | **GPIO4**      | Interrupt RCP→Host (-1 = poll) |
+| GPIO7         | RST        | RST            | Reset RCP (br_rcp_ctrl) |
+| GPIO8         | BOOT       | **GPIO9** / BOOT | Boot mode (download) |
+
+- SPI host: 1 (SPI2). Clock mặc định 10 MHz (BR_RCP_SPI_CLOCK_MHZ).
+- RCP firmware: `ot_rcp` với menu **RCP SPI (Host connection)** (project Thread-RCP).
+
+#### Sơ đồ chân BR (ESP32-S3) → W5500
+
+Backhaul Ethernet qua **SPI**. Pin lấy từ menuconfig, mặc định:
+
+| ESP32-S3 (BR) | Tín hiệu | W5500  | Ghi chú |
+|---------------|----------|--------|---------|
+| GPIO12        | SCLK     | SCLK   | SPI2 clock (default 20 MHz) |
+| GPIO11        | MOSI     | MOSI   | |
+| GPIO13        | MISO     | MISO   | |
+| GPIO10        | CS       | nSS    | Chip select |
+| GPIO9         | INT      | INT    | Interrupt (-1 = polling) |
+| GPIO6         | RST      | RST/NRESET | Reset (hold/release trong code) |
+
+- SPI host: 2 (SPI2). GND chung BR–W5500–RCP.
 
 **UART console/log (tùy chọn, để debug):**
 - **ESP32-S3** (Host) — **PC/Serial adapter**:
   - **GPIO43 (S3 TX)** → **RX (PC)** (UART0 TX)
   - **GPIO44 (S3 RX)** ← **TX (PC)** (UART0 RX)
   - Hoặc GPIO17/18 tùy board
-- Console/log mặc định qua UART0, có thể kết nối với serial adapter để xem log.
+- Console/log mặc định qua UART0.
 
-**RESET và BOOT control (tùy chọn, để auto-flash RCP):**
-- **ESP32-S3** (Host) — **ESP32-H2** (RCP):
-  - **GPIO7 (S3)** → **RST (H2)** — Reset pin
-  - **GPIO8 (S3)** → **GPIO9/BOOT (H2)** — Boot mode pin
-- ESP32-S3 có thể control RESET/BOOT của RCP để đưa vào download mode khi cần flash firmware (xem [TODO.md](TODO.md)).
-- Code đã sẵn sàng trong `br_rcp_ctrl.c`, tự động reset RCP khi boot.
+**Kênh frame (BR ↔ dashboard):** Transport **TCP** — BR listen port (mặc định 5000), dashboard kết nối BR_IP:port, gửi/nhận byte stream. Không dùng USB/UART.
 
-**Kênh frame (BR ↔ dashboard):**
-- Giao tiếp với dashboard theo cấu trúc khung: SOF 0xAA, Frame ID, CMD, LEN, DATA, CRC8, EOF 0x55 (xem [Documents/protocol/usb_cdc_frame_structure.md](../../Documents/protocol/usb_cdc_frame_structure.md)).
-- **Transport TCP:** BR listen port (menuconfig, mặc định 5000); dashboard kết nối tới BR_IP:port để gửi/nhận frame. Không dùng USB/UART cho kênh này.
+**Cấu trúc frame (sơ bộ):** Mỗi khung: **SOF** `0xAA` | **Frame ID** (1B) | **CMD** (1B) | **LEN** (2B big-endian) | **DATA** (LEN bytes) | **CRC8** (CRC-8/MAXIM trên [FrameID, CMD, LEN, DATA]) | **EOF** `0x55`. Dashboard gửi Pull (CMD_STATE, CMD_DATASET_ACTIVE, CMD_IP_ADDR, SET_*, CMD_ROUTER_TABLE, …); BR trả CMD_ACK (+ data) hoặc CMD_NACK. Chi tiết CMD và format bảng: [docs/protocol/usb_cdc_frame_structure.md](docs/protocol/usb_cdc_frame_structure.md), [docs/protocol/table_data_format.md](docs/protocol/table_data_format.md).
 
 ## Yêu cầu
 
@@ -70,12 +88,11 @@ idf.py build
 ```
 
 - **sdkconfig.defaults** đã cấu hình:
-  - Target ESP32-S3, OpenThread BR, RCP qua UART
-  - UART 460800, pin **GPIO4 (RX)** / **GPIO5 (TX)** cho Host–RCP
+  - Target ESP32-S3, OpenThread BR, RCP qua **SPI** (SCLK=4, MOSI=5, MISO=2, CS=3, IRQ=1)
   - Console/Log qua **UART0**
   - Flash baud rate **921600**
-  - RCP control pins: GPIO7 (RESET), GPIO8 (BOOT)
-- **Backhaul:** `idf.py menuconfig` → **ESP Thread Border Router** — bật **Ethernet W5500** (SPI pins). Backhaul chỉ LAN. Init chờ IPv4 (DHCP); cắm trực tiếp BR–PC dùng static (BR 192.168.4.1, PC 192.168.4.2). Backend route: xem [real_br_integration.md](../../Documents/architecture/real_br_integration.md) (accept_ra_rt_info_max_plen per-interface, RS).
+  - RCP control pins: GPIO7 (RESET), GPIO8 (BOOT). W5500: SPI2 (SCLK=12, MOSI=11, MISO=13, CS=10, INT=9, RST=6)
+- **Backhaul:** `idf.py menuconfig` → **ESP Thread Border Router** — bật **Ethernet W5500** (SPI pins). Backhaul chỉ LAN. Init **chỉ** chờ IPv4 (DHCP), timeout 25s (BR_ETH_LINK_TIMEOUT_MS); nếu timeout thì BR restart. RST W5500: hold/release cấu hình (BR_ETH_RST_HOLD_MS, BR_ETH_RST_RELEASE_MS). Cắm trực tiếp BR–PC: static BR 192.168.4.1, PC 192.168.4.2. Backend route: xem [real_br_integration.md](docs/architecture/real_br_integration.md) (accept_ra_rt_info_max_plen per-interface, RS).
 
 ### 3. Flash và chạy
 
@@ -92,7 +109,7 @@ idf.py -p /dev/ttyUSB0 -b 460800 flash monitor
 
 ### 4. Debug: log frame RX/TX
 
-Mặc định BR chỉ log frame RX/TX cho các lệnh không polling (STATE, bảng được ẩn ở INFO). Để xem mọi frame và byte stream TCP: set log level **DEBUG** cho component `communicate` và `transport_tcp` (menuconfig → Component config → Log output; hoặc xem [Documents/architecture/real_br_integration.md](../../Documents/architecture/real_br_integration.md) mục 5).
+Mặc định BR chỉ log frame RX/TX cho các lệnh không polling (STATE, bảng được ẩn ở INFO). Để xem mọi frame và byte stream TCP: set log level **DEBUG** cho component `communicate` và `transport_tcp` (menuconfig → Component config → Log output).
 
 ## Cấu trúc project
 
@@ -150,11 +167,11 @@ Thread-Host/
 ## Cấu hình đã set (tóm tắt)
 
 - **Target**: ESP32-S3  
-- **OpenThread**: Border Router, RCP qua **UART** (460800), **không WiFi/BLE**
+- **OpenThread**: Border Router, RCP qua **SPI** (Host = SPI2: SCLK=4, MOSI=5, MISO=2, CS=3, IRQ=1), **không WiFi/BLE**
   - Border Agent: Enabled
   - Commissioner: Enabled
-- **UART Host–RCP**: GPIO4 (RX), GPIO5 (TX) trên ESP32-S3 (UART1)  
 - **RCP Control pins**: GPIO7 (RESET), GPIO8 (BOOT) trên ESP32-S3 (tùy chọn, để auto-flash RCP)
+- **W5500 (backhaul)**: SPI2 — SCLK=12, MOSI=11, MISO=13, CS=10, INT=9, RST=6 (menuconfig)
 - **LED Status**: GPIO48 (onboard WS2812) hoặc GPIO5 (external WS2812), config qua menuconfig
 - **Console/Log**: **UART0** (GPIO43/44 trên ESP32-S3 DevKit, hoặc GPIO17/18 tùy board)
 - **Kênh frame**: **TCP** (BR listen port, mặc định 5000; dashboard kết nối BR_IP:port).
@@ -167,8 +184,8 @@ Thread-Host/
 
 - ✅ Thread Border Router cơ bản (không WiFi/BLE)
 - ✅ CLI console với OpenThread commands + system commands (qua UART0)
-- ✅ RCP qua UART (460800 baud, UART1)
-- ✅ RCP control (RESET/BOOT pins) - GPIO7/GPIO8 để control RCP
+- ✅ RCP qua SPI (Host SPI2: SCLK=4, MOSI=5, MISO=2, CS=3, IRQ=1)
+- ✅ RCP control (RESET/BOOT pins) — GPIO7/GPIO8
 - ✅ Border Agent enabled (cho external commissioning)
 - ✅ Commissioner enabled (cho internal commissioning)
 - ✅ Log level tối ưu (OPENTHREAD log level = INFO để giảm noise)
@@ -181,20 +198,17 @@ Thread-Host/
   - Child: xanh dương tĩnh
   - GPIO mặc định: 48 (onboard LED) hoặc 5 (external LED), có thể config qua menuconfig
 - **Device Registry:** Đã bỏ (Phase 1). BR chuyển sang mô hình BR thật: child gửi register/update/ping **trực tiếp tới backend** (CoAP/HTTP tới IP backend); BR chỉ quản lý (state, dataset, Commissioner) qua frame protocol với backend — xem plan Real BR migration.
-- ✅ **Communicate (frame protocol)** — Parse/serialize khung SOF/Frame ID/CMD/LEN/DATA/CRC8/EOF; **transport TCP** (BR listen, dashboard kết nối qua IP). **communicate_task**: init + queue (timeout 500 ms, log khi chờ &gt; 2 s) + state watchdog. **Handlers:** CMD_STATE, DATASET_ACTIVE, IP_ADDR (ACK + data), SET_PANID/CHANNEL/NETWORK_NAME/EXTENDED_PANID/NETWORK_KEY, ROUTER/CHILD/JOINER_TABLE (ACK + table data), THREAD_START, THREAD_STOP, THREAD_VERSION (ACK + version string), CMD_RESET (ACK + restart sau 2s), CMD_FACTORY (ACK + NVS erase + restart sau 2s); xem [Documents/protocol/usb_cdc_frame_structure.md](../../Documents/protocol/usb_cdc_frame_structure.md) và [Documents/protocol/table_data_format.md](../../Documents/protocol/table_data_format.md). **Stack & heap monitor:** task `stk_mon` log mỗi 30 s — stack high water mark của tất cả task + heap free/min_free; tên task và stack size tập trung tại `include/br_config.h` (`TASK_NAME_*`, `TASK_STACK_*`).
+- ✅ **Communicate (frame protocol)** — Khung và CMD theo cấu trúc frame (mục Kênh frame) trên. **communicate_task**: queue + state watchdog (5 miss × 15s → restart). Handlers: STATE, DATASET_ACTIVE, IP_ADDR, SET_*, ROUTER/CHILD/JOINER_TABLE, THREAD_START/STOP/VERSION, RESET, FACTORY, COMMISSIONER_JOINER, SRP_REGISTER. Chi tiết: [docs/protocol/usb_cdc_frame_structure.md](docs/protocol/usb_cdc_frame_structure.md), [docs/protocol/table_data_format.md](docs/protocol/table_data_format.md). Stack monitor: `stk_mon` log HWM + heap mỗi 30s.
 - ❌ **Auto-flash RCP khi boot** — xem [TODO.md](TODO.md)
 - ❌ RCP update/firmware management (đã loại bỏ)
-- ✅ **Xử lý CMD** — STATE, DATASET_ACTIVE, IP_ADDR, SET_* (PANID, CHANNEL, NETWORK_NAME, EXTENDED_PANID, NETWORK_KEY), ROUTER/CHILD/JOINER_TABLE, THREAD_START, THREAD_STOP, THREAD_VERSION, RESET, FACTORY, COMMISSIONER_JOINER, **SRP_REGISTER (0x44)**; BR trả ACK (+ data khi có) hoặc NACK; xem [Documents/protocol/usb_cdc_frame_structure.md](../../Documents/protocol/usb_cdc_frame_structure.md) và [Documents/protocol/table_data_format.md](../../Documents/protocol/table_data_format.md).
+- ✅ **Xử lý CMD** — Như mục Communicate; BR trả ACK (+ data) hoặc NACK. SRP_REGISTER (0x44): backend đăng ký _dashboard._udp.
 - ✅ **SRP (Service Registration Protocol)** — SRP server bật trên BR (listen Thread mesh); backend đăng ký service `_dashboard._udp` qua **CMD_SRP_REGISTER** (frame TCP, không UDP BR:53535). BR dùng SRP client đăng ký host + service lên SRP server; child discovery `_dashboard._udp` qua SRP/DNS. Hostname và địa chỉ IPv6 backend được lưu trong buffer tĩnh (`s_srp_hostname`, `s_srp_backend_addr`) vì OpenThread SRP client chỉ giữ con trỏ — tránh mojibake/empty host và địa chỉ rác khi DNS update bất đồng bộ. Cần `CONFIG_OPENTHREAD_HEADER_CUSTOM=y` và path `include` để lệnh **`ot srp server host`** / **`ot srp server service`** có sẵn trên serial CLI (kiểm tra host/service đã đăng ký).
 - ❌ **Push system health** — Gửi stack HWM + heap size cho backend/Node để monitor từ xa; xem [TODO.md](TODO.md).
 
 ## Tài liệu tham khảo
 
-### Tài liệu (HomeThread/Documents/)
-
-- **[Documents/protocol/usb_cdc_frame_structure.md](../../Documents/protocol/usb_cdc_frame_structure.md)** — Cấu trúc khung USB CDC (SOF, Frame ID, CMD, LEN, DATA, CRC8, EOF); bảng CMD.
-- **[Documents/protocol/table_data_format.md](../../Documents/protocol/table_data_format.md)** — Format dữ liệu Router Table, Child Table, Joiner Table.
-- **[Documents/coap/border_router_coap_server.md](../../Documents/coap/border_router_coap_server.md)** — CoAP server BR (device registry).
+- **Frame & bảng:** [docs/protocol/usb_cdc_frame_structure.md](docs/protocol/usb_cdc_frame_structure.md) (cấu trúc khung, bảng CMD), [docs/protocol/table_data_format.md](docs/protocol/table_data_format.md) (Router/Child/Joiner table).
+- **Tích hợp BR:** [docs/architecture/real_br_integration.md](docs/architecture/real_br_integration.md) (Dashboard TCP, child→backend).
 
 ### Tài liệu chính thức
 
