@@ -11,18 +11,20 @@ Tài liệu mô tả các endpoint CoAP mà Backend cung cấp cho Thread-Node. 
 | `/device/register/entity` | POST | **key 7** mac_address, **key 9** array entities | Resolve device; upsert device_entity; restore state; query restore list; có thể trả body **CBOR** (Content-Format application/cbor): map key **10** = array restore (mỗi item map: 0=entity_id, 1=restore_mode, 2=state, 3=brightness, 4=mode, 5=rgb_json, 6=color_temp, 7=value_real, 8=has_saved_state) | 2.01/2.04, echo token, optional body |
 | `/device/update/info` | POST | mac_address + device fields | Update device_info theo mac_address | 2.04, echo token |
 | `/device/update/entity` | POST | mac_address + key 9 array entities | Update device_entity (name, type, device_class, unit, attributes_json) | 2.04, echo token |
-| `/device/update/topology` | POST | mac_address + key 8 network | Insert device_topology_history từ row hiện tại; upsert device_topology (rloc16, parent_rloc16, role) | 2.04, echo token |
+| `/device/update/topology` | POST | mac_address + key 8 network | Insert device_topology_history từ row hiện tại; upsert device_topology (rloc16, parent_rloc16, role, **rssi**, **link_quality**) | 2.04, echo token |
 | `/device/update/state` | POST | mac_address + key 9 array entities (entity_id + state fields) | Insert device_entity_state_history từ state hiện tại; upsert device_entity_state | 2.04, echo token |
 
 **Slug:** device_slug là concern của backend + UI. Node không gửi slug; backend generate (vd. từ mac_address) và dùng cho URL/API/frontend.
+
+**Network map (key 8):** Sub-keys: 0 = rloc16, 1 = role, 2 = ipv6, 3 = parent, **4 = rssi** (dBm, integer), **5 = link_quality** (0–255, integer). Tùy chọn; backend lưu vào device_topology và device_topology_history.
 
 ## Schema 6 bảng
 
 | Bảng | Vai trò |
 |------|---------|
 | device_info | Thông tin tĩnh + identity (mac_address TEXT UNIQUE, device_slug, device_name, …) |
-| device_topology | Snapshot topology realtime (device_id FK, rloc16, parent_rloc16, role); UNIQUE(device_id) |
-| device_topology_history | Lịch sử topology (recorded_at) |
+| device_topology | Snapshot topology realtime (device_id FK, rloc16, parent_rloc16, role, **rssi**, **link_quality**); UNIQUE(device_id) |
+| device_topology_history | Lịch sử topology (rloc16, parent_rloc16, role, rssi, link_quality, recorded_at) |
 | device_entity | Định nghĩa entity (device_id FK, entity_id, name, type, device_class, unit, restore_mode, deleted_at); UNIQUE(device_id, entity_id) |
 | device_entity_state | Snapshot state realtime (entity_id FK, available, state, brightness, mode, rgb_json, color_temp, value_real, deleted_at); UNIQUE(entity_id) |
 | device_entity_state_history | Lịch sử state (recorded_at) |

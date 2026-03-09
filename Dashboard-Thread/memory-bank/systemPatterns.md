@@ -21,8 +21,8 @@ UI Components      (frontend/src/features/*, frontend/src/shared/components/)
 
 Thread-Node  -- CoAP UDP 5683 (IPv6 [::]), path /device/
     ↓ GET /device/ping; POST /device/register/info (keys 0–8, mac 7) → device_info + topology; POST /device/register/entity (mac + key 9) → device_entity + restore CBOR; POST /device/update/info|entity|topology|state
-CoAP server        (backend/src/coap/coap-device.server.ts) + DeviceCoapController + device-coap.service.ts + coap.response.ts
-    ↓ registerCoapControllers(server, [DeviceCoapController]). CoapStatus (coap.type.ts); sendCoapResponse, echoCoapToken (coap.response.ts); parseCborOrRespond trong controller. GET ping: 2.05 + timestamp. POST register/info: upsert device_info, slug, soft-delete; optional topology. POST register/entity: merge entity, tra restore CBOR neu co. POST update/*: update info, entity, topology, state. Moi response qua sendCoapResponse (echo token). Khong emit len frontend.
+CoAP server        (backend/src/coap/coap-device.server.ts) + DeviceCoapController + device-coap.service.ts + device.repository.ts + coap.response.ts
+    ↓ registerCoapControllers(server, [DeviceCoapController]). CoapStatus (coap.type.ts); sendCoapResponse, echoCoapToken (coap.response.ts); parseCborOrRespond trong controller. GET ping: 2.05 + timestamp. POST register/info: upsert device_info, slug (generateSlug), soft-delete; optional topology (rloc16, parent_rloc16, role, rssi, link_quality). POST register/entity: merge entity, tra restore CBOR neu co. POST update/*: update info, entity, topology (rssi, link_quality), state. DB qua database/repositories (Drizzle type-safe). Khong emit len frontend.
 
 Backend (os.networkInterfaces) → getBackendAddresses() → io.emit(SYSTEM_INFO) khi CONFIG_CURRENT
     ↓
@@ -47,12 +47,12 @@ Backend (khi BR = leader) → log "SRP register: IPv6=... hostname=... port=..."
 | `WebSocketServer` | `backend/src/websocket/websocket.server.ts` | CHI relay socket events ↔ CommunicateManager. KHONG chua business logic hay transport logic |
 | `CommunicateManager` | `backend/src/communicate/communicate.manager.ts` | Owner cua toan bo transport + frame. Dieu phoi TransportTcp, polling, broadcast |
 | `TransportTcp` | `backend/src/communicate/transport-tcp.transport.ts` | TCP client: open(host, port), writeRaw, onRawData, setOnDisconnect |
-| `BrConnectionConfigService` | `backend/src/settings/br-connection-config.service.ts` | SQLite CRUD cho cau hinh BR (brHost, brPort, useMdns) |
+| `BrConnectionService` | `backend/src/settings/br-connection.service.ts` | Cau hinh BR (brHost, brPort, useMdns) qua app-settings.repository (key-value trong app_settings) |
 | `CommandManager` | `backend/src/communicate/command.manager.ts` | Frame TX/RX. Pending map (frameId → resolve/reject). ACK/NACK routing. Timeout; replyAck cho IP_ADDR |
 | `OtConfigManager` | `backend/src/thread/ot-config.manager.ts` | In-memory store. `.update(partial)` de merge, `.get()` de doc, `.clear()` khi disconnect |
 | `PollingManager` | `backend/src/thread/polling.manager.ts` | Poll table 6s (child +1.5s delay). CHI khi frontend connected + state = leader/router/child |
 | `AppSettingsService` | `backend/src/settings/app-settings.service.ts` | SQLite key-value cho app settings (thread_run_on_connect) |
-| CoAP server | `backend/src/coap/coap-device.server.ts` + `device-coap.controller.ts` + `device-coap.service.ts` + `coap.response.ts` | CoAP UDP 5683 (udp6, [::]). Paths: /device/ping, register/info, register/entity, update/info, update/entity, update/topology, update/state. CoapStatus (coap.type.ts); sendCoapResponse/echoCoapToken (coap.response.ts); parseCborOrRespond (controller). GET ping → 2.05 + timestamp. POST register/info: upsert device_info (mac_address), slug, soft-delete; topology optional. POST register/entity: merge device_entity, tra restore CBOR (key 10). POST update/*: update info, entity def, topology, state. SQLite 6 bang (migration 009). Khong emit qua io |
+| CoAP server | `backend/src/coap/coap-device.server.ts` + `device-coap.controller.ts` + `device-coap.service.ts` + `database/repositories/device.repository.ts` + `coap.response.ts` | CoAP UDP 5683 (udp6, [::]). Paths: /device/ping, register/info, register/entity, update/info, update/entity, update/topology, update/state. CoapStatus (coap.type.ts); sendCoapResponse/echoCoapToken (coap.response.ts); parseCborOrRespond (controller). GET ping → 2.05 + timestamp. POST register/info: upsert device_info (mac_address), slug (generateSlug); soft-delete; topology optional (rloc16, parent_rloc16, role, rssi, link_quality). POST register/entity: merge device_entity, tra restore CBOR (key 10). POST update/*: update info, entity def, topology (rssi, link_quality), state. DB qua Drizzle type-safe (device.repository, app-settings.repository). SQLite 6 bang. Khong emit qua io |
 
 ## Frame Protocol
 

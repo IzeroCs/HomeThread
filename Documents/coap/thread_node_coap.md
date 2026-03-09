@@ -35,7 +35,7 @@ Backend       parse CBOR → device_info, device_entity, device_topology, device
   - **0**: device_id (string, optional — backend không dùng để identify; slug do backend tạo).
   - **1**: device_name, **2**: device_type, **3**: manufacturer, **4**: model, **5**: sw_version, **6**: hw_version.
   - **7**: **mac_address** (uint, **bắt buộc**) — EUI-64, backend dùng làm identifier.
-  - **8**: network (map: rloc16(0), role(1)=0|1|2, ipv6(2), parent(3) optional). Nếu có, backend ghi luôn topology.
+  - **8**: network (map: rloc16(0), role(1)=0|1|2, ipv6(2), parent(3), **rssi(4)**, **link_quality(5)** optional). Nếu có, backend ghi luôn topology. **rssi** (key 4): RSSI dBm (số nguyên). **link_quality** (key 5): chất lượng link 0–255 (số nguyên).
 
 - **POST /device/register/entity** — map:
   - **7**: mac_address (để backend resolve device).
@@ -52,7 +52,7 @@ Backend       parse CBOR → device_info, device_entity, device_topology, device
 
 ## update/topology và update/state
 
-- **POST /device/update/topology**: Payload có **mac_address (key 7)** và **key 8** network (rloc16, role, parent). Backend lưu snapshot topology + append history.
+- **POST /device/update/topology**: Payload có **mac_address (key 7)** và **key 8** network (rloc16, role, parent, **rssi**, **link_quality**). Backend lưu snapshot topology (device_topology, device_topology_history) gồm rloc16, parent_rloc16, role, rssi, link_quality; append history.
 - **POST /device/update/state**: Payload có **mac_address (key 7)** và **key 9** array entities (mỗi phần tử có entity_id + available, state, brightness, mode, rgb_json, color_temp, value_real). Backend lưu snapshot state + append history.
 
 ## Lấy Backend IP/port (SRP/DNS-SD)

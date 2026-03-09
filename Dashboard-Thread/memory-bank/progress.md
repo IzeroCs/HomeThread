@@ -24,6 +24,7 @@ Version notation in this file uses Semantic Versioning `MAJOR.MINOR.PATCH` (no l
 | 1.9.0   | **CoAP device/entities split:** POST /device/register chi nhan CBOR keys 0–8 (device + network, khong key 9). POST /device/entities (endpoint moi): payload key 0 = device_id, key 9 = array entities; merge theo (device_id, entity_id). Backend luu SQLite bang **device_info**, **device_entity** (migration 007); migration 008 doi ten coap_device/coap_entity sang device_info/device_entity neu da chay 007 cu. CoAP response **echo token** (RFC 7252); tra 2.01 Created / 2.04 Changed. device-coap.service.ts: upsertDevice(), mergeEntity(). Doc: docs/coap/border_router_coap_server.md, cap nhat thread_node_coap.md. |
 | 2.0.0   | **CoAP schema 6 bang + 6 URI:** Migration 009: device_info (mac_address TEXT UNIQUE, device_slug), device_topology, device_topology_history, device_entity (restore_mode, deleted_at), device_entity_state, device_entity_state_history. CoAP URI: /device/register/info, /device/register/entity, /device/update/info, /device/update/entity, /device/update/topology, /device/update/state. Node identify bang mac_address (key 7); slug backend-only. Restore flow: register/entity tra body CBOR (key 10 = restore array). CBOR encoder noi bo (cbor.encoder.ts) cho restore response. device-coap.service: upsertDeviceInfo, updateDeviceInfo, upsertTopology, mergeEntity, updateEntityDefinition, upsertEntityState. Doc: thread_node_coap.md, border_router_coap_server.md. |
 | 2.1.0   | **CoAP controller refactor:** CoapStatus constants (coap.type.ts: CREATED, CHANGED, CONTENT, NOT_FOUND, SERVER_ERROR). coap.response.ts: echoCoapToken, sendCoapResponse(req, res, status, body?, contentFormat?). parseCborOrRespond(req, res) — parse CBOR, neu null thi send 2.01 va return null (cach A). Handler: mot dong lay parsed, neu null return; logic + mot lan sendCoapResponse cuoi. Router dung CoapStatus.NOT_FOUND, CoapStatus.SERVER_ERROR. |
+| 2.2.0   | **DB refactor + topology rssi/link_quality:** Drizzle ORM schema (database.schema.ts), migrations data/migrations (drizzle-kit generate). BR config gop vao app_settings (br_host, br_port, use_mdns). Logic DB chuyen vao database/repositories (app-settings.repository, device.repository); device-coap.service chi parse/map, goi repo. Slug: generateSlug(deviceName, existingSlugs) pure function; generate 1 lan khi device_slug NULL. **device_topology, device_topology_history:** them cot **rssi**, **link_quality**. Network payload key 8: sub-keys 4=rssi, 5=link_quality. Doc: thread_node_coap.md, border_router_coap_server.md cap nhat cho Thread-Node. |
 
 
 ## What Works (Completed)
@@ -31,7 +32,7 @@ Version notation in this file uses Semantic Versioning `MAJOR.MINOR.PATCH` (no l
 ### Infrastructure
 
 - npm workspaces monorepo (backend + frontend + shared)
-- SQLite database (WAL mode): app_settings, br_connection_config; migration 006 drop serial_config; 007 device_info + device_entity; 008 rename coap_* → device_info/device_entity; 009 schema 6 bang (device_info, device_topology, device_topology_history, device_entity, device_entity_state, device_entity_state_history) — mac_address TEXT UNIQUE, device_slug, soft-delete, restore_mode
+- SQLite database (WAL mode): Drizzle schema (database.schema.ts), migrations data/migrations. app_settings (key-value; BR config br_host, br_port, use_mdns trong app_settings). Schema 6 bang: device_info (mac_address UNIQUE, device_slug), device_topology + device_topology_history (rloc16, parent_rloc16, role, **rssi**, **link_quality**), device_entity (restore_mode, deleted_at), device_entity_state + history. Repositories: app-settings.repository, device.repository (type-safe Drizzle).
 - Shared package: types, events, constants, validation
 - pino logging voi child loggers (transportLogger, frameLogger, wsLogger)
 - Table log filtering (ROUTER/CHILD/JOINER TX + ACK bi an)
@@ -45,7 +46,7 @@ Version notation in this file uses Semantic Versioning `MAJOR.MINOR.PATCH` (no l
 - CommandManager: pending map, frameId rotation, timeout, ACK/NACK routing
 - CommunicateManager: orchestrates TransportTcp + frame (khong con Serial)
 - TransportTcp: TCP client (open/close/writeRaw/onRawData/setOnDisconnect)
-- BrConnectionConfigService: SQLite br_host, br_port, use_mdns
+- BR connection: app_settings keys br_host, br_port, use_mdns (BrConnectionService dùng app-settings.repository)
 - PollingManager: poll 6s (chi khi frontend connected + state active)
 - BR auto-reconnect (3s interval)
 - Consecutive failure guard (5 lan → close + reconnect)
@@ -75,7 +76,7 @@ Version notation in this file uses Semantic Versioning `MAJOR.MINOR.PATCH` (no l
 
 ### Backend — CoAP device & System
 
-- CoAP server (coap/coap-device.server.ts): listen UDP 5683 on [::] (udp6). **Decorator:** registerCoapControllers(server, [DeviceCoapController]); paths /device/ping, /device/register/info, /device/register/entity, /device/update/info, /device/update/entity, /device/update/topology, /device/update/state. **Helpers:** CoapStatus (coap.type.ts), sendCoapResponse/echoCoapToken (coap.response.ts), parseCborOrRespond trong controller. **GET /device/ping**: 2.05 Content + 4-byte timestamp uint32 LE. **POST /device/register/info**: CBOR keys 0–8, mac_address (7) bat buoc; upsert device_info, slug, soft-delete entity/state cu; optional topology. **POST /device/register/entity**: mac_address + key 9 entities; merge device_entity; co the tra body CBOR (key 10 = restore). **POST /device/update/***: update info, entity definition, topology, state; tra 2.04. Moi response qua sendCoapResponse (echo token + status). SQLite 6 bang (migration 009). Khong emit len frontend. Doc: docs/coap/thread_node_coap.md, docs/coap/border_router_coap_server.md.
+- CoAP server (coap/coap-device.server.ts): listen UDP 5683 on [::] (udp6). **Decorator:** registerCoapControllers(server, [DeviceCoapController]); paths /device/ping, /device/register/info, /device/register/entity, /device/update/info, /device/update/entity, /device/update/topology, /device/update/state. **Helpers:** CoapStatus (coap.type.ts), sendCoapResponse/echoCoapToken (coap.response.ts), parseCborOrRespond trong controller. **GET /device/ping**: 2.05 Content + 4-byte timestamp uint32 LE. **POST /device/register/info**: CBOR keys 0–8, mac_address (7) bat buoc; upsert device_info, slug (generateSlug); soft-delete entity/state cu; optional topology (rloc16, parent_rloc16, role, rssi, link_quality). **POST /device/register/entity**: mac_address + key 9 entities; merge device_entity; co the tra body CBOR (key 10 = restore). **POST /device/update/***: update info, entity definition, topology (rssi, link_quality), state; tra 2.04. DB qua database/repositories (Drizzle). Doc: docs/coap/thread_node_coap.md, docs/coap/border_router_coap_server.md (network key 8: rssi(4), link_quality(5)).
 - System info: getBackendAddresses() (utils/ipv6.util); gui SYSTEM_INFO khi CONFIG_GET/CONFIG_CURRENT. Frontend Status section System (IPv4/IPv6).
 
 ### Backend — Path aliases & build
@@ -108,8 +109,8 @@ Console da bo. Commissioner gop vao Nodes (modal + Joiner List).
 - HomeThread/Documents/protocol/usb_cdc_frame_structure.md
 - HomeThread/Documents/protocol/table_data_format.md
 - HomeThread/Documents/dashboard/migration_to_frame_protocol.md
-- docs/coap/thread_node_coap.md — huong dan Thread-Node (CoAP + CBOR, register keys 0–8, entities endpoint)
-- docs/coap/border_router_coap_server.md — spec Backend CoAP (endpoints, payload, device_info/device_entity, echo token)
+- docs/coap/thread_node_coap.md — huong dan Thread-Node (CoAP + CBOR, register keys 0–8, network key 8: rloc16, role, parent, rssi, link_quality)
+- docs/coap/border_router_coap_server.md — spec Backend CoAP (endpoints, 6 bang, device_topology/device_topology_history co rssi, link_quality)
 - README.md + TODO.md cap nhat
 
 ## What's Left to Build

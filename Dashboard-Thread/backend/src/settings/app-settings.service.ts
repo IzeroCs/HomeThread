@@ -1,28 +1,18 @@
 /**
- * AppSettings Service - Cài đặt app lưu SQLite (vd: có tự chạy Thread khi serial connect không)
+ * AppSettings Service - Cài đặt app (thread_run_on_connect, v.v.) — dùng app-settings repo.
  */
 
-import { getDatabase } from "@database/database.db";
+import { getAppSetting, setAppSetting } from "@database/repositories/app-settings.repository";
 
 const KEY_THREAD_RUN_ON_CONNECT = "thread_run_on_connect";
 
 export class AppSettingsService {
-  private db = getDatabase();
-
   getThreadRunOnConnect(): boolean {
-    const stmt = this.db.prepare(
-      "SELECT value FROM app_settings WHERE key = ?"
-    );
-    const row = stmt.get(KEY_THREAD_RUN_ON_CONNECT) as { value: string } | undefined;
-    if (!row) return false;
-    return row.value === "1";
+    const value = getAppSetting(KEY_THREAD_RUN_ON_CONNECT);
+    return value === "1";
   }
 
   setThreadRunOnConnect(run: boolean): void {
-    const stmt = this.db.prepare(`
-      INSERT INTO app_settings (key, value) VALUES (?, ?)
-      ON CONFLICT(key) DO UPDATE SET value = excluded.value
-    `);
-    stmt.run(KEY_THREAD_RUN_ON_CONNECT, run ? "1" : "0");
+    setAppSetting(KEY_THREAD_RUN_ON_CONNECT, run ? "1" : "0");
   }
 }

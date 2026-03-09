@@ -23,6 +23,8 @@ export const NETWORK_KEYS = {
   ROLE: 1,
   IPV6: 2,
   PARENT: 3,
+  RSSI: 4,
+  LINK_QUALITY: 5,
 } as const;
 
 /** Role numeric value: 0=child, 1=router, 2=leader (matches Thread-Node) */
@@ -60,6 +62,8 @@ export interface DeviceRegisterNetwork {
   1?: number; // role: 0=child, 1=router, 2=leader
   2?: Uint8Array;
   3?: number;
+  4?: number; // rssi (dBm)
+  5?: number; // link_quality (0–255)
 }
 
 export interface DeviceRegisterPayload {

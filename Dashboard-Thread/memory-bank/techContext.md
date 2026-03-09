@@ -12,7 +12,7 @@ Dashboard-Thread/          # npm workspaces root
 │       ├── settings/      # BrConnectionConfigService, AppSettingsService
 │       ├── thread/        # OtConfigManager, PollingManager, device-role, thread-data
 │       ├── websocket/     # WebSocketServer
-│       ├── database/      # SQLite, migrations
+│       ├── database/      # SQLite, Drizzle schema + migrations (data/migrations), repositories (device, app-settings)
 │       ├── cbor/          # CBOR decode (noi bo)
 │       └── utils/         # logger, ipv6
 ├── frontend/              # React + Vite + SCSS
@@ -132,7 +132,7 @@ SQLite (`better-sqlite3`, WAL mode). Migrations:
 - 006: DROP TABLE serial_config (BR chi dung TCP, khong con Serial)
 - 007: device_info, device_entity (legacy register/entities)
 - 008: doi ten coap_device → device_info, coap_entity → device_entity neu da chay 007 voi ten cu
-- 009: **schema 6 bang**: device_info (mac_address TEXT UNIQUE, device_slug), device_topology, device_topology_history, device_entity (restore_mode, deleted_at), device_entity_state, device_entity_state_history
+- 009 / Drizzle: **schema 6 bang** (`database.schema.ts`, migrations `data/migrations/`): device_info (mac_address TEXT UNIQUE, device_slug), device_topology (rloc16, parent_rloc16, role, **rssi**, **link_quality**), device_topology_history (cung cac cot + recorded_at), device_entity (restore_mode, deleted_at), device_entity_state, device_entity_state_history. BR config gop vao app_settings (br_host, br_port, use_mdns).
 
 ## Docker (backend)
 
