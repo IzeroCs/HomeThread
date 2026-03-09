@@ -261,10 +261,10 @@ static int serialize_light_entity(cbor_encoder_t *enc, const entity_light_t *lig
     if (cbor_encode_text_string(enc, light->base.name) < 0) return -1;
     
     if (cbor_encode_uint(enc, CBOR_K_ENT_TYPE) < 0) return -1;
-    if (cbor_encode_text_string(enc, "light") < 0) return -1;
+    if (cbor_encode_uint(enc, (uint32_t)ENTITY_TYPE_LIGHT) < 0) return -1;
     
     if (cbor_encode_uint(enc, CBOR_K_ENT_DEVICE_CLASS) < 0) return -1;
-    if (cbor_encode_text_string(enc, light->base.device_class) < 0) return -1;
+    if (cbor_encode_uint(enc, (uint32_t)light->mode) < 0) return -1;
     
     if (cbor_encode_uint(enc, CBOR_K_ENT_AVAILABLE) < 0) return -1;
     if (cbor_encode_bool(enc, light->base.available) < 0) return -1;
@@ -280,15 +280,7 @@ static int serialize_light_entity(cbor_encoder_t *enc, const entity_light_t *lig
     if (cbor_encode_uint(enc, light->brightness) < 0) return -1;
     
     if (cbor_encode_uint(enc, CBOR_K_ENT_MODE) < 0) return -1;
-    const char *mode_str = "on_off";
-    switch (light->mode) {
-        case LIGHT_MODE_DIMMABLE: mode_str = "dimmable"; break;
-        case LIGHT_MODE_RGB: mode_str = "rgb"; break;
-        case LIGHT_MODE_RGBW: mode_str = "rgbw"; break;
-        case LIGHT_MODE_CCT: mode_str = "cct"; break;
-        default: break;
-    }
-    if (cbor_encode_text_string(enc, mode_str) < 0) return -1;
+    if (cbor_encode_uint(enc, (uint32_t)light->mode) < 0) return -1;
     
     // RGB array (if RGB or RGBW mode)
     if (light->mode == LIGHT_MODE_RGB || light->mode == LIGHT_MODE_RGBW) {
@@ -327,10 +319,10 @@ static int serialize_sensor_entity(cbor_encoder_t *enc, const entity_sensor_t *s
     if (cbor_encode_text_string(enc, sensor->base.name) < 0) return -1;
     
     if (cbor_encode_uint(enc, CBOR_K_ENT_TYPE) < 0) return -1;
-    if (cbor_encode_text_string(enc, "sensor") < 0) return -1;
+    if (cbor_encode_uint(enc, (uint32_t)ENTITY_TYPE_SENSOR) < 0) return -1;
     
     if (cbor_encode_uint(enc, CBOR_K_ENT_DEVICE_CLASS) < 0) return -1;
-    if (cbor_encode_text_string(enc, sensor->base.device_class) < 0) return -1;
+    if (cbor_encode_uint(enc, (uint32_t)sensor->sensor_class) < 0) return -1;
     
     if (cbor_encode_uint(enc, CBOR_K_ENT_AVAILABLE) < 0) return -1;
     if (cbor_encode_bool(enc, sensor->base.available) < 0) return -1;

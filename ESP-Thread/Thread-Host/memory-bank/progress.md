@@ -28,7 +28,7 @@ _(Ghi phiên bản theo Semantic Versioning MAJOR.MINOR.PATCH, không dùng ti�
 
 ### Core Infrastructure
 - [x] OpenThread Border Router với border routing + prefix delegation
-- [x] RCP giao tiếp qua UART1 (GPIO4/5, 460800 baud)
+- [x] RCP giao tiếp qua SPI (host SPI2; pins cấu hình trong menuconfig)
 - [x] RCP control pins (RESET GPIO7, BOOT GPIO8) — tự reset RCP khi boot
 - [x] Dataset init on boot — tạo dataset "ESP-BR-<MAC>" nếu chưa có
 - [x] CLI console qua UART0 (OpenThread + system commands)
@@ -107,7 +107,7 @@ _(Ghi phiên bản theo Semantic Versioning MAJOR.MINOR.PATCH, không dùng ti�
 | Issue | Trạng thái | Ghi chú |
 |-------|-----------|---------|
 | `main` task "used full" trong stack monitor | Bình thường | Task đã exit sau `app_main()`, `uxTaskGetStackHighWaterMark` trả 0 → hiển thị "full" |
-| Dashboard reply ACK cho CMD_IP_ADDR | Dashboard-Thread | Chỉ pullState gửi replyAck khi stateChangedOrFirst; BR retry vô hạn nếu fetch IP từ nơi khác. Fix: CommandManager.handle() gửi replyAck cho mọi ACK IP_ADDR (16 byte). |
+| BR log `ipaddr response no ACK` 1–2 lần khi boot/reconnect | Dashboard-Thread | Dashboard đã reply ACK cho IP_ADDR trong `CommandManager.handle()`; 1–2 lần retry thường do timing/reconnect. Nếu spam liên tục thì kiểm tra TCP ổn định và log `Failed to send reply ACK`. |
 
 _(SRP server Refused đã xử lý trong 0.14.0 — lease/key lease 60/120.)_
 

@@ -24,7 +24,12 @@
 #define CBOR_K_NET_IPV6       2
 #define CBOR_K_NET_PARENT     3
 
-/* Entity map keys (light, sensor, etc.) */
+/* Entity map keys (light, sensor, etc.)
+ * CBOR_K_ENT_TYPE, CBOR_K_ENT_DEVICE_CLASS, CBOR_K_ENT_MODE are encoded as uint (not string).
+ * Type: entity_type_t (0=light, 1=switch, 2=fan, 3=sensor, 4=climate, 5=binary_sensor).
+ * Device class: light -> light_mode_t (0=on_off..4=cct); sensor -> sensor_class_t (0=temperature..).
+ * Mode (light only): light_mode_t (0=on_off, 1=dimmable, 2=rgb, 3=rgbw, 4=cct).
+ */
 #define CBOR_K_ENT_ENTITY_ID  0
 #define CBOR_K_ENT_NAME       1
 #define CBOR_K_ENT_TYPE       2

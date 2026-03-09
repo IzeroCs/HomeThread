@@ -114,7 +114,6 @@ static void register_response_handler(void *aContext, otMessage *aMessage, const
     (void)aContext;
     (void)aMessageInfo;
 
-    ESP_LOGW(TAG, "Register response handler");
     bool success = false;
     if (aError == OT_ERROR_NONE && aMessage != NULL) {
         otCoapCode code = otCoapMessageGetCode(aMessage);
@@ -144,7 +143,6 @@ static void ping_response_handler(void *aContext, otMessage *aMessage, const otM
         return;
     }
 
-    ESP_LOGW(TAG, "Ping handler");
     otCoapCode code = otCoapMessageGetCode(aMessage);
     if (code < OT_COAP_CODE_CREATED || code > OT_COAP_CODE_CONTENT) {
         ESP_LOGW(TAG, "Ping response code %d.%02d", (int)(code >> 5), (int)(code & 0x1f));

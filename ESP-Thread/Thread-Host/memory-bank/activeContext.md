@@ -36,7 +36,11 @@ Backhaul Ethernet W5500 đã có IPv6 trên backbone (link-local + ULA/global kh
 - **Cắm trực tiếp BR–PC (không DHCP):** Timeout → restart; nếu có direct-connect path (BR_ETH_DIRECT_*) thì BR set static 192.168.4.1, PC static 192.168.4.2.
 
 ### CMD_IP_ADDR và Dashboard reply ACK
-- BR gửi ACK + 16 byte Leader RLOC; spec yêu cầu backend gửi lại **một ACK trống cùng frameId** để BR dừng retry. Dashboard-Thread hiện chỉ gọi `replyAck(ipRes.frameId)` trong `CommunicateManager.pullState()` khi `stateChangedOrFirst` → các lần fetch IP_ADDR khác (vd. fetchOtConfig, refresh) không gửi reply ACK → BR retry mãi. **Khuyến nghị:** Trong Dashboard-Thread, `CommandManager.handle()` khi nhận ACK của CMD_IP_ADDR (frameId trong ipAddrFrameIds, data.length === 16) tự gọi `replyAck(frame.frameId)` để mọi nguồn gọi fetchIpAddr đều trả ACK cho BR.
+- BR gửi ACK + 16 byte Leader RLOC; spec yêu cầu backend gửi lại **một ACK trống cùng frameId** để BR dừng retry.
+- Dashboard-Thread hiện đã gửi reply ACK ngay khi nhận ACK IP_ADDR (16 byte) trong `CommandManager.handle()`. Tuy nhiên lúc khởi động / reconnect có thể vẫn thấy 1–2 lần log `ipaddr response no ACK` do timing (ACK reply tới trễ hoặc socket vừa đóng/mở).
+
+### Docs install/setup
+- Thêm `docs/installation.md`: lệnh `sysctl` (RA/RIO) và add route tay cho backend Linux.
 
 ### CMD_COMMISSIONER_JOINER (0x43) — Đã implement
 - Handler trong `communicate_command.c`: parse EUI64(8) + PSKd_len(1) + PSKd(1–32) + Timeout(4 BE)

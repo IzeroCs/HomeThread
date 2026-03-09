@@ -8,6 +8,7 @@ Tài liệu kỹ thuật chung cho toàn bộ project HomeThread (bao gồm **Da
 
 ```
 Documents/
+├── installation.md              # Setup notes (backend route, RA/RIO, ...)
 ├── architecture/                # Kiến trúc BR thật (Thread-Node & Dashboard tích hợp)
 │   └── real_br_integration.md      # BR thật: Dashboard↔BR qua TCP; Child↔Backend trực tiếp
 │
@@ -28,6 +29,12 @@ Documents/
 ---
 
 ## Tài liệu theo chủ đề
+
+### Cài đặt / Setup
+
+| Tài liệu | Mô tả |
+|----------|-------|
+| [installation.md](installation.md) | Lệnh sysctl route IPv6 (RA/RIO) và add route tay cho backend Linux |
 
 ### Kiến trúc BR thật (Phase 2)
 

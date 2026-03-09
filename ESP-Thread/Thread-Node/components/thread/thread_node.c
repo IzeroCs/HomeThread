@@ -207,11 +207,11 @@ static void on_joined_wrapper(void *ctx)
     }
 
     /* Set Leader Weight = -16 để tránh trở thành Leader */
-    // if (instance && esp_openthread_lock_acquire(pdMS_TO_TICKS(500))) {
-    //     otThreadSetLocalLeaderWeight(instance, -16);
-    //     esp_openthread_lock_release();
-    //     ESP_LOGI(TAG, "Leader Weight set to -16");
-    // }
+    if (instance && esp_openthread_lock_acquire(pdMS_TO_TICKS(500))) {
+        otThreadSetLocalLeaderWeight(instance, -16);
+        esp_openthread_lock_release();
+        ESP_LOGI(TAG, "Leader Weight set to -16");
+    }
 
     /* Set router selection jitter */
     if (s_config.router_selection_jitter > 0) {

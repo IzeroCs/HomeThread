@@ -142,4 +142,4 @@ Khi Thread-Node báo **ResponseTimeout** (ping/register), response từ backend 
 | [../protocol/table_data_format.md](../protocol/table_data_format.md) | Binary format Router/Child/Joiner Table |
 | [../coap/border_router_coap_server.md](../coap/border_router_coap_server.md) | Device registry (legacy trên BR; **hiện chạy trên Backend**), payload format, ACK/NACK |
 | [../coap/thread_node_coap.md](../coap/thread_node_coap.md) | CoAP /device/, GET ping, troubleshooting ResponseTimeout |
-| [../dashboard/migration_to_frame_protocol.md](../dashboard/migration_to_frame_protocol.md) | Dashboard: migration sang frame; **cập nhật: kết nối TCP tới BR** |
+| [../installation.md](../installation.md) | Setup nhanh: sysctl nhận route IPv6 (RA/RIO) và add route tay cho backend Linux |

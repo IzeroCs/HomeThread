@@ -12,8 +12,11 @@
 
 | Tín hiệu | GPIO | Ghi chú |
 |-----------|------|---------|
-| UART RX (Host←RCP TX) | GPIO4 | `CONFIG_PIN_TO_RCP_TX` |
-| UART TX (Host→RCP RX) | GPIO5 | `CONFIG_PIN_TO_RCP_RX` |
+| RCP SPI SCLK | GPIO4 | Host→RCP (default menuconfig) |
+| RCP SPI MOSI | GPIO5 | Host→RCP |
+| RCP SPI MISO | GPIO2 | RCP→Host |
+| RCP SPI CS | GPIO3 | Chip select |
+| RCP SPI IRQ | GPIO1 | Interrupt từ RCP (-1 = poll) |
 | RCP RESET | GPIO7 | `br_rcp_ctrl_init` |
 | RCP BOOT | GPIO8 | download mode |
 | LED WS2812 | GPIO48 | onboard, hoặc GPIO5 external |
@@ -56,6 +59,9 @@
 - **Ethernet W5500 (SPI):** `backhaul/eth_w5500.c` — backbone khi `CONFIG_BR_ETH_W5500_ENABLE=y`. Backhaul chỉ LAN. Init **chỉ** chờ **IPv4** (DHCP); timeout CONFIG_BR_ETH_LINK_TIMEOUT_MS (default **25s**). Nếu timeout: `br_main.c` gọi `esp_restart()`. W5500 RST: code reset trước init (hold BR_ETH_RST_HOLD_MS, release delay BR_ETH_RST_RELEASE_MS); `phy_config.reset_gpio_num = -1`. IPv6 link-local: `esp_netif_create_ip6_linklocal(netif)` trong ETHERNET_EVENT_CONNECTED. ESP32-S3 không có EMAC.
 - **br_main:** Sau border router init, log backbone IPv6 (tag `br_main`).
 - **Kênh BR↔dashboard:** Chỉ TCP (frame protocol); không USB/UART.
+
+### Docs
+- `docs/installation.md`: sysctl nhận route IPv6 (RA/RIO) + add route tay cho backend Linux.
 
 #### Backbone IPv4-only vs IPv6
 - Mạng LAN nhà hiện tại chỉ cấp **IPv4** (router không cấp IPv6 từ ISP). Điều này **không cản trở** BR làm Border Router cho Thread:
