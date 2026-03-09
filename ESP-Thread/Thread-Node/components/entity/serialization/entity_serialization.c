@@ -344,20 +344,198 @@ static int serialize_sensor_entity(cbor_encoder_t *enc, const entity_sensor_t *s
 }
 
 /**
- * Serialize device model to CBOR format.
+ * Helper: encode device info + network (keys 0–8) into existing encoder.
+ * Caller must have started the main map and will close it.
+ * Returns 0 on success, -1 on error.
+ */
+static int encode_device_and_network(cbor_encoder_t *enc,
+                                    const device_model_t *device,
+                                    uint16_t rloc16,
+                                    const char *ml_eid_str,
+                                    uint16_t parent_rloc16)
+{
+    if (cbor_encode_uint(enc, CBOR_K_DEVICE_ID) < 0) return -1;
+    if (cbor_encode_text_string(enc, device->info.device_id) < 0) return -1;
+
+    if (cbor_encode_uint(enc, CBOR_K_DEVICE_NAME) < 0) return -1;
+    if (cbor_encode_text_string(enc, device->info.device_name) < 0) return -1;
+
+    if (cbor_encode_uint(enc, CBOR_K_DEVICE_TYPE) < 0) return -1;
+    if (cbor_encode_uint(enc, device->info.device_type) < 0) return -1;
+
+    if (device->info.manufacturer[0] != '\0') {
+        if (cbor_encode_uint(enc, CBOR_K_MANUFACTURER) < 0) return -1;
+        if (cbor_encode_text_string(enc, device->info.manufacturer) < 0) return -1;
+    }
+
+    if (device->info.model[0] != '\0') {
+        if (cbor_encode_uint(enc, CBOR_K_MODEL) < 0) return -1;
+        if (cbor_encode_text_string(enc, device->info.model) < 0) return -1;
+    }
+
+    if (cbor_encode_uint(enc, CBOR_K_SW_VERSION) < 0) return -1;
+    if (cbor_encode_uint(enc, device->info.sw_version) < 0) return -1;
+
+    if (cbor_encode_uint(enc, CBOR_K_HW_VERSION) < 0) return -1;
+    if (cbor_encode_uint(enc, device->info.hw_version) < 0) return -1;
+
+    if (device->info.mac_address != 0) {
+        if (cbor_encode_uint(enc, CBOR_K_MAC_ADDRESS) < 0) return -1;
+        if (cbor_encode_uint(enc, device->info.mac_address) < 0) return -1;
+    }
+
+    if (cbor_encode_uint(enc, CBOR_K_NETWORK) < 0) return -1;
+    if (cbor_start_indefinite_map(enc) < 0) return -1;
+
+    if (cbor_encode_uint(enc, CBOR_K_NET_RLOC16) < 0) return -1;
+    uint16_t net_rloc16 = (device->rloc16 != 0) ? device->rloc16 : rloc16;
+    if (cbor_encode_uint(enc, net_rloc16) < 0) return -1;
+
+    if (cbor_encode_uint(enc, CBOR_K_NET_ROLE) < 0) return -1;
+    if (cbor_encode_uint(enc, device->role) < 0) return -1;
+
+    if (cbor_encode_uint(enc, CBOR_K_NET_IPV6) < 0) return -1;
+    const uint8_t *ipv6_addr = device->ipv6_addr;
+    bool ipv6_is_zero = true;
+    for (int i = 0; i < 16; i++) {
+        if (device->ipv6_addr[i] != 0) {
+            ipv6_is_zero = false;
+            break;
+        }
+    }
+    if (ipv6_is_zero && ml_eid_str) {
+        ipv6_addr = NULL;
+    }
+    if (ipv6_addr) {
+        if (cbor_encode_byte_string(enc, ipv6_addr, 16) < 0) return -1;
+    } else {
+        uint8_t ipv6_placeholder[16] = {0};
+        if (cbor_encode_byte_string(enc, ipv6_placeholder, 16) < 0) return -1;
+    }
+
+    if (parent_rloc16 != 0) {
+        if (cbor_encode_uint(enc, CBOR_K_NET_PARENT) < 0) return -1;
+        if (cbor_encode_uint(enc, parent_rloc16) < 0) return -1;
+    }
+
+    if (cbor_end_indefinite_map(enc) < 0) return -1;
+    return 0;
+}
+
+/**
+ * Serialize device + network only (keys 0–8) to CBOR. No entities.
+ * For POST /device/register (first step).
+ */
+int entity_serialize_device_cbor(uint16_t rloc16, const char *ml_eid_str,
+                                 uint16_t parent_rloc16,
+                                 uint8_t *buffer, size_t buffer_size)
+{
+    if (!buffer || buffer_size == 0) {
+        ESP_LOGE(TAG, "Invalid buffer");
+        return -1;
+    }
+
+    device_model_t *device = device_model_get();
+    if (!device) {
+        ESP_LOGE(TAG, "Device Model not initialized");
+        return -1;
+    }
+
+    cbor_encoder_t enc = {
+        .buffer = buffer,
+        .buffer_size = buffer_size,
+        .pos = 0
+    };
+
+    if (cbor_start_indefinite_map(&enc) < 0) return -1;
+    if (encode_device_and_network(&enc, device, rloc16, ml_eid_str, parent_rloc16) < 0) return -1;
+    if (cbor_end_indefinite_map(&enc) < 0) return -1;
+
+    ESP_LOGD(TAG, "Device CBOR encoded %zu bytes", enc.pos);
+    return (int)enc.pos;
+}
+
+/**
+ * Serialize entities only to CBOR: map with device_id (key 0) + entities array (key 9).
+ * For POST /device/entities.
+ */
+int entity_serialize_entities_cbor(uint8_t *buffer, size_t buffer_size)
+{
+    if (!buffer || buffer_size == 0) {
+        ESP_LOGE(TAG, "Invalid buffer");
+        return -1;
+    }
+
+    device_model_t *device = device_model_get();
+    if (!device) {
+        ESP_LOGE(TAG, "Device Model not initialized");
+        return -1;
+    }
+
+    if (device_model_sync_entities() < 0) {
+        ESP_LOGW(TAG, "Failed to sync entities, continuing anyway");
+    }
+
+    cbor_encoder_t enc = {
+        .buffer = buffer,
+        .buffer_size = buffer_size,
+        .pos = 0
+    };
+
+    if (cbor_start_indefinite_map(&enc) < 0) return -1;
+
+    if (cbor_encode_uint(&enc, CBOR_K_DEVICE_ID) < 0) return -1;
+    if (cbor_encode_text_string(&enc, device->info.device_id) < 0) return -1;
+
+    if (cbor_encode_uint(&enc, CBOR_K_ENTITIES) < 0) return -1;
+    if (cbor_start_indefinite_array(&enc) < 0) return -1;
+
+    int entity_count = entity_get_count();
+    for (int i = 0; i < entity_count; i++) {
+        entity_type_t type_enum;
+        void *entity_ptr = entity_get_by_index(i, &type_enum);
+        if (!entity_ptr) continue;
+
+        switch (type_enum) {
+            case ENTITY_TYPE_LIGHT: {
+                entity_light_t *light = (entity_light_t *)entity_ptr;
+                if (serialize_light_entity(&enc, light) < 0) {
+                    ESP_LOGE(TAG, "Failed to serialize light entity %d", i);
+                    return -1;
+                }
+                break;
+            }
+            case ENTITY_TYPE_SENSOR: {
+                entity_sensor_t *sensor = (entity_sensor_t *)entity_ptr;
+                if (serialize_sensor_entity(&enc, sensor) < 0) {
+                    ESP_LOGE(TAG, "Failed to serialize sensor entity %d", i);
+                    return -1;
+                }
+                break;
+            }
+            default:
+                ESP_LOGW(TAG, "Unsupported entity type %d, skipping", type_enum);
+                break;
+        }
+    }
+
+    if (cbor_end_indefinite_array(&enc) < 0) return -1;
+    if (cbor_end_indefinite_map(&enc) < 0) return -1;
+
+    ESP_LOGD(TAG, "Entities CBOR encoded %zu bytes", enc.pos);
+    return (int)enc.pos;
+}
+
+/**
+ * Serialize device model to CBOR format (full: device + network + entities).
  * 
  * CBOR structure (numeric map keys, see cbor_register_keys.h):
  * {
  *   0: string,   // device_id
  *   1: string,   // device_name
- *   2: uint16,   // device_type
- *   3: string?,  // manufacturer
- *   4: string?,  // model
- *   5: uint32,   // sw_version
- *   6: uint32,   // hw_version
- *   7: uint64?,  // mac_address
- *   8: { 0: rloc16, 1: role, 2: ipv6_addr, 3?: parent },  // network
- *   9: [ entity maps... ]  // entities
+ *   ...
+ *   8: { network },
+ *   9: [ entity maps... ]
  * }
  */
 int entity_serialize_cbor(uint16_t rloc16, const char *ml_eid_str, 
@@ -375,96 +553,22 @@ int entity_serialize_cbor(uint16_t rloc16, const char *ml_eid_str,
         .pos = 0
     };
 
-    // Start main map (indefinite length for flexibility)
     if (cbor_start_indefinite_map(&enc) < 0) {
         ESP_LOGE(TAG, "Failed to start main map");
         return -1;
     }
 
-    // Get device model from Device Model Manager
     device_model_t *device = device_model_get();
     if (!device) {
         ESP_LOGE(TAG, "Device Model not initialized, call device_model_init() first");
         return -1;
     }
-    
-    // Sync entities from Entity Model to Device Model
+
     if (device_model_sync_entities() < 0) {
         ESP_LOGW(TAG, "Failed to sync entities, continuing anyway");
     }
-    
-    // Device info fields (from Device Model)
-    if (cbor_encode_uint(&enc, CBOR_K_DEVICE_ID) < 0) return -1;
-    if (cbor_encode_text_string(&enc, device->info.device_id) < 0) return -1;
-    
-    if (cbor_encode_uint(&enc, CBOR_K_DEVICE_NAME) < 0) return -1;
-    if (cbor_encode_text_string(&enc, device->info.device_name) < 0) return -1;
-    
-    if (cbor_encode_uint(&enc, CBOR_K_DEVICE_TYPE) < 0) return -1;
-    if (cbor_encode_uint(&enc, device->info.device_type) < 0) return -1;
-    
-    if (device->info.manufacturer[0] != '\0') {
-        if (cbor_encode_uint(&enc, CBOR_K_MANUFACTURER) < 0) return -1;
-        if (cbor_encode_text_string(&enc, device->info.manufacturer) < 0) return -1;
-    }
-    
-    if (device->info.model[0] != '\0') {
-        if (cbor_encode_uint(&enc, CBOR_K_MODEL) < 0) return -1;
-        if (cbor_encode_text_string(&enc, device->info.model) < 0) return -1;
-    }
-    
-    if (cbor_encode_uint(&enc, CBOR_K_SW_VERSION) < 0) return -1;
-    if (cbor_encode_uint(&enc, device->info.sw_version) < 0) return -1;
-    
-    if (cbor_encode_uint(&enc, CBOR_K_HW_VERSION) < 0) return -1;
-    if (cbor_encode_uint(&enc, device->info.hw_version) < 0) return -1;
-    
-    if (device->info.mac_address != 0) {
-        if (cbor_encode_uint(&enc, CBOR_K_MAC_ADDRESS) < 0) return -1;
-        if (cbor_encode_uint(&enc, device->info.mac_address) < 0) return -1;
-    }
-    
-    // Network info (from Device Model, fallback to parameters if not set)
-    if (cbor_encode_uint(&enc, CBOR_K_NETWORK) < 0) return -1;
-    if (cbor_start_indefinite_map(&enc) < 0) return -1;
-    
-    if (cbor_encode_uint(&enc, CBOR_K_NET_RLOC16) < 0) return -1;
-    uint16_t net_rloc16 = (device->rloc16 != 0) ? device->rloc16 : rloc16;
-    if (cbor_encode_uint(&enc, net_rloc16) < 0) return -1;
-    
-    if (cbor_encode_uint(&enc, CBOR_K_NET_ROLE) < 0) return -1;
-    /* 0=child, 1=router, 2=leader — encode as number */
-    if (cbor_encode_uint(&enc, device->role) < 0) return -1;
-    
-    if (cbor_encode_uint(&enc, CBOR_K_NET_IPV6) < 0) return -1;
-    // Use device_model ipv6_addr if set, otherwise try to parse ml_eid_str
-    const uint8_t *ipv6_addr = device->ipv6_addr;
-    bool ipv6_is_zero = true;
-    for (int i = 0; i < 16; i++) {
-        if (device->ipv6_addr[i] != 0) {
-            ipv6_is_zero = false;
-            break;
-        }
-    }
-    if (ipv6_is_zero && ml_eid_str) {
-        // TODO: Parse ml_eid_str to bytes if needed
-        // For now, use placeholder
-        ipv6_addr = NULL;
-    }
-    if (ipv6_addr) {
-        if (cbor_encode_byte_string(&enc, ipv6_addr, 16) < 0) return -1;
-    } else {
-        uint8_t ipv6_placeholder[16] = {0};
-        if (cbor_encode_byte_string(&enc, ipv6_placeholder, 16) < 0) return -1;
-    }
-    
-    // Parent RLOC16 (from parameters, not stored in device_model yet)
-    if (parent_rloc16 != 0) {
-        if (cbor_encode_uint(&enc, CBOR_K_NET_PARENT) < 0) return -1;
-        if (cbor_encode_uint(&enc, parent_rloc16) < 0) return -1;
-    }
-    
-    if (cbor_end_indefinite_map(&enc) < 0) return -1; // End network map
+
+    if (encode_device_and_network(&enc, device, rloc16, ml_eid_str, parent_rloc16) < 0) return -1;
     
     // Entities array
     if (cbor_encode_uint(&enc, CBOR_K_ENTITIES) < 0) return -1;

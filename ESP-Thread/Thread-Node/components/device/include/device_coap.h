@@ -29,6 +29,12 @@ esp_err_t device_coap_send_register(const device_coap_endpoint_t *endpoint,
                                      device_coap_register_callback_fn callback,
                                      void *ctx);
 
+esp_err_t device_coap_send_entities(const device_coap_endpoint_t *endpoint,
+                                    const uint8_t *payload,
+                                    int payload_len,
+                                    device_coap_register_callback_fn callback,
+                                    void *ctx);
+
 esp_err_t device_coap_ping(const device_coap_endpoint_t *endpoint,
                            device_coap_ping_ts_changed_fn on_timestamp_changed,
                            void *ctx);

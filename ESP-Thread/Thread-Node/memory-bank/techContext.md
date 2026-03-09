@@ -93,10 +93,10 @@ CONFIG_ENTITY_MODEL_MAX_ENTITIES=32  # Số entity tối đa trên một thiết
 
 - **enable_device_registry** (bool): Khi `true`, thread_node gọi `device_registry_init()`, `thread_discovery_init()`, tạo task discovery và task ping. **Discovery task**: delay **10s** khi chưa có backend (`!s_backend_ep_valid`), **60s** khi đã có (DEFAULT_DISCOVERY_RETRY_MS / DEFAULT_DISCOVERY_REFRESH_MS). Ping task: 10s. Trong on_joined_wrapper log Mesh-Local EID + RLOC16 của node. App **không** gọi discovery/register/ping — chỉ implement on_joined. Mặc định `true` khi `config == NULL`.
 
-### Device (components/thread/device/)
+### Device (components/device/)
 
-- **device_registry**: Build payload (device_model, entity_serialization), API `device_registry_register(endpoint, callback, ctx)`, `device_registry_ping(endpoint, on_timestamp_changed, ctx)`, `device_registry_is_registered()`. Gọi **device_coap** cho transport.
-- **device_coap**: CoAP client: init, `device_coap_send_register(endpoint, payload, len, callback, ctx)`, `device_coap_ping()`. Token 2 byte; GET /device/ping response timestamp → callback re-register khi đổi. Backend restart (timestamp đổi) → trigger re-register.
+- **device_registry**: Build payload device-only (`entity_serialize_device_cbor`) + entities (`entity_serialize_entities_cbor`); gửi POST /device/register rồi POST /device/entities liên tiếp. API: `device_registry_register(endpoint, callback, ctx)`, `device_registry_ping(...)`, `device_registry_is_registered()`. Gọi **device_coap** cho transport.
+- **device_coap**: CoAP client: init, `device_coap_send_register(...)`, `device_coap_send_entities(...)`, `device_coap_ping()`. Token 2 byte; GET /device/ping response timestamp → callback re-register khi đổi. Backend restart (timestamp đổi) → trigger re-register.
 
 ### Thread Discovery (thread_discovery.c)
 
@@ -146,17 +146,14 @@ Thread-Node/
 ├── components/
 │   ├── thread/
 │   │   ├── CMakeLists.txt
-│   │   ├── Kconfig
-│   │   ├── thread_node.c/.h          # Bootstrap framework
-│   │   ├── thread_joiner.c/.h        # Joiner state machine
-│   │   ├── thread_coap.c/.h          # Shared CoAP server
-│   │   ├── thread_discovery.c/.h    # SRP/DNS-SD backend discovery
+│   │   ├── core/                     # Thread core (node, joiner, coap, discovery)
+│   │   │   ├── thread_node.c/.h
+│   │   │   ├── thread_joiner.c/.h
+│   │   │   ├── thread_coap.c/.h
+│   │   │   ├── thread_discovery.c/.h
+│   │   │   └── include/
 │   │   ├── include/
 │   │   │   └── esp_ot_config_defaults.h
-│   │   ├── device/                   # Component "device"
-│   │   │   ├── device_registry.c/.h  # Build payload; API register/ping
-│   │   │   ├── device_coap.c/.h      # CoAP transport (register, ping, token)
-│   │   │   └── CMakeLists.txt
 │   │   ├── status_led/
 │   │   │   ├── status_led.c/.h       # WS2812 via RMT
 │   │   │   ├── Kconfig
@@ -165,6 +162,10 @@ Thread-Node/
 │   │       ├── boot_btn.c/.h         # Long press → factory reset
 │   │       ├── Kconfig
 │   │       └── CMakeLists.txt
+│   ├── device/                       # Component "device" (tách khỏi thread)
+│   │   ├── device_registry.c/.h      # Build device + entities payload; register/ping API
+│   │   ├── device_coap.c/.h          # CoAP: send_register, send_entities, ping
+│   │   └── CMakeLists.txt
 │   │
 │   └── entity/
 │       ├── model/

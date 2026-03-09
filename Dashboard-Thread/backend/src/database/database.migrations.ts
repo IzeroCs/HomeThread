@@ -116,6 +116,75 @@ const migrations: Migration[] = [
       db.exec(`DROP TABLE IF EXISTS serial_config`);
     },
   },
+  {
+    name: "007_coap_device_entity",
+    up: (db) => {
+      // Device từ POST /device/register (keys 0–8). Identify by device_id or source_address.
+      db.exec(`
+        CREATE TABLE IF NOT EXISTS device_info (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          device_id TEXT NOT NULL,
+          device_name TEXT,
+          device_type INTEGER,
+          manufacturer TEXT,
+          model TEXT,
+          sw_version INTEGER,
+          hw_version INTEGER,
+          mac_address INTEGER,
+          rloc16 TEXT,
+          role INTEGER,
+          ipv6_blob BLOB,
+          parent_rloc16 INTEGER,
+          source_address TEXT,
+          created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+          updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+          UNIQUE(device_id)
+        )
+      `);
+      db.exec(`CREATE INDEX IF NOT EXISTS idx_device_info_source ON device_info(source_address)`);
+      // Entity từ POST /device/entities (key 9). Merge by (device_id, entity_id).
+      db.exec(`
+        CREATE TABLE IF NOT EXISTS device_entity (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          device_id TEXT NOT NULL,
+          entity_id TEXT NOT NULL,
+          name TEXT,
+          type INTEGER,
+          device_class INTEGER,
+          available INTEGER,
+          last_update INTEGER,
+          state INTEGER,
+          brightness INTEGER,
+          mode INTEGER,
+          rgb_json TEXT,
+          color_temp INTEGER,
+          value_real REAL,
+          unit TEXT,
+          attributes_json TEXT,
+          created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+          updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+          UNIQUE(device_id, entity_id)
+        )
+      `);
+      db.exec(`CREATE INDEX IF NOT EXISTS idx_device_entity_device ON device_entity(device_id)`);
+    },
+  },
+  {
+    name: "008_rename_coap_tables_to_device_info_entity",
+    up: (db) => {
+      // Rename old table names (nếu đã chạy 007 với tên cũ)
+      const sqliteMaster = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name=?").get("coap_device") as { name: string } | undefined;
+      if (sqliteMaster) {
+        db.exec(`ALTER TABLE coap_device RENAME TO device_info`);
+        db.exec(`CREATE INDEX IF NOT EXISTS idx_device_info_source ON device_info(source_address)`);
+      }
+      const entityTable = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name=?").get("coap_entity") as { name: string } | undefined;
+      if (entityTable) {
+        db.exec(`ALTER TABLE coap_entity RENAME TO device_entity`);
+        db.exec(`CREATE INDEX IF NOT EXISTS idx_device_entity_device ON device_entity(device_id)`);
+      }
+    },
+  },
 ];
 
 /**

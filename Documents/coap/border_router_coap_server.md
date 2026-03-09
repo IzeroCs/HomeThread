@@ -1,253 +1,59 @@
-# Border Router CoAP Server - Device Registry
+# Backend CoAP server — Device & Entities (RFC 7252)
 
-> **Platform:** ESP-IDF + OpenThread
-> **Role:** Border Router (Leader)
+Tài liệu mô tả hai endpoint CoAP mà Backend cung cấp cho Thread-Node: **POST /device/register** (chỉ device + network) và **POST /device/entities** (danh sách entity). Backend parse CBOR, lưu SQLite, và **luôn echo CoAP token** trong response để Node nhận ACK đúng (RFC 7252).
 
-**Với BR thật (sau Phase 1):** CoAP device registry **không còn chạy trên BR**. Child devices gửi register/update/ping **trực tiếp tới backend** (CoAP hoặc HTTP tới IP:port của backend). BR chỉ route IP và quản lý (state, dataset, Commissioner) qua frame protocol với backend. **Backend** nhận `/device/register` phải trả ACK/NACK đúng quy tắc trong tài liệu này (để Node không treo đợi). Tài liệu dưới mô tả flow legacy / tham khảo cho backend và Thread-Node.
+## Tổng quan
 
-CoAP server trên BR (port 5683) nhận đăng ký từ child devices — **đã gỡ khỏi Thread-Host**. Resources từng được xử lý bởi `device_registry_server` + `device_registry_handler`.
+| Endpoint | Method | Payload CBOR | Hành vi Backend | Response |
+|----------|--------|--------------|-----------------|----------|
+| `/device/ping` | GET | — | Trả 4 byte timestamp (server start) | 2.05 Content, echo token |
+| `/device/register` | POST | Map keys **0–8** (không có key 9) | Parse keys 0–8, tạo/cập nhật device (theo device_id hoặc địa chỉ nguồn CoAP) | 2.01 Created / 2.04 Changed, echo token |
+| `/device/entities` | POST | Map: **0** = device_id, **9** = array entities | Parse device_id + array entities, merge từng entity theo (device_id, entity_id) | 2.01 Created / 2.04 Changed, echo token |
+| `/device/update` | POST | CBOR (legacy) | Log, không dùng key 9 cho store | 2.01, echo token |
 
----
+## 1. POST /device/register
 
-## Resources
+- **Payload**: CBOR map **chỉ keys 0–8** (không có key 9 entities).
+  - **0** (CBOR_K_DEVICE_ID): device_id (string)
+  - **1** (CBOR_K_DEVICE_NAME): device_name (string)
+  - **2** (CBOR_K_DEVICE_TYPE): device_type (uint)
+  - **3** (CBOR_K_MANUFACTURER): manufacturer (string, optional)
+  - **4** (CBOR_K_MODEL): model (string, optional)
+  - **5** (CBOR_K_SW_VERSION): sw_version (uint)
+  - **6** (CBOR_K_HW_VERSION): hw_version (uint)
+  - **7** (CBOR_K_MAC_ADDRESS): mac_address (uint, optional)
+  - **8** (CBOR_K_NETWORK): network (map, optional)
+    - 0: rloc16, 1: role (0=child, 1=router, 2=leader), 2: ipv6 (byte string), 3: parent (optional)
 
-| Path | Method | Mô tả |
-|------|--------|--------|
-| `/device/register` | POST | Đăng ký device (payload: CBOR, numeric map keys — xem [Payload Format](#payload-format)) |
-| `/device/update` | POST | Cập nhật (cùng handler) |
-| `/device/ping` | GET | Ping (cùng handler) |
+- **Backend**:
+  - Parse CBOR; **bỏ qua / không mong đợi key 9** (entities).
+  - Tạo hoặc cập nhật bản ghi device (theo `device_id`; lưu thêm `source_address` từ địa chỉ nguồn CoAP nếu có).
+  - Trả **2.01 Created** (device mới) hoặc **2.04 Changed** (device đã tồn tại, cập nhật).
+  - **Echo đúng CoAP token** từ request trong response để Node coi là ACK.
 
-Response: `2.01 Created` (register), `2.04 Changed` (update), `2.05 Content` (ping) khi backend đã ACK; `5.03 Service Unavailable` khi backend không ACK trong timeout hoặc lỗi forward.
+## 2. POST /device/entities
 
----
+- **Payload**: CBOR map gồm:
+  - **0** (CBOR_K_DEVICE_ID): device_id (string) — để biết entities thuộc device nào.
+  - **9** (CBOR_K_ENTITIES): array các entity map (format giống từng entity trong payload cũ: entity_id, name, type, device_class, available, last_update, state, brightness, mode, …; type/device_class/mode là số theo bảng trong `cbor_register_keys.h`).
 
-## ACK / NACK — Phản hồi bắt buộc cho mọi message từ Node
+- **Backend**:
+  - Parse CBOR: đọc device_id (key 0), đọc array entities (key 9).
+  - Với mỗi entity trong array: **merge** theo (device_id, entity_id) — nếu đã có thì update (state, attributes…), chưa có thì tạo mới.
+  - Trả **2.01 Created** (có ít nhất một entity mới) hoặc **2.04 Changed** (toàn bộ đã tồn tại).
+  - **Echo token** trong response để Node coi là thành công.
 
-**Nguyên tắc:** Leader (Border Router) **bắt buộc** phải trả response (ACK hoặc NACK) cho **mọi** CoAP request nhận được từ Node. Không được bỏ qua hoặc im lặng.
+## CoAP token (RFC 7252)
 
-**Lý do:**
+Node gửi request với token (vd. 2 byte). Backend **bắt buộc echo đúng token** trong response; nếu không, OpenThread/stack phía Node sẽ không match response với request và coi là lỗi/timeout. Code Backend: trước khi gọi `res.end()`, gán `res.token = req.token` (hoặc tương đương theo thư viện node-coap).
 
-- Node gửi request **CONFIRMABLE** (CON). Nếu Leader không trả response, Node sẽ retransmit cho đến khi timeout, message nằm lâu trong hàng đợi → dễ dẫn tới **NoBufs** (message buffer pool cạn) trên Node.
-- Node có thể triển khai cơ chế "chỉ gửi request tiếp theo sau khi nhận response hoặc timeout". Điều này chỉ hoạt động nếu Leader luôn trả ACK/NACK.
+## Code Backend
 
-**ACK (thành công):** Leader trả một trong các mã sau khi xử lý xong và chấp nhận request:
-
-| Code | Ý nghĩa |
-|------|----------|
-| `2.01 Created` | Đã tạo / đã nhận và lưu (dùng cho POST `/device/register`, `/device/update`) |
-| `2.04 Changed` | Đã cập nhật thành công |
-| `2.05 Content` | Trả dữ liệu (dùng cho GET nếu có) |
-
-**NACK (lỗi):** Leader trả một trong các mã sau khi từ chối hoặc lỗi xử lý:
-
-| Code | Ý nghĩa |
-|------|----------|
-| `4.00 Bad Request` | Payload sai format, thiếu trường bắt buộc |
-| `4.01 Unauthorized` | Không được phép (nếu có cơ chế auth) |
-| `4.04 Not Found` | URI không tồn tại |
-| `4.13 Request Entity Too Large` | Payload quá lớn |
-| `5.00 Internal Server Error` | Lỗi nội bộ Leader khi xử lý |
-| `5.03 Service Unavailable` | Tạm thời không xử lý được (ví dụ queue đầy) |
-
-**Implementation:** BR forward payload lên backend qua frame protocol (**CMD_DATA**), chờ backend gửi **CMD_ACK** (cùng Frame ID) trong timeout (vd. 2,5 s). Chỉ khi nhận CMD_ACK thì BR mới trả CoAP `2.01`/`2.04`/`2.05` cho child; nếu timeout hoặc lỗi gửi thì trả `5.03 Service Unavailable`. Handler luôn gọi `otCoapSendResponse()` với một trong các mã trên (thành công hoặc lỗi) để Node không treo đợi.
-
-**Lưu ý NoBufs / partition:** Nếu Node gửi quá nhiều CoAP confirmable mà không chờ ACK, message buffer trên Node có thể cạn (NoBufs). Theo OpenThread issue #4508, buffer exhaustion có thể dẫn tới mất MLE/keep-alive → topology thay đổi, partition → Node có thể tự trở thành Leader. Thread-Node chỉ gửi request tiếp theo sau khi nhận ACK/NACK hoặc timeout; **sau ACK thì gửi 1 lần rồi dừng** (one-shot), chỉ gửi lại khi có notify (role change hoặc sau này lệnh re-register từ Leader).
-
----
-
-## Địa chỉ Leader
-
-Child gửi đến **Leader ALOC** (0xfc00): `mesh_prefix + 0000:00ff:fe00:fc00`.  
-Hoặc dùng `otThreadGetLeaderRloc()` để lấy Leader RLOC chính xác. **Không hardcode RLOC16 = 0x0000.**
-
----
-
-## Border Router phải là Leader
-
-CoAP server chạy trên BR; child gửi đến Leader ALOC → message tới Leader hiện tại.  
-**Nếu BR không phải Leader**, message tới Leader cũ → không xử lý được.
-
-**Giải pháp:** BR form network trước (Leader), Router khác join với weight thấp. BR cấu hình `mLeaderWeightAdjustment = +16`.
-
----
-
-## Kiến trúc
-
-```
-┌─────────────────────────────────────────┐
-│  Child Device (Endpoint)                │
-│  - device_registry_register()           │
-│  - CoAP POST /device/register (one-shot  │
-│    sau ACK; gửi lại khi notify)         │
-│  - Payload: CBOR, numeric keys          │
-└──────────────────┬──────────────────────┘
-                   │ CoAP POST (Thread mesh)
-                   ▼
-┌─────────────────────────────────────────┐
-│  Border Router (Leader)                 │
-│  - CoAP Server (port 5683)              │
-│  - Resource: /device/register|update|  │
-│    ping                                 │
-│  - Handler: parse → enqueue → CMD_DATA  │
-│    → chờ CMD_ACK từ backend → response  │
-│  - Response: 2.01/2.04/2.05 nếu ACK;  │
-│    5.03 nếu timeout/error               │
-└──────────────────┬──────────────────────┘
-                   │ CMD_DATA (USB CDC frame)
-                   ▼
-            [Backend / Node]
-                   │ CMD_ACK (cùng Frame ID)
-                   ▼
-            BR gửi CoAP response cho child
-```
-
----
-
-## Implementation
-
-### 1. Enable CoAP API
-
-```c
-// openthread_custom_config.h (hoặc br_custom_config.h)
-#ifndef OPENTHREAD_CONFIG_COAP_API_ENABLE
-#define OPENTHREAD_CONFIG_COAP_API_ENABLE 1
-#endif
-```
-
-### 2. Start CoAP Server + Register Resources
-
-```c
-#include "openthread/coap.h"
-
-otInstance *instance = esp_openthread_get_instance();
-otError err = otCoapStart(instance, OT_DEFAULT_COAP_PORT);  // Port 5683
-
-static otCoapResource s_resource;
-memset(&s_resource, 0, sizeof(s_resource));
-s_resource.mUriPath = "device";  // matches /device/*
-s_resource.mHandler = device_register_handler;
-s_resource.mContext = NULL;
-otCoapAddResource(instance, &s_resource);
-```
-
-### 3. Handler Example
-
-```c
-static void device_register_handler(void *aContext, otMessage *aMessage,
-                                    const otMessageInfo *aMessageInfo)
-{
-    otInstance *instance = esp_openthread_get_instance();
-
-    uint16_t offset = otMessageGetOffset(aMessage);
-    uint16_t payload_len = otMessageGetLength(aMessage) - offset;
-    char payload[768];
-    if (payload_len >= sizeof(payload)) payload_len = sizeof(payload) - 1;
-    otMessageRead(aMessage, offset, payload, payload_len);
-    payload[payload_len] = '\0';
-
-    // enqueue payload for processing
-    device_registry_enqueue_coap_data(payload, payload_len);
-
-    // Send 2.01 Created
-    otMessage *response = otCoapNewMessage(instance, NULL);
-    if (response) {
-        otCoapMessageInitResponse(response, aMessage,
-                                  OT_COAP_TYPE_ACKNOWLEDGMENT,
-                                  OT_COAP_CODE_2_01_CREATED);
-        otCoapSendResponse(instance, response, aMessageInfo);
-    }
-}
-```
-
----
-
-## Payload Format
-
-Thread-Node gửi POST `/device/register` với payload **CBOR**, dùng **numeric map keys** để giảm băng thông. Backend phải parse map key dạng integer và map theo bảng dưới (cùng giá trị với `cbor_register_keys.h` trong Thread-Node).
-
-### CBOR numeric keys (bắt buộc cho parser)
-
-Định nghĩa đầy đủ: `components/entity/serialization/include/cbor_register_keys.h`.
-
-**Device register — top-level map:**
-
-| Key (số) | Tên logic   | CBOR value type |
-|----------|-------------|------------------|
-| 0        | device_id   | text string      |
-| 1        | device_name | text string      |
-| 2        | device_type | unsigned int     |
-| 3        | manufacturer| text string (optional) |
-| 4        | model       | text string (optional) |
-| 5        | sw_version  | unsigned int     |
-| 6        | hw_version  | unsigned int     |
-| 7        | mac_address | unsigned int (optional) |
-| 8        | network     | map (xem bảng network) |
-| 9        | entities    | array of maps (xem bảng entity) |
-
-**Network sub-map (key 8):**
-
-| Key (số) | Tên logic | CBOR value type |
-|----------|-----------|------------------|
-| 0        | rloc16    | unsigned int     |
-| 1        | role      | text string ("child" / "router" / "leader" / "unknown") |
-| 2        | ipv6_addr | byte string (16 bytes) |
-| 3        | parent    | unsigned int (optional) |
-
-**Entity map (mỗi phần tử trong array key 9):**
-
-| Key (số) | Tên logic   | CBOR value type |
-|----------|-------------|------------------|
-| 0        | entity_id   | text string      |
-| 1        | name        | text string      |
-| 2        | type        | text string ("light", "sensor", …) |
-| 3        | device_class| text string      |
-| 4        | available   | bool             |
-| 5        | last_update | unsigned int     |
-| 6        | state       | bool (light)     |
-| 7        | brightness  | unsigned int (light) |
-| 8        | mode        | text string (light) |
-| 9        | rgb         | array of 3 uint (light, optional) |
-| 10       | color_temp  | unsigned int (light, optional) |
-| 11       | value       | float (sensor)   |
-| 12       | unit        | text string (sensor) |
-
-### Text Format (legacy / tham khảo)
-
-```
-rloc16=0x7c01
-ml_eid=fd00:db8:a0:0:xxxx:xxxx:xxxx:xxxx
-parent=0x1001
-entity_id=light.0 type=on_off_light name=LED
-```
-
----
-
-## Files trong project
-
-**Thread-Host (BR):** CoAP server và device registry **đã gỡ** (Phase 1). Các file dưới mô tả kiến trúc legacy / tham khảo cho backend và Thread-Node.
-
-| File (legacy / tham khảo) | Mô tả |
-|---------------------------|-------|
-| ~~`main/coap_controller/device_registry_server.c`~~ | Đã xóa khỏi Thread-Host — init CoAP, resource; handler forward CMD_DATA. |
-| ~~`main/coap_controller/device_registry_handler.c`~~ | Đã xóa — queue, CMD_DATA + chờ CMD_ACK. |
-| `main/communicate/communicate_task.c` | Không còn `communicate_task_send_cmd_data_and_wait_ack`; frame protocol chỉ quản lý BR. |
-| `br_custom_config.h` | Có thể bật CoAP API nếu BR cần CoAP lại (hiện BR không chạy CoAP). |
-
----
-
-## Lưu ý
-
-1. **CoAP server chỉ chạy trên Leader**: Chỉ BR (Leader) cần implement server này.
-2. **Port 5683**: CoAP default port.
-3. **Thread routing**: CoAP request tự động route qua Thread mesh đến Leader.
-4. **Re-registration**: Child gửi lại khi role thay đổi (Child → Router).
-5. **Response timeout**: Child retry nếu không nhận được response.
-6. **ACK/NACK bắt buộc**: Leader phải luôn trả response (ACK hoặc NACK) cho mọi request từ Node — xem mục [ACK / NACK](#ack--nack--phản-hồi-bắt-buộc-cho-mọi-message-từ-node) ở trên.
-7. **Kiểm thử end-to-end**: Backend mock gửi CMD_ACK (cùng Frame ID) khi nhận CMD_DATA → BR trả CoAP 2.01/2.04/2.05; không gửi CMD_ACK → BR timeout và trả 5.03. Thread-Node nhận ACK thì dừng, nhận 5.03 thì retry theo logic.
-
----
+- **Router / controller**: `backend/src/coap/device-coap.controller.ts` — `register`, `entities`, `ping`, `update`.
+- **Store**: `backend/src/coap/device-coap.service.ts` — `upsertDevice()`, `mergeEntity()`; SQLite bảng `device_info`, `device_entity` (migration 007; migration 008 đổi tên từ coap_device/coap_entity nếu đã chạy 007 cũ).
+- **Payload keys**: `backend/src/coap/device-register.payload.ts` — `DEVICE_REGISTER_KEYS`, `NETWORK_KEYS`, `ENTITY_KEYS` (align với Thread-Node `cbor_register_keys.h`).
 
 ## Tài liệu liên quan
 
-- **[../iot-entity-model/entity_model_specification.md](../iot-entity-model/entity_model_specification.md)** — Entity model spec.
-- **[../iot-entity-model/entity_model_schema.md](../iot-entity-model/entity_model_schema.md)** — SQLite schema backend.
+- [thread_node_coap.md](thread_node_coap.md) — Luồng Node → Backend, SRP discovery, ping/register/entities.
+- [../architecture/real_br_integration.md](../architecture/real_br_integration.md) — Routing, troubleshooting ResponseTimeout.

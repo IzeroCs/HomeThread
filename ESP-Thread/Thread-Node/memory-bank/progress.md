@@ -23,7 +23,7 @@ Examples                 █████████████░░░░░�
 | **Status LED** | `status_led.c/.h` | WS2812 via RMT. 6 trạng thái: Boot/NotJoined/Detached/Child/Router/Leader |
 | **Boot Button** | `boot_btn.c/.h` | Long press detection, gọi factory reset |
 | **CoAP Server Manager** | `thread_coap.c/.h` | Idempotent start, resource registration với lock, response helper |
-| **Device** (device/) | `device_registry.c/.h`, `device_coap.c/.h` | **device_registry**: build payload (device_model, entity_serialization), API register/ping/is_registered. **device_coap**: CoAP transport (POST /device/register, GET /device/ping, token 2B, timestamp → callback re-register). thread_node gọi register/ping khi discovery/ping task. |
+| **Device** (components/device/) | `device_registry.c/.h`, `device_coap.c/.h` | **device_registry**: build device-only (entity_serialize_device_cbor) + entities (entity_serialize_entities_cbor); gửi POST /device/register rồi POST /device/entities liên tiếp; API register/ping/is_registered. **device_coap**: send_register, send_entities, ping; token 2B; response handlers; timestamp → callback re-register. thread_node gọi register/ping khi discovery/ping task. |
 | **Custom OT Config** | `openthread_custom_config.h` | Child timeout 60s, supervision 30s/60s, leader weight, CoAP API. **Không** define OPENTHREAD_CONFIG_DNS_CLIENT_ENABLE (ESP-IDF 5.5.3 dùng CONFIG_OPENTHREAD_DNS_CLIENT từ sdkconfig trong openthread-core-esp32x-ftd-config.h). |
 | **Thread Discovery** | `thread_discovery.c/.h` | SRP/DNS-SD `_dashboard._udp`; cache NVS + cache_ttl_sec; static fallback. **Log backend IP**: chỉ thread_node log INFO ("Backend discovered" / "Backend endpoint updated") khi có IP lần đầu hoặc khi IP đổi; thread_discovery log cache/static/SRP ở LOGD. |
 
@@ -42,8 +42,10 @@ Examples                 █████████████░░░░░�
 
 ### CBOR Serialization (partial)
 
-| Entity type | Trạng thái |
+| API / Entity type | Trạng thái |
 |---|---|
+| `entity_serialize_device_cbor` | ✅ Device + network only (keys 0–8), cho POST /device/register |
+| `entity_serialize_entities_cbor` | ✅ Map device_id (0) + entities array (9), cho POST /device/entities |
 | `entity_light_t` | ✅ **Hoàn chỉnh** |
 | `entity_sensor_t` | ✅ **Hoàn chỉnh** |
 | `entity_switch_t` | ❌ Chưa có |
@@ -64,7 +66,9 @@ Examples                 █████████████░░░░░�
 
 | Tài liệu | Trạng thái |
 |---|---|
-| ACK/NACK bắt buộc (Leader) | ✅ Mục trong `docs/coap/border_router_coap_server.md`; `docs/README.md` cập nhật |
+| Backend CoAP (register + entities) | ✅ `Documents/coap/border_router_coap_server.md` (repo root) |
+| Node-side register flow | ✅ `Thread-Node/docs/README.md` — hai request, serialization, transport |
+| ACK/NACK bắt buộc (Leader) | ✅ Mục trong border_router_coap_server.md |
 
 ### Examples
 
@@ -169,5 +173,6 @@ OpenThread core **không** forward `*.default.svc.arpa` ra upstream (dnssd_serve
 | 0.8.2 | enable_device_registry; backend_discovery mHostNameBuffer; light_on_off device registry tắt; docs backend_discovery_srp.md |
 | **0.9.0** | Register chỉ tới Backend; thread_discovery; device registry bật trong thread_node; trigger_register khi discovery/endpoint đổi |
 | **0.9.1** | thread_node; thread_discovery; device/ + device_coap; GET /device/ping 10s, timestamp → re-register; CoAP token 2B; backend IP log 1 lần / khi đổi |
-| **0.9.2 (hiện tại)** | Discovery retry **10s** khi chưa có backend (60s khi đã có); **CONFIG_ESP_SYSTEM_EVENT_TASK_STACK_SIZE=4096** (light_on_off, tránh sys_evt stack fault); log node **Mesh-Local EID + RLOC16** trong on_joined_wrapper; docs: backend echo token, register callback NULL, ping callback khi timestamp đổi |
+| **0.9.2** | Discovery retry **10s** khi chưa có backend (60s khi đã có); **CONFIG_ESP_SYSTEM_EVENT_TASK_STACK_SIZE=4096**; log node **Mesh-Local EID + RLOC16**; docs: backend echo token, register callback NULL, ping callback khi timestamp đổi |
+| **0.9.3 (hiện tại)** | **Tách register/entities:** POST /device/register chỉ payload device+network (entity_serialize_device_cbor, keys 0–8); POST /device/entities payload device_id + array entities (entity_serialize_entities_cbor). device_registry gửi hai request liên tiếp; device_coap: send_register, send_entities. Component **device** chuyển sang **components/device/**; thread core sang **components/thread/core/** (rename.sh). Backend contract: `Documents/coap/border_router_coap_server.md`. |
 | 1.0.0 (tiếp theo) | entity_coap_server implementation; CBOR switch/fan/climate/binary_sensor; main.c template; additional examples |

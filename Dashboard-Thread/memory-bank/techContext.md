@@ -40,7 +40,7 @@ Dashboard-Thread/          # npm workspaces root
 | pino | ^9.5.0 | Structured logging |
 | pino-pretty | latest | Pretty console output |
 
-Transport: TCP (net.Socket) to BR; CoAP (UDP 5683, udp6 listen [::]) from Thread-Node. Dependencies: `coap`. CBOR payload decode bang **thu vien noi bo** `backend/src/cbor` (khong dung cbor2). Thread-Node la ben **chu dong** (CoAP client); GET /device/ping nhan timestamp de phat hien backend restart va gui lai register. Response CoAP phai **routable** toi node: host backend can route toi prefix Thread (OMR) qua BR; BR phai forward packet tu backhaul vao Thread (border routing). Neu node bao ResponseTimeout → xem docs troubleshooting (routing/BR).
+Transport: TCP (net.Socket) to BR; CoAP (UDP 5683, udp6 listen [::]) from Thread-Node. Dependencies: `coap`. CBOR decode bang **thu vien noi bo** `backend/src/cbor`. Thread-Node la **CoAP client**: GET /device/ping (timestamp), POST /device/register (keys 0–8), POST /device/entities (key 0 + key 9). Backend luu device_info, device_entity; tra 2.01/2.04 va **echo token** (RFC 7252). Response phai routable toi node (host route toi prefix Thread qua BR; BR forward). ResponseTimeout → docs troubleshooting (routing/BR).
 
 ### Frontend
 
@@ -125,11 +125,13 @@ npm run build         # backend: tsc && tsc-alias (alias → relative trong dist
 
 ## Database
 
-SQLite (`better-sqlite3`, WAL mode). 6 migrations:
+SQLite (`better-sqlite3`, WAL mode). Migrations:
 - 001–004: legacy serial_config (da xoa bang boi migration 006)
 - `app_settings`: key-value (thread_run_on_connect)
 - `br_connection_config`: br_host, br_port, use_mdns (mac dinh 192.168.31.3:5000 — dung khi chay Docker; co the doi qua Settings)
 - 006: DROP TABLE serial_config (BR chi dung TCP, khong con Serial)
+- 007: **device_info** (device tu POST /device/register, keys 0–8), **device_entity** (entity tu POST /device/entities, merge theo device_id + entity_id)
+- 008: doi ten coap_device → device_info, coap_entity → device_entity neu da chay 007 voi ten cu
 
 ## Docker (backend)
 

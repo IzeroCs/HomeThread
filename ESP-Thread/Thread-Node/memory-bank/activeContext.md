@@ -1,15 +1,15 @@
 # Thread-Node — Active Context
 
-## Focus hiện tại (2026-03-06)
+## Focus hiện tại (2026-03-09)
 
-Dự án đang ở giai đoạn **hoàn thiện hạ tầng Backend communication**. Device register và ping chạy trong **thread_node** (discovery + refresh task + ping task); **device** component gồm **device_registry** (build payload, API public) và **device_coap** (transport CoAP: POST /device/register, GET /device/ping, token, lock). Log backend IP: **chỉ log 1 lần** khi có IP và **log lại khi IP thay đổi** (thread_node log INFO; thread_discovery trả cache/static/SRP ở LOGD). Công việc còn lại: **Entity CoAP Server** (handlers 5.01) và **CBOR** cho switch/fan/climate/binary_sensor.
+Dự án đang ở giai đoạn **hoàn thiện hạ tầng Backend communication**. Device register đã **tách hai bước**: (1) POST /device/register — chỉ device + network (keys 0–8); (2) POST /device/entities — device_id + array entities (key 0, 9). **device** component nằm ở **components/device/** (device_registry + device_coap); **thread** core ở **components/thread/core/** (thread_node, thread_joiner, thread_coap, thread_discovery). Ping và discovery như trước; khi ping thấy backend đổi hoặc discovery có endpoint → gửi register rồi entities liên tiếp. Công việc còn lại: **Entity CoAP Server** (handlers 5.01) và **CBOR** cho switch/fan/climate/binary_sensor.
 
 ## Recent changes
 
 - **thread_endpoint → thread_node**: Đổi tên file và API (`thread_node_config_t`, `thread_node_start()`). Entry point bootstrap.
 - **backend_discovery → thread_discovery**: Đổi tên component và API (`thread_discovery_init`, `thread_discovery_get_endpoint`, `thread_discovery_endpoint_t`, `thread_discovery_cfg_t`).
 - **thread_coap** ngang hàng với thread_node, thread_joiner trong `components/thread/` (một component `thread` với nhiều .c).
-- **device_registry → device/** (thư mục): Trong `components/thread/device/` có `device_registry.c/.h` và **device_coap.c/.h**. device_registry: build payload (device_model, entity_serialization), gọi device_coap_send_register/device_coap_ping. device_coap: transport (CoAP client, token 2 byte, lock, POST /device/register với payload do caller đưa, GET /device/ping, xử lý response timestamp → callback re-register).
+- **device → components/device/**: `device_registry.c/.h` và **device_coap.c/.h** nằm ở **components/device/** (tách khỏi thread). device_registry: build payload device-only + entities (entity_serialize_device_cbor, entity_serialize_entities_cbor), gọi device_coap_send_register rồi device_coap_send_entities (gửi liên tiếp). device_coap: POST /device/register, POST /device/entities, GET /device/ping; token 2B, lock; response handler register/entities; ping timestamp → callback re-register.
 - **Backend communication trong thread_node**: Khi `enable_device_registry`: thread_node gọi thread_discovery_init(), discovery lần đầu, tạo task discovery (delay 10s khi chưa có backend, 60s khi đã có; thread_discovery_get_endpoint, so sánh addr/port, chỉ cập nhật và log khi đổi), task ping 10s (device_registry_ping → device_coap_ping; nếu response timestamp khác → callback → backend_trigger_register). App (main.c) không gọi discovery/register/ping; chỉ implement on_joined (device_model, entity, entity_coap_server_start).
 - **GET /device/ping**: Node gửi GET /device/ping mỗi 10s; backend reply 4-byte timestamp (LE). Nếu timestamp khác lần trước → node gửi lại POST /device/register (backend restart / re-register).
 - **CoAP token**: Mọi request (register, ping) dùng CoAP token 2 byte (trong device_coap); tái sử dụng cho resource CoAP khác sau này.
@@ -44,12 +44,17 @@ Stub; root project không buildable. Quyết định: template tối thiểu hay
 |------|------------|---------|
 | `components/thread/thread_node.c/.h` | ✅ | Entry point; enable_device_registry; discovery + ping + register nội bộ |
 | `components/thread/thread_discovery.c/.h` | ✅ | SRP/DNS-SD _dashboard._udp; thread_discovery_get_endpoint; cache NVS; log IP ở LOGD |
-| `components/thread/device/device_registry.c/.h` | ✅ | Build payload, device_registry_register/ping/is_registered; gọi device_coap |
-| `components/thread/device/device_coap.c/.h` | ✅ | CoAP transport: init, send_register(payload), ping, token, response handler (timestamp changed → callback) |
+| `components/device/device_registry.c/.h` | ✅ | Build device-only + entities; register → send_register rồi send_entities (liên tiếp); ping/is_registered |
+| `components/device/device_coap.c/.h` | ✅ | CoAP: send_register, send_entities, ping; token 2B; response handlers; timestamp → callback re-register |
 | `components/thread/thread_coap.c/.h` | ✅ | Shared CoAP server manager |
 | `components/entity/coap_server/entity_coap_server.c` | ❌ Stub | 5.01 |
-| `components/entity/serialization/entity_serialization.c` | ⚠️ Partial | light+sensor OK |
+| `components/entity/serialization/entity_serialization.c` | ⚠️ Partial | entity_serialize_device_cbor (keys 0–8), entity_serialize_entities_cbor (0+9); light+sensor OK; switch/fan/climate/binary_sensor chưa |
 | `examples/light_on_off/main/main.c` | ✅ | thread_node_start; on_joined chỉ setup device + entities + entity_coap_server_start |
+
+## Docs
+
+- **Node-side register flow:** `docs/README.md` (hai request: register rồi entities; serialization + transport).
+- **Backend contract (payload, response):** repo root `Documents/coap/border_router_coap_server.md`.
 
 ## Các bước tiếp theo
 

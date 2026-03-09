@@ -20,7 +20,7 @@ Border Router (Thread-Host) cần biết:
 - Các thuộc tính của từng entity
 - Trạng thái mạng của thiết bị (IP, RLOC, role)
 
-Thread-Node giải quyết bằng cách gửi CBOR-encoded device model lên **Backend** (không phải BR) qua CoAP POST `/device/register`. Địa chỉ Backend lấy từ **thread_discovery** (SRP/DNS-SD `_dashboard._udp`). **thread_node** khi `enable_device_registry` tự chạy discovery (retry 10s khi chưa có backend, refresh 60s khi đã có), ping 10s; khi có endpoint hoặc endpoint đổi thì gửi register; khi GET `/device/ping` nhận timestamp backend khác thì gửi lại register. Mọi role **Child/Router/Leader** đều gửi được; CoAP token 2 byte cho mọi request; chờ ACK (2.01/2.04/2.05). Backend phải trả ACK/NACK (xem `docs/coap/border_router_coap_server.md`).
+Thread-Node giải quyết bằng cách gửi hai request CoAP lên **Backend** (không phải BR): (1) POST `/device/register` — payload chỉ device + network (CBOR keys 0–8); (2) POST `/device/entities` — device_id + array entities (keys 0, 9). Địa chỉ Backend lấy từ **thread_discovery** (SRP/DNS-SD `_dashboard._udp`). **thread_node** khi `enable_device_registry` tự chạy discovery (retry 10s khi chưa có backend, refresh 60s khi đã có), ping 10s; khi có endpoint hoặc endpoint đổi thì gửi register rồi entities (liên tiếp); khi GET `/device/ping` nhận timestamp backend khác thì gửi lại cả hai. Mọi role **Child/Router/Leader** đều gửi được; CoAP token 2 byte; chờ ACK (2.01/2.04/2.05). Backend contract: `Documents/coap/border_router_coap_server.md`.
 
 ### 3. Quản lý Leader role
 
@@ -75,9 +75,9 @@ void on_joined(void) {
 ```
 Thread-Node                    Backend (địa chỉ từ backend discovery)     Border Router (Thread-Host)
     │                                         │                                        │
-    │── POST /device/register (CBOR) ─────────►│  Đăng ký device + entities              │
-    │   [sau discovery; khi endpoint đổi      │  (2.01/2.04/2.05 hoặc NACK)            │
-    │    gửi lại; one-shot sau ACK]           │                                        │
+    │── POST /device/register (CBOR keys 0–8) ─►│  Đăng ký device + network               │
+    │── POST /device/entities (device_id + arr) ►│  Đăng ký / cập nhật entities            │
+    │   [sau discovery hoặc ping timestamp đổi; gửi liên tiếp; 2.01/2.04/2.05]         │
     │                                         │                                        │
     │◄── PUT /entities/light.0/state ────────────────────────────────────────────────│  BR điều khiển entity
     │── 2.04 Changed ───────────────────────────────────────────────────────────────►│

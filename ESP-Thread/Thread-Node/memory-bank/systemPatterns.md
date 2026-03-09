@@ -5,16 +5,13 @@
 ```
 Thread-Node/
 ├── components/
-│   ├── thread/                   # Thread middleware layer (one component, multiple .c)
-│   │   ├── thread_node.c/.h      # Application bootstrap framework
-│   │   ├── thread_joiner.c/.h    # OpenThread Joiner state machine
-│   │   ├── thread_coap.c/.h      # Shared CoAP server manager
-│   │   ├── thread_discovery.c/.h  # Backend discovery (SRP/DNS-SD)
-│   │   ├── device/               # Device ↔ Backend (one component)
-│   │   │   ├── device_registry.c/.h  # Build payload, API; gọi device_coap
-│   │   │   └── device_coap.c/.h     # CoAP transport (register, ping, token)
+│   ├── thread/                   # Thread middleware (core/, status_led, boot_btn)
+│   │   ├── core/                 # thread_node, thread_joiner, thread_coap, thread_discovery
 │   │   ├── status_led/           # WS2812 RGB status indicator
 │   │   └── boot_btn/             # Factory reset trigger
+│   ├── device/                   # Device ↔ Backend (tách khỏi thread)
+│   │   ├── device_registry.c/.h  # Build device-only + entities; send_register rồi send_entities
+│   │   └── device_coap.c/.h     # CoAP: send_register, send_entities, ping; token 2B
 │   └── entity/                   # Entity Model layer
 │       ├── model/                # entity_model + device_model + typed structs
 │       ├── serialization/        # Custom CBOR encoder
@@ -104,10 +101,10 @@ Thread-Node CoAP Server:
   /entities/{id}/{attr} PUT/POST → Điều khiển entity
 
 Thread-Node CoAP Client (device_coap, gọi từ device_registry):
-  Backend POST /device/register  → CBOR payload (device_registry build); GET /device/ping → timestamp; re-register khi timestamp đổi.
+  Backend POST /device/register  → CBOR device+network only (keys 0–8); POST /device/entities → device_id + array entities (key 0, 9); GET /device/ping → timestamp; re-register khi timestamp đổi.
 ```
 
-**Shared CoAP manager** (`thread_coap.c`): Idempotent `otCoapStart()`. **device_coap**: CoAP client (token 2 byte, lock), POST register + GET ping; response handler ping parse timestamp → callback re-register. **device_registry**: build payload (device_model, entity_serialization), gọi device_coap_send_register / device_coap_ping.
+**Shared CoAP manager** (`thread_coap.c`): Idempotent `otCoapStart()`. **device_coap**: CoAP client (token 2B, lock), send_register + send_entities + ping; response handlers; ping timestamp → callback re-register. **device_registry**: entity_serialize_device_cbor + entity_serialize_entities_cbor; gọi send_register rồi send_entities (liên tiếp).
 
 ## Pattern 5: Custom CBOR Serialization
 
@@ -168,9 +165,9 @@ cbor_close_array()          // Break code (0xFF)
 
 **Đích:** Backend (IPv6 + port từ `thread_discovery_get_endpoint()`). **thread_node** nội bộ: discovery, refresh task 60s, ping task 10s; khi có/đổi endpoint hoặc ping timestamp đổi → gọi `device_registry_register()` / `device_registry_ping()`. App không gọi discovery/register/ping.
 
-**device_registry** (device/): Build payload (device_model, entity_serialization), gọi **device_coap** (transport). API: `device_registry_register(endpoint, callback, ctx)`, `device_registry_ping(endpoint, on_timestamp_changed, ctx)`, `device_registry_is_registered()`.
+**device_registry** (components/device/): Build device-only (entity_serialize_device_cbor) + entities (entity_serialize_entities_cbor); gửi POST /device/register rồi POST /device/entities liên tiếp. API: `device_registry_register(endpoint, callback, ctx)`, `device_registry_ping(...)`, `device_registry_is_registered()`.
 
-**device_coap** (device/): CoAP client: `device_coap_init()`, `device_coap_send_register(endpoint, payload, len, callback, ctx)`, `device_coap_ping()`. Token 2 byte cho mọi request; lock pattern. GET /device/ping response 4-byte timestamp (LE) → nếu khác lần trước gọi callback (thread_node → trigger_register).
+**device_coap** (components/device/): CoAP client: `device_coap_send_register(...)`, `device_coap_send_entities(...)`, `device_coap_ping()`. Token 2 byte; lock. GET /device/ping response 4-byte timestamp (LE) → nếu khác lần trước gọi callback (thread_node → trigger_register).
 
 **Log backend IP:** Chỉ log INFO **1 lần** khi có IP và **khi IP thay đổi** (thread_node: "Backend discovered", "Backend endpoint updated"). thread_discovery khi trả cache/static/SRP dùng LOGD.
 

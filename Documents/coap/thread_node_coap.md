@@ -9,8 +9,8 @@ Thread-Node  --[CoAP + CBOR, path /device/...]-->  Backend (Dashboard)
 Backend       parse CBOR → log JSON, tra 2.01.     (khong push len frontend)
 ```
 
-- **Thread-Node → Backend**: Gửi **GET** tới `/device/ping` (không body); gửi **POST** tới `/device/register`, `/device/update` với body CBOR.
-- **Backend**: Listen UDP 5683 trên IPv6 ([::]). **GET /device/ping** → trả **2.05 Content**, payload 4 byte = timestamp uint32 little-endian (giá trị lúc server khởi động; restart = timestamp mới; node so sánh và gửi lại register nếu khác). **POST** register/update: parse CBOR bằng **thư viện nội bộ** (`backend/src/cbor`); log JSON + structure; trả 2.01. Không emit WebSocket lên frontend.
+- **Thread-Node → Backend**: Gửi **GET** tới `/device/ping` (không body); gửi **POST** tới `/device/register` (chỉ device + network, keys 0–8), **POST** tới `/device/entities` (device_id + array entities, keys 0 và 9), và **POST** tới `/device/update` (legacy) với body CBOR.
+- **Backend**: Listen UDP 5683 trên IPv6 ([::]). **GET /device/ping** → trả **2.05 Content**, payload 4 byte = timestamp uint32 little-endian (giá trị lúc server khởi động; restart = timestamp mới; node so sánh và gửi lại register nếu khác). **POST /device/register**: parse CBOR keys 0–8 only, tạo/cập nhật device, trả 2.01/2.04 và echo token. **POST /device/entities**: parse device_id (0) + entities (9), merge từng entity theo (device_id, entity_id), trả 2.01/2.04 và echo token. Không emit WebSocket lên frontend.
 
 ## Lấy Backend IP/port bằng SRP/DNS-SD (tự scan)
 
@@ -23,14 +23,14 @@ Backend       parse CBOR → log JSON, tra 2.01.     (khong push len frontend)
 
 ### Ghi chú triển khai (Thread-Node)
 
-- **Discovery**: `components/thread/thread_discovery.c/.h` — `thread_discovery_init()`, `thread_discovery_get_endpoint(&ep, force_refresh)`. Endpoint: `thread_discovery_endpoint_t` (addr, port, from_srp).
-- **Device layer**: `components/thread/device/` — **device_registry** (build payload, API `device_registry_register`, `device_registry_ping`, `device_registry_is_registered`) và **device_coap** (transport: POST /device/register, GET /device/ping, CoAP token 2 byte). **thread_node** khi `enable_device_registry` chạy discovery (task delay 10s khi chưa có backend, 60s khi đã có), task ping 10s, và gọi register/ping nội bộ; app không gọi discovery/register/ping.
+- **Discovery**: `ESP-Thread/Thread-Node/components/thread/core/thread_discovery.c/.h` — `thread_discovery_init()`, `thread_discovery_get_endpoint(&ep, force_refresh)`. Endpoint: `thread_discovery_endpoint_t` (addr, port, from_srp).
+- **Device layer**: `ESP-Thread/Thread-Node/components/device/` — **device_registry** (build device-only + entities payload, API `device_registry_register`, `device_registry_ping`, `device_registry_is_registered`) và **device_coap** (transport: POST /device/register, POST /device/entities, GET /device/ping; CoAP token 2 byte). **thread_node** khi `enable_device_registry` chạy discovery (task delay 10s khi chưa có backend, 60s khi đã có), task ping 10s, và gọi register rồi entities/ping nội bộ; app không gọi discovery/register/ping.
 
 ### Device register (`/device/register`) — gửi tới Backend
 
 - **Path**: POST `/device/register`. IP/port từ `thread_discovery_get_endpoint()` (thread_node giữ endpoint).
 - **Trigger**: (1) Lần đầu discovery thành công; (2) Task discovery (10s/60s) phát hiện endpoint (addr/port) đổi; (3) Ping task 10s nhận GET /device/ping response có timestamp khác (backend restart) → gửi lại register.
-- **Payload**: CBOR device model (device_registry build qua device_model + entity_serialization). Response: 2.01/2.04/2.05 (ACK). Backend phải trả response (xem [border_router_coap_server.md](border_router_coap_server.md)).
+- **Payload**: CBOR map **chỉ keys 0–8** (device + network, không có key 9 entities). Node gửi qua `entity_serialize_device_cbor()` (device + network only). Response: 2.01 Created / 2.04 Changed (và echo token). Backend spec: [border_router_coap_server.md](border_router_coap_server.md).
 - **API**: `device_registry_init()` (gọi từ thread_node); `device_registry_register(endpoint, callback, ctx)`; `device_registry_ping(endpoint, on_timestamp_changed, ctx)`.
 - **CoAP token (RFC 7252)**: Node gửi request với token 2 byte. Backend **phải echo đúng token** trong response thì OpenThread mới match và gọi response handler; nếu không echo token, node sẽ không nhận callback.
 - **Callback**: thread_node gọi `device_registry_register(ep, NULL, NULL)` nên không có user callback khi register xong. Ping callback (`on_timestamp_changed`) chỉ được gọi khi **timestamp trong response thay đổi** so với lần trước (lần đầu nhận ping không gọi).
@@ -47,28 +47,36 @@ Backend       parse CBOR → log JSON, tra 2.01.     (khong push len frontend)
 
 | Path | Method | Ý nghĩa |
 |------|--------|---------|
-| `/device/register` | POST | Đăng ký node (payload CBOR: device info + entities). Response 2.01. |
-| `/device/update`   | POST | Cập nhật trạng thái / sensor (payload CBOR). Response 2.01. |
+| `/device/register` | POST | Đăng ký device (payload CBOR **chỉ keys 0–8**: device + network, không có key 9). Response 2.01/2.04, echo token. |
+| `/device/entities` | POST | Gửi danh sách entity (payload CBOR: key **0** = device_id, key **9** = array entities). Backend merge theo (device_id, entity_id). Response 2.01/2.04, echo token. |
+| `/device/update`   | POST | Cập nhật (legacy, payload CBOR). Response 2.01, echo token. |
 | `/device/ping`     | **GET** | Ping; backend trả **2.05 Content**, payload **4 byte** = timestamp uint32 LE (giá trị lúc server khởi động). Node so sánh timestamp; nếu khác → backend đã restart → gửi lại register. |
 
 POST: body = payload CBOR. GET /device/ping: không body.
 
 ## Payload CBOR
 
-- **Format**: CBOR (Concise Binary Object Representation).
-- **Register payload** (numeric key, xem `cbor_register_keys.h` trên Thread-Node): device_id(0), device_name(1), device_type(2), manufacturer(3), model(4), sw_version(5), hw_version(6), mac_address(7), network(8) = { rloc16(0), **role(1)** = số 0=child 1=router 2=leader, ipv6(2), parent(3)? }, entities(9) = array. Backend log JSON + structure (device_id, rloc16, role, entities count).
+- **Format**: CBOR (Concise Binary Object Representation). Keys số theo `cbor_register_keys.h` (Thread-Node).
+
+- **POST /device/register** — map **chỉ keys 0–8** (Backend bỏ qua / không mong đợi key 9):
+  - 0: device_id (string), 1: device_name (string), 2: device_type (uint), 3: manufacturer (string, optional), 4: model (string, optional), 5: sw_version (uint), 6: hw_version (uint), 7: mac_address (uint, optional), 8: network (map: rloc16(0), role(1)=0|1|2, ipv6(2), parent(3) optional).
+
+- **POST /device/entities** — map gồm:
+  - 0: device_id (string), 9: array các entity map (entity_id, name, type, device_class, available, last_update, state, brightness, mode, …; type/device_class/mode là số theo bảng trong `cbor_register_keys.h`).
 
 ## Backend nhận và trả về
 
-- Backend listen UDP 5683 trên **[::]** (IPv6).
-  - **GET /device/ping**: Trả **2.05 Content**, payload 4 byte timestamp uint32 LE (giá trị lúc server khởi động). Log: `CoAP GET /device/ping -> 2.05 timestamp=...`
-  - **POST /device/register**, update: Parse CBOR (thư viện nội bộ `backend/src/cbor`), log `CoAP CBOR -> JSON: {...}` và `CoAP /device/register structure: device_id=... rloc16=... role=... entities=...`. Trả **2.01 Created**.
-- Không có WebSocket event hay section UI cho device data; chỉ log backend.
+- Backend listen UDP 5683 trên **[::]** (IPv6). Mọi response **echo CoAP token** từ request (RFC 7252) để Node nhận ACK.
+  - **GET /device/ping**: Trả **2.05 Content**, payload 4 byte timestamp uint32 LE (giá trị lúc server khởi động). Echo token.
+  - **POST /device/register**: Parse CBOR keys 0–8 only, tạo/cập nhật device (SQLite), log structure. Trả **2.01 Created** (device mới) hoặc **2.04 Changed** (đã tồn tại). Echo token.
+  - **POST /device/entities**: Parse device_id (0) + array entities (9), merge từng entity theo (device_id, entity_id). Trả **2.01 Created** (có entity mới) hoặc **2.04 Changed**. Echo token.
+  - **POST /device/update**: Parse CBOR, log; trả 2.01. Echo token.
+- Không có WebSocket event hay section UI cho device data; dữ liệu lưu trong backend (device_info, device_entity).
 
 ## Ví dụ (pseudo)
 
 - **Ping:** `GET coap://[fd00::1]:5683/device/ping` → response 2.05, body 4 byte (timestamp LE). Node lưu; lần sau nếu timestamp khác → gửi lại register.
-- **Register:** `POST coap://[fd00::1]:5683/device/register`, body = CBOR (device model với key 0–9, role = 0|1|2).
+- **Register:** `POST coap://[fd00::1]:5683/device/register`, body = CBOR (device + network, keys 0–8 only; role = 0|1|2). **Entities:** `POST coap://[fd00::1]:5683/device/entities`, body = CBOR (key 0 = device_id, key 9 = array entities).
 - Backend log: `CoAP device server listening on [::]:5683 (path /device/...)` khi khởi động; khi nhận request log CoAP request + CBOR JSON + structure + 2.01 hoặc 2.05.
 
 ## Troubleshooting: ResponseTimeout
@@ -84,5 +92,5 @@ Chi tiết kiến trúc BR và routing: [../architecture/real_br_integration.md]
 
 ## Tài liệu liên quan
 
-- Backend CoAP server: `backend/src/server/CoapDeviceServer.ts`
+- Backend CoAP server: `backend/src/coap/coap-device.server.ts`; spec chi tiết: [border_router_coap_server.md](border_router_coap_server.md)
 - SRP/BR integration: `docs/architecture/real_br_integration.md`

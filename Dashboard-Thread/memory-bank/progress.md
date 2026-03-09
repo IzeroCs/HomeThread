@@ -21,6 +21,7 @@ Version notation in this file uses Semantic Versioning `MAJOR.MINOR.PATCH` (no l
 | 1.6.0   | Docker backend: Dockerfile.backend + docker-compose o root (sau them frontend). network_mode: host, volume backend/data. Default BR 192.168.31.3:5000 (migration 005) — mDNS trong Docker khong dung duoc, phai dung IP. Doc backend/README.docker.md. |
 | 1.7.0   | **Cau truc & path alias:** Frontend feature-based: `src/features/nodes|settings|status`, `src/shared` (components, contexts, hooks, types, styles). Backend domain: `coap/`, `communicate/`, `settings/`, `thread/`, `websocket/`, `cbor/`, `database/`, `utils/`. File naming kebab-case (vd. `command.manager.ts`, `commission-node-modal.component.tsx`, `*.style.scss`). **Path alias frontend:** tsconfig + Vite alias `@/`, `@shared/`, `@nodes/`, `@settings/`, `@status/`; toan bo import TS/TSX/SCSS chuyen sang alias hoac `@use "shared/styles/..."` (SCSS loadPaths: src). **CoAP decorator:** CoAP server refactor — `coap/` module voi `DeviceCoapController`, decorator `@CoapGet`/`@CoapPost`, `registerCoapControllers(server, [DeviceCoapController])`, types va router trong coap/. |
 | 1.8.0   | **Backend path alias + build:** tsconfig backend them `baseUrl` va `paths` (`@utils/*`, `@cbor`, `@database`, `@communicate`, `@coap/*`, `@settings/*`, `@thread/*`, `@websocket/*`). Toan bo import backend doi sang alias. Dev: `tsx watch` tu resolve; build: `tsc && tsc-alias -p tsconfig.json` (tsc-alias thay alias trong dist bang relative path). Fix TS: `coap.router.ts` (instance as object, handler result as unknown); `transport-tcp.transport.ts` (sock null check). |
+| 1.9.0   | **CoAP device/entities split:** POST /device/register chi nhan CBOR keys 0–8 (device + network, khong key 9). POST /device/entities (endpoint moi): payload key 0 = device_id, key 9 = array entities; merge theo (device_id, entity_id). Backend luu SQLite bang **device_info**, **device_entity** (migration 007); migration 008 doi ten coap_device/coap_entity sang device_info/device_entity neu da chay 007 cu. CoAP response **echo token** (RFC 7252); tra 2.01 Created / 2.04 Changed. device-coap.service.ts: upsertDevice(), mergeEntity(). Doc: docs/coap/border_router_coap_server.md, cap nhat thread_node_coap.md. |
 
 
 ## What Works (Completed)
@@ -28,7 +29,7 @@ Version notation in this file uses Semantic Versioning `MAJOR.MINOR.PATCH` (no l
 ### Infrastructure
 
 - npm workspaces monorepo (backend + frontend + shared)
-- SQLite database (WAL mode, 6 migrations: app_settings, br_connection_config; migration 006 drop serial_config)
+- SQLite database (WAL mode): app_settings, br_connection_config; migration 006 drop serial_config; 007 device_info + device_entity (CoAP device/entity store); 008 rename coap_* → device_info/device_entity neu co bang cu
 - Shared package: types, events, constants, validation
 - pino logging voi child loggers (transportLogger, frameLogger, wsLogger)
 - Table log filtering (ROUTER/CHILD/JOINER TX + ACK bi an)
@@ -72,7 +73,7 @@ Version notation in this file uses Semantic Versioning `MAJOR.MINOR.PATCH` (no l
 
 ### Backend — CoAP device & System
 
-- CoAP server (coap/coap-device.server.ts): listen UDP 5683 on [::] (udp6). **Decorator pattern:** registerCoapControllers(server, [DeviceCoapController]); DeviceCoapController dung @CoapGet("/device/ping"), @CoapPost("/device/register"), @CoapPost("/device/update"). **GET /device/ping**: tra 2.05 Content, payload 4 byte timestamp uint32 LE. **POST /device/register**, update: parse CBOR (backend/src/cbor), log JSON + structure; tra 2.01; khong emit len frontend.
+- CoAP server (coap/coap-device.server.ts): listen UDP 5683 on [::] (udp6). **Decorator:** registerCoapControllers(server, [DeviceCoapController]); @CoapGet("/device/ping"), @CoapPost("/device/register"), @CoapPost("/device/entities"), @CoapPost("/device/update"). **GET /device/ping**: 2.05 Content + 4-byte timestamp uint32 LE, echo token. **POST /device/register**: CBOR keys 0–8 only (device + network), upsert **device_info** (device-coap.service), tra 2.01/2.04, echo token. **POST /device/entities**: CBOR key 0 (device_id) + key 9 (entities array), merge **device_entity** by (device_id, entity_id), tra 2.01/2.04, echo token. **POST /device/update**: legacy, 2.01, echo token. Khong emit len frontend. Doc: docs/coap/thread_node_coap.md, docs/coap/border_router_coap_server.md.
 - System info: getBackendAddresses() (utils/ipv6.util); gui SYSTEM_INFO khi CONFIG_GET/CONFIG_CURRENT. Frontend Status section System (IPv4/IPv6).
 
 ### Backend — Path aliases & build
@@ -105,7 +106,8 @@ Console da bo. Commissioner gop vao Nodes (modal + Joiner List).
 - HomeThread/Documents/protocol/usb_cdc_frame_structure.md
 - HomeThread/Documents/protocol/table_data_format.md
 - HomeThread/Documents/dashboard/migration_to_frame_protocol.md
-- docs/coap/thread_node_coap.md — huong dan Thread-Node gui du lieu (CoAP + CBOR) len backend
+- docs/coap/thread_node_coap.md — huong dan Thread-Node (CoAP + CBOR, register keys 0–8, entities endpoint)
+- docs/coap/border_router_coap_server.md — spec Backend CoAP (endpoints, payload, device_info/device_entity, echo token)
 - README.md + TODO.md cap nhat
 
 ## What's Left to Build

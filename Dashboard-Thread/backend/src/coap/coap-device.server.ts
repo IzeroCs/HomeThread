@@ -1,6 +1,9 @@
 /**
  * CoAP server for Thread-Node (router, child, any role). Listens on UDP 5683.
- * Routes: GET /device/ping (2.05, 4-byte timestamp LE); POST /device/register, /device/update (CBOR, 2.01).
+ * Routes: GET /device/ping (2.05, 4-byte timestamp LE, echo token);
+ * POST /device/register (CBOR keys 0–8 only, 2.01/2.04, echo token);
+ * POST /device/entities (CBOR key 0 + key 9 array, merge by device_id+entity_id, 2.01/2.04, echo token);
+ * POST /device/update (legacy CBOR, 2.01, echo token).
  * Uses decorator-based controllers (@CoapGet, @CoapPost).
  */
 

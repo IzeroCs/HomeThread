@@ -20,9 +20,9 @@ useWebSocket hook  (frontend/src/shared/hooks/use-websocket.hook.ts)
 UI Components      (frontend/src/features/*, frontend/src/shared/components/)
 
 Thread-Node  -- CoAP UDP 5683 (IPv6 [::]), path /device/
-    ↓ GET /device/ping → 2.05 + 4-byte timestamp (server start); POST /device/register, update → CBOR payload
-CoAP server        (backend/src/coap/coap-device.server.ts) + DeviceCoapController (decorator @CoapGet/@CoapPost)
-    ↓ registerCoapControllers(server, [DeviceCoapController]); GET ping: tra timestamp (uint32 LE). POST: parse CBOR (backend/src/cbor), log JSON + structure, tra 2.01. Khong emit len frontend.
+    ↓ GET /device/ping → 2.05 + 4-byte timestamp; POST /device/register (CBOR keys 0–8) → device_info; POST /device/entities (key 0 + key 9) → device_entity; POST /device/update (legacy)
+CoAP server        (backend/src/coap/coap-device.server.ts) + DeviceCoapController + device-coap.service.ts
+    ↓ registerCoapControllers(server, [DeviceCoapController]). GET ping: 2.05 + timestamp (uint32 LE). POST register: parse keys 0–8, upsert device_info, tra 2.01/2.04. POST entities: parse device_id + array, merge device_entity, tra 2.01/2.04. Moi response echo token (RFC 7252). Khong emit len frontend.
 
 Backend (os.networkInterfaces) → getBackendAddresses() → io.emit(SYSTEM_INFO) khi CONFIG_CURRENT
     ↓
@@ -52,7 +52,7 @@ Backend (khi BR = leader) → log "SRP register: IPv6=... hostname=... port=..."
 | `OtConfigManager` | `backend/src/thread/ot-config.manager.ts` | In-memory store. `.update(partial)` de merge, `.get()` de doc, `.clear()` khi disconnect |
 | `PollingManager` | `backend/src/thread/polling.manager.ts` | Poll table 6s (child +1.5s delay). CHI khi frontend connected + state = leader/router/child |
 | `AppSettingsService` | `backend/src/settings/app-settings.service.ts` | SQLite key-value cho app settings (thread_run_on_connect) |
-| CoAP server | `backend/src/coap/coap-device.server.ts` + `device-coap.controller.ts` | CoAP UDP 5683 (udp6, [::]). registerCoapControllers(server, [DeviceCoapController]). GET /device/ping → 2.05 + 4-byte timestamp; POST register/update → CBOR decode (backend/src/cbor), log JSON, tra 2.01; khong emit qua io |
+| CoAP server | `backend/src/coap/coap-device.server.ts` + `device-coap.controller.ts` + `device-coap.service.ts` | CoAP UDP 5683 (udp6, [::]). GET /device/ping → 2.05 + timestamp, echo token. POST /device/register: CBOR keys 0–8 only, upsert device_info (SQLite), tra 2.01/2.04, echo token. POST /device/entities: CBOR key 0 + key 9 array, merge device_entity, tra 2.01/2.04, echo token. POST /device/update: legacy, 2.01. Khong emit qua io |
 
 ## Frame Protocol
 

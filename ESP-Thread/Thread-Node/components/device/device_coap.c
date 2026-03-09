@@ -21,6 +21,7 @@ static const char *TAG = "device_coap";
 #define COAP_DEFAULT_PORT 5683
 #define DEVICE_URI_PATH "device"
 #define REGISTER_URI_PATH "register"
+#define ENTITIES_URI_PATH "entities"
 #define PING_URI_PATH "ping"
 #define COAP_TOKEN_LEN 2
 
@@ -38,6 +39,8 @@ static uint16_t s_token_seq = 0;
 static volatile bool s_registered = false;
 static device_coap_register_callback_fn s_register_cb = NULL;
 static void *s_register_ctx = NULL;
+static device_coap_register_callback_fn s_entities_cb = NULL;
+static void *s_entities_ctx = NULL;
 static uint32_t s_last_ping_ts = 0;
 static bool s_last_ping_ts_valid = false;
 static device_coap_ping_ts_changed_fn s_ping_cb = NULL;
@@ -130,6 +133,29 @@ static void register_response_handler(void *aContext, otMessage *aMessage, const
 
     if (s_register_cb) {
         s_register_cb(success, s_register_ctx);
+    }
+}
+
+static void entities_response_handler(void *aContext, otMessage *aMessage, const otMessageInfo *aMessageInfo, otError aError)
+{
+    (void)aContext;
+    (void)aMessageInfo;
+
+    bool success = false;
+    if (aError == OT_ERROR_NONE && aMessage != NULL) {
+        otCoapCode code = otCoapMessageGetCode(aMessage);
+        if (code >= OT_COAP_CODE_CREATED && code <= OT_COAP_CODE_CONTENT) {
+            success = true;
+            ESP_LOGD(TAG, "Entities POST OK (CoAP %d.%02d)", (int)(code >> 5), (int)(code & 0x1f));
+        } else {
+            ESP_LOGW(TAG, "Entities POST fail (CoAP %d.%02d)", (int)(code >> 5), (int)(code & 0x1f));
+        }
+    } else {
+        ESP_LOGW(TAG, "Entities response error: %s", otThreadErrorToString(aError));
+    }
+
+    if (s_entities_cb) {
+        s_entities_cb(success, s_entities_ctx);
     }
 }
 
@@ -256,6 +282,56 @@ esp_err_t device_coap_send_register(const device_coap_endpoint_t *endpoint,
     }
 
     ESP_LOGD(TAG, "POST /device/register sent");
+    return ESP_OK;
+}
+
+esp_err_t device_coap_send_entities(const device_coap_endpoint_t *endpoint,
+                                    const uint8_t *payload,
+                                    int payload_len,
+                                    device_coap_register_callback_fn callback,
+                                    void *ctx)
+{
+    if (!endpoint || !payload || payload_len <= 0) {
+        ESP_LOGE(TAG, "Invalid args");
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    otInstance *instance = NULL;
+    esp_err_t ret = check_preconditions(&instance);
+    if (ret != ESP_OK) {
+        return ret;
+    }
+
+    ret = acquire_lock_and_ensure_joined(instance);
+    if (ret != ESP_OK) {
+        return ret;
+    }
+
+    s_entities_cb = callback;
+    s_entities_ctx = ctx;
+
+    otMessage *message = otCoapNewMessage(instance, NULL);
+    COAP_BUILD_FAIL_IF(!message, "Failed to create CoAP message");
+
+    otCoapMessageInit(message, OT_COAP_TYPE_CONFIRMABLE, OT_COAP_CODE_POST);
+    otError err = set_request_token(message);
+    COAP_BUILD_FAIL_IF(err != OT_ERROR_NONE, "Failed to set token");
+    err = otCoapMessageAppendUriPathOptions(message, DEVICE_URI_PATH);
+    COAP_BUILD_FAIL_IF(err != OT_ERROR_NONE, "Failed to append path device");
+    err = otCoapMessageAppendUriPathOptions(message, ENTITIES_URI_PATH);
+    COAP_BUILD_FAIL_IF(err != OT_ERROR_NONE, "Failed to append path entities");
+    err = otCoapMessageAppendContentFormatOption(message, OT_COAP_OPTION_CONTENT_FORMAT_CBOR);
+    COAP_BUILD_FAIL_IF(err != OT_ERROR_NONE, "Failed to append Content-Format");
+    otCoapMessageSetPayloadMarker(message);
+    err = otMessageAppend(message, payload, (uint16_t)payload_len);
+    COAP_BUILD_FAIL_IF(err != OT_ERROR_NONE, "Failed to append payload");
+
+    ret = send_request(instance, endpoint, message, entities_response_handler);
+    if (ret != ESP_OK) {
+        return ret;
+    }
+
+    ESP_LOGD(TAG, "POST /device/entities sent");
     return ESP_OK;
 }
 

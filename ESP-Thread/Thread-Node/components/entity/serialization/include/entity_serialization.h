@@ -12,8 +12,21 @@ extern "C" {
 #endif
 
 /**
- * Serialize entity model to CBOR binary format.
- * Includes device info (rloc16, ml_eid, parent) and all entities.
+ * Serialize device + network only (keys 0–8) to CBOR. No entities.
+ * For POST /device/register (first step).
+ */
+int entity_serialize_device_cbor(uint16_t rloc16, const char *ml_eid_str,
+                                 uint16_t parent_rloc16,
+                                 uint8_t *buffer, size_t buffer_size);
+
+/**
+ * Serialize entities only: map with device_id (key 0) + entities array (key 9).
+ * For POST /device/entities.
+ */
+int entity_serialize_entities_cbor(uint8_t *buffer, size_t buffer_size);
+
+/**
+ * Serialize entity model to CBOR binary format (full: device + network + entities).
  * 
  * @param rloc16 Thread RLOC16 of this device
  * @param ml_eid_str Mesh-Local EID as string (IPv6 address)

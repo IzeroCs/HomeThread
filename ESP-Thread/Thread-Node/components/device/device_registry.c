@@ -1,6 +1,8 @@
 /*
- * Device Registry - đăng ký device lên Backend: build payload (device_model + entities)
- * và gửi qua device_coap (POST /device/register). Chỉ gửi sau khi discovery được backend.
+ * Device Registry - đăng ký device lên Backend.
+ * Bước 1: POST /device/register (device + network only).
+ * Bước 2: POST /device/entities (entities array + device_id).
+ * Chỉ gửi sau khi discovery được backend.
  */
 #include <string.h>
 #include "esp_err.h"
@@ -112,10 +114,13 @@ esp_err_t device_registry_register(const device_registry_endpoint_t *endpoint,
         return ESP_FAIL;
     }
 
-    uint8_t cbor_buffer[1024];
-    int cbor_len = entity_serialize_cbor(rloc16, NULL, parent_rloc16, cbor_buffer, sizeof(cbor_buffer));
-    if (cbor_len < 0) {
-        ESP_LOGE(TAG, "Failed to serialize device model to CBOR");
+#define DEVICE_CBOR_MAX 512
+#define ENTITIES_CBOR_MAX 1024
+
+    uint8_t device_buffer[DEVICE_CBOR_MAX];
+    int device_len = entity_serialize_device_cbor(rloc16, NULL, parent_rloc16, device_buffer, sizeof(device_buffer));
+    if (device_len < 0) {
+        ESP_LOGE(TAG, "Failed to serialize device to CBOR");
         return ESP_FAIL;
     }
 
@@ -124,14 +129,27 @@ esp_err_t device_registry_register(const device_registry_endpoint_t *endpoint,
     register_ctx.user_ctx = ctx;
 
     const device_coap_endpoint_t *coap_ep = (const device_coap_endpoint_t *)endpoint;
-    esp_err_t ret = device_coap_send_register(coap_ep, cbor_buffer, cbor_len,
+
+    esp_err_t ret = device_coap_send_register(coap_ep, device_buffer, device_len,
                                               on_register_response,
                                               &register_ctx);
     if (ret != ESP_OK) {
         return ret;
     }
 
-    ESP_LOGI(TAG, "CoAP POST /device/register sent (rloc16=0x%04x, port=%u)", rloc16, (unsigned)endpoint->port);
+    uint8_t entities_buffer[ENTITIES_CBOR_MAX];
+    int entities_len = entity_serialize_entities_cbor(entities_buffer, sizeof(entities_buffer));
+    if (entities_len < 0) {
+        ESP_LOGE(TAG, "Failed to serialize entities to CBOR");
+        return ESP_FAIL;
+    }
+
+    ret = device_coap_send_entities(coap_ep, entities_buffer, entities_len, NULL, NULL);
+    if (ret != ESP_OK) {
+        return ret;
+    }
+
+    ESP_LOGI(TAG, "CoAP POST /device/register + /device/entities sent (rloc16=0x%04x, port=%u)", rloc16, (unsigned)endpoint->port);
     return ESP_OK;
 }
 
