@@ -101,7 +101,7 @@ Thread-Node CoAP Server:
   /entities/{id}/{attr} PUT/POST → Điều khiển entity
 
 Thread-Node CoAP Client (device_coap, gọi từ device_registry):
-  Backend POST /device/register  → CBOR device+network only (keys 0–8); POST /device/entities → device_id + array entities (key 0, 9); GET /device/ping → timestamp; re-register khi timestamp đổi.
+  Backend POST /device/register/info → CBOR device only (keys 0–7); POST /device/register/entity → mac (7) + array entities (key 9). Mỗi entity item: keys 0–12 + **13 = restore_mode** (uint, default 0) cho backend mergeEntity. GET /device/ping → timestamp; re-register khi timestamp đổi.
 ```
 
 **Shared CoAP manager** (`thread_coap.c`): Idempotent `otCoapStart()`. **device_coap**: CoAP client (token 2B, lock), send_register + send_entities + ping; response handlers; ping timestamp → callback re-register. **device_registry**: entity_serialize_device_cbor + entity_serialize_entities_cbor; gọi send_register rồi send_entities (liên tiếp).

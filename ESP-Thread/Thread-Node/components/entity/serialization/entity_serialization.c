@@ -140,6 +140,17 @@ static int cbor_encode_uint(cbor_encoder_t *enc, uint64_t value)
 }
 
 /**
+ * Encode signed integer (for RSSI dBm etc.)
+ */
+static int cbor_encode_int(cbor_encoder_t *enc, int64_t value)
+{
+    if (value >= 0) {
+        return cbor_encode_type_length(enc, CBOR_MT_UNSIGNED_INT, (uint64_t)value);
+    }
+    return cbor_encode_type_length(enc, CBOR_MT_NEGATIVE_INT, (uint64_t)(-1 - value));
+}
+
+/**
  * Encode text string
  */
 static int cbor_encode_text_string(cbor_encoder_t *enc, const char *str)
@@ -297,6 +308,10 @@ static int serialize_light_entity(cbor_encoder_t *enc, const entity_light_t *lig
         if (cbor_encode_uint(enc, light->color_temp) < 0) return -1;
     }
     
+    // restore_mode (key 13) for backend register/entity; default 0
+    if (cbor_encode_uint(enc, CBOR_K_ENT_RESTORE_MODE) < 0) return -1;
+    if (cbor_encode_uint(enc, 0) < 0) return -1;
+    
     // End map
     if (cbor_end_indefinite_map(enc) < 0) return -1;
     
@@ -337,6 +352,10 @@ static int serialize_sensor_entity(cbor_encoder_t *enc, const entity_sensor_t *s
     if (cbor_encode_uint(enc, CBOR_K_ENT_UNIT) < 0) return -1;
     if (cbor_encode_text_string(enc, sensor->unit) < 0) return -1;
     
+    // restore_mode (key 13) for backend register/entity; default 0
+    if (cbor_encode_uint(enc, CBOR_K_ENT_RESTORE_MODE) < 0) return -1;
+    if (cbor_encode_uint(enc, 0) < 0) return -1;
+    
     // End map
     if (cbor_end_indefinite_map(enc) < 0) return -1;
     
@@ -344,19 +363,19 @@ static int serialize_sensor_entity(cbor_encoder_t *enc, const entity_sensor_t *s
 }
 
 /**
- * Helper: encode device info + network (keys 0–8) into existing encoder.
+ * Helper: encode device info + network (keys 1–8, device by mac) into existing encoder.
  * Caller must have started the main map and will close it.
  * Returns 0 on success, -1 on error.
  */
+#define RSSI_NA 0x7FFF
 static int encode_device_and_network(cbor_encoder_t *enc,
                                     const device_model_t *device,
                                     uint16_t rloc16,
                                     const char *ml_eid_str,
-                                    uint16_t parent_rloc16)
+                                    uint16_t parent_rloc16,
+                                    int16_t rssi_dbm,
+                                    int16_t link_quality)
 {
-    if (cbor_encode_uint(enc, CBOR_K_DEVICE_ID) < 0) return -1;
-    if (cbor_encode_text_string(enc, device->info.device_id) < 0) return -1;
-
     if (cbor_encode_uint(enc, CBOR_K_DEVICE_NAME) < 0) return -1;
     if (cbor_encode_text_string(enc, device->info.device_name) < 0) return -1;
 
@@ -413,9 +432,17 @@ static int encode_device_and_network(cbor_encoder_t *enc,
         if (cbor_encode_byte_string(enc, ipv6_placeholder, 16) < 0) return -1;
     }
 
-    if (parent_rloc16 != 0) {
-        if (cbor_encode_uint(enc, CBOR_K_NET_PARENT) < 0) return -1;
-        if (cbor_encode_uint(enc, parent_rloc16) < 0) return -1;
+    /* parent_rloc16: always send (0 when not child) */
+    if (cbor_encode_uint(enc, CBOR_K_NET_PARENT) < 0) return -1;
+    if (cbor_encode_uint(enc, parent_rloc16) < 0) return -1;
+
+    if (rssi_dbm != RSSI_NA) {
+        if (cbor_encode_uint(enc, CBOR_K_NET_RSSI) < 0) return -1;
+        if (cbor_encode_int(enc, (int64_t)rssi_dbm) < 0) return -1;
+    }
+    if (link_quality >= 0 && link_quality <= 255) {
+        if (cbor_encode_uint(enc, CBOR_K_NET_LINK_QUALITY) < 0) return -1;
+        if (cbor_encode_uint(enc, (uint32_t)link_quality) < 0) return -1;
     }
 
     if (cbor_end_indefinite_map(enc) < 0) return -1;
@@ -423,14 +450,11 @@ static int encode_device_and_network(cbor_encoder_t *enc,
 }
 
 /**
- * Encode device info only (keys 0–7). No network (key 8). No entities.
- * For POST /device/register/info (backend expects keys 0–7 only).
+ * Encode device info only (keys 1–7). No device_id (key 0); device identified by mac_address (7). No network (key 8). No entities.
+ * For POST /device/register/info (backend contract).
  */
 static int encode_device_only(cbor_encoder_t *enc, const device_model_t *device)
 {
-    if (cbor_encode_uint(enc, CBOR_K_DEVICE_ID) < 0) return -1;
-    if (cbor_encode_text_string(enc, device->info.device_id) < 0) return -1;
-
     if (cbor_encode_uint(enc, CBOR_K_DEVICE_NAME) < 0) return -1;
     if (cbor_encode_text_string(enc, device->info.device_name) < 0) return -1;
 
@@ -462,7 +486,7 @@ static int encode_device_only(cbor_encoder_t *enc, const device_model_t *device)
 }
 
 /**
- * Serialize device info only (keys 0–7) to CBOR. No network, no entities.
+ * Serialize device info only (keys 1–7) to CBOR. No network, no entities. Device identified by mac_address (7).
  * For POST /device/register/info (backend contract).
  */
 int entity_serialize_register_info_cbor(uint8_t *buffer, size_t buffer_size)
@@ -488,16 +512,18 @@ int entity_serialize_register_info_cbor(uint8_t *buffer, size_t buffer_size)
     if (encode_device_only(&enc, device) < 0) return -1;
     if (cbor_end_indefinite_map(&enc) < 0) return -1;
 
-    ESP_LOGD(TAG, "Register info CBOR encoded %zu bytes (keys 0-7)", enc.pos);
+    ESP_LOGD(TAG, "Register info CBOR encoded %zu bytes (keys 1-7)", enc.pos);
     return (int)enc.pos;
 }
 
 /**
- * Serialize device + network only (keys 0–8) to CBOR. No entities.
+ * Serialize device + network only (keys 1–8) to CBOR. No entities.
  * For legacy / full register; topology sent separately via update/topology.
  */
 int entity_serialize_device_cbor(uint16_t rloc16, const char *ml_eid_str,
                                  uint16_t parent_rloc16,
+                                 int16_t rssi_dbm,
+                                 int16_t link_quality,
                                  uint8_t *buffer, size_t buffer_size)
 {
     if (!buffer || buffer_size == 0) {
@@ -518,7 +544,7 @@ int entity_serialize_device_cbor(uint16_t rloc16, const char *ml_eid_str,
     };
 
     if (cbor_start_indefinite_map(&enc) < 0) return -1;
-    if (encode_device_and_network(&enc, device, rloc16, ml_eid_str, parent_rloc16) < 0) return -1;
+    if (encode_device_and_network(&enc, device, rloc16, ml_eid_str, parent_rloc16, rssi_dbm, link_quality) < 0) return -1;
     if (cbor_end_indefinite_map(&enc) < 0) return -1;
 
     ESP_LOGD(TAG, "Device CBOR encoded %zu bytes", enc.pos);
@@ -603,9 +629,9 @@ int entity_serialize_entities_cbor(uint8_t *buffer, size_t buffer_size)
  * 
  * CBOR structure (numeric map keys, see cbor_register_keys.h):
  * {
- *   0: string,   // device_id
  *   1: string,   // device_name
  *   ...
+ *   7: uint,    // mac_address (device identifier)
  *   8: { network },
  *   9: [ entity maps... ]
  * }
@@ -640,7 +666,7 @@ int entity_serialize_cbor(uint16_t rloc16, const char *ml_eid_str,
         ESP_LOGW(TAG, "Failed to sync entities, continuing anyway");
     }
 
-    if (encode_device_and_network(&enc, device, rloc16, ml_eid_str, parent_rloc16) < 0) return -1;
+    if (encode_device_and_network(&enc, device, rloc16, ml_eid_str, parent_rloc16, RSSI_NA, -1) < 0) return -1;
     
     // Entities array
     if (cbor_encode_uint(&enc, CBOR_K_ENTITIES) < 0) return -1;
@@ -687,15 +713,67 @@ int entity_serialize_cbor(uint16_t rloc16, const char *ml_eid_str,
 }
 
 /**
- * Serialize partial entity updates to CBOR.
- * Only includes changed entity attributes.
- * 
- * TODO: Implement after struct-based migration
+ * Serialize current entity state to CBOR (for POST /device/update/state).
+ * Same structure as register/entity: map with mac_address (7) + entities array (9).
  */
 int entity_serialize_updates_cbor(uint8_t *buffer, size_t buffer_size)
 {
-    // TODO: Implement partial updates serialization
-    // For now, return error
-    ESP_LOGW(TAG, "Partial updates not yet implemented");
-    return -1;
+    if (!buffer || buffer_size == 0) {
+        ESP_LOGE(TAG, "Invalid buffer");
+        return -1;
+    }
+
+    device_model_t *device = device_model_get();
+    if (!device) {
+        ESP_LOGE(TAG, "Device Model not initialized");
+        return -1;
+    }
+
+    if (device_model_sync_entities() < 0) {
+        ESP_LOGW(TAG, "Failed to sync entities, continuing anyway");
+    }
+
+    cbor_encoder_t enc = {
+        .buffer = buffer,
+        .buffer_size = buffer_size,
+        .pos = 0
+    };
+
+    if (cbor_start_indefinite_map(&enc) < 0) return -1;
+
+    if (device->info.mac_address != 0) {
+        if (cbor_encode_uint(&enc, CBOR_K_MAC_ADDRESS) < 0) return -1;
+        if (cbor_encode_uint(&enc, device->info.mac_address) < 0) return -1;
+    }
+
+    if (cbor_encode_uint(&enc, CBOR_K_ENTITIES) < 0) return -1;
+    if (cbor_start_indefinite_array(&enc) < 0) return -1;
+
+    int entity_count = entity_get_count();
+    for (int i = 0; i < entity_count; i++) {
+        entity_type_t type_enum;
+        void *entity_ptr = entity_get_by_index(i, &type_enum);
+        if (!entity_ptr) continue;
+
+        switch (type_enum) {
+            case ENTITY_TYPE_LIGHT: {
+                entity_light_t *light = (entity_light_t *)entity_ptr;
+                if (serialize_light_entity(&enc, light) < 0) return -1;
+                break;
+            }
+            case ENTITY_TYPE_SENSOR: {
+                entity_sensor_t *sensor = (entity_sensor_t *)entity_ptr;
+                if (serialize_sensor_entity(&enc, sensor) < 0) return -1;
+                break;
+            }
+            default:
+                break;
+        }
+    }
+
+    if (cbor_end_indefinite_array(&enc) < 0) return -1;
+    if (cbor_end_indefinite_map(&enc) < 0) return -1;
+
+    ESP_LOGD(TAG, "Update state CBOR encoded %zu bytes", enc.pos);
+    return (int)enc.pos;
 }

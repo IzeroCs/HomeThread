@@ -18,11 +18,13 @@
 #define CBOR_K_NETWORK        8
 #define CBOR_K_ENTITIES       9
 
-/* Network sub-map keys */
-#define CBOR_K_NET_RLOC16     0
-#define CBOR_K_NET_ROLE       1
-#define CBOR_K_NET_IPV6       2
-#define CBOR_K_NET_PARENT     3
+/* Network sub-map keys (DeviceTopologyPayload: object at key 8) */
+#define CBOR_K_NET_RLOC16       0
+#define CBOR_K_NET_ROLE         1   /* 0=child, 1=router, 2=leader */
+#define CBOR_K_NET_IPV6         2
+#define CBOR_K_NET_PARENT       3
+#define CBOR_K_NET_RSSI         4   /* Parent RSSI (dBm), optional */
+#define CBOR_K_NET_LINK_QUALITY 5   /* link_quality 0–255, optional */
 
 /* Entity map keys (light, sensor, etc.)
  * CBOR_K_ENT_TYPE, CBOR_K_ENT_DEVICE_CLASS, CBOR_K_ENT_MODE are encoded as uint (not string).
@@ -43,5 +45,6 @@
 #define CBOR_K_ENT_COLOR_TEMP 10
 #define CBOR_K_ENT_VALUE      11
 #define CBOR_K_ENT_UNIT       12
+#define CBOR_K_ENT_RESTORE_MODE 13
 
 #endif /* CBOR_REGISTER_KEYS_H */

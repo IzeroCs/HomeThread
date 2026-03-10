@@ -19,7 +19,6 @@ static bool s_initialized = false;
 
 // Default device info if not provided
 static const device_info_t s_default_device_info = {
-    .device_id = "esp-device",
     .device_name = "ESP Thread Device",
     .device_type = DEVICE_TYPE_THREAD_ENDPOINT,
     .manufacturer = "Espressif",
@@ -28,17 +27,6 @@ static const device_info_t s_default_device_info = {
     .hw_version = DEVICE_VERSION(1, 0, 0),
     .mac_address = 0
 };
-
-/* Map device_type (number) to prefix string for device_id generation */
-static const char *device_type_to_prefix(uint16_t device_type)
-{
-    switch (device_type) {
-        case DEVICE_TYPE_ON_OFF_LIGHT: return "light";
-        case DEVICE_TYPE_SENSOR_HUB:   return "sensor";
-        case DEVICE_TYPE_SWITCH:      return "switch";
-        default:                      return "device";
-    }
-}
 
 int device_model_init(const device_info_t *info)
 {
@@ -55,37 +43,6 @@ int device_model_init(const device_info_t *info)
         memcpy(&s_device_model.info, info, sizeof(device_info_t));
     } else {
         memcpy(&s_device_model.info, &s_default_device_info, sizeof(device_info_t));
-    }
-    
-    // Auto-generate device_id if not provided or empty
-    if (s_device_model.info.device_id[0] == '\0') {
-        const char *prefix = device_type_to_prefix(s_device_model.info.device_type);
-        
-        esp_err_t err = device_model_generate_device_id(prefix, 
-                                                         s_device_model.info.device_id, 
-                                                         sizeof(s_device_model.info.device_id));
-        if (err != ESP_OK) {
-            ESP_LOGW(TAG, "Failed to auto-generate device_id, using fallback");
-            // Truncate prefix to fit in device_id buffer (leave space for "-0000\0" = 6 bytes)
-            const size_t device_id_size = sizeof(s_device_model.info.device_id);
-            const size_t suffix_len = 5; // "-0000" = 5 chars
-            const size_t max_prefix_len = (device_id_size > suffix_len) ? (device_id_size - suffix_len - 1) : 0;
-            
-            // Truncate prefix explicitly and use format specifier to limit length
-            size_t prefix_len = strlen(prefix);
-            if (prefix_len > max_prefix_len) {
-                prefix_len = max_prefix_len;
-            }
-            // Format with explicit length limit: prefix_len + suffix_len + null terminator <= device_id_size
-            // This ensures total output is at most (max_prefix_len + suffix_len + 1) = device_id_size
-            // Suppress format-truncation warning: we've already ensured prefix_len <= max_prefix_len,
-            // so total output (prefix_len + suffix_len + 1) <= (max_prefix_len + suffix_len + 1) = device_id_size
-            #pragma GCC diagnostic push
-            #pragma GCC diagnostic ignored "-Wformat-truncation"
-            snprintf(s_device_model.info.device_id, device_id_size, 
-                    "%.*s-0000", (int)prefix_len, prefix);
-            #pragma GCC diagnostic pop
-        }
     }
     
     // Auto-generate MAC address if not provided (0)
@@ -108,8 +65,8 @@ int device_model_init(const device_info_t *info)
     
     s_initialized = true;
     
-    ESP_LOGI(TAG, "Device Model initialized: device_id=%s, device_name=%s",
-             s_device_model.info.device_id, s_device_model.info.device_name);
+    ESP_LOGI(TAG, "Device Model initialized: device_name=%s, mac=0x%016llx",
+             s_device_model.info.device_name, (unsigned long long)s_device_model.info.mac_address);
     
     return 0;
 }
@@ -138,8 +95,7 @@ int device_model_set_info(const device_info_t *info)
     
     memcpy(&s_device_model.info, info, sizeof(device_info_t));
     
-    ESP_LOGI(TAG, "Device info updated: device_id=%s, device_name=%s",
-             s_device_model.info.device_id, s_device_model.info.device_name);
+    ESP_LOGI(TAG, "Device info updated: device_name=%s", s_device_model.info.device_name);
     
     return 0;
 }
@@ -226,49 +182,6 @@ esp_err_t device_model_get_mac_address(uint64_t *mac_address)
                   ((uint64_t)mac[5] << 16) |
                   ((uint64_t)mac[6] << 8) |
                   (uint64_t)mac[7];
-    
-    return ESP_OK;
-}
-
-esp_err_t device_model_generate_device_id(const char *prefix, char *device_id, size_t device_id_len)
-{
-    if (!prefix || !device_id || device_id_len < 16) {
-        return ESP_ERR_INVALID_ARG;
-    }
-    
-    uint8_t mac[8] = {0};
-    esp_err_t err = esp_read_mac(mac, ESP_MAC_IEEE802154);
-    if (err != ESP_OK) {
-        // Fallback: use prefix with zeros (truncate prefix to fit)
-        const size_t suffix_len = 5; // "-0000" = 5 chars
-        const size_t max_prefix_len = (device_id_len > suffix_len) ? (device_id_len - suffix_len - 1) : 0;
-        size_t prefix_len = strlen(prefix);
-        if (prefix_len > max_prefix_len) {
-            prefix_len = max_prefix_len;
-        }
-        // Suppress format-truncation warning: we've ensured prefix_len <= max_prefix_len
-        #pragma GCC diagnostic push
-        #pragma GCC diagnostic ignored "-Wformat-truncation"
-        snprintf(device_id, device_id_len, "%.*s-0000", (int)prefix_len, prefix);
-        #pragma GCC diagnostic pop
-        return ESP_ERR_NOT_FOUND;
-    }
-    
-    // Generate device_id: "{prefix}-{mac[6]}{mac[7]}" (truncate prefix to fit)
-    const size_t suffix_len = 6; // "-xxxx" = 6 chars (2 hex bytes + dash)
-    const size_t max_prefix_len = (device_id_len > suffix_len) ? (device_id_len - suffix_len - 1) : 0;
-    size_t prefix_len = strlen(prefix);
-    if (prefix_len > max_prefix_len) {
-        prefix_len = max_prefix_len;
-    }
-    // Suppress format-truncation warning: we've ensured prefix_len <= max_prefix_len
-    #pragma GCC diagnostic push
-    #pragma GCC diagnostic ignored "-Wformat-truncation"
-    int n = snprintf(device_id, device_id_len, "%.*s-%02x%02x", (int)prefix_len, prefix, mac[6], mac[7]);
-    #pragma GCC diagnostic pop
-    if (n < 0 || (size_t)n >= device_id_len) {
-        return ESP_ERR_INVALID_SIZE;
-    }
     
     return ESP_OK;
 }

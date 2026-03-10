@@ -110,6 +110,10 @@ CONFIG_ENTITY_MODEL_MAX_ENTITIES=32  # Số entity tối đa trên một thiết
   - `sw_version`, `hw_version`: uint32 = `DEVICE_VERSION(major, minor, patch)` (e.g. 1.2.3 → 0x00010203)
 - CBOR payload: device_type, sw_version, hw_version encode dạng unsigned int.
 
+### Entity register payload (register/entity)
+
+- Mỗi item trong array entities (key 9): map với keys 0–12 (entity_id, name, type, device_class, available, last_update, state/brightness/mode/rgb/color_temp hoặc value/unit tùy type) và **key 13 = restore_mode** (uint). Node encode restore_mode mặc định 0; backend dùng cho mergeEntity. Định nghĩa key: `cbor_register_keys.h` (`CBOR_K_ENT_RESTORE_MODE 13`).
+
 ## Custom OpenThread config (`openthread_custom_config.h`)
 
 File này được chỉ định trong `sdkconfig.defaults` qua `CONFIG_OPENTHREAD_CUSTOM_PARAMETERS_FILE`:

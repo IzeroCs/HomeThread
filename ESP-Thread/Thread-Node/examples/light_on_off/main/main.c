@@ -51,7 +51,7 @@ static void on_joined(void *ctx)
 
     device_model_t *device = device_model_get();
     if (device) {
-        ESP_LOGI(TAG, "Device Model: device_id=%s", device->info.device_id);
+        ESP_LOGI(TAG, "Device Model: device_name=%s, mac=0x%016llx", device->info.device_name, (unsigned long long)device->info.mac_address);
     }
 
     entity_model_init();

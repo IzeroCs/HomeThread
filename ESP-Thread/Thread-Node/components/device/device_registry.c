@@ -72,6 +72,34 @@ static uint16_t get_parent_rloc16(otInstance *instance, otDeviceRole role)
     return parent_info.mRloc16;
 }
 
+/** Fill parent_rloc16, rssi_dbm, link_quality (0–255) for topology. rssi_dbm=0x7FFF and link_quality=-1 if N/A. */
+static void get_parent_info_for_topology(otInstance *instance, otDeviceRole role,
+                                         uint16_t *parent_rloc16,
+                                         int16_t *rssi_dbm,
+                                         int16_t *link_quality)
+{
+    *parent_rloc16 = 0;
+    *rssi_dbm = 0x7FFF;   /* N/A: OpenThread otRouterInfo has no RSSI */
+    *link_quality = -1;
+    if (role != OT_DEVICE_ROLE_CHILD) {
+        return;
+    }
+    otRouterInfo parent_info;
+    memset(&parent_info, 0, sizeof(parent_info));
+    if (otThreadGetParentInfo(instance, &parent_info) != OT_ERROR_NONE) {
+        return;
+    }
+    *parent_rloc16 = parent_info.mRloc16;
+    /* Scale OpenThread LQ (0–3) to backend link_quality (0–255): max(in, out) * 85 */
+    uint8_t lq_in = parent_info.mLinkQualityIn;
+    uint8_t lq_out = parent_info.mLinkQualityOut;
+    uint8_t lq_max = (lq_in >= lq_out) ? lq_in : lq_out;
+    *link_quality = (int16_t)(lq_max * 85);
+    if (*link_quality > 255) {
+        *link_quality = 255;
+    }
+}
+
 static void on_entities_response(bool success, void *ctx)
 {
     register_ctx_t *c = (register_ctx_t *)ctx;
@@ -337,7 +365,9 @@ esp_err_t device_registry_send_update_topology(const device_coap_endpoint_t *end
         return ESP_ERR_INVALID_STATE;
     }
     uint16_t rloc16 = otThreadGetRloc16(instance);
-    uint16_t parent_rloc16 = get_parent_rloc16(instance, role);
+    uint16_t parent_rloc16;
+    int16_t rssi_dbm, link_quality;
+    get_parent_info_for_topology(instance, role, &parent_rloc16, &rssi_dbm, &link_quality);
     const otIp6Address *ml_eid = otThreadGetMeshLocalEid(instance);
     uint8_t role_enum = get_role_enum(role);
     char ml_eid_str[40] = {0};
@@ -356,6 +386,7 @@ esp_err_t device_registry_send_update_topology(const device_coap_endpoint_t *end
 
     uint8_t topology_buffer[DEVICE_CBOR_MAX];
     int len = entity_serialize_device_cbor(rloc16, ml_eid_str, parent_rloc16,
+                                          rssi_dbm, link_quality,
                                           topology_buffer, sizeof(topology_buffer));
     if (len < 0) {
         ESP_LOGE(TAG, "Failed to serialize topology CBOR");

@@ -47,8 +47,9 @@ Examples                 █████████████░░░░░�
 | `entity_serialize_register_info_cbor` | ✅ Device info only (keys 0–7), cho POST /device/register/info |
 | `entity_serialize_device_cbor` | ✅ Device + network (keys 0–8), legacy / full |
 | `entity_serialize_entities_cbor` | ✅ Map mac (7) + entities array (9), cho POST /device/register/entity |
-| `entity_light_t` | ✅ **Hoàn chỉnh** |
-| `entity_sensor_t` | ✅ **Hoàn chỉnh** |
+| Entity item keys 0–13 | ✅ Keys 0–12 + **13 = restore_mode** (uint, default 0) cho backend mergeEntity; light + sensor encode đủ |
+| `entity_light_t` | ✅ **Hoàn chỉnh** (kèm key 13) |
+| `entity_sensor_t` | ✅ **Hoàn chỉnh** (kèm key 13) |
 | `entity_switch_t` | ❌ Chưa có |
 | `entity_fan_t` | ❌ Chưa có |
 | `entity_climate_t` | ❌ Chưa có |
@@ -176,5 +177,6 @@ OpenThread core **không** forward `*.default.svc.arpa` ra upstream (dnssd_serve
 | **0.9.0** | Register chỉ tới Backend; thread_discovery; device registry bật trong thread_node; trigger_register khi discovery/endpoint đổi |
 | **0.9.1** | thread_node; thread_discovery; device/ + device_coap; GET /device/ping 10s, timestamp → re-register; CoAP token 2B; backend IP log 1 lần / khi đổi |
 | **0.9.2** | Discovery retry **10s** khi chưa có backend (60s khi đã có); **CONFIG_ESP_SYSTEM_EVENT_TASK_STACK_SIZE=4096**; log node **Mesh-Local EID + RLOC16**; docs: backend echo token, register callback NULL, ping callback khi timestamp đổi |
-| **0.9.3 (hiện tại)** | **Tách register/entities:** POST /device/register chỉ payload device+network (entity_serialize_device_cbor, keys 0–8); POST /device/entities payload device_id + array entities (entity_serialize_entities_cbor). device_registry gửi hai request liên tiếp; device_coap: send_register, send_entities. Component **device** chuyển sang **components/device/**; thread core sang **components/thread/core/** (rename.sh). Backend contract: `Documents/coap/border_router_coap_server.md`. |
+| **0.9.3** | **Tách register/entities:** POST /device/register/info (keys 0–7), POST /device/register/entity (mac 7 + key 9). device_registry gửi hai request liên tiếp; device_coap: send_register, send_entities. Component **device** ở **components/device/**; thread core **components/thread/core/** (rename.sh). Backend contract: `Documents/coap/border_router_coap_server.md`. |
+| **0.9.4 (hiện tại)** | **Entity restore_mode (key 13):** Mỗi entity trong register/entity payload gửi thêm key 13 = restore_mode (uint). Backend mergeEntity dùng ENTITY_KEYS.RESTORE_MODE. Node: `CBOR_K_ENT_RESTORE_MODE 13` trong cbor_register_keys.h; serialize_light_entity và serialize_sensor_entity encode key 13 (default 0). |
 | 1.0.0 (tiếp theo) | entity_coap_server implementation; CBOR switch/fan/climate/binary_sensor; main.c template; additional examples |

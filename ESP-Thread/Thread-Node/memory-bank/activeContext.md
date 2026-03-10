@@ -1,8 +1,8 @@
 # Thread-Node — Active Context
 
-## Focus hiện tại (2026-03-09)
+## Focus hiện tại (2026-03-10)
 
-Dự án đang ở giai đoạn **hoàn thiện hạ tầng Backend communication**. Device register **align backend**: (1) POST /device/register/info — chỉ device info (keys 0–7); (2) POST /device/register/entity — mac (key 7) + array entities (key 9). **device** component nằm ở **components/device/** (device_registry + device_coap); **thread** core ở **components/thread/core/** (thread_node, thread_joiner, thread_coap, thread_discovery). Ping và discovery như trước; khi ping thấy backend đổi hoặc discovery có endpoint → gửi register; **chờ register thành công** (retry 2s nếu fail) rồi mới gửi entities. Công việc còn lại: **Entity CoAP Server** (handlers 5.01) và **CBOR** cho switch/fan/climate/binary_sensor.
+Dự án đang ở giai đoạn **hoàn thiện hạ tầng Backend communication**. Device register **align backend**: (1) POST /device/register/info — chỉ device info (keys 0–7); (2) POST /device/register/entity — mac (key 7) + array entities (key 9). Mỗi entity item gửi keys 0–12 và **key 13 (restore_mode)**; node encode restore_mode (mặc định 0) để backend mergeEntity nhận đủ. **device** component ở **components/device/**; **thread** core ở **components/thread/core/** (thread_node, thread_joiner, thread_coap, thread_discovery). Ping và discovery như trước; **chờ register thành công** (retry 2s) rồi mới gửi entities. Công việc còn lại: **Entity CoAP Server** (handlers 5.01) và **CBOR** cho switch/fan/climate/binary_sensor.
 
 ## Recent changes
 
@@ -19,6 +19,9 @@ Dự án đang ở giai đoạn **hoàn thiện hạ tầng Backend communicatio
 - **Log node IPv6 khi join xong**: Trong on_joined_wrapper, log Mesh-Local EID (otThreadGetMeshLocalEid) và RLOC16 (otThreadGetRloc16) ngay sau khi có instance.
 - **CoAP response / callback**: Backend phải **echo đúng CoAP token** từ request sang response (RFC 7252) thì OpenThread mới gọi response handler. thread_node gọi device_registry_register(ep, **NULL**, NULL) nên không có callback khi register xong. Ping callback (backend_on_ping_timestamp_changed) chỉ gọi khi **timestamp trong response thay đổi** so với lần trước (lần đầu nhận ping không gọi). Backend ping reply: **2.05 Content**, payload 4 byte timestamp LE.
 - **device_registry_is_registered()**: true khi Backend đã ACK (2.01/2.04/2.05) ít nhất một lần.
+- **Entity restore_mode (key 13)**: Trong register/entity payload, mỗi entity map gửi thêm key 13 = restore_mode (uint). Backend dùng cho mergeEntity. Node: `cbor_register_keys.h` có `CBOR_K_ENT_RESTORE_MODE 13`; `serialize_light_entity` và `serialize_sensor_entity` encode key 13 với giá trị mặc định 0 (entity model chưa có trường restore_mode). Sau có thể thêm vào entity_base_t và đọc từ struct.
+
+**Build warnings (tùy chọn xử lý):** `entity_serialization.c`: `cbor_start_map` defined but not used; `device_registry.c` trong `try_send_register`: biến `parent_rloc16` unused (register/info không dùng parent, chỉ topology dùng).
 
 ## Công việc đang pending
 
@@ -48,7 +51,7 @@ Stub; root project không buildable. Quyết định: template tối thiểu hay
 | `components/device/device_coap.c/.h` | ✅ | CoAP: send_register, send_entities, ping; token 2B; response handlers; timestamp → callback re-register |
 | `components/thread/thread_coap.c/.h` | ✅ | Shared CoAP server manager |
 | `components/entity/coap_server/entity_coap_server.c` | ❌ Stub | 5.01 |
-| `components/entity/serialization/entity_serialization.c` | ⚠️ Partial | entity_serialize_device_cbor (keys 0–8), entity_serialize_entities_cbor (0+9); light+sensor OK; switch/fan/climate/binary_sensor chưa |
+| `components/entity/serialization/entity_serialization.c` | ⚠️ Partial | entity_serialize_register_info_cbor (0–7), entity_serialize_entities_cbor (7+9); light+sensor encode keys 0–13 (restore_mode); switch/fan/climate/binary_sensor chưa |
 | `examples/light_on_off/main/main.c` | ✅ | thread_node_start; on_joined chỉ setup device + entities + entity_coap_server_start |
 
 ## Docs

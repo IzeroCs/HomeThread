@@ -34,10 +34,9 @@ extern "C" {
 
 /**
  * Device Info Structure
- * manufacturer, model, device_name = string; device_type, sw_version, hw_version = number (save bandwidth).
+ * Device identified by mac_address. manufacturer, model, device_name = string; device_type, sw_version, hw_version = number.
  */
 typedef struct {
-    char device_id[16];        // Unique identifier: "living-room-001"
     char device_name[32];      // Human-readable: "Living Room Controller"
     uint16_t device_type;      // Zigbee-style type ID (e.g. DEVICE_TYPE_ON_OFF_LIGHT)
     char manufacturer[32];     // Manufacturer name: "MyCompany"
@@ -120,17 +119,6 @@ int device_model_sync_entities(void);
  * @return ESP_OK on success, ESP_ERR_* on error
  */
 esp_err_t device_model_get_mac_address(uint64_t *mac_address);
-
-/**
- * Utility: Generate device_id from MAC address.
- * Format: "{prefix}-{mac[6]}{mac[7]}" (e.g., "light-a1b2")
- * 
- * @param prefix Prefix string (e.g., "light", "sensor")
- * @param device_id Output buffer for device_id (must be at least 16 bytes)
- * @param device_id_len Size of device_id buffer
- * @return ESP_OK on success, ESP_ERR_* on error
- */
-esp_err_t device_model_generate_device_id(const char *prefix, char *device_id, size_t device_id_len);
 
 #ifdef __cplusplus
 }
