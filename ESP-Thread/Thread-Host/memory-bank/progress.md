@@ -21,7 +21,7 @@ _Cập nhật: 2026-03-10 (OT change detector + table snapshots; docs/logging)_
 | 0.17.0 | 2026-03-06 | Loại bỏ Leader Control Client (CoAP GET `/network/stop`) và toàn bộ docs liên quan. |
 | 0.18.0 | 2026-03-06 | Ethernet init: chờ **IPv4** (DHCP) only; timeout 15s. Direct-connect: khi timeout + link up → BR static 192.168.4.1 (Kconfig BR_ETH_DIRECT_IP_*), thử dhcps_start (netif ETH không có dhcps → thường fail, PC set static 192.168.4.2). Backend route: accept_ra_rt_info_max_plen **per-interface** (vd. enp8s0), RS để BR phát RA sớm. |
 | 0.19.0 | 2026-03-08 | W5500: init **chỉ** chờ IPv4 (DHCP), không chấp nhận chỉ IPv6; timeout default **25s** (BR_ETH_LINK_TIMEOUT_MS). **IPv4 timeout → esp_restart()** trong br_main. W5500 RST do code: hold (BR_ETH_RST_HOLD_MS, default 200ms) + release delay (BR_ETH_RST_RELEASE_MS); phy reset_gpio_num = -1. Bỏ INT diagnostic (counter/task). |
-| 0.20.0 | 2026-03-10 | OpenThread change detector: `otSetStateChangedCallback()` → debounce → snapshot+diff (role/rloc/dataset + router/child/joiner tables) để giảm polling. Tách snapshot builders ra module dùng chung. Cập nhật docs/logging theo hành vi hiện tại. |
+| 0.20.0 | 2026-03-10 | OpenThread change detector: `otSetStateChangedCallback()` → debounce (arm-once) → snapshot+diff (role/rloc/dataset + router/child/joiner tables) để giảm polling. Thêm `CMD_NOTIFY (0x45)` push `changed_mask` về backend. Tách snapshot builders ra module dùng chung. Cập nhật docs/backend requirements. |
 
 _(Ghi phiên bản theo Semantic Versioning MAJOR.MINOR.PATCH, không dùng tiền tố `v`. Nếu chỉ có major/minor thì PATCH = 0.)_
 
@@ -44,7 +44,7 @@ _(Ghi phiên bản theo Semantic Versioning MAJOR.MINOR.PATCH, không dùng ti�
 - [x] Frame RX/TX logging ở INFO: `id/cmd/len` cho mọi frame; byte stream TCP (`tcp rx/tx N bytes`) xem ở DEBUG tag `transport_tcp`
 
 ### OpenThread change detection
-- [x] `ot_change_detector`: hook `otSetStateChangedCallback()` → debounce (arm-once) → build snapshot (role/rloc/dataset + tables) → diff → `changed_mask` (chưa notify backend)
+- [x] `ot_change_detector`: hook `otSetStateChangedCallback()` → debounce (arm-once) → build snapshot (role/rloc/dataset + tables) → diff → `changed_mask` + push `CMD_NOTIFY (0x45)` (payload u32 BE)
 - [x] `ot_table_snapshot`: serialize router/child/joiner tables ra buffer snapshot (dùng chung với handlers)
 
 ### CMD Handlers (tất cả đã implement)

@@ -28,6 +28,7 @@ Version notation in this file uses Semantic Versioning `MAJOR.MINOR.PATCH` (no l
 | 2.3.0   | **CoAP device payload tách rõ (device_info, topology, entity, state):** register/info chỉ nhận keys 0–7 (DeviceInfoPayload), không xử lý topology; topology gửi riêng qua POST /device/update/topology (mac + key 8). Đặt tên: DEVICE_INFO_KEYS, TOPOLOGY_KEY/TOPOLOGY_KEYS, ENTITIES_KEY; DeviceInfoPayload, DeviceTopologyPayload, DeviceEntityPayload/DeviceEntityItem, DeviceStatePayload/DeviceStateItem. Bỏ DevicePayload, asDevicePayload; từng handler type đúng payload. Doc: docs/coap/device_payload_spec.md — spec payload cho Thread-Node. |
 | 2.4.0   | **WebSocket refactor (decorators + handler modules):** Đăng ký event qua @WsOn(EVENTS.xxx) (ws.decorator.ts), metadata getWsRoutes(ctor) (ws.type.ts). Handlers tách trong backend/src/websocket/handler/: ConfigHandler, BrHandler, DeviceHandler, ThreadHandler, CommissionerHandler, SrpHandler. websocket.server.ts chỉ tạo instance, gọi sendCurrentConfig/sendBrStatus trên connect, và loop getWsRoutes() để socket.on(event, handler). Doc: docs/websocket.md. |
 | 2.5.0   | **Frontend React → Lit:** migrate toàn bộ UI sang Lit custom elements (Vite + TS + SCSS). State/WS chuyển sang `WebSocketController` (Lit ReactiveController) thay contexts/hooks. Sau đó chuyển sang **light DOM** (tắt Shadow DOM) để CSS global áp trực tiếp; SCSS import kiểu side-effect (không `?inline`/`unsafeCSS`). `modal-dialog` đổi API: truyền nội dung qua property `.body` (TemplateResult) thay cho `<slot>` để modal/confirm modal render đúng trong light DOM. |
+| 2.6.0   | **Notify-first BR sync:** Thread-Host push `CMD_NOTIFY (0x45)` (mask u32 BE) để báo thay đổi; backend debounce + gộp mask rồi pull dataset/ip/tables tương ứng. Giữ polling **STATE 5s** làm health-check; thêm baseline pull khi TCP connect để UI không stale nếu missed notify. Bỏ `frontendConnectionCount`, `onFrontendConnected`/`onFrontendDisconnected`; BR sync không phụ thuộc số client WS. |
 
 
 ## What Works (Completed)
@@ -50,7 +51,7 @@ Version notation in this file uses Semantic Versioning `MAJOR.MINOR.PATCH` (no l
 - CommunicateManager: orchestrates TransportTcp + frame (khong con Serial)
 - TransportTcp: TCP client (open/close/writeRaw/onRawData/setOnDisconnect)
 - BR connection: app_settings keys br_host, br_port, use_mdns (BrConnectionService dùng app-settings.repository)
-- PollingManager: poll 6s (chi khi frontend connected + state active)
+- PollingManager: fallback table polling; state 5s + notify-first + baseline on connect (không gating theo frontend)
 - BR auto-reconnect (3s interval)
 - Consecutive failure guard (5 lan → close + reconnect)
 - TCP KHONG dong khi server shutdown

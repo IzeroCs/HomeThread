@@ -12,6 +12,7 @@
 #include "esp_timer.h"
 #include "freertos/task.h"
 
+#include "communicate/communicate.h"
 #include "openthread/dataset.h"
 #include "openthread/ip6.h"
 #include "openthread/thread.h"
@@ -56,6 +57,9 @@ static TaskHandle_t s_task;
 static portMUX_TYPE s_mux = portMUX_INITIALIZER_UNLOCKED;
 static volatile uint32_t s_pending_flags_u32;
 static volatile uint32_t s_changed_mask;
+static volatile bool s_debounce_armed;
+
+static uint8_t s_notify_frame_id = 0x80;
 
 static snapshots_t s_prev;
 static bool s_prev_valid;
@@ -185,6 +189,15 @@ static void compute_diff_and_update(const snapshots_t *cur)
                  (unsigned)cur->router_len,
                  (unsigned)cur->child_len,
                  (unsigned)cur->joiner_len);
+
+        /* Push notify to backend (fire-and-forget): payload = changed_mask (u32 BE). */
+        uint8_t payload[4] = {
+            (uint8_t)(mask >> 24),
+            (uint8_t)(mask >> 16),
+            (uint8_t)(mask >> 8),
+            (uint8_t)(mask & 0xFF),
+        };
+        (void)communicate_send_frame(s_notify_frame_id++, CMD_NOTIFY, payload, sizeof(payload));
     }
 
     s_prev = *cur;
@@ -221,6 +234,9 @@ static void detector_task(void *pv)
 static void debounce_timer_cb(void *arg)
 {
     (void)arg;
+    portENTER_CRITICAL(&s_mux);
+    s_debounce_armed = false;
+    portEXIT_CRITICAL(&s_mux);
     if (s_task) {
         xTaskNotifyGive(s_task);
     }
@@ -232,9 +248,16 @@ static void on_ot_state_changed(otChangedFlags flags, void *context)
     or_flags_u32(&s_pending_flags_u32, (uint32_t)flags);
 
     if (s_debounce_timer) {
-        /* Restart debounce window. */
-        (void)esp_timer_stop(s_debounce_timer);
-        (void)esp_timer_start_once(s_debounce_timer, (uint64_t)DEBOUNCE_MS * 1000ULL);
+        bool start = false;
+        portENTER_CRITICAL(&s_mux);
+        if (!s_debounce_armed) {
+            s_debounce_armed = true;
+            start = true;
+        }
+        portEXIT_CRITICAL(&s_mux);
+        if (start) {
+            (void)esp_timer_start_once(s_debounce_timer, (uint64_t)DEBOUNCE_MS * 1000ULL);
+        }
     }
 }
 
@@ -247,6 +270,7 @@ bool ot_change_detector_init(otInstance *instance)
     s_pending_flags_u32 = 0;
     s_changed_mask = 0;
     s_prev_valid = false;
+    s_debounce_armed = false;
 
     if (xTaskCreate(detector_task, TASK_NAME_OT_CHANGE, TASK_STACK_OT_CHANGE, NULL, 4, &s_task) != pdPASS) {
         s_task = NULL;

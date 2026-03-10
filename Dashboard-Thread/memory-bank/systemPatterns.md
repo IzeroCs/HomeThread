@@ -45,13 +45,13 @@ Backend (khi BR = leader) → log "SRP register: IPv6=... hostname=... port=..."
 
 | Module | File | Vai tro — TUYET DOI KHONG vi pham |
 |---|---|---|
-| `WebSocketServer` | `backend/src/websocket/websocket.server.ts` | CHỈ wire: tạo handler instances (handler/), on connection gọi sendCurrentConfig/sendBrStatus + emit last* data, đăng ký socket.on(event) từ getWsRoutes(handler.constructor). Business logic nằm trong handler/* (ConfigHandler, BrHandler, DeviceHandler, ThreadHandler, CommissionerHandler, SrpHandler). Mỗi handler dùng @WsOn(EVENTS.xxx); getWsRoutes(ctor) lấy danh sách route để đăng ký. |
+| `WebSocketServer` | `backend/src/websocket/websocket.server.ts` | CHỈ wire: tạo handler instances (handler/), on connection gọi sendCurrentConfig/sendBrStatus + emit last* data, đăng ký socket.on(event) từ getWsRoutes(handler.constructor). Không gọi CommunicateManager khi client connect/disconnect (đã bỏ frontend connection count). Business logic trong handler/*. |
 | `CommunicateManager` | `backend/src/communicate/communicate.manager.ts` | Owner cua toan bo transport + frame. Dieu phoi TransportTcp, polling, broadcast |
 | `TransportTcp` | `backend/src/communicate/transport-tcp.transport.ts` | TCP client: open(host, port), writeRaw, onRawData, setOnDisconnect |
 | `BrConnectionService` | `backend/src/settings/br-connection.service.ts` | Cau hinh BR (brHost, brPort, useMdns) qua app-settings.repository (key-value trong app_settings) |
 | `CommandManager` | `backend/src/communicate/command.manager.ts` | Frame TX/RX. Pending map (frameId → resolve/reject). ACK/NACK routing. Timeout; replyAck cho IP_ADDR |
 | `OtConfigManager` | `backend/src/thread/ot-config.manager.ts` | In-memory store. `.update(partial)` de merge, `.get()` de doc, `.clear()` khi disconnect |
-| `PollingManager` | `backend/src/thread/polling.manager.ts` | Poll table 6s (child +1.5s delay). CHI khi frontend connected + state = leader/router/child |
+| `PollingManager` | `backend/src/thread/thread-polling.manager.ts` | Fallback table polling (notify-first); state poll 5s do CommunicateManager, tables theo CMD_NOTIFY + baseline on connect. Không gating theo số client frontend. |
 | `AppSettingsService` | `backend/src/settings/app-settings.service.ts` | SQLite key-value cho app settings (thread_run_on_connect) |
 | CoAP server | `backend/src/coap/coap-device.server.ts` + `device-coap.controller.ts` + `device-coap.service.ts` + `database/repositories/device.repository.ts` + `coap.response.ts` | CoAP UDP 5683 (udp6, [::]). Paths: /device/ping, register/info, register/entity, update/info, update/entity, update/topology, update/state. CoapStatus (coap.type.ts); sendCoapResponse/echoCoapToken (coap.response.ts); parseCborOrRespond (controller). GET ping → 2.05 + timestamp. POST register/info: upsert device_info (mac_address), slug (generateSlug); soft-delete; topology optional (rloc16, parent_rloc16, role, rssi, link_quality). POST register/entity: merge device_entity, tra restore CBOR (key 10). POST update/*: update info, entity def, topology (rssi, link_quality), state. DB qua Drizzle type-safe (device.repository, app-settings.repository). SQLite 6 bang. Khong emit qua io |
 
@@ -79,6 +79,7 @@ Backend (khi BR = leader) → log "SRP register: IPv6=... hostname=... port=..."
 | THREAD_VERSION | 0x42 | Phien ban OpenThread |
 | COMMISSIONER_JOINER | 0x43 | EUI64(8) + PSKD_len(1) + PSKD(var) + Timeout(4) |
 | SRP_REGISTER | 0x44 | hostname_len(1) + hostname(N) + backend_ipv6(16) + port(2 BE) |
+| NOTIFY | 0x45 | Thread-Host → Backend: push notify thay đổi (payload u32 BE changed_mask) |
 
 ### NACK Codes
 
@@ -88,10 +89,9 @@ Backend (khi BR = leader) → log "SRP register: IPv6=... hostname=... port=..."
 
 ### Polling Strategy
 
-- `CMD_STATE` poll moi **5 giay**
-- Dataset active / IP addr: chi fetch khi **state thay doi**
-- Thread version: chi fetch **1 lan** (`threadVersion == null`)
-- Table polling: chi khi **co frontend connected + state = leader/router/child**
+- **Keep polling STATE only:** `CMD_STATE` mỗi **5 giây** (health + role changes).
+- **Notify-first:** dataset/ip/tables ưu tiên fetch theo `CMD_NOTIFY` (debounce + merge mask).
+- **Baseline on connect:** mỗi lần TCP connect thành công sẽ pull baseline để UI không stale nếu missed notify.
 
 ### Auto-Start Thread
 

@@ -24,10 +24,10 @@ BR có **state watchdog**: nếu backend không gửi `CMD_STATE` định kỳ, 
   - `CMD_STATE` (keepalive)
   - `CMD_DATASET_ACTIVE`, `CMD_IP_ADDR` khi cần
   - `CMD_ROUTER_TABLE / CMD_CHILD_TABLE / CMD_JOINER_TABLE` khi UI cần refresh
-- **Roadmap:** BR đã có OpenThread change detector (callback → debounce → snapshot diff) nhưng **chưa push notify**. Khi có notify, backend sẽ:
-  - nhận bitmask “đã thay đổi gì”
-  - chỉ pull những bảng/field tương ứng
-  - giảm polling định kỳ
+- **Notify (CMD_NOTIFY):** BR sẽ push `CMD_NOTIFY (0x45)` khi phát hiện thay đổi. Payload = `changed_mask` (u32 big-endian).
+- Backend nhận notify thì **chỉ pull những thứ cần thiết**, ví dụ:
+  - ROLE/IP/DATASET đổi → pull `CMD_STATE` / `CMD_IP_ADDR` / `CMD_DATASET_ACTIVE`
+  - ROUTER/CHILD/JOINER đổi → pull `CMD_ROUTER_TABLE` / `CMD_CHILD_TABLE` / `CMD_JOINER_TABLE`
 
 ### Gợi ý thực tế để giảm traffic ngay (không cần thay đổi BR)
 - Giữ `CMD_STATE` làm keepalive (theo watchdog).

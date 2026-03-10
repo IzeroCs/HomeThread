@@ -49,9 +49,8 @@
 
 ### 2.5. Giảm polling (roadmap)
 
-- BR đã có **OpenThread change detector** (hook `otSetStateChangedCallback()` → debounce → snapshot+diff) để biết “có thay đổi thật hay không” cho: role/rloc/dataset/router/child/joiner tables.\n
-- **Hiện tại:** detector **chưa notify/push** về backend, nên backend vẫn chủ động pull.\n
-- **Mục tiêu tiếp theo:** BR sẽ gửi notify nhỏ (bitmask) khi thay đổi, backend nhận notify rồi mới pull table tương ứng → giảm polling đáng kể.
+- BR có **OpenThread change detector** (hook `otSetStateChangedCallback()` → debounce → snapshot+diff) để biết “có thay đổi thật hay không” cho: role/rloc/dataset/router/child/joiner tables.
+- Khi có thay đổi, BR sẽ push `CMD_NOTIFY (0x45)` với payload `changed_mask` (u32 big-endian). Backend nhận notify rồi pull table/field tương ứng → giảm polling đáng kể.
 
 ---
 

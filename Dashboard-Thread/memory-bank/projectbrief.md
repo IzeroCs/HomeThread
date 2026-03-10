@@ -22,7 +22,7 @@ Cung cấp giao diện web quản lý Thread network:
 - Backend SRP register: CMD_SRP_REGISTER (0x44) qua frame khi BR là leader; IPv6 từ env hoặc auto-detect
 - Shared package: types, events, validation, constants (EVENTS: SRP_REGISTER, SYSTEM_INFO, …)
 - SQLite: lưu BR connection config và app settings
-- Real-time polling: table data, thread state
+- BR sync: state poll 5s, CMD_NOTIFY (notify-first) + baseline on connect; không gating theo số client frontend
 
 ### Out of Scope (hiện tại)
 - Authentication / HTTPS (để sau nếu cần)

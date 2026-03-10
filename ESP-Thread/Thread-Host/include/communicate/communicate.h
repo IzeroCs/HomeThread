@@ -45,6 +45,9 @@ extern "C" {
 #define CMD_COMMISSIONER_JOINER 0x43
 #define CMD_SRP_REGISTER        0x44
 
+/* Notify (BR -> backend): change bitmask */
+#define CMD_NOTIFY              0x45
+
 /** Callback khi nhận được một frame hợp lệ (frame_id, cmd, data, len). */
 typedef void (*communicate_rx_frame_cb_t)(uint8_t frame_id, uint8_t cmd, const uint8_t *data, size_t len, void *ctx);
 

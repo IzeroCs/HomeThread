@@ -6,9 +6,10 @@ _Cập nhật: 2026-03-10 (OT change detector + table snapshots; update logging/
 
 Backhaul Ethernet W5500 đã có IPv6 trên backbone (link-local + ULA/global khi router gửi RA). SRP server + SRP client (CMD_SRP_REGISTER) đã bật: backend đăng ký `_dashboard._udp` qua frame TCP; child discovery service qua SRP. Child↔backend: ping/CoAP từ child tới IPv6 backend qua BR. BR không còn CoAP client (Leader Control GET `/network/stop` đã gỡ trong 0.17.0).
 
-### Giảm poll: OpenThread change detector (chưa notify backend)
-- Đã thêm **OpenThread change detector**: hook `otSetStateChangedCallback()` → debounce → build snapshot (role/rloc/dataset + router/child/joiner tables) và diff với snapshot trước để tạo `changed_mask`.
-- Mục tiêu: backend **chỉ cần pull khi có thay đổi**, thay vì poll bảng liên tục. Phần notify backend sẽ làm sau.
+### Giảm poll: OpenThread change detector + `CMD_NOTIFY`
+- BR đã thêm **OpenThread change detector**: hook `otSetStateChangedCallback()` → debounce (arm-once) → build snapshot (role/rloc/dataset + router/child/joiner tables) và diff với snapshot trước để tạo `changed_mask`.
+- Khi `changed_mask != 0`, BR sẽ **push `CMD_NOTIFY (0x45)`** tới backend qua TCP frame protocol. Payload = `changed_mask` (u32 big-endian).
+- Backend nhận notify rồi **pull** các bảng/field tương ứng để giảm polling định kỳ.
 
 ### Backend reply → Thread-Node (route trên host)
 - Node gửi tới backend OK; **reply từ backend về Node** cần **route** trên máy backend: prefix Thread (vd. fdb8:.../fdd7:...) **via BR** (link-local BR trên backbone). BR gửi RA với RIO nhưng **router lifetime = 0** → Linux có thể cài route từ RIO nếu **accept_ra_rt_info_max_plen** đủ lớn (vd. 128). **Quan trọng:** set **per-interface**, không dùng `all`: `sysctl net.ipv6.conf.<iface>.accept_ra_rt_info_max_plen=128` (vd. `enp8s0`). `net.ipv6.conf.all.*` chỉ là mặc định cho interface mới, không áp dụng ngược lại cho interface đã tồn tại. Route từ RA mất sau reboot; có thể gửi **Router Solicitation (RS)** từ backend (vd. `rdisc6 -1 <iface>`) để BR trả RA sớm thay vì chờ chu kỳ. Sau **factory reset BR** prefix và có thể BR link-local đổi → cập nhật route/RS.

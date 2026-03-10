@@ -15,6 +15,8 @@ export const CMD = {
   STATE: 0x12,
   IP_ADDR: 0x13,
   DATASET_ACTIVE: 0x14,
+  /** Thread-Host → Backend push notification of changes (payload: u32 BE changed_mask) */
+  NOTIFY: 0x45,
 
   // Set config commands (bắt đầu từ 0x20)
   SET_PANID: 0x20,
@@ -48,6 +50,7 @@ export const CMD_NAMES: Record<number, string> = {
   [CMD.STATE]: "STATE",
   [CMD.DATASET_ACTIVE]: "DATASET_ACTIVE",
   [CMD.IP_ADDR]: "IP_ADDR",
+  [CMD.NOTIFY]: "NOTIFY",
   [CMD.SET_PANID]: "SET_PANID",
   [CMD.SET_CHANNEL]: "SET_CHANNEL",
   [CMD.SET_NETWORK_NAME]: "SET_NETWORK_NAME",

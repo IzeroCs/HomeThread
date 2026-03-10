@@ -134,6 +134,7 @@ const char *communicate_cmd_name(uint8_t cmd)
         case CMD_THREAD_STOP:    return "THREAD_STOP";
         case CMD_THREAD_VERSION: return "THREAD_VERSION";
         case CMD_SRP_REGISTER:   return "SRP_REGISTER";
+        case CMD_NOTIFY:         return "NOTIFY";
         default: {
             static char buf[8];
             snprintf(buf, sizeof(buf), "0x%02x", cmd);

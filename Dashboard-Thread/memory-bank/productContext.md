@@ -12,7 +12,7 @@ OpenThread Border Router (BR) cần được điều khiển và giám sát từ
 | Không có real-time data | WebSocket push từ backend khi có thay đổi |
 | Phải SSH vào thiết bị | Giao diện web truy cập từ LAN |
 | Không có error handling | Frame ID + pending map + timeout |
-| Polling thủ công | PollingManager tự động mỗi 6s |
+| Polling thủ công | State poll 5s + CMD_NOTIFY (notify-first) + baseline on connect |
 
 ## How It Should Work
 
@@ -23,7 +23,7 @@ OpenThread Border Router (BR) cần được điều khiển và giám sát từ
 3. Backend tự động kết nối TCP tới BR và bắt đầu poll CMD_STATE mỗi 5s
 4. Nếu `thread_run_on_connect = true` và state = disabled → tự khởi động Thread
 5. Xem trạng thái real-time ở tab Status
-6. Xem Router/Child Table ở Dashboard (tự poll 6s khi đang active)
+6. Xem Router/Child Table ở Dashboard (cập nhật theo CMD_NOTIFY + baseline khi connect)
 7. Quản lý Commissioner → thêm joiner với EUI64 + PSKd
 8. Điều chỉnh config ở Settings → OpenThread → Apply
 

@@ -26,6 +26,8 @@ export interface CommandManagerCallbacks {
   broadcast(event: EventName, data?: unknown): void;
   /** Gọi khi nhận ACK data để merge vào config và broadcast ot:config. */
   onAckDataToConfig(partial: AckDataConfig): void;
+  /** Thread-Host push notify: changed_mask (u32 BE). */
+  onNotify?(changedMask: number): void;
 }
 
 function isMostlyPrintable(buf: Buffer): boolean {
@@ -60,6 +62,17 @@ export class CommandManager {
    * Log: hiển thị RX đầy đủ; riêng ACK dataset/IP có log tóm tắt (fields log riêng).
    */
   handle(frame: ParsedFrame): void {
+    if (frame.cmd === CMD.NOTIFY) {
+      this.logFrame(frame, "RX");
+      if (frame.data.length !== 4) {
+        frameLogger.warn(`NOTIFY payload invalid len=${frame.data.length}, expected 4`);
+        return;
+      }
+      const changedMask = frame.data.readUInt32BE(0);
+      this.callbacks.onNotify?.(changedMask);
+      return;
+    }
+
     if (frame.cmd === CMD.ACK && this.datasetActiveFrameIds.has(frame.frameId)) {
       // Thu gọn log ACK của dataset active: chỉ log 1 dòng thay vì toàn bộ hex data
       const cmdName = CMD_NAMES[frame.cmd] ?? `0x${frame.cmd.toString(16)}`;

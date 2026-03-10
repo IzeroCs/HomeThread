@@ -15,10 +15,13 @@ export class PollingManager {
   private childTableIntervalId: ReturnType<typeof setInterval> | null = null;
   private joinerTableIntervalId: ReturnType<typeof setInterval> | null = null;
 
-  static readonly ROUTER_TABLE_POLL_MS = 6000;
+  /** Fallback polling only (notify-first). */
+  static readonly ROUTER_TABLE_POLL_MS = 30000;
   static readonly CHILD_TABLE_DELAY_MS = 1500;
-  static readonly CHILD_TABLE_POLL_MS = 6000;
-  static readonly JOINER_TABLE_POLL_MS = 6000;
+  /** Fallback polling only (notify-first). */
+  static readonly CHILD_TABLE_POLL_MS = 30000;
+  /** Fallback polling only (notify-first). */
+  static readonly JOINER_TABLE_POLL_MS = 30000;
 
   constructor(private callbacks: PollingManagerCallbacks) {}
 

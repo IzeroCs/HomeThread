@@ -76,8 +76,6 @@ export class WebSocketServer {
     this.io.on("connection", (socket: Socket) => {
       wsLog.info(`Client connected: ${socket.id}`);
 
-      this.communicate.onFrontendConnected();
-
       this.configHandler.sendCurrentConfig(socket);
       this.brHandler.sendBrStatus(socket);
 
@@ -104,7 +102,6 @@ export class WebSocketServer {
 
       socket.on("disconnect", () => {
         wsLog.info(`Client disconnected: ${socket.id}`);
-        this.communicate.onFrontendDisconnected();
       });
     });
   }

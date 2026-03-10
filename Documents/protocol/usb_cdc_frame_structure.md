@@ -64,7 +64,8 @@
 | CMD_THREAD_VERSION | `0x42` | Node→ESP32 | **Pull** | Lấy phiên bản OpenThread (ACK data = UTF-8 string, tối đa 64 byte) |
 | CMD_COMMISSIONER_JOINER | `0x43` | Node→ESP32 | **Pull** | Thêm joiner vào commissioner (EUI64 + PSKd + timeout); BR tự start commissioner nếu chưa active |
 | CMD_SRP_REGISTER | `0x44` | Node→ESP32 | **Pull** | Backend đăng ký service `_dashboard._udp` với SRP server (qua SRP client trên BR). DATA: hostname_len(1) + hostname(N) + backend_ipv6(16) + port(2 BE). BR trả ACK rỗng hoặc NACK. |
-| *(reserved)* | `0x45–0xFF` | — | — | Dành mở rộng sau |
+| CMD_NOTIFY | `0x45` | ESP32→Node | **Push** | BR notify “có thay đổi” (payload = changed_mask u32 big-endian). Backend nhận notify rồi pull các bảng/field tương ứng. |
+| *(reserved)* | `0x46–0xFF` | — | — | Dành mở rộng sau |
 
 ---
 
@@ -93,6 +94,7 @@
 | CMD_THREAD_STOP | Node→ESP32 | Không có (request) | 0 byte |
 | CMD_THREAD_VERSION | Node→ESP32 | Không có (request) | 0 byte |
 | CMD_COMMISSIONER_JOINER | Node→ESP32 | `EUI64(8) + PSKD_len(1) + PSKD(variable) + Timeout(4)` | 14–45 bytes |
+| CMD_NOTIFY | ESP32→Node | `changed_mask` (uint32 big-endian) | 4 bytes |
 
 **CMD_ACK trả data theo CMD request:**
 - `CMD_STATE`: 1 byte role (0=disabled, 1=detached, 2=child, 3=router, 4=leader)
