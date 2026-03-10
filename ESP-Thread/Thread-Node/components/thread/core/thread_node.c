@@ -271,6 +271,11 @@ static void on_joined_wrapper(void *ctx)
     update_attached_led_role();
     log_leader_data();
 
+    /* Call user callback first (app init device/entity model + driver). Register cần device_model. */
+    if (s_config.on_joined) {
+        s_config.on_joined(s_config.ctx);
+    }
+
     /* Backend communication: discovery + ping + register (core xử lý, app không cần code). */
     if (s_config.enable_device_registry) {
         device_registry_init();
@@ -306,11 +311,6 @@ static void on_joined_wrapper(void *ctx)
         if (xTaskCreate(backend_update_task, "thread_upd", 3072, NULL, 5, NULL) != pdPASS) {
             ESP_LOGE(TAG, "Failed to create update (topology/state) task");
         }
-    }
-
-    /* Call user callback (app chỉ init device/entity model + driver). */
-    if (s_config.on_joined) {
-        s_config.on_joined(s_config.ctx);
     }
 }
 
