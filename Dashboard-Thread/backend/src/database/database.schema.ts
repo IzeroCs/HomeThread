@@ -73,6 +73,7 @@ export const deviceEntity = sqliteTable(
     unit: text("unit"),
     attributesJson: text("attributes_json"),
     restoreMode: integer("restore_mode").default(0),
+    disabled: integer("disabled").default(0),
     deletedAt: text("deleted_at"),
     createdAt: text("created_at").default(sql`(CURRENT_TIMESTAMP)`),
     updatedAt: text("updated_at").default(sql`(CURRENT_TIMESTAMP)`),
@@ -84,7 +85,6 @@ export const deviceEntity = sqliteTable(
 export const deviceEntityState = sqliteTable("device_entity_state", {
   id: integer("id").primaryKey({ autoIncrement: true }),
   entityId: integer("entity_id").notNull().unique(),
-  available: integer("available"),
   state: integer("state"),
   brightness: integer("brightness"),
   mode: integer("mode"),
@@ -98,7 +98,6 @@ export const deviceEntityState = sqliteTable("device_entity_state", {
 export const deviceEntityStateHistory = sqliteTable("device_entity_state_history", {
   id: integer("id").primaryKey({ autoIncrement: true }),
   entityId: integer("entity_id").notNull(),
-  available: integer("available"),
   state: integer("state"),
   brightness: integer("brightness"),
   mode: integer("mode"),

@@ -1,5 +1,5 @@
 idf_component_register(
-    SRCS "entity_serialization.c"
+    SRCS "cbor_encode.c" "entity_serialization.c"
     INCLUDE_DIRS "include"
     REQUIRES model
 )

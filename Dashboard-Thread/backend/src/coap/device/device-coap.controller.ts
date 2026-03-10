@@ -1,6 +1,6 @@
 /**
  * CoAP controller for /device/* (ping, register/info, register/entity, update/info, update/entity, update/topology, update/state).
- * Devices identified by mac_address (key 7). Slug is backend-only.
+ * Devices identified by mac_address (key 0 in all payloads). Slug is backend-only.
  */
 
 import type { CoapRequest, CoapResponse, CoapStatusValue } from "../core/coap.type";
@@ -11,12 +11,11 @@ import { logger } from "@utils/logger.util";
 import type { DeviceInfoPayload } from "./device.payload";
 import {
   getPayloadField,
-  getRloc16FromTopologyPayload,
   roleToString,
   DEVICE_INFO_KEYS,
-  TOPOLOGY_KEY,
+  PAYLOAD_KEY_MAC,
+  PAYLOAD_KEY_ARRAY,
   TOPOLOGY_KEYS,
-  ENTITIES_KEY,
 } from "./device.payload";
 import { cborEncode } from "@cbor";
 import {
@@ -29,7 +28,7 @@ import {
   type EntityRestoreItem,
 } from "./device-coap.service";
 
-/** CBOR key for restore array in POST /device/register/entity response (align with request key 9 = entities). */
+/** CBOR key for restore array in POST /device/register/entity response (align with request key 1 = entities). */
 const CBOR_KEY_RESTORE = 10;
 
 /** Restore item CBOR keys (integer keys for Thread-Node). */
@@ -77,9 +76,10 @@ export class DeviceCoapController {
   @CoapPost("/device/register/info")
   registerInfo(req: CoapRequest, res: CoapResponse, parsed: Record<string, unknown>): void {
     if (Object.prototype.hasOwnProperty.call(parsed, "9")) {
-      const { "9": _e, ...rest } = parsed;
-      Object.assign(parsed, rest);
       delete (parsed as Record<string, unknown>)["9"];
+    }
+    if (Object.prototype.hasOwnProperty.call(parsed, "1") && Array.isArray(parsed["1"])) {
+      delete (parsed as Record<string, unknown>)["1"];
     }
     const payload = parsed as unknown as DeviceInfoPayload;
     const mac = getPayloadField<unknown>(parsed, DEVICE_INFO_KEYS.MAC_ADDRESS);
@@ -91,7 +91,7 @@ export class DeviceCoapController {
 
     let status: CoapStatusValue = CoapStatus.CREATED;
     try {
-      const result = upsertDeviceInfo(payload);
+      const result = upsertDeviceInfo(payload as unknown as Record<string, unknown>);
       status = result === "created" ? CoapStatus.CREATED : CoapStatus.CHANGED;
     } catch (e) {
       coapLog.warn(`CoAP /device/register/info failed: ${e instanceof Error ? e.message : String(e)}`);
@@ -102,9 +102,9 @@ export class DeviceCoapController {
   @ParseCborOrSend(CoapStatus.CHANGED)
   @CoapPost("/device/register/entity")
   registerEntity(req: CoapRequest, res: CoapResponse, parsed: Record<string, unknown>): void {
-    const arr = getPayloadField<unknown[]>(parsed, ENTITIES_KEY);
+    const arr = getPayloadField<unknown[]>(parsed, PAYLOAD_KEY_ARRAY);
     const count = Array.isArray(arr) ? arr.length : 0;
-    const mac = getPayloadField<unknown>(parsed, DEVICE_INFO_KEYS.MAC_ADDRESS);
+    const mac = getPayloadField<unknown>(parsed, PAYLOAD_KEY_MAC);
     coapLog.info(`CoAP /device/register/entity: mac=${mac ?? "-"} entities=${count}`);
 
     let status: CoapStatusValue = CoapStatus.CHANGED;
@@ -131,7 +131,7 @@ export class DeviceCoapController {
   @CoapPost("/device/update/info")
   updateInfo(req: CoapRequest, res: CoapResponse, parsed: Record<string, unknown>): void {
     try {
-      updateDeviceInfo(parsed as unknown as DeviceInfoPayload);
+      updateDeviceInfo(parsed as unknown as Record<string, unknown>);
     } catch (e) {
       coapLog.warn(`CoAP /device/update/info failed: ${e instanceof Error ? e.message : String(e)}`);
     }
@@ -152,11 +152,10 @@ export class DeviceCoapController {
   @ParseCborOrSend(CoapStatus.CHANGED)
   @CoapPost("/device/update/topology")
   updateTopology(req: CoapRequest, res: CoapResponse, parsed: Record<string, unknown>): void {
-    const rloc16 = getRloc16FromTopologyPayload(parsed);
-    const topology = getPayloadField<Record<string, unknown>>(parsed, TOPOLOGY_KEY);
-    const role = topology ? (topology[String(TOPOLOGY_KEYS.ROLE)] ?? topology[TOPOLOGY_KEYS.ROLE]) : undefined;
-    const mac = getPayloadField<unknown>(parsed, DEVICE_INFO_KEYS.MAC_ADDRESS);
-    coapLog.info(`CoAP /device/update/topology: mac=${mac ?? "-"} rloc16=${rloc16} role=${roleToString(role)}`);
+    const mac = getPayloadField<unknown>(parsed, TOPOLOGY_KEYS.MAC_ADDRESS);
+    const rloc16 = getPayloadField<unknown>(parsed, TOPOLOGY_KEYS.RLOC16);
+    const role = getPayloadField<unknown>(parsed, TOPOLOGY_KEYS.ROLE);
+    coapLog.info(`CoAP /device/update/topology: mac=${mac ?? "-"} rloc16=${rloc16 != null ? String(rloc16) : "-"} role=${roleToString(role)}`);
     try {
       upsertTopology(parsed);
     } catch (e) {

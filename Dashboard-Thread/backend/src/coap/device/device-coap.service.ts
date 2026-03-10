@@ -19,10 +19,11 @@ import {
 } from "@database/repositories/device.repository";
 import {
   DEVICE_INFO_KEYS,
-  TOPOLOGY_KEY,
+  PAYLOAD_KEY_MAC,
+  PAYLOAD_KEY_ARRAY,
   TOPOLOGY_KEYS,
-  ENTITIES_KEY,
   ENTITY_KEYS,
+  STATE_KEYS,
   getPayloadField,
 } from "./device.payload";
 
@@ -69,7 +70,7 @@ function num(v: unknown): number | null {
 /** Convert payload mac_address (number, EUI-64) to 16-char hex string. Throws if missing/invalid. */
 export function macAddressToHex(v: unknown): string {
   const n = num(v);
-  if (n == null) throw new Error("mac_address (key 7) is required");
+  if (n == null) throw new Error("mac_address (key 0) is required");
   return (n >>> 0).toString(16).padStart(16, "0").toLowerCase();
 }
 
@@ -95,7 +96,7 @@ export function updateDeviceInfo(parsed: Record<string, unknown>): void {
   const macHex = macAddressToHex(getPayloadField(parsed, DEVICE_INFO_KEYS.MAC_ADDRESS));
   const params: UpdateDeviceInfoParams = {
     macHex,
-    deviceSlug: str(getPayloadField(parsed, DEVICE_INFO_KEYS.DEVICE_ID)) ?? null,
+    deviceSlug: null,
     deviceName: str(getPayloadField(parsed, DEVICE_INFO_KEYS.DEVICE_NAME)) ?? null,
     deviceType: num(getPayloadField(parsed, DEVICE_INFO_KEYS.DEVICE_TYPE)) ?? null,
     manufacturer: str(getPayloadField(parsed, DEVICE_INFO_KEYS.MANUFACTURER)) ?? null,
@@ -107,35 +108,27 @@ export function updateDeviceInfo(parsed: Record<string, unknown>): void {
 }
 
 export function upsertTopology(parsed: Record<string, unknown>): void {
-  const macHex = macAddressToHex(getPayloadField(parsed, DEVICE_INFO_KEYS.MAC_ADDRESS));
+  const macHex = macAddressToHex(getPayloadField(parsed, TOPOLOGY_KEYS.MAC_ADDRESS));
   const deviceId = resolveDeviceIdByMac(macHex);
   if (deviceId == null) throw new Error("device not found for mac_address");
 
-  let rloc16: string | null = null;
-  let role: number | null = null;
-  let parentRloc16: string | null = null;
-  let rssi: number | null = null;
-  let linkQuality: number | null = null;
-  const topology = getPayloadField<Record<string, unknown>>(parsed, TOPOLOGY_KEY);
-  if (topology && typeof topology === "object") {
-    const rloc = topology[String(TOPOLOGY_KEYS.RLOC16)] ?? topology[TOPOLOGY_KEYS.RLOC16];
-    rloc16 = rloc != null ? String(rloc) : null;
-    role = num(topology[String(TOPOLOGY_KEYS.ROLE)] ?? topology[TOPOLOGY_KEYS.ROLE]) ?? null;
-    const parent = topology[String(TOPOLOGY_KEYS.PARENT)] ?? topology[TOPOLOGY_KEYS.PARENT];
-    parentRloc16 = parent != null ? String(parent) : null;
-    rssi = num(topology[String(TOPOLOGY_KEYS.RSSI)] ?? topology[TOPOLOGY_KEYS.RSSI]) ?? null;
-    linkQuality = num(topology[String(TOPOLOGY_KEYS.LINK_QUALITY)] ?? topology[TOPOLOGY_KEYS.LINK_QUALITY]) ?? null;
-  }
+  const rloc = getPayloadField<unknown>(parsed, TOPOLOGY_KEYS.RLOC16);
+  const rloc16 = rloc != null ? String(rloc) : null;
+  const role = num(getPayloadField(parsed, TOPOLOGY_KEYS.ROLE)) ?? null;
+  const parent = getPayloadField<unknown>(parsed, TOPOLOGY_KEYS.PARENT);
+  const parentRloc16 = parent != null ? String(parent) : null;
+  const rssi = num(getPayloadField(parsed, TOPOLOGY_KEYS.RSSI)) ?? null;
+  const linkQuality = num(getPayloadField(parsed, TOPOLOGY_KEYS.LINK_QUALITY)) ?? null;
 
   repoUpsertTopology({ deviceId, rloc16, parentRloc16, role, rssi, linkQuality });
 }
 
 export function mergeEntity(parsed: Record<string, unknown>): { status: "created" | "changed"; restore: EntityRestoreItem[] } {
-  const macHex = macAddressToHex(getPayloadField(parsed, DEVICE_INFO_KEYS.MAC_ADDRESS));
+  const macHex = macAddressToHex(getPayloadField(parsed, PAYLOAD_KEY_MAC));
   const deviceId = resolveDeviceIdByMac(macHex);
   if (deviceId == null) throw new Error("device not found for mac_address");
 
-  const arr = getPayloadField<unknown[]>(parsed, ENTITIES_KEY);
+  const arr = getPayloadField<unknown[]>(parsed, PAYLOAD_KEY_ARRAY);
   const entitiesList = Array.isArray(arr) ? arr.filter((e): e is Record<string, unknown> => e != null && typeof e === "object" && !Array.isArray(e)) : [];
 
   const keySet = new Set<number>(Object.values(ENTITY_KEYS) as number[]);
@@ -150,6 +143,7 @@ export function mergeEntity(parsed: Record<string, unknown>): { status: "created
       if (Number.isNaN(n) || !keySet.has(n)) extra[k] = entityMap[k];
     }
     const attributesJson = Object.keys(extra).length > 0 ? JSON.stringify(extra) : null;
+    const disabled = num(getEntityField(entityMap, ENTITY_KEYS.DISABLED)) ?? 0;
     entities.push({
       entityId,
       name: str(getEntityField(entityMap, ENTITY_KEYS.NAME)) ?? null,
@@ -158,6 +152,7 @@ export function mergeEntity(parsed: Record<string, unknown>): { status: "created
       unit: str(getEntityField(entityMap, ENTITY_KEYS.UNIT)) ?? null,
       attributesJson,
       restoreMode: num(getEntityField(entityMap, ENTITY_KEYS.RESTORE_MODE)) ?? 0,
+      disabled: disabled ? 1 : 0,
     });
   }
 
@@ -165,11 +160,11 @@ export function mergeEntity(parsed: Record<string, unknown>): { status: "created
 }
 
 export function updateEntityDefinition(parsed: Record<string, unknown>): void {
-  const macHex = macAddressToHex(getPayloadField(parsed, DEVICE_INFO_KEYS.MAC_ADDRESS));
+  const macHex = macAddressToHex(getPayloadField(parsed, PAYLOAD_KEY_MAC));
   const deviceId = resolveDeviceIdByMac(macHex);
   if (deviceId == null) throw new Error("device not found for mac_address");
 
-  const arr = getPayloadField<unknown[]>(parsed, ENTITIES_KEY);
+  const arr = getPayloadField<unknown[]>(parsed, PAYLOAD_KEY_ARRAY);
   const entitiesList = Array.isArray(arr) ? arr.filter((e): e is Record<string, unknown> => e != null && typeof e === "object" && !Array.isArray(e)) : [];
 
   const keySet = new Set<number>(Object.values(ENTITY_KEYS) as number[]);
@@ -184,6 +179,7 @@ export function updateEntityDefinition(parsed: Record<string, unknown>): void {
       if (Number.isNaN(n) || !keySet.has(n)) extra[k] = entityMap[k];
     }
     const attributesJson = Object.keys(extra).length > 0 ? JSON.stringify(extra) : null;
+    const disabled = num(getEntityField(entityMap, ENTITY_KEYS.DISABLED)) ?? 0;
     entities.push({
       entityId,
       name: str(getEntityField(entityMap, ENTITY_KEYS.NAME)) ?? null,
@@ -191,6 +187,7 @@ export function updateEntityDefinition(parsed: Record<string, unknown>): void {
       deviceClass: num(getEntityField(entityMap, ENTITY_KEYS.DEVICE_CLASS)) ?? null,
       unit: str(getEntityField(entityMap, ENTITY_KEYS.UNIT)) ?? null,
       attributesJson,
+      disabled: disabled ? 1 : 0,
     });
   }
 
@@ -198,34 +195,31 @@ export function updateEntityDefinition(parsed: Record<string, unknown>): void {
 }
 
 export function upsertEntityState(parsed: Record<string, unknown>): void {
-  const macHex = macAddressToHex(getPayloadField(parsed, DEVICE_INFO_KEYS.MAC_ADDRESS));
+  const macHex = macAddressToHex(getPayloadField(parsed, PAYLOAD_KEY_MAC));
   const deviceId = resolveDeviceIdByMac(macHex);
   if (deviceId == null) throw new Error("device not found for mac_address");
 
-  const arr = getPayloadField<unknown[]>(parsed, ENTITIES_KEY);
+  const arr = getPayloadField<unknown[]>(parsed, PAYLOAD_KEY_ARRAY);
   const entitiesList = Array.isArray(arr) ? arr.filter((e): e is Record<string, unknown> => e != null && typeof e === "object" && !Array.isArray(e)) : [];
 
   const items: UpsertEntityStateItem[] = [];
 
   for (const entityMap of entitiesList) {
-    const entityIdStr = str(getEntityField(entityMap, ENTITY_KEYS.ENTITY_ID));
+    const entityIdStr = str(getEntityField(entityMap, STATE_KEYS.ENTITY_ID));
     if (!entityIdStr) continue;
 
-    const available = getEntityField<boolean>(entityMap, ENTITY_KEYS.AVAILABLE);
-    const availableNum = available === true ? 1 : available === false ? 0 : null;
-    const state = getEntityField<boolean>(entityMap, ENTITY_KEYS.STATE);
-    const stateNum = state === true ? 1 : state === false ? 0 : num(getEntityField(entityMap, ENTITY_KEYS.STATE)) ?? null;
-    const brightness = num(getEntityField(entityMap, ENTITY_KEYS.BRIGHTNESS)) ?? null;
-    const mode = num(getEntityField(entityMap, ENTITY_KEYS.MODE)) ?? null;
-    const rgb = getEntityField<unknown>(entityMap, ENTITY_KEYS.RGB);
+    const state = getEntityField<boolean>(entityMap, STATE_KEYS.STATE);
+    const stateNum = state === true ? 1 : state === false ? 0 : num(getEntityField(entityMap, STATE_KEYS.STATE)) ?? null;
+    const brightness = num(getEntityField(entityMap, STATE_KEYS.BRIGHTNESS)) ?? null;
+    const mode = num(getEntityField(entityMap, STATE_KEYS.MODE)) ?? null;
+    const rgb = getEntityField<unknown>(entityMap, STATE_KEYS.RGB);
     const rgbJson = Array.isArray(rgb) ? JSON.stringify(rgb) : rgb != null ? JSON.stringify(rgb) : null;
-    const colorTemp = num(getEntityField(entityMap, ENTITY_KEYS.COLOR_TEMP)) ?? null;
-    const value = getEntityField<number>(entityMap, ENTITY_KEYS.VALUE);
+    const colorTemp = num(getEntityField(entityMap, STATE_KEYS.COLOR_TEMP)) ?? null;
+    const value = getEntityField<number>(entityMap, STATE_KEYS.VALUE);
     const valueReal = typeof value === "number" ? value : num(value) ?? null;
 
     items.push({
       entityIdStr,
-      available: availableNum,
       state: stateNum,
       brightness,
       mode,

@@ -21,9 +21,9 @@ UI Components (Lit custom elements)
   (frontend/src/features/*, frontend/src/shared/components/, app-shell)
 
 Thread-Node  -- CoAP UDP 5683 (IPv6 [::]), path /device/
-    ↓ GET /device/ping; POST /device/register/info (keys 0–8, mac 7) → device_info + topology; POST /device/register/entity (mac + key 9) → device_entity + restore CBOR; POST /device/update/info|entity|topology|state
+    ↓ GET /device/ping; POST /device/register/info (keys 0–6, key 0 = mac); POST /device/register/entity (key 0 = mac + key 1 array, ENTITY_KEYS 0–6, disabled); POST /device/update/topology (flat 0–6), /device/update/state (key 1 array, STATE_KEYS 0–6, không available)
 CoAP server        (backend/src/coap/coap-device.server.ts) + DeviceCoapController + device-coap.service.ts + device.repository.ts + coap.response.ts
-    ↓ registerCoapControllers(server, [DeviceCoapController]). CoapStatus (coap.type.ts); sendCoapResponse, echoCoapToken (coap.response.ts); parseCborOrRespond trong controller. GET ping: 2.05 + timestamp. POST register/info: upsert device_info, slug (generateSlug), soft-delete; optional topology (rloc16, parent_rloc16, role, rssi, link_quality). POST register/entity: merge entity, tra restore CBOR neu co. POST update/*: update info, entity, topology (rssi, link_quality), state. DB qua database/repositories (Drizzle type-safe). Khong emit len frontend.
+    ↓ registerCoapControllers(server, [DeviceCoapController]). GET ping: 2.05 + timestamp. POST register/info: upsert device_info, slug, soft-delete. POST register/entity: key 1 array (ENTITY_KEYS 0–6, disabled); merge device_entity; tra restore CBOR key 10. POST update/topology: payload flat 0–6. POST update/state: key 1 array (STATE_KEYS 0–6, không available). DB: device_entity.disabled; device_entity_state không ghi available. Khong emit len frontend.
 
 Backend (os.networkInterfaces) → getBackendAddresses() → io.emit(SYSTEM_INFO) khi CONFIG_CURRENT
     ↓

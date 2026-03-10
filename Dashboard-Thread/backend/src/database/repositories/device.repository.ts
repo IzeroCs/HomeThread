@@ -198,6 +198,7 @@ export type MergeEntityItem = {
   unit: string | null;
   attributesJson: string | null;
   restoreMode: number;
+  disabled: number;
 };
 
 export function mergeEntity(macHex: string, deviceId: number, entities: MergeEntityItem[]): { status: "created" | "changed"; restore: EntityRestoreItem[] } {
@@ -216,6 +217,7 @@ export function mergeEntity(macHex: string, deviceId: number, entities: MergeEnt
         unit: e.unit,
         attributesJson: e.attributesJson,
         restoreMode: e.restoreMode,
+        disabled: e.disabled,
         deletedAt: null,
       })
       .onConflictDoUpdate({
@@ -227,6 +229,7 @@ export function mergeEntity(macHex: string, deviceId: number, entities: MergeEnt
           unit: e.unit,
           attributesJson: e.attributesJson,
           restoreMode: e.restoreMode,
+          disabled: e.disabled,
           deletedAt: null,
           updatedAt: sql`(CURRENT_TIMESTAMP)`,
         },
@@ -279,13 +282,22 @@ export type UpdateEntityDefinitionItem = {
   deviceClass: number | null;
   unit: string | null;
   attributesJson: string | null;
+  disabled: number;
 };
 
 export function updateEntityDefinition(deviceId: number, entities: UpdateEntityDefinitionItem[]): void {
   const db = getDrizzle();
   for (const e of entities) {
     db.update(deviceEntity)
-      .set({ name: e.name, type: e.type, deviceClass: e.deviceClass, unit: e.unit, attributesJson: e.attributesJson, updatedAt: sql`(CURRENT_TIMESTAMP)` })
+      .set({
+        name: e.name,
+        type: e.type,
+        deviceClass: e.deviceClass,
+        unit: e.unit,
+        attributesJson: e.attributesJson,
+        disabled: e.disabled,
+        updatedAt: sql`(CURRENT_TIMESTAMP)`,
+      })
       .where(and(eq(deviceEntity.deviceId, deviceId), eq(deviceEntity.entityId, e.entityId)))
       .run();
   }
@@ -293,7 +305,6 @@ export function updateEntityDefinition(deviceId: number, entities: UpdateEntityD
 
 export type UpsertEntityStateItem = {
   entityIdStr: string;
-  available: number | null;
   state: number | null;
   brightness: number | null;
   mode: number | null;
@@ -315,7 +326,6 @@ export function upsertEntityState(deviceId: number, items: UpsertEntityStateItem
       if (row) {
         db.insert(deviceEntityStateHistory).values({
           entityId: entityRow.id,
-          available: row.available,
           state: row.state,
           brightness: row.brightness,
           mode: row.mode,
@@ -329,7 +339,6 @@ export function upsertEntityState(deviceId: number, items: UpsertEntityStateItem
     if (existingState) {
       db.update(deviceEntityState)
         .set({
-          available: item.available,
           state: item.state,
           brightness: item.brightness,
           mode: item.mode,
@@ -344,7 +353,6 @@ export function upsertEntityState(deviceId: number, items: UpsertEntityStateItem
     } else {
       db.insert(deviceEntityState).values({
         entityId: entityRow.id,
-        available: item.available,
         state: item.state,
         brightness: item.brightness,
         mode: item.mode,

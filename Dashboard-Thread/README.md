@@ -112,6 +112,6 @@ Dashboard-Thread/
 
 - **Database:** SQLite (BR connection config, app settings `thread_run_on_connect`). Migration 006 đã xóa bảng legacy `serial_config`.
 
-**Thread-Node gửi dữ liệu:** CoAP UDP port 5683 (IPv6 [::]), path `/device/ping`, `/device/register/info`, `/device/register/entity`, `/device/update/info`, `/device/update/entity`, `/device/update/topology`, `/device/update/state`; payload CBOR (device_info keys 0–7, topology key 8, entity/state key 9). Backend parse CBOR, lưu DB; không gửi lên frontend. Spec payload: [docs/coap/device_payload_spec.md](./docs/coap/device_payload_spec.md). Flow: [docs/coap/thread_node_coap.md](./docs/coap/thread_node_coap.md).
+**Thread-Node gửi dữ liệu:** CoAP UDP port 5683 (IPv6 [::]), path `/device/ping`, `/device/register/info`, `/device/register/entity`, `/device/update/info`, `/device/update/entity`, `/device/update/topology`, `/device/update/state`; payload CBOR (key 0 = mac mọi payload; device_info keys 0–6; topology key 8; entity/state key 9). Backend parse CBOR, lưu DB; không gửi lên frontend. Spec payload: [docs/coap/device_payload_spec.md](./docs/coap/device_payload_spec.md). Flow: [docs/coap/thread_node_coap.md](./docs/coap/thread_node_coap.md).
 
 Chi tiết: [Documents/protocol/usb_cdc_frame_structure.md](../Documents/protocol/usb_cdc_frame_structure.md) · [Documents/dashboard/migration_to_frame_protocol.md](../Documents/dashboard/migration_to_frame_protocol.md) · Việc còn lại: [TODO.md](./TODO.md).

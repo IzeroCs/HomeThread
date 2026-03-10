@@ -6,34 +6,29 @@ Tài liệu mô tả luồng đăng ký thiết bị từ Node tới Backend và
 
 Node gửi **hai** request CoAP **liên tiếp** tới Backend (địa chỉ lấy từ thread_discovery):
 
-1. **POST /device/register/info** — Chỉ thông tin thiết bị (device info). Payload CBOR map keys **0–7**.
-2. **POST /device/register/entity** — Chỉ sau khi register/info nhận ACK (2.01/2.04/2.05). Payload: **mac_address (key 7)** + **entities array (key 9)**.
+1. **POST /device/register/info** — Chỉ thông tin thiết bị (device info). Payload CBOR map keys **0–6** (key 0 = mac_address bắt buộc).
+2. **POST /device/register/entity** — Chỉ sau khi register/info nhận ACK (2.01/2.04/2.05). Payload: **key 0** (mac_address) + **key 1** (array entities).
 
 Nếu register/info thất bại (NACK hoặc timeout), node retry sau 2s; không gửi register/entity cho đến khi register/info thành công.
 
 ## Serialization
 
-- **register/info**: `entity_serialize_register_info_cbor(buffer, size)` → map keys 0–7 (device_id, device_name, device_type, manufacturer, model, sw_version, hw_version, mac_address). Không có network hay entities.
-- **register/entity**: `entity_serialize_entities_cbor(buffer, size)` → map với key 7 (mac_address, byte string) và key 9 (array of entity maps). Mỗi entity map gồm keys 0–13 (xem bảng dưới).
+- **register/info**: map keys 0–6 (key 0 = mac_address, 1 = device_name, 2 = device_type, 3 = manufacturer, 4 = model, 5 = sw_version, 6 = hw_version).
+- **register/entity**: map **key 0** = mac_address, **key 1** = array of entity maps. Mỗi entity map **ENTITY_KEYS 0–6** (xem bảng dưới).
 
-### Entity map keys (mỗi item trong array key 9)
+### Entity map keys (mỗi item trong array key 1) — ENTITY_KEYS 0–6
 
 | Key | Tên            | Mô tả |
 |-----|----------------|-------|
 | 0   | entity_id      | Text string |
 | 1   | name           | Text string |
-| 2   | type           | Uint (entity_type_t: 0=light, 1=switch, 2=fan, 3=sensor, 4=climate, 5=binary_sensor) |
-| 3   | device_class   | Uint (light: mode; sensor: sensor_class; …) |
-| 4   | available      | Bool |
-| 5   | last_update    | Uint (Unix time) |
-| 6   | state          | Bool (light/switch) |
-| 7   | brightness     | Uint (light) |
-| 8   | mode           | Uint (light: light_mode_t) |
-| 9   | rgb            | Array of 3 uint (light, khi mode RGB/RGBW) |
-| 10  | color_temp     | Uint (light, khi mode CCT) |
-| 11  | value          | Float (sensor) |
-| 12  | unit           | Text string (sensor) |
-| 13  | restore_mode   | Uint (default 0; backend dùng cho mergeEntity) |
+| 2   | type           | Uint (entity_type_t) |
+| 3   | device_class   | Uint |
+| 4   | unit           | Text string (sensor) |
+| 5   | restore_mode   | Uint (default 0; backend dùng cho mergeEntity) |
+| 6   | disabled       | Uint (1 = không hiện entity trên dashboard) |
+
+State payload (update/state): **key 0** = mac, **key 1** = array. Mỗi item **STATE_KEYS 0–6**: entity_id(0), state(1), brightness(2), mode(3), rgb(4), color_temp(5), value(6). Không có available.
 
 Định nghĩa key: `components/entity/serialization/include/cbor_register_keys.h` (CBOR_K_ENT_*).
 
