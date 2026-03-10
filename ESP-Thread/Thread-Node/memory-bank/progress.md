@@ -44,9 +44,10 @@ Examples                 █████████████░░░░░�
 
 | API / Entity type | Trạng thái |
 |---|---|
-| `entity_serialize_register_info_cbor` | ✅ Device info only (keys 0–7), cho POST /device/register/info |
-| `entity_serialize_device_cbor` | ✅ Device + network (keys 0–8), legacy / full |
-| `entity_serialize_entities_cbor` | ✅ Map mac (7) + entities array (9), cho POST /device/register/entity |
+| `entity_serialize_info_cbor` | ✅ Device info (keys 1–7), POST /device/register/info |
+| `entity_serialize_entities_cbor` | ✅ Map mac (7) + entities array (9), POST /device/register/entity |
+| `entity_serialize_topology_cbor` | ✅ Device + network (keys 1–8), POST /device/update/topology |
+| `entity_serialize_state_cbor` | ✅ Map mac (7) + entities array (9), POST /device/update/state |
 | Entity item keys 0–13 | ✅ Keys 0–12 + **13 = restore_mode** (uint, default 0) cho backend mergeEntity; light + sensor encode đủ |
 | `entity_light_t` | ✅ **Hoàn chỉnh** (kèm key 13) |
 | `entity_sensor_t` | ✅ **Hoàn chỉnh** (kèm key 13) |

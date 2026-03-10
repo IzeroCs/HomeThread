@@ -104,7 +104,7 @@ Thread-Node CoAP Client (device_coap, gọi từ device_registry):
   Backend POST /device/register/info → CBOR device only (keys 0–7); POST /device/register/entity → mac (7) + array entities (key 9). Mỗi entity item: keys 0–12 + **13 = restore_mode** (uint, default 0) cho backend mergeEntity. GET /device/ping → timestamp; re-register khi timestamp đổi.
 ```
 
-**Shared CoAP manager** (`thread_coap.c`): Idempotent `otCoapStart()`. **device_coap**: CoAP client (token 2B, lock), send_register + send_entities + ping; response handlers; ping timestamp → callback re-register. **device_registry**: entity_serialize_device_cbor + entity_serialize_entities_cbor; gọi send_register rồi send_entities (liên tiếp).
+**Shared CoAP manager** (`thread_coap.c`): Idempotent `otCoapStart()`. **device_coap**: CoAP client (token 2B, lock), send_register + send_entities + ping; response handlers; ping timestamp → callback re-register. **device_registry**: entity_serialize_info_cbor, entity_serialize_entities_cbor, entity_serialize_topology_cbor, entity_serialize_state_cbor; gọi send_register (info) rồi send_entities, send_topology, send_state theo flow.
 
 ## Pattern 5: Custom CBOR Serialization
 
@@ -165,7 +165,7 @@ cbor_close_array()          // Break code (0xFF)
 
 **Đích:** Backend (IPv6 + port từ `thread_discovery_get_endpoint()`). **thread_node** nội bộ: discovery, refresh task 60s, ping task 10s; khi có/đổi endpoint hoặc ping timestamp đổi → gọi `device_registry_register()` / `device_registry_ping()`. App không gọi discovery/register/ping.
 
-**device_registry** (components/device/): Build device-only (entity_serialize_device_cbor) + entities (entity_serialize_entities_cbor); gửi POST /device/register rồi POST /device/entities liên tiếp. API: `device_registry_register(endpoint, callback, ctx)`, `device_registry_ping(...)`, `device_registry_is_registered()`.
+**device_registry** (components/device/): Build info (entity_serialize_info_cbor), entities (entity_serialize_entities_cbor), topology (entity_serialize_topology_cbor), state (entity_serialize_state_cbor); gửi POST /device/register/info, POST /device/register/entity, POST /device/update/topology, POST /device/update/state. API: `device_registry_register(endpoint, callback, ctx)`, `device_registry_ping(...)`, `device_registry_is_registered()`.
 
 **device_coap** (components/device/): CoAP client: `device_coap_send_register(...)`, `device_coap_send_entities(...)`, `device_coap_ping()`. Token 2 byte; lock. GET /device/ping response 4-byte timestamp (LE) → nếu khác lần trước gọi callback (thread_node → trigger_register).
 
