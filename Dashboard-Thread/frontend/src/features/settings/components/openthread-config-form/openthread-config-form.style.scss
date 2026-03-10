@@ -1,6 +1,10 @@
 @use "shared/styles/form";
 @use "shared/styles/variables" as *;
 
+openthread-config-form {
+  display: contents;
+}
+
 // Card OpenThread không dùng padding của form-card → header/footer full-bleed
 .form-card.ot-card {
   padding: 0;

@@ -7,7 +7,7 @@ Backend + Frontend điều khiển **OpenThread Border Router** qua **TCP** (fra
 | Phần       | Công nghệ              |
 | ---------- | ---------------------- |
 | Backend    | Node.js + TypeScript   |
-| Frontend   | React + TypeScript + Vite |
+| Frontend   | Lit + TypeScript + Vite |
 | Monorepo   | npm workspaces         |
 
 ## Tính năng chính
@@ -46,9 +46,9 @@ Dashboard-Thread/
 ├── frontend/
 │   └── src/
 │       ├── features/     # nodes, settings, status (page + components)
-│       ├── shared/       # components (Modal, ConfirmModal, Sidebar, ToastContainer), contexts, hooks, types, styles
-│       ├── app.component.tsx
-│       └── main.tsx
+│       ├── shared/       # components (Modal, ConfirmModal, Sidebar, ToastContainer), controllers, types, styles
+│       ├── app-shell.ts
+│       └── main.ts
 ├── shared/                # Package TypeScript chung (types, events, constants, validation)
 ├── docs/                  # coap/device_payload_spec.md (spec payload), thread_node_coap.md (flow Thread-Node)
 ├── TODO.md
@@ -84,7 +84,8 @@ Dashboard-Thread/
 
 ## Lưu ý khi development
 
-- **WebSocket log "Client connected" 2 lần:** Ở môi trường dev, frontend dùng React Strict Mode (trong `main.tsx`). Strict Mode cố ý mount → unmount → mount lại component để phát hiện side effect. Kết quả là `WebSocketProvider` (và hook `useWebSocket`) chạy hai lần: lần đầu tạo socket và kết nối (backend log lần 1), cleanup disconnect; lần hai tạo socket mới và kết nối (backend log lần 2). Đây là hành vi mong đợi của React, không phải lỗi; production build thường chỉ còn một connection mỗi lần mở trang.
+- **Frontend dùng Lit (Web Components)** và hiện đang render **light DOM** (tắt Shadow DOM) để CSS global áp trực tiếp.
+- **Modal API (light DOM):** `modal-dialog` không dùng `<slot>`; nội dung truyền qua property `.body` (TemplateResult). `confirm-modal` đã bọc sẵn theo API này.
 
 ## Cấu hình
 

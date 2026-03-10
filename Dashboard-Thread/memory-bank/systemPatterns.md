@@ -15,9 +15,10 @@ CommunicateManager (backend/src/communicate/communicate.manager.ts)
     ↓ OtConfigManager.update() + onBroadcast(event, data)
 WebSocketServer    (backend/src/websocket/websocket.server.ts)
     ↓ io.emit(EVENTS.xxx, payload)
-useWebSocket hook  (frontend/src/shared/hooks/use-websocket.hook.ts)
-    ↓ React state update
-UI Components      (frontend/src/features/*, frontend/src/shared/components/)
+WebSocketController (frontend/src/shared/controllers/websocket.controller.ts)
+    ↓ Lit reactive state update
+UI Components (Lit custom elements)
+  (frontend/src/features/*, frontend/src/shared/components/, app-shell)
 
 Thread-Node  -- CoAP UDP 5683 (IPv6 [::]), path /device/
     ↓ GET /device/ping; POST /device/register/info (keys 0–8, mac 7) → device_info + topology; POST /device/register/entity (mac + key 9) → device_entity + restore CBOR; POST /device/update/info|entity|topology|state
@@ -106,14 +107,14 @@ Mat ket noi BR (TCP) → tu dong thu lai sau **3 giay**. Khi server dong: KHONG 
 
 CMD_STATE that bai **5 lan lien tiep** → dong transport + bat dau reconnect.
 
-## Frontend Patterns
+## Frontend Patterns (Lit)
 
 ### State Management
 
-- `useWebSocket` (`frontend/src/shared/hooks/use-websocket.hook.ts`) = **source of truth duy nhat**
-- Tat ca component dung `useWebSocketContext()` — KHONG tao socket rieng
-- Socket URL: `window.location.origin` (LAN-friendly via Vite proxy)
-- **Path alias:** Import dung `@shared/*`, `@nodes/*`, `@settings/*`, `@status/*`, `@/` (tsconfig + Vite alias). SCSS: `loadPaths: [src]` → `@use "shared/styles/variables"` / `shared/styles/form`.
+- `WebSocketController` (`frontend/src/shared/controllers/websocket.controller.ts`) = **single source of truth** cho WS state + actions.
+- Root `app-shell` tạo controller và truyền state/callback xuống các component qua property.
+- Socket URL: `window.location.origin` (LAN-friendly via Vite proxy).
+- **Path alias:** Import dùng `@shared/*`, `@nodes/*`, `@settings/*`, `@status/*`, `@/` (tsconfig + Vite alias). SCSS: `loadPaths: [src]` → `@use "shared/styles/variables"` / `shared/styles/form`.
 
 ### Backend path aliases
 
@@ -141,22 +142,7 @@ socket.emit("ot:setConfig", payload); // string literal
 
 ### Age Counter Pattern (Nodes)
 
-```typescript
-const [ageOffsets, setAgeOffsets] = useState<number[]>([]);
-const lastRowsRef = useRef<string[][]>([]);
-// Reset offset khi rows moi tu backend
-useEffect(() => {
-  if (data.rows !== lastRowsRef.current) {
-    lastRowsRef.current = data.rows ?? [];
-    setAgeOffsets(new Array(data.rows?.length ?? 0).fill(0));
-  }
-}, [data.rows]);
-// Dem len moi giay
-useEffect(() => {
-  const interval = setInterval(() => setAgeOffsets(p => p.map(o => o + 1)), 1000);
-  return () => clearInterval(interval);
-}, []);
-```
+Implemented trong `nodes.component.ts` (Lit): lưu `routerAgeOffsets` / `childAgeOffsets` và tick mỗi giây để age tăng client-side, reset offsets khi backend gửi rows mới (so sánh reference).
 
 ### Leader Row Highlight
 
@@ -165,7 +151,7 @@ useEffect(() => {
 ### Nodes Page Structure
 
 - Trang Nodes: header (title + subtitle + nút Commission Node), Router Table, Child Table, Joiner List (pending commissioning). Khi BR disconnect: overlay phủ main (backdrop blur), card "Border Router Disconnected" + Try Reconnecting; nội dung phía sau giống layout khi connect (ghost), không bọc trong box riêng.
-- React list keys: joiner card `joiner-${sharedId}-${expirationMs}`; router row `rloc16` (fallback router-…); child row RLOC16 hoặc ExtAddress; modal detail `fieldKey` (tên cột).
+- Stable list rendering: joiner card `joiner-${sharedId}-${expirationMs}`; router/child row theo RLOC16 (fallback theo index); modal detail dùng `fieldKey` (tên cột).
 
 ### Toast Notifications
 
@@ -189,8 +175,9 @@ Version hiển thị trên Status subtitle lấy từ `frontend/package.json`: V
 
 ### Modal & ConfirmModal (dark navy)
 
-- **Modal (Modal.scss):** Overlay dark navy `rgba(6,11,25,0.78)` + `backdrop-filter: blur(6px)`; box `$card-dark`, border `$brand-border`, shadow đậm; header border-bottom subtle; title/close dùng `$text-dark` / `$text-dark-subtle`; body padding; detail list key/value dùng dark tokens.
-- **ConfirmModal (ConfirmModal.scss):** Message `$text-dark`; nút Cancel: transparent, border muted, hover nền navy; nút Confirm danger `#ef4444` / warning `#f97316` với hover glow. Dùng chung Modal; countdown 5s không đổi.
+- **Modal:** Overlay dark navy `rgba(6,11,25,0.78)` + `backdrop-filter: blur(6px)`; box `$card-dark`, border `$brand-border`, shadow đậm; header border-bottom subtle; title/close dùng `$text-dark` / `$text-dark-subtle`.
+- **ConfirmModal:** Message `$text-dark`; nút Cancel: transparent, border muted, hover nền navy; nút Confirm danger `#ef4444` / warning `#f97316` với hover glow. Countdown 5s không đổi.
+- **Light DOM note:** `modal-dialog` không dùng `<slot>` nữa; nội dung được truyền qua property `.body` (TemplateResult) để render đúng khi tắt Shadow DOM.
 
 ### Sidebar Settings sub-items
 

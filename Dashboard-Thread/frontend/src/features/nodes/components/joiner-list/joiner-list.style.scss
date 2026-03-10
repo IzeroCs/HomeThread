@@ -1,5 +1,9 @@
 @use "shared/styles/variables" as *;
 
+joiner-list {
+  display: contents;
+}
+
 .joiner-list-section {
   margin-bottom: 40px;
 

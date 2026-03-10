@@ -1,5 +1,9 @@
 @use "shared/styles/variables" as *;
 
+sidebar-nav {
+  display: contents;
+}
+
 .sidebar {
   width: 260px;
   height: 100vh;

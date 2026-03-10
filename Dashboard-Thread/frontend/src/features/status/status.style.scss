@@ -1,5 +1,9 @@
 @use "shared/styles/variables" as *;
 
+status-page {
+  display: contents;
+}
+
 .status-page {
   width: 100%;
   max-width: 1200px;

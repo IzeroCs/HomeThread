@@ -15,12 +15,12 @@ Dashboard-Thread/          # npm workspaces root
 │       ├── database/      # SQLite, Drizzle schema + migrations (data/migrations), repositories (device, app-settings)
 │       ├── cbor/          # CBOR decode (noi bo)
 │       └── utils/         # logger, ipv6
-├── frontend/              # React + Vite + SCSS
+├── frontend/              # Lit + Vite + SCSS
 │   └── src/
 │       ├── features/      # nodes, settings, status (page + components)
-│       ├── shared/        # components, contexts, hooks, types, styles
-│       ├── app.component.tsx
-│       └── main.tsx
+│       ├── shared/        # components, controllers, types, styles
+│       ├── app-shell.ts
+│       └── main.ts
 ├── shared/                # Pure TypeScript package (types, events, constants, validation)
 └── memory-bank/           # Cursor Memory Bank files
 ```
@@ -46,7 +46,7 @@ Transport: TCP (net.Socket) to BR; CoAP (UDP 5683, udp6 listen [::]) from Thread
 
 | Package | Version | Usage |
 |---|---|---|
-| React | ^19.0.0 | UI framework |
+| Lit | ^3.x | UI framework (Web Components) |
 | TypeScript | ~5.6.3 | Language |
 | Vite | ^6.0.3 | Build tool + dev server |
 | SCSS (sass) | ^1.83.0 | Styling |
@@ -185,6 +185,6 @@ Frontend dev server: `host: true` → lang nghe `0.0.0.0:5173`. Tu may khac: `ht
 
 ## Known Technical Constraints
 
-- React Strict Mode → double mount → double WS connection trong dev (expected, khong phai bug)
+- Frontend đang render **light DOM** (tắt Shadow DOM) bằng `createRenderRoot() { return this; }` trong các Lit components để CSS global áp trực tiếp.
 - TCP socket KHONG duoc dong khi server shutdown — BR van chay
 - FrameID tu dong tang, wrap 0-0xFF; pending map giu Promise cho moi frameId

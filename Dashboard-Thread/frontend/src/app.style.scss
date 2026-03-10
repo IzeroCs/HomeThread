@@ -1,5 +1,9 @@
 @use "shared/styles/variables" as *;
 
+app-shell {
+  display: contents;
+}
+
 .app-layout {
   min-height: 100vh;
   display: flex;
@@ -35,4 +39,3 @@
     min-height: auto;
   }
 }
-

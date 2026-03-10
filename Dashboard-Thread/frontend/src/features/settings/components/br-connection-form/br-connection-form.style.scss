@@ -1,6 +1,10 @@
 @use "shared/styles/form";
 @use "shared/styles/variables" as *;
 
+br-connection-form {
+  display: contents;
+}
+
 .br-connection-card {
   padding-bottom: 0;
 }

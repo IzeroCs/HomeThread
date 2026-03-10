@@ -1,5 +1,9 @@
 @use "shared/styles/variables" as *;
 
+waiting-for-backend {
+  display: contents;
+}
+
 .waiting-for-backend {
   position: relative;
   max-width: 36rem;

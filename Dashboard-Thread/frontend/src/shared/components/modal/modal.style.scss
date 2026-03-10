@@ -1,5 +1,9 @@
 @use "shared/styles/variables" as *;
 
+modal-dialog {
+  display: contents;
+}
+
 .modal-overlay {
   position: fixed;
   inset: 0;

@@ -1,5 +1,4 @@
 import { defineConfig } from "vite";
-import react from "@vitejs/plugin-react";
 import { readFileSync } from "fs";
 import { dirname, join, resolve } from "path";
 import { fileURLToPath } from "url";
@@ -8,7 +7,12 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const pkg = JSON.parse(readFileSync(join(__dirname, "package.json"), "utf-8"));
 
 export default defineConfig({
-  plugins: [react()],
+  plugins: [],
+  esbuild: {
+    tsconfigRaw: {
+      compilerOptions: { experimentalDecorators: true },
+    },
+  },
   resolve: {
     alias: {
       "@": resolve(__dirname, "src"),

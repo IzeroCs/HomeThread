@@ -1,5 +1,9 @@
 @use "shared/styles/variables" as *;
 
+confirm-modal {
+  display: contents;
+}
+
 .confirm-modal-content {
   display: flex;
   flex-direction: column;

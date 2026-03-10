@@ -1,5 +1,9 @@
 @use "shared/styles/variables" as *;
 
+system-tab {
+  display: contents;
+}
+
 .system-page {
   // form-page container đã set max-width; chỉ tinh chỉnh thêm spacing cho System
   padding-top: 0.5rem;

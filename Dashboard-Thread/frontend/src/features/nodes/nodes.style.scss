@@ -1,7 +1,10 @@
 @use "sass:color";
 @use "shared/styles/variables" as *;
 
-// ----- Nodes page (dark theme) -----
+nodes-view {
+  display: contents;
+}
+
 .nodes-page {
   background: $bg-dark;
   border-radius: $border-radius;
@@ -163,10 +166,6 @@
 
 .nodes-section {
   margin-bottom: 40px;
-
-  &:last-of-type {
-    margin-bottom: 0;
-  }
 }
 
 .nodes-section-title {

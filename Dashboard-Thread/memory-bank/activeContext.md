@@ -2,7 +2,7 @@
 
 ## Current Work Focus
 
-Project da on dinh voi BR qua TCP, trang Nodes (Router/Child/Joiner List), Toast dark theme, stable React keys. UI dark navy: Modal/ConfirmModal, System action cards, Sidebar settings icons. **SRP register**: Backend gui CMD_SRP_REGISTER (0x44) qua frame khi BR la leader; **Status**: section **System** (IPv4/IPv6 backend). **Cau truc:** Frontend feature-based (`src/features/nodes|settings|status`, `src/shared`), backend domain-based (`coap/`, `communicate/`, `settings/`, `thread/`, `websocket/`); **path alias** frontend (`@/`, `@shared/`, `@nodes/`, `@settings/`, `@status/`); **path alias backend** (`@utils/*`, `@cbor`, `@database`, `@communicate`, `@coap/*`, `@settings/*`, `@thread/*`, `@websocket/*`) — dev: tsx tu resolve, build: tsc + tsc-alias. CoAP server refactor decorator (`DeviceCoapController`, `@CoapGet`/`@CoapPost`, `registerCoapControllers`). **Docker:** Backend chay duoc bang Docker (network host, default BR 192.168.31.3). Tiep theo: bao tri, optional mDNS, security neu can.
+Backend ổn định với BR qua TCP + frame protocol, CoAP device ingest, SRP register, WebSocket handlers theo decorator. Frontend đã **migrate React → Lit** (Web Components) và hiện đang **render light DOM** (tắt Shadow DOM) để CSS global áp trực tiếp. UI dark navy: Modal/ConfirmModal, System action cards, Sidebar nav, Toast dark theme. **Status** có section **System** (IPv4/IPv6 backend). **Cấu trúc:** Frontend feature-based (`src/features/nodes|settings|status`, `src/shared`), backend domain-based (`coap/`, `communicate/`, `settings/`, `thread/`, `websocket/`); **path alias** frontend (`@/`, `@shared/`, `@nodes/`, `@settings/`, `@status/`); **path alias backend** (`@utils/*`, `@cbor`, `@database`, `@communicate`, `@coap/*`, `@settings/*`, `@thread/*`, `@websocket/*`) — dev: tsx tự resolve, build: tsc + tsc-alias. CoAP server refactor decorator (`DeviceCoapController`, `@CoapGet`/`@CoapPost`, `registerCoapControllers`). **Docker:** Backend chạy được bằng Docker (network host, default BR 192.168.31.3). Tiếp theo: bảo trì, optional mDNS/scan BR, security nếu cần.
 
 ## Recent Significant Changes
 
@@ -25,7 +25,7 @@ Project da on dinh voi BR qua TCP, trang Nodes (Router/Child/Joiner List), Toast
 - **Backend:** Khi BR chuyen sang **leader** (poll CMD_STATE), tu dong gui **CMD_SRP_REGISTER** (0x44) qua frame: DATA = hostname_len(1) + hostname(N) + backend_ipv6(16) + port(2 BE). IPv6 lay tu `BACKEND_IPV6` env hoac `getPreferredBackendIPv6()` (utils/ipv6). CommunicateManager.pullState() → stateChangedOrFirst && roleByte === LEADER → srpRegister(). **Log khi gui:** `transportLogger.info("SRP register: IPv6=... hostname=... port=...")` truoc khi goi srpRegister() de hien thi backend IPv6 dang dung. WebSocket handler `srp:register` / `srp:register:result` cho trigger thu cong.
 - **Frame:** CMD_SRP_REGISTER = 0x44 trong constants; CommandManager.sendSrpRegister(), CommunicateManager.srpRegister(). NACK 0x02/0x03/0x04 (Not ready, Timeout, Invalid param).
 - **Status:** Bo section "Child data (CoAP)". Them section **System** (cung giao dien bang nhu OpenThread Network): IPv4 (backend), IPv6 (backend) tu event `system:info`; backend gui getBackendAddresses() khi send CONFIG_CURRENT.
-- **Shared:** EVENTS.SRP_REGISTER, SRP_REGISTER_RESULT, SYSTEM_INFO. useWebSocket tra ve systemInfo (khong con childDataEvents).
+- **Shared:** EVENTS.SRP_REGISTER, SRP_REGISTER_RESULT, SYSTEM_INFO. Frontend nhận `SYSTEM_INFO` qua `WebSocketController` (không còn childDataEvents).
 - **Da xoa:** DashboardSrpClient.ts (UDP SRP), register-srp.ts script, STATE_FAKE_PAYLOAD (sendState gui payload rong khi khong data).
 
 ### CoAP device data (Thread-Node)
@@ -62,7 +62,7 @@ Project da on dinh voi BR qua TCP, trang Nodes (Router/Child/Joiner List), Toast
 - **Backend:** Loai bo hoan toan Serial/USB/UART. Chi dung **TransportTcp** ket noi BR (host:port). Cau hinh: **BrConnectionConfigService** (brHost, brPort, useMdns) luu SQLite; migration 005 tao bang `br_connection_config`. Xoa SerialPort.ts, SerialConfigService.ts; go dependency serialport.
 - **CommunicateManager:** Chi TransportTcp + BrConnectionConfig; connectInternal(), onTransportDisconnected(), reconnect 3s. Status tra ve ConnectionStatus (isConnected, host, port).
 - **WebSocketServer:** CONFIG_GET/SAVE/UPDATE payload brHost/brPort; handleBrTest(host, port); message loi "BR not connected".
-- **Frontend:** BrConnectionForm (host + port); Settings tab "BR Connection"; types BrConnectionConfigFromBackend, ConnectionStatus; useWebSocket saveConfig(brHost, brPort), testBrConnect. Navigation/Status/Commissioner/Console/Dashboard/SystemTab: message "BR" thay "Serial".
+- **Frontend:** BrConnectionForm (host + port); Settings tab "BR Connection"; types BrConnectionConfigFromBackend, ConnectionStatus; actions (save config, test connect) đi qua `WebSocketController`. Navigation/Status/Commissioner/Console/Dashboard/SystemTab: message "BR" thay "Serial".
 - **Docs:** migration_to_frame_protocol.md, README.md da cap nhat.
 
 ### Documentation (truoc do)
