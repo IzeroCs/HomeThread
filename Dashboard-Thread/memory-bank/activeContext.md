@@ -6,6 +6,9 @@ Project da on dinh voi BR qua TCP, trang Nodes (Router/Child/Joiner List), Toast
 
 ## Recent Significant Changes
 
+### WebSocket refactor — decorators + handler modules
+- **Backend websocket/:** Đăng ký event qua decorator `@WsOn(EVENTS.xxx)` (ws.decorator.ts); metadata route lưu trên constructor qua ws.type.ts (getWsRoutes, appendWsRoute). **Handlers tách theo domain** trong `backend/src/websocket/handler/`: ConfigHandler (config get/save/update), BrHandler (BR status, connect, disconnect, test), DeviceHandler (reset, factory reset), ThreadHandler (OT config, thread state, start/stop, run-on-connect, router/child table), CommissionerHandler (joiner table, commissioner connect), SrpHandler (SRP register). Mỗi handler class nhận dependencies (io, brConnectionConfigService, appSettingsService, communicate) qua constructor. **websocket.server.ts** chỉ: tạo instance 6 handler, trên connection gọi sendCurrentConfig/sendBrStatus + emit last* data, rồi loop getWsRoutes(handler.constructor) để socket.on(event, handler[propertyKey]). File: websocket.server.ts, ws.type.ts, ws.decorator.ts, handler/config.handler.ts, br.handler.ts, device.handler.ts, thread.handler.ts, commissioner.handler.ts, srp.handler.ts, handler/index.ts.
+
 ### Backend path aliases + tsc-alias + TS fixes
 - **Backend tsconfig:** Them `baseUrl: "."` va `paths` cho `@utils/*`, `@cbor`, `@database`, `@communicate`, `@coap/*`, `@settings/*`, `@thread/*`, `@websocket/*`. Toan bo import tuong doi (`../utils/...`, `./database/...`) da doi sang alias (`@utils/...`, `@database/...`, ...).
 - **Build:** Script `build`: `tsc && tsc-alias -p tsconfig.json`. Dev: `tsx watch src/index.ts` tu resolve alias; sau build, tsc-alias thay alias trong dist/ bang relative path de `node dist/index.js` chay duoc.
@@ -118,4 +121,7 @@ ROUTER_TABLE, CHILD_TABLE, JOINER_TABLE TX va ACK bi filter ra khoi console log 
 - `frontend/src/features/settings/components/system-tab/` — action cards, danger divider
 - `frontend/src/features/settings/components/openthread-config-form/` — ot-card, footer layout
 - `shared/src/events.ts`, `shared/src/types.ts` — thêm field/event cập nhật cả hai
+- `backend/src/websocket/websocket.server.ts` — chỉ wire handlers; logic trong handler/
+- `backend/src/websocket/handler/*.ts` — ConfigHandler, BrHandler, DeviceHandler, ThreadHandler, CommissionerHandler, SrpHandler; thêm event mới = thêm method + @WsOn(EVENTS.xxx)
+- `backend/src/websocket/ws.type.ts`, `ws.decorator.ts` — getWsRoutes(ctor), @WsOn(event)
 - `memory-bank/progress.md` — cập nhật khi hoàn thành task

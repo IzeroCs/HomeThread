@@ -39,7 +39,7 @@ Dashboard-Thread/
 │       ├── communicate/  # TransportTcp, CommandManager, CommunicateManager, frame (parser/builder/constants)
 │       ├── settings/     # BrConnectionConfigService, AppSettingsService
 │       ├── thread/       # OtConfigManager, PollingManager, device-role
-│       ├── websocket/     # WebSocketServer
+│       ├── websocket/     # WebSocketServer; handler/ (config, br, device, thread, commissioner, srp); @WsOn, getWsRoutes
 │       ├── database/     # SQLite, migrations
 │       ├── cbor/         # CBOR decode nội bộ
 │       └── utils/        # logger, ipv6 (getPreferredBackendIPv6, getBackendAddresses)

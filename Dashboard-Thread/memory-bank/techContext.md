@@ -11,7 +11,7 @@ Dashboard-Thread/          # npm workspaces root
 │       ├── communicate/   # TransportTcp, CommandManager, CommunicateManager, frame (parser/builder/constants)
 │       ├── settings/      # BrConnectionConfigService, AppSettingsService
 │       ├── thread/        # OtConfigManager, PollingManager, device-role, thread-data
-│       ├── websocket/     # WebSocketServer
+│       ├── websocket/     # WebSocketServer; handler/ (config, br, device, thread, commissioner, srp); ws.type, ws.decorator (@WsOn, getWsRoutes)
 │       ├── database/      # SQLite, Drizzle schema + migrations (data/migrations), repositories (device, app-settings)
 │       ├── cbor/          # CBOR decode (noi bo)
 │       └── utils/         # logger, ipv6

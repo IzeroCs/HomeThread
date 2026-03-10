@@ -44,7 +44,7 @@ Backend (khi BR = leader) → log "SRP register: IPv6=... hostname=... port=..."
 
 | Module | File | Vai tro — TUYET DOI KHONG vi pham |
 |---|---|---|
-| `WebSocketServer` | `backend/src/websocket/websocket.server.ts` | CHI relay socket events ↔ CommunicateManager. KHONG chua business logic hay transport logic |
+| `WebSocketServer` | `backend/src/websocket/websocket.server.ts` | CHỈ wire: tạo handler instances (handler/), on connection gọi sendCurrentConfig/sendBrStatus + emit last* data, đăng ký socket.on(event) từ getWsRoutes(handler.constructor). Business logic nằm trong handler/* (ConfigHandler, BrHandler, DeviceHandler, ThreadHandler, CommissionerHandler, SrpHandler). Mỗi handler dùng @WsOn(EVENTS.xxx); getWsRoutes(ctor) lấy danh sách route để đăng ký. |
 | `CommunicateManager` | `backend/src/communicate/communicate.manager.ts` | Owner cua toan bo transport + frame. Dieu phoi TransportTcp, polling, broadcast |
 | `TransportTcp` | `backend/src/communicate/transport-tcp.transport.ts` | TCP client: open(host, port), writeRaw, onRawData, setOnDisconnect |
 | `BrConnectionService` | `backend/src/settings/br-connection.service.ts` | Cau hinh BR (brHost, brPort, useMdns) qua app-settings.repository (key-value trong app_settings) |

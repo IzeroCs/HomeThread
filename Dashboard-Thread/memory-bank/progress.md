@@ -26,6 +26,7 @@ Version notation in this file uses Semantic Versioning `MAJOR.MINOR.PATCH` (no l
 | 2.1.0   | **CoAP controller refactor:** CoapStatus constants (coap.type.ts: CREATED, CHANGED, CONTENT, NOT_FOUND, SERVER_ERROR). coap.response.ts: echoCoapToken, sendCoapResponse(req, res, status, body?, contentFormat?). parseCborOrRespond(req, res) — parse CBOR, neu null thi send 2.01 va return null (cach A). Handler: mot dong lay parsed, neu null return; logic + mot lan sendCoapResponse cuoi. Router dung CoapStatus.NOT_FOUND, CoapStatus.SERVER_ERROR. |
 | 2.2.0   | **DB refactor + topology rssi/link_quality:** Drizzle ORM schema (database.schema.ts), migrations data/migrations (drizzle-kit generate). BR config gop vao app_settings (br_host, br_port, use_mdns). Logic DB chuyen vao database/repositories (app-settings.repository, device.repository); device-coap.service chi parse/map, goi repo. Slug: generateSlug(deviceName, existingSlugs) pure function; generate 1 lan khi device_slug NULL. **device_topology, device_topology_history:** them cot **rssi**, **link_quality**. Network payload key 8: sub-keys 4=rssi, 5=link_quality. Doc: thread_node_coap.md, border_router_coap_server.md cap nhat cho Thread-Node. |
 | 2.3.0   | **CoAP device payload tách rõ (device_info, topology, entity, state):** register/info chỉ nhận keys 0–7 (DeviceInfoPayload), không xử lý topology; topology gửi riêng qua POST /device/update/topology (mac + key 8). Đặt tên: DEVICE_INFO_KEYS, TOPOLOGY_KEY/TOPOLOGY_KEYS, ENTITIES_KEY; DeviceInfoPayload, DeviceTopologyPayload, DeviceEntityPayload/DeviceEntityItem, DeviceStatePayload/DeviceStateItem. Bỏ DevicePayload, asDevicePayload; từng handler type đúng payload. Doc: docs/coap/device_payload_spec.md — spec payload cho Thread-Node. |
+| 2.4.0   | **WebSocket refactor (decorators + handler modules):** Đăng ký event qua @WsOn(EVENTS.xxx) (ws.decorator.ts), metadata getWsRoutes(ctor) (ws.type.ts). Handlers tách trong backend/src/websocket/handler/: ConfigHandler, BrHandler, DeviceHandler, ThreadHandler, CommissionerHandler, SrpHandler. websocket.server.ts chỉ tạo instance, gọi sendCurrentConfig/sendBrStatus trên connect, và loop getWsRoutes() để socket.on(event, handler). Doc: docs/websocket.md. |
 
 
 ## What Works (Completed)
@@ -70,10 +71,9 @@ Version notation in this file uses Semantic Versioning `MAJOR.MINOR.PATCH` (no l
 
 ### Backend — WebSocket
 
-- Toan bo EVENTS dung constant tu shared/src/events.ts
-- Relay OtConfig, OtThreadState, tables den frontend
-- Handle set config commands tu frontend
-- Commissioner joiner command
+- **Decorator + handler modules:** Event đăng ký qua `@WsOn(EVENTS.xxx)` (ws.decorator.ts); getWsRoutes(ctor) (ws.type.ts). Handlers trong `websocket/handler/`: ConfigHandler (config get/save/update), BrHandler (BR status, connect, disconnect, test), DeviceHandler (reset, factory reset), ThreadHandler (OT config, thread state, start/stop, run-on-connect, router/child table), CommissionerHandler (joiner table, commissioner connect), SrpHandler (SRP register). websocket.server.ts chỉ wire: tạo instance, on connection gọi sendCurrentConfig/sendBrStatus + emit last* data, rồi socket.on(event) từ getWsRoutes từng handler.
+- Toàn bộ EVENTS dùng constant từ shared/src/events.ts
+- Relay OtConfig, OtThreadState, tables tới frontend; handle config, BR, OT, device, commissioner, SRP commands
 
 ### Backend — CoAP device & System
 
@@ -113,6 +113,7 @@ Console da bo. Commissioner gop vao Nodes (modal + Joiner List).
 - docs/coap/device_payload_spec.md — spec payload cho Thread-Node (device_info keys 0–7, topology key 8, entity/state key 9; flow register/info → update/topology → register/entity → update/state)
 - docs/coap/thread_node_coap.md — hướng dẫn Thread-Node (CoAP + CBOR, flow, SRP discovery)
 - docs/coap/border_router_coap_server.md — spec Backend CoAP (endpoints, 6 bảng, device_topology rssi/link_quality)
+- docs/websocket.md — Backend WebSocket: cấu trúc handler/, @WsOn, getWsRoutes, bảng handler modules
 - README.md + TODO.md cap nhat
 
 ## What's Left to Build
