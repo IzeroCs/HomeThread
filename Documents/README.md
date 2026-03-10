@@ -12,7 +12,7 @@ Node gửi **hai request** khi đăng ký (sau discovery hoặc khi ping phát h
    Payload CBOR: map với **key 0** = device_id, **key 9** = array entities.  
    Build: `entity_serialize_entities_cbor(buffer, size)`.
 
-Hai request được gửi **liên tiếp** (không chờ ACK register xong mới gửi entities). Cả hai dùng CoAP confirmable và có response handler; Backend phải **echo CoAP token** trong response (RFC 7252).
+Register gửi trước; **chờ response thành công** (retry 2s nếu fail) rồi mới gửi entities. Cả hai dùng CoAP confirmable và có response handler; Backend phải **echo CoAP token** trong response (RFC 7252).
 
 - **Serialization:** `components/entity/serialization/entity_serialization.c` (helper `encode_device_and_network`, `entity_serialize_device_cbor`, `entity_serialize_entities_cbor`).
 - **Transport:** `components/device/device_coap.c` (`device_coap_send_register`, `device_coap_send_entities`).

@@ -23,7 +23,7 @@ Examples                 █████████████░░░░░�
 | **Status LED** | `status_led.c/.h` | WS2812 via RMT. 6 trạng thái: Boot/NotJoined/Detached/Child/Router/Leader |
 | **Boot Button** | `boot_btn.c/.h` | Long press detection, gọi factory reset |
 | **CoAP Server Manager** | `thread_coap.c/.h` | Idempotent start, resource registration với lock, response helper |
-| **Device** (components/device/) | `device_registry.c/.h`, `device_coap.c/.h` | **device_registry**: build device-only (entity_serialize_device_cbor) + entities (entity_serialize_entities_cbor); gửi POST /device/register rồi POST /device/entities liên tiếp; API register/ping/is_registered. **device_coap**: send_register, send_entities, ping; token 2B; response handlers; timestamp → callback re-register. thread_node gọi register/ping khi discovery/ping task. |
+| **Device** (components/device/) | `device_registry.c/.h`, `device_coap.c/.h` | **device_registry**: gửi POST /device/register; **chờ thành công** (retry 2s nếu fail) rồi mới gửi POST /device/entities; API register/ping/is_registered. **device_coap**: send_register, send_entities, ping; token 2B; response handlers; timestamp → callback re-register. thread_node gọi register/ping khi discovery/ping task. |
 | **Custom OT Config** | `openthread_custom_config.h` | Child timeout 60s, supervision 30s/60s, leader weight, CoAP API. **Không** define OPENTHREAD_CONFIG_DNS_CLIENT_ENABLE (ESP-IDF 5.5.3 dùng CONFIG_OPENTHREAD_DNS_CLIENT từ sdkconfig trong openthread-core-esp32x-ftd-config.h). |
 | **Thread Discovery** | `thread_discovery.c/.h` | SRP/DNS-SD `_dashboard._udp`; cache NVS + cache_ttl_sec; static fallback. **Log backend IP**: chỉ thread_node log INFO ("Backend discovered" / "Backend endpoint updated") khi có IP lần đầu hoặc khi IP đổi; thread_discovery log cache/static/SRP ở LOGD. |
 
@@ -60,7 +60,8 @@ Examples                 █████████████░░░░░�
 | Đích: Backend (từ discovery) | ✅ thread_node gọi device_registry_register(endpoint) với endpoint từ thread_discovery_get_endpoint(); trigger khi discovery thành công, endpoint đổi, hoặc ping timestamp đổi |
 | Mọi role đều gửi được | ✅ Child, Router, Leader đều có thể gửi đăng ký tới backend |
 | Chờ ACK/NACK (callback) | ✅ on_registry_response + timeout 20s |
-| Retry khi NACK/timeout | ✅ Delay 2s rồi gửi lại |
+| Retry khi NACK/timeout | ✅ Delay 2s rồi gửi lại register; không gửi entities cho đến khi register thành công |
+| Entities chỉ sau register success | ✅ Mọi CoAP (entities, topology, state) chỉ gửi sau khi register đã ACK; register fail thì retry đến khi thành công |
 
 ### Tài liệu
 

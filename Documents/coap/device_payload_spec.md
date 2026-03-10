@@ -8,15 +8,24 @@ Tài liệu mô tả cấu trúc payload CBOR cho CoAP **/device/** giữa Threa
 
 ## Endpoints và payload
 
+**Contract chính (Node đang dùng):**
+
 | Method | Path | Payload | Mô tả |
 |--------|------|---------|--------|
 | GET | /device/ping | — | Backend trả 2.05 Content, body 4 byte timestamp uint32 LE. Node so sánh timestamp; đổi thì gửi lại register. |
-| POST | /device/register/info | **device_info** (keys 0–7) | Đăng ký thông tin thiết bị. **Chỉ** keys 0–7; không gửi topology (key 8) ở đây. |
+| POST | /device/register | **device_info + network** (keys 0–8) | Đăng ký device + topology một request. Node **chờ** response thành công (retry nếu fail) rồi mới gửi entities. |
+| POST | /device/entities | **key 0** (device_id) + **key 9** (array entity) | Đăng ký danh sách entity. Chỉ gửi **sau khi** register thành công. Backend có thể trả body CBOR key 10 = restore. |
+
+**API mở rộng (tùy chọn):**
+
+| Method | Path | Payload | Mô tả |
+|--------|------|---------|--------|
+| POST | /device/register/info | **device_info** (keys 0–7) | Đăng ký thông tin thiết bị (legacy). |
 | POST | /device/update/info | **device_info** (keys 0–7) | Cập nhật thông tin thiết bị. |
-| POST | /device/update/topology | **mac (7) + key 8** (topology) | Cập nhật topology (rloc16, role, rssi, link_quality, …). Gửi **riêng** sau register/info. |
-| POST | /device/register/entity | **mac (7) + key 9** (array entity) | Đăng ký danh sách entity (định nghĩa). Backend có thể trả body CBOR key 10 = restore. |
+| POST | /device/update/topology | **mac (7) + key 8** (topology) | Cập nhật topology riêng. |
+| POST | /device/register/entity | **mac (7) + key 9** (array entity) | Đăng ký entity (legacy). |
 | POST | /device/update/entity | **mac (7) + key 9** (array entity) | Cập nhật định nghĩa entity. |
-| POST | /device/update/state | **mac (7) + key 9** (array state) | Cập nhật state từng entity (on/off, brightness, …). |
+| POST | /device/update/state | **mac (7) + key 9** (array state) | Cập nhật state từng entity. |
 
 ---
 
@@ -52,9 +61,11 @@ Request body: map với **key 7** (mac_address) + **key 8** (object topology). K
 
 ---
 
-## 3. Payload entity (register/entity, update/entity)
+## 3. Payload entity
 
-Request body: **key 7** (mac_address) + **key 9** (array). Mỗi phần tử trong array 9 là map (định nghĩa entity):
+**POST /device/entities** (contract chính): Request body map **key 0** = device_id (string), **key 9** = array (định nghĩa entity). Mỗi phần tử trong array 9 là map (định nghĩa entity):
+
+**POST /device/register/entity** (legacy): Request body **key 7** (mac_address) + **key 9** (array). Mỗi phần tử trong array 9 là map (định nghĩa entity):
 
 | Key | Tên | Kiểu | Ghi chú |
 |-----|-----|------|--------|
@@ -91,10 +102,9 @@ Request body: **key 7** (mac_address) + **key 9** (array). Mỗi phần tử tro
 ## Flow khuyến nghị (Thread-Node)
 
 1. **GET /device/ping** — lấy timestamp; nếu khác lần trước → bắt đầu register.
-2. **POST /device/register/info** — gửi **chỉ** payload device_info (keys 0–7). Không gửi key 8 (topology) ở đây.
-3. **POST /device/update/topology** — gửi mac (7) + key 8 (object topology) khi có dữ liệu rloc16/role/rssi/link_quality.
-4. **POST /device/register/entity** — gửi mac (7) + key 9 (array entity definition). Nhận restore (key 10) nếu backend trả.
-5. Sau đó: **POST /device/update/state** khi state entity thay đổi; **POST /device/update/info** hoặc **update/entity** khi cập nhật thông tin/định nghĩa.
+2. **POST /device/register** (keys 0–8) — gửi device + topology. **Retry** đến khi backend trả 2.01/2.04 (không gửi entities cho đến khi register thành công).
+3. **Chỉ khi register success** → **POST /device/entities** (key 0 = device_id, key 9 = array entity). Nhận restore (key 10) nếu backend trả.
+4. Topology gửi kèm trong register (key 8). Nếu sau này có **POST /device/update/state** hoặc **update/info**, **update/entity** thì cũng chỉ gửi sau khi đã register (và entities) thành công.
 
 ---
 
