@@ -39,19 +39,6 @@ static uint8_t crc8_maxim(const uint8_t *data, size_t len)
 static communicate_rx_frame_cb_t s_rx_cb;
 static void *s_rx_ctx;
 
-/** CMD nào thì suppress log RX + TX (không log frame STATE, table polling, ACK của chúng). */
-static bool is_noisy_cmd(uint8_t cmd)
-{
-    return cmd == CMD_STATE
-        || cmd == CMD_ROUTER_TABLE
-        || cmd == CMD_CHILD_TABLE
-        || cmd == CMD_JOINER_TABLE;
-}
-
-/** frame_id của cmd noisy gần nhất đang xử lý; dùng để suppress ACK TX tương ứng. */
-static uint8_t s_suppress_ack_frame_id = 0xFF;
-static bool    s_suppress_ack_active   = false;
-
 /* RX buffer: tích lũy byte, tìm SOF...EOF và parse. */
 #define RX_BUF_SIZE  (COMMUNICATE_FRAME_MAX_DATA_LEN + FRAME_MIN_LEN + 64)
 static uint8_t s_rx_buf[RX_BUF_SIZE];
@@ -100,14 +87,7 @@ static void on_transport_rx(uint8_t *data, size_t len, void *ctx)
         uint8_t frame_id = s_rx_buf[1];
         uint8_t cmd = s_rx_buf[2];
         const uint8_t *payload = data_len > 0 ? (s_rx_buf + FRAME_HEADER_LEN) : NULL;
-        if (is_noisy_cmd(cmd)) {
-            s_suppress_ack_frame_id = frame_id;
-            s_suppress_ack_active   = true;
-            ESP_LOGD(TAG, "frame RX: id=%u cmd=%s len=%u", (unsigned)frame_id, communicate_cmd_name(cmd), (unsigned)data_len);
-        } else {
-            s_suppress_ack_active = false;
-            ESP_LOGI(TAG, "frame RX: id=%u cmd=%s len=%u", (unsigned)frame_id, communicate_cmd_name(cmd), (unsigned)data_len);
-        }
+        ESP_LOGI(TAG, "frame RX: id=%u cmd=%s len=%u", (unsigned)frame_id, communicate_cmd_name(cmd), (unsigned)data_len);
         if (s_rx_cb) {
             s_rx_cb(frame_id, cmd, payload, data_len, s_rx_ctx);
         }
@@ -167,14 +147,7 @@ esp_err_t communicate_send_frame(uint8_t frame_id, uint8_t cmd, const uint8_t *d
     if (len > COMMUNICATE_FRAME_MAX_DATA_LEN) {
         return ESP_ERR_INVALID_SIZE;
     }
-    bool suppress_tx = s_suppress_ack_active
-                    && cmd == CMD_ACK
-                    && frame_id == s_suppress_ack_frame_id;
-    if (suppress_tx) {
-        ESP_LOGD(TAG, "frame TX: id=%u cmd=%s len=%u", (unsigned)frame_id, communicate_cmd_name(cmd), (unsigned)len);
-    } else {
-        ESP_LOGI(TAG, "frame TX: id=%u cmd=%s len=%u", (unsigned)frame_id, communicate_cmd_name(cmd), (unsigned)len);
-    }
+    ESP_LOGI(TAG, "frame TX: id=%u cmd=%s len=%u", (unsigned)frame_id, communicate_cmd_name(cmd), (unsigned)len);
     uint8_t header[FRAME_HEADER_LEN];
     header[0] = SOF;
     header[1] = frame_id;

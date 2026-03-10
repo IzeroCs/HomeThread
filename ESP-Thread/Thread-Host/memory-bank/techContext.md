@@ -84,8 +84,8 @@
 - Backend cần route: prefix Thread **via** BR (link-local). BR gửi RA với RIO; để kernel cài route từ RIO: **per-interface** `sysctl net.ipv6.conf.<iface>.accept_ra_rt_info_max_plen=128` (vd. enp8s0). Không dùng `net.ipv6.conf.all.*` — all chỉ là mặc định, không áp dụng ngược cho interface đã có. Hoặc add tay: `ip -6 route add <prefix>::/64 via <BR_fe80::> dev <iface>`. BR phát RA theo chu kỳ hoặc khi nhận RS; backend có thể gửi **Router Solicitation** (vd. `rdisc6 -1 <iface>`) để nhận RA sớm. Chi tiết: activeContext.md, Documents/architecture/real_br_integration.md. **Docker:** `network_mode: host`; default BR 192.168.31.3. Add route trong container cần `--cap-add=NET_ADMIN`.
 
 ### Logging (frame RX/TX)
-- Mặc định **INFO**: chỉ in frame RX/TX cho CMD không noisy (GET_DATASET, SET_*, COMMISSIONER_JOINER, …); CMD_STATE và *_TABLE không in.
-- Để xem **mọi frame RX/TX** và **byte stream TCP** (tcp rx/tx N bytes): set log level **DEBUG** cho tag `communicate` và `transport_tcp` (menuconfig hoặc `esp_log_level_set`).
+- Mặc định **INFO**: in **mọi frame RX/TX** và hexdump **header/payload/tail**.
+- Để xem thêm **byte stream TCP** (tcp rx/tx N bytes): set log level **DEBUG** cho tag `transport_tcp` (menuconfig hoặc `esp_log_level_set`).
 
 ## Cấu hình quan trọng (sdkconfig / sdkconfig.defaults)
 

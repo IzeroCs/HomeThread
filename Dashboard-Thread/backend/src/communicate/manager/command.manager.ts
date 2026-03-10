@@ -48,26 +48,19 @@ export class CommandManager {
       timeoutId: ReturnType<typeof setTimeout>;
     }
   >();
-  /** Track frameId của STATE commands để filter log ACK tương ứng. */
-  private stateFrameIds = new Set<number>();
   /** Track frameId của DATASET_ACTIVE commands để thu gọn log ACK. */
   private datasetActiveFrameIds = new Set<number>();
   /** Track frameId của IP_ADDR commands để thu gọn log ACK. */
   private ipAddrFrameIds = new Set<number>();
-  /** Track frameId của TABLE commands (ROUTER/CHILD/JOINER) để ẩn log TX + ACK. */
-  private tableFrameIds = new Set<number>();
 
   constructor(private callbacks: CommandManagerCallbacks) {}
 
   /**
    * Xử lý frame nhận từ leader. Chỉ có DATA (broadcast) và ACK/NACK (resolve pending + merge config).
-   * Log giống behavior ban đầu: ẩn bớt ACK noisy (STATE/TABLE), thu gọn log ACK dataset/IP, còn lại log đầy đủ.
+   * Log: hiển thị RX đầy đủ; riêng ACK dataset/IP có log tóm tắt (fields log riêng).
    */
   handle(frame: ParsedFrame): void {
-    // Filter: không log ACK của STATE command và TABLE commands
-    if (frame.cmd === CMD.ACK && (this.stateFrameIds.has(frame.frameId) || this.tableFrameIds.has(frame.frameId))) {
-      // Không log
-    } else if (frame.cmd === CMD.ACK && this.datasetActiveFrameIds.has(frame.frameId)) {
+    if (frame.cmd === CMD.ACK && this.datasetActiveFrameIds.has(frame.frameId)) {
       // Thu gọn log ACK của dataset active: chỉ log 1 dòng thay vì toàn bộ hex data
       const cmdName = CMD_NAMES[frame.cmd] ?? `0x${frame.cmd.toString(16)}`;
       frameLogger.log(
@@ -99,10 +92,8 @@ export class CommandManager {
           this.ipAddrFrameIds.has(frame.frameId) ||
           this.datasetActiveFrameIds.has(frame.frameId);
         // Xóa frameId khỏi tracking sets sau khi nhận ACK
-        this.stateFrameIds.delete(frame.frameId);
         this.datasetActiveFrameIds.delete(frame.frameId);
         this.ipAddrFrameIds.delete(frame.frameId);
-        this.tableFrameIds.delete(frame.frameId);
         pending.resolve({
           ack: true,
           data: frame.data.length > 0 ? frame.data : undefined,
@@ -343,20 +334,14 @@ export class CommandManager {
 
       const timeoutId = setTimeout(() => {
         if (this.pendingFrames.delete(frameId)) {
-          this.stateFrameIds.delete(frameId);
           this.datasetActiveFrameIds.delete(frameId);
           this.ipAddrFrameIds.delete(frameId);
-          this.tableFrameIds.delete(frameId);
           resolve({ ack: false, errorCode: 0x03 });
         }
       }, FRAME_RESPONSE_TIMEOUT_MS);
 
       this.pendingFrames.set(frameId, { resolve, timeoutId });
 
-      // Track frameId của STATE command để filter log
-      if (cmd === CMD.STATE) {
-        this.stateFrameIds.add(frameId);
-      }
       // Track frameId của DATASET_ACTIVE command để thu gọn log
       if (cmd === CMD.DATASET_ACTIVE) {
         this.datasetActiveFrameIds.add(frameId);
@@ -365,38 +350,26 @@ export class CommandManager {
       if (cmd === CMD.IP_ADDR) {
         this.ipAddrFrameIds.add(frameId);
       }
-      // Track frameId của TABLE commands để ẩn log TX + ACK
-      if (cmd === CMD.ROUTER_TABLE || cmd === CMD.CHILD_TABLE || cmd === CMD.JOINER_TABLE) {
-        this.tableFrameIds.add(frameId);
-      }
 
       try {
         const frame = buildFrame(frameId, cmd, data);
         const cmdName = CMD_NAMES[cmd] ?? `0x${cmd.toString(16)}`;
         const dataLen = data?.length ?? 0;
-        // Filter: không log STATE command và TABLE commands để giảm noise
-        const isSilentCmd = cmd === CMD.STATE || cmd === CMD.ROUTER_TABLE || cmd === CMD.CHILD_TABLE || cmd === CMD.JOINER_TABLE;
-        if (!isSilentCmd) {
-          frameLogger.log(
-            `TX frameId=0x${frameId.toString(16).padStart(2, "0")} cmd=0x${cmd.toString(16).padStart(2, "0")} (${cmdName}) len=${dataLen}`
-          );
-        }
+        frameLogger.log(
+          `TX frameId=0x${frameId.toString(16).padStart(2, "0")} cmd=0x${cmd.toString(16).padStart(2, "0")} (${cmdName}) len=${dataLen}`
+        );
         this.callbacks.writeRaw(frame).catch(() => {
           if (this.pendingFrames.delete(frameId)) {
-            this.stateFrameIds.delete(frameId);
             this.datasetActiveFrameIds.delete(frameId);
             this.ipAddrFrameIds.delete(frameId);
-            this.tableFrameIds.delete(frameId);
             clearTimeout(timeoutId);
             resolve({ ack: false, errorCode: 0x03 });
           }
         });
       } catch {
         if (this.pendingFrames.delete(frameId)) {
-          this.stateFrameIds.delete(frameId);
           this.datasetActiveFrameIds.delete(frameId);
           this.ipAddrFrameIds.delete(frameId);
-          this.tableFrameIds.delete(frameId);
           clearTimeout(timeoutId);
           resolve({ ack: false, errorCode: 0x01 });
         }
@@ -416,10 +389,8 @@ export class CommandManager {
       clearTimeout(timeoutId);
     }
     this.pendingFrames.clear();
-    this.stateFrameIds.clear();
     this.datasetActiveFrameIds.clear();
     this.ipAddrFrameIds.clear();
-    this.tableFrameIds.clear();
   }
 
   private logFrame(frame: ParsedFrame, direction: "RX"): void {
