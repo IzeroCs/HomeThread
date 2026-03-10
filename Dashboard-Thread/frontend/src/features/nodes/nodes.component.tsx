@@ -37,7 +37,7 @@ type SelectedRow = { type: "router"; rowIndex: number } | { type: "child"; rowIn
 
 export default function Nodes() {
   const {
-    serialStatus,
+    brStatus,
     otConfig,
     config: brConfig,
     testBrConnect,
@@ -48,7 +48,7 @@ export default function Nodes() {
     getChildTable,
     getJoinerTable,
   } = useWebSocketContext();
-  const isConnected = serialStatus?.isConnected ?? false;
+  const isConnected = brStatus?.isConnected ?? false;
   const [selectedRow, setSelectedRow] = useState<SelectedRow | null>(null);
   const [isCommissionModalOpen, setCommissionModalOpen] = useState(false);
 

@@ -3,27 +3,7 @@
  */
 
 /**
- * Serial port configuration
- */
-export interface SerialConfig {
-  id?: number;
-  serialPort: string;
-  baudRate: number;
-  createdAt?: string;
-  updatedAt?: string;
-}
-
-/**
- * Serial port status
- */
-export interface SerialStatus {
-  isConnected: boolean;
-  path: string;
-  baudRate: number;
-}
-
-/**
- * BR connection configuration (TCP, thay Serial)
+ * BR connection configuration (TCP)
  * host: hostname (vd. Thread-Host.local) hoặc IP; port mặc định 5000
  */
 export interface BrConnectionConfig {
@@ -37,7 +17,7 @@ export interface BrConnectionConfig {
 }
 
 /**
- * BR connection status (thay SerialStatus khi chỉ dùng TCP)
+ * BR connection status
  */
 export interface ConnectionStatus {
   isConnected: boolean;

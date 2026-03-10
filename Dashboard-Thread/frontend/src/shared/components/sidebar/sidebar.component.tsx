@@ -13,7 +13,7 @@ interface SidebarProps {
   /** Chỉ hiện logo, ẩn nav và footer */
   logoOnly?: boolean;
   /** Trạng thái BR: false = xám; true = cam/tím/xanh lá/xanh dương theo state */
-  serialConnected?: boolean;
+  brConnected?: boolean;
   /** State Thread: leader → xanh lá, router → tím, child → xanh dương; detached/disabled → cam */
   threadState?: string | null;
   /** Đã bật "tự chạy Thread" → màu theo state; chưa bật thì cam */
@@ -41,7 +41,7 @@ const SETTINGS_ITEMS: { page: NavPage; label: string; icon: string }[] = [
 
 export default function Sidebar({
   logoOnly = false,
-  serialConnected = false,
+  brConnected = false,
   threadState = null,
   threadRunOnConnect = false,
   nodesCount = null,
@@ -49,7 +49,7 @@ export default function Sidebar({
   onNavigate = () => {},
 }: SidebarProps) {
   const stateLower = threadState?.toLowerCase();
-  const statusClass = !serialConnected
+  const statusClass = !brConnected
     ? "status-disconnected"
     : stateLower === "child"
       ? "status-thread-blue"
@@ -57,8 +57,8 @@ export default function Sidebar({
         ? "status-thread-purple"
         : stateLower === "leader"
           ? "status-thread-green"
-          : "status-serial";
-  const statusTitle = !serialConnected
+          : "status-br";
+  const statusTitle = !brConnected
     ? "Chưa kết nối BR"
     : threadState
       ? `BR đã kết nối, Thread: ${threadState}`

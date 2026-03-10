@@ -33,7 +33,7 @@ export class WebSocketServer {
   }
 
   /** Gọi khi server khởi động: nếu đã có config thì tự kết nối BR (ở main). */
-  async connectSerialIfConfigured(): Promise<void> {
+  async connectBrIfConfigured(): Promise<void> {
     await this.communicate.connectIfConfigured();
   }
 
@@ -49,7 +49,7 @@ export class WebSocketServer {
       this.communicate.onFrontendConnected();
 
       this.sendCurrentConfig(socket);
-      this.sendSerialStatus(socket);
+      this.sendBrStatus(socket);
 
       const lastThreadState = this.communicate.getLastThreadState();
       if (lastThreadState != null) socket.emit(EVENTS.OT_THREAD_STATE, lastThreadState);
@@ -70,10 +70,10 @@ export class WebSocketServer {
         this.handleConfigUpdate(socket, data)
       );
 
-      socket.on(EVENTS.SERIAL_CONNECT, () => this.handleSerialConnect(socket));
-      socket.on(EVENTS.SERIAL_DISCONNECT, () => this.handleSerialDisconnect(socket));
-      socket.on(EVENTS.SERIAL_STATUS, () => this.sendSerialStatus(socket));
-      socket.on(EVENTS.SERIAL_TEST, (data: { brHost: string; brPort: number }) =>
+      socket.on(EVENTS.BR_CONNECT, () => this.handleBrConnect(socket));
+      socket.on(EVENTS.BR_DISCONNECT, () => this.handleBrDisconnect(socket));
+      socket.on(EVENTS.BR_STATUS, () => this.sendBrStatus(socket));
+      socket.on(EVENTS.BR_TEST, (data: { brHost: string; brPort: number }) =>
         this.handleBrTest(socket, data)
       );
 
@@ -117,8 +117,8 @@ export class WebSocketServer {
     socket.emit(EVENTS.SYSTEM_INFO, getBackendAddresses());
   }
 
-  private sendSerialStatus(socket: Socket): void {
-    socket.emit(EVENTS.SERIAL_STATUS, this.communicate.getStatus());
+  private sendBrStatus(socket: Socket): void {
+    socket.emit(EVENTS.BR_STATUS, this.communicate.getStatus());
   }
 
   private validateConfig = validateBrConnectionConfig;
@@ -142,7 +142,7 @@ export class WebSocketServer {
       socket.emit(EVENTS.CONFIG_SAVED, config);
       this.io.emit(EVENTS.CONFIG_CURRENT, config);
       await this.communicate.connect();
-      socket.emit(EVENTS.SERIAL_STATUS, this.communicate.getStatus());
+      socket.emit(EVENTS.BR_STATUS, this.communicate.getStatus());
     } catch (error) {
       socket.emit(EVENTS.CONFIG_ERROR, { error: error instanceof Error ? error.message : "Unknown error" });
     }
@@ -175,26 +175,26 @@ export class WebSocketServer {
     }
   }
 
-  private async handleSerialConnect(socket: Socket): Promise<void> {
+  private async handleBrConnect(socket: Socket): Promise<void> {
     try {
       await this.communicate.connect();
-      socket.emit(EVENTS.SERIAL_CONNECTED, { success: true, status: this.communicate.getStatus() });
-      this.io.emit(EVENTS.SERIAL_STATUS, this.communicate.getStatus());
+      socket.emit(EVENTS.BR_CONNECTED, { success: true, status: this.communicate.getStatus() });
+      this.io.emit(EVENTS.BR_STATUS, this.communicate.getStatus());
     } catch (error) {
-      socket.emit(EVENTS.SERIAL_ERROR, {
+      socket.emit(EVENTS.BR_ERROR, {
         success: false,
         error: error instanceof Error ? error.message : "Unknown error",
       });
     }
   }
 
-  private async handleSerialDisconnect(socket: Socket): Promise<void> {
+  private async handleBrDisconnect(socket: Socket): Promise<void> {
     try {
       await this.communicate.disconnect();
-      socket.emit(EVENTS.SERIAL_DISCONNECTED, { success: true });
-      this.io.emit(EVENTS.SERIAL_STATUS, this.communicate.getStatus());
+      socket.emit(EVENTS.BR_DISCONNECTED, { success: true });
+      this.io.emit(EVENTS.BR_STATUS, this.communicate.getStatus());
     } catch (error) {
-      socket.emit("serial:error", {
+      socket.emit(EVENTS.BR_ERROR, {
         success: false,
         error: error instanceof Error ? error.message : "Unknown error",
       });
@@ -207,16 +207,16 @@ export class WebSocketServer {
   ): Promise<void> {
     const err = this.validateConfig(data);
     if (err) {
-      socket.emit(EVENTS.SERIAL_TEST_RESULT, { success: false, error: err });
+      socket.emit(EVENTS.BR_TEST_RESULT, { success: false, error: err });
       return;
     }
     const host = data.brHost.trim();
     const port = Number(data.brPort);
     try {
       const result = await this.communicate.testConnection(host, port);
-      socket.emit(EVENTS.SERIAL_TEST_RESULT, result);
+      socket.emit(EVENTS.BR_TEST_RESULT, result);
     } catch (error) {
-      socket.emit(EVENTS.SERIAL_TEST_RESULT, {
+      socket.emit(EVENTS.BR_TEST_RESULT, {
         success: false,
         error: error instanceof Error ? error.message : "Unknown error",
       });

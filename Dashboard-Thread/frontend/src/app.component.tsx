@@ -16,7 +16,7 @@ function App() {
 
   const {
     connected: wsConnected,
-    serialStatus,
+    brStatus,
     config: backendConfig,
     saveConfig: wsSaveConfig,
     testBrConnect,
@@ -90,7 +90,7 @@ function App() {
       <Sidebar
         currentPage={page}
         onNavigate={setPage}
-        serialConnected={serialStatus?.isConnected ?? false}
+        brConnected={brStatus?.isConnected ?? false}
         threadState={threadState}
         threadRunOnConnect={threadRunOnConnect}
         nodesCount={nodesCount}

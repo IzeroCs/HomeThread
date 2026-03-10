@@ -7,12 +7,12 @@ import "@settings/components/system-tab/system-tab.style.scss";
 type ConfirmAction = "reset" | "factory" | null;
 
 export default function SystemTab() {
-  const { serialStatus, reset, factoryReset } = useWebSocketContext();
+  const { brStatus, reset, factoryReset } = useWebSocketContext();
   const { showToast } = useToast();
   const [confirmAction, setConfirmAction] = useState<ConfirmAction>(null);
   const [loading, setLoading] = useState(false);
 
-  const isConnected = serialStatus?.isConnected ?? false;
+  const isConnected = brStatus?.isConnected ?? false;
 
   const handleConfirm = async () => {
     if (!confirmAction) return;

@@ -2,33 +2,7 @@
  * Shared validation functions - dùng chung cho cả backend và frontend
  */
 
-import { SERIAL_CONFIG, OT_CONFIG, BR_CONNECTION } from "./constants";
-
-/**
- * Validate serial port configuration
- * @returns Error message string if invalid, null if valid
- */
-export function validateSerialConfig(data: {
-  serialPort?: string;
-  baudRate?: number;
-}): string | null {
-  if (data.serialPort !== undefined) {
-    if (typeof data.serialPort !== "string" || !data.serialPort.trim()) {
-      return "Serial port is required";
-    }
-  }
-  if (data.baudRate !== undefined) {
-    const n = Number(data.baudRate);
-    if (
-      !Number.isInteger(n) ||
-      n < SERIAL_CONFIG.MIN_BAUD_RATE ||
-      n > SERIAL_CONFIG.MAX_BAUD_RATE
-    ) {
-      return `Baud rate must be an integer between ${SERIAL_CONFIG.MIN_BAUD_RATE} and ${SERIAL_CONFIG.MAX_BAUD_RATE}`;
-    }
-  }
-  return null;
-}
+import { OT_CONFIG, BR_CONNECTION } from "./constants";
 
 /**
  * Validate BR connection config (host + port, TCP)

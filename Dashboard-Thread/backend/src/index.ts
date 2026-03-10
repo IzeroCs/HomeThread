@@ -1,5 +1,5 @@
 /**
- * Backend: WebSocket server cho OpenThread qua UART (ESP32-H2, frame protocol).
+ * Backend: WebSocket server cho OpenThread qua TCP (frame protocol).
  * Khởi tạo giao tiếp (CommunicateManager) ở đây; WebSocketServer chỉ emit dữ liệu tới frontend.
  */
 

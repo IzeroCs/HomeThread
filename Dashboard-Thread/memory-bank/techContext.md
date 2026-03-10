@@ -60,7 +60,7 @@ shared/src/
 ├── types.ts        # ConnectionStatus, OtConfig, OtThreadState, OtTableData, ...
 ├── events.ts       # EVENTS (SRP_REGISTER, SRP_REGISTER_RESULT, SYSTEM_INFO, ...)
 ├── constants.ts    # Validation limits (channel 11-26, PAN ID 0x0000-0xFFFE, etc.)
-└── validation.ts   # validateSerialConfig(), validateOtSetConfig()
+└── validation.ts   # validateBrConnectionConfig(), validateOtSetConfig()
 ```
 
 Referenced via `"file:../shared"` trong cả backend và frontend package.json.

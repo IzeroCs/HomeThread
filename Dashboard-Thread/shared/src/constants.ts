@@ -3,14 +3,6 @@
  */
 
 /**
- * Serial port configuration constants
- */
-export const SERIAL_CONFIG = {
-  MIN_BAUD_RATE: 9600,
-  MAX_BAUD_RATE: 2000000,
-} as const;
-
-/**
  * BR connection (TCP) constants
  */
 export const BR_CONNECTION = {

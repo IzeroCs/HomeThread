@@ -21,16 +21,16 @@ const WS_URL =
 
 export interface UseWebSocketReturn {
   connected: boolean;
-  serialStatus: ConnectionStatus | null;
+  brStatus: ConnectionStatus | null;
   config: BrConnectionConfigFromBackend | null;
   configError: string | null;
-  serialError: string | null;
+  brError: string | null;
   connect: () => void;
   disconnect: () => void;
   getConfig: () => void;
   saveConfig: (data: { brHost: string; brPort: number; useMdns?: boolean }) => void;
-  connectSerial: () => void;
-  disconnectSerial: () => void;
+  connectBr: () => void;
+  disconnectBr: () => void;
   testBrConnect: (data: { brHost: string; brPort: number }) => Promise<{ success: boolean; error?: string }>;
   otConfig: OtConfig | null;
   /** Gửi request lấy OT config từ thiết bị; resolve khi nhận OT_CONFIG hoặc sau timeout 6s. */
@@ -53,7 +53,7 @@ export interface UseWebSocketReturn {
   joinerTable: OtTableData | null;
   getJoinerTable: () => void;
   commissionerConnect: (eui64: string, psk: string, timeoutSeconds?: number) => Promise<{ success: boolean; error?: string }>;
-  onSerialData: (callback: (data: string) => void) => () => void;
+  onBrData: (callback: (data: string) => void) => () => void;
   /** Backend system info (IPv4/IPv6) for Status → System section. */
   systemInfo: { ipv4: string[]; ipv6: string[] } | null;
   reset: () => Promise<{ success: boolean; error?: string }>;
@@ -63,10 +63,10 @@ export interface UseWebSocketReturn {
 export function useWebSocket(): UseWebSocketReturn {
   const socketRef = useRef<Socket | null>(null);
   const [connected, setConnected] = useState(false);
-  const [serialStatus, setSerialStatus] = useState<ConnectionStatus | null>(null);
+  const [brStatus, setBrStatus] = useState<ConnectionStatus | null>(null);
   const [config, setConfig] = useState<BrConnectionConfigFromBackend | null>(null);
   const [configError, setConfigError] = useState<string | null>(null);
-  const [serialError, setSerialError] = useState<string | null>(null);
+  const [brError, setBrError] = useState<string | null>(null);
   const [otConfig, setOtConfigState] = useState<OtConfig | null>(null);
   const [threadRunning, setThreadRunningState] = useState<boolean | null>(null);
   const [threadState, setThreadState] = useState<string | null>(null);
@@ -93,15 +93,15 @@ export function useWebSocket(): UseWebSocketReturn {
     socket.on("connect", () => {
       setConnected(true);
       setConfigError(null);
-      setSerialError(null);
+      setBrError(null);
       socket.emit(EVENTS.CONFIG_GET);
-      socket.emit(EVENTS.SERIAL_STATUS);
+      socket.emit(EVENTS.BR_STATUS);
       socket.emit(EVENTS.OT_GET_THREAD_RUN_ON_CONNECT);
     });
 
     socket.on("disconnect", () => {
       setConnected(false);
-      setSerialStatus(null);
+      setBrStatus(null);
       setThreadRunningState(null);
       setThreadState(null);
       setSystemInfo(null);
@@ -109,7 +109,7 @@ export function useWebSocket(): UseWebSocketReturn {
 
     socket.on("connect_error", (err) => {
       setConnected(false);
-      setSerialError(err.message);
+      setBrError(err.message);
     });
 
     socket.on(EVENTS.CONFIG_CURRENT, (data: BrConnectionConfigFromBackend | null) => {
@@ -131,26 +131,26 @@ export function useWebSocket(): UseWebSocketReturn {
       setConfigError(data?.error ?? "Config error");
     });
 
-    socket.on(EVENTS.SERIAL_STATUS, (data: ConnectionStatus) => {
-      setSerialStatus(data);
-      setSerialError(null);
+    socket.on(EVENTS.BR_STATUS, (data: ConnectionStatus) => {
+      setBrStatus(data);
+      setBrError(null);
     });
 
-    socket.on(EVENTS.SERIAL_CONNECTED, (data: { success: boolean; status?: ConnectionStatus }) => {
+    socket.on(EVENTS.BR_CONNECTED, (data: { success: boolean; status?: ConnectionStatus }) => {
       if (data.status) {
-        setSerialStatus(data.status);
+        setBrStatus(data.status);
       }
-      setSerialError(null);
+      setBrError(null);
     });
 
-    socket.on(EVENTS.SERIAL_DISCONNECTED, () => {
-      setSerialStatus((prev) =>
+    socket.on(EVENTS.BR_DISCONNECTED, () => {
+      setBrStatus((prev) =>
         prev ? { ...prev, isConnected: false } : null
       );
     });
 
-    socket.on(EVENTS.SERIAL_ERROR, (data: { error?: string }) => {
-      setSerialError(data?.error ?? "Serial error");
+    socket.on(EVENTS.BR_ERROR, (data: { error?: string }) => {
+      setBrError(data?.error ?? "BR connection error");
     });
 
     socket.on(EVENTS.OT_CONFIG, (data: OtConfig) => {
@@ -199,7 +199,7 @@ export function useWebSocket(): UseWebSocketReturn {
       socketRef.current.removeAllListeners();
       socketRef.current = null;
       setConnected(false);
-      setSerialStatus(null);
+      setBrStatus(null);
       setConfig(null);
     }
   }, []);
@@ -215,12 +215,12 @@ export function useWebSocket(): UseWebSocketReturn {
     []
   );
 
-  const connectSerial = useCallback(() => {
-    socketRef.current?.emit(EVENTS.SERIAL_CONNECT);
+  const connectBr = useCallback(() => {
+    socketRef.current?.emit(EVENTS.BR_CONNECT);
   }, []);
 
-  const disconnectSerial = useCallback(() => {
-    socketRef.current?.emit(EVENTS.SERIAL_DISCONNECT);
+  const disconnectBr = useCallback(() => {
+    socketRef.current?.emit(EVENTS.BR_DISCONNECT);
   }, []);
 
   const testBrConnect = useCallback(
@@ -231,11 +231,11 @@ export function useWebSocket(): UseWebSocketReturn {
           return;
         }
         const handler = (result: { success: boolean; error?: string }) => {
-          socketRef.current?.off(EVENTS.SERIAL_TEST_RESULT, handler);
+          socketRef.current?.off(EVENTS.BR_TEST_RESULT, handler);
           resolve(result);
         };
-        socketRef.current.once(EVENTS.SERIAL_TEST_RESULT, handler);
-        socketRef.current.emit(EVENTS.SERIAL_TEST, data);
+        socketRef.current.once(EVENTS.BR_TEST_RESULT, handler);
+        socketRef.current.emit(EVENTS.BR_TEST, data);
       }),
     []
   );
@@ -407,13 +407,13 @@ export function useWebSocket(): UseWebSocketReturn {
     []
   );
 
-  const onSerialData = useCallback((callback: (data: string) => void) => {
+  const onBrData = useCallback((callback: (data: string) => void) => {
     if (!socketRef.current) {
       return () => {};
     }
-    socketRef.current.on(EVENTS.SERIAL_DATA, callback);
+    socketRef.current.on(EVENTS.BR_DATA, callback);
     return () => {
-      socketRef.current?.off(EVENTS.SERIAL_DATA, callback);
+      socketRef.current?.off(EVENTS.BR_DATA, callback);
     };
   }, []);
 
@@ -429,23 +429,23 @@ export function useWebSocket(): UseWebSocketReturn {
         socketRef.current = null;
       }
       setConnected(false);
-      setSerialStatus(null);
+      setBrStatus(null);
       setConfig(null);
     };
   }, [connect]);
 
   return {
     connected,
-    serialStatus,
+    brStatus,
     config,
     configError,
-    serialError,
+    brError,
     connect,
     disconnect,
     getConfig,
     saveConfig,
-    connectSerial,
-    disconnectSerial,
+    connectBr,
+    disconnectBr,
     testBrConnect,
     otConfig,
     getOtConfig,
@@ -466,7 +466,7 @@ export function useWebSocket(): UseWebSocketReturn {
     joinerTable,
     getJoinerTable,
     commissionerConnect,
-    onSerialData,
+    onBrData,
     systemInfo,
     reset,
     factoryReset,

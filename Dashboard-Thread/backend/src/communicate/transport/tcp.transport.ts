@@ -1,6 +1,6 @@
 /**
  * TransportTcp - Kết nối TCP tới BR (frame protocol qua socket)
- * Thay SerialPort; host có thể hostname (vd. Thread-Host.local) hoặc IP.
+ * Kết nối BR qua TCP; host có thể hostname (vd. Thread-Host.local) hoặc IP.
  */
 
 import * as net from "net";

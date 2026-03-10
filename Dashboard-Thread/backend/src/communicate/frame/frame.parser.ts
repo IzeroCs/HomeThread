@@ -21,7 +21,7 @@ export class FrameParser {
   private buffer: Buffer = Buffer.alloc(0);
 
   /**
-   * Đẩy chunk nhận từ serial vào buffer, parse và gọi onFrame cho mỗi frame hoàn chỉnh.
+   * Đẩy chunk nhận từ transport (TCP) vào buffer, parse và gọi onFrame cho mỗi frame hoàn chỉnh.
    * Khi loại bỏ bytes (không SOF, LEN/EOF/CRC sai) gọi onDiscard(bytes, reason) để log [Transport].
    */
   push(

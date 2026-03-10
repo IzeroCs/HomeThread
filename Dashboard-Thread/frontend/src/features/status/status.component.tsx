@@ -8,9 +8,9 @@ function formatPanId(panid: string | null | undefined): string {
 }
 
 export default function Status() {
-  const { serialStatus, otConfig, config: brConfig, testBrConnect, systemInfo } = useWebSocketContext();
+  const { brStatus, otConfig, config: brConfig, testBrConnect, systemInfo } = useWebSocketContext();
   const [networkKeyVisible, setNetworkKeyVisible] = useState(false);
-  const isConnected = serialStatus?.isConnected ?? false;
+  const isConnected = brStatus?.isConnected ?? false;
   const ipaddr = otConfig?.ipaddr?.trim() || null;
 
   return (
@@ -38,8 +38,8 @@ export default function Status() {
                 <div className="status-field">
                   <span className="status-field-label">Host Address</span>
                   <span className="status-field-value status-field-value--accent mono-text">
-                    {serialStatus?.host != null
-                      ? `${serialStatus.host}:${serialStatus.port ?? "—"}`
+                    {brStatus?.host != null
+                      ? `${brStatus.host}:${brStatus.port ?? "—"}`
                       : "—"}
                   </span>
                 </div>

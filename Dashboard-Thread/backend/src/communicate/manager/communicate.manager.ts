@@ -1,7 +1,7 @@
 /**
  * CommunicateManager - Khởi tạo và quản lý giao tiếp BR qua TCP (frame protocol).
  * Điều phối TransportTcp + frame; dữ liệu OT/Thread lưu ở OtConfigManager và ThreadDataManager.
- * Có thể đăng ký onBroadcast để push event (serial:data, serial:status, ot:config, ...) ra ngoài.
+ * Có thể đăng ký onBroadcast để push event (br:data, br:status, ot:config, ...) ra ngoài.
  */
 
 import { BrConnectionConfigService } from "@settings/br-connection.service";
@@ -202,7 +202,7 @@ export class CommunicateManager {
       this.frameUnsubscribe = null;
       this.clearPendingFrames();
       this.frameParser.reset();
-      this.broadcast(EVENTS.SERIAL_STATUS, { isConnected: false });
+      this.broadcast(EVENTS.BR_STATUS, { isConnected: false });
     }
   }
 
@@ -221,7 +221,7 @@ export class CommunicateManager {
     if (this.transportTcp) {
       await this.transportTcp.close();
       this.transportTcp = null;
-      this.broadcast(EVENTS.SERIAL_STATUS, { isConnected: false });
+      this.broadcast(EVENTS.BR_STATUS, { isConnected: false });
     }
   }
 
@@ -425,7 +425,7 @@ export class CommunicateManager {
     this.transportTcp.setOnDisconnect(() => this.onTransportDisconnected());
 
     this.frameUnsubscribe = this.transportTcp.onRawData((chunk: Buffer) => {
-      this.broadcast(EVENTS.SERIAL_DATA, chunk.toString("hex"));
+      this.broadcast(EVENTS.BR_DATA, chunk.toString("hex"));
       this.frameParser.push(
         chunk,
         (frame: ParsedFrame) => {
@@ -582,7 +582,7 @@ export class CommunicateManager {
     this.frameParser.reset();
     this.commandManager = null;
     this.transportTcp = null;
-    this.broadcast(EVENTS.SERIAL_STATUS, { isConnected: false });
+    this.broadcast(EVENTS.BR_STATUS, { isConnected: false });
     this.scheduleReconnect();
   }
 
@@ -617,13 +617,13 @@ export class CommunicateManager {
       this.clearReconnectTimer();
       this.stateWithoutResponseCount = 0;
       const status = this.transportTcp!.getStatus();
-      this.broadcast(EVENTS.SERIAL_CONNECTED, { success: true, status });
-      this.broadcast(EVENTS.SERIAL_STATUS, status);
+      this.broadcast(EVENTS.BR_CONNECTED, { success: true, status });
+      this.broadcast(EVENTS.BR_STATUS, status);
       transportLogger.info(`Connected to BR: ${config.brHost}:${config.brPort}`);
       this.startStateInterval();
     } catch (error) {
       transportLogger.error(`BR connection failed: ${error}`);
-      this.broadcast(EVENTS.SERIAL_STATUS, { isConnected: false, host: config.brHost, port: config.brPort });
+      this.broadcast(EVENTS.BR_STATUS, { isConnected: false, host: config.brHost, port: config.brPort });
       this.scheduleReconnect();
     }
   }

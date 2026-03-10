@@ -437,7 +437,7 @@ export class CommandManager {
 
   private handleCmdData(frame: ParsedFrame): void {
     if (frame.data.length === 0) return;
-    this.callbacks.broadcast(EVENTS.SERIAL_FRAME_DATA, { frameId: frame.frameId, dataHex: frame.data.toString("hex") });
+    this.callbacks.broadcast(EVENTS.BR_FRAME_DATA, { frameId: frame.frameId, dataHex: frame.data.toString("hex") });
   }
 
   private parseAckData(data: Buffer): AckDataConfig | null {

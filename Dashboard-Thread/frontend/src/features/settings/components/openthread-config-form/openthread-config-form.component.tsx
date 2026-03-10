@@ -5,7 +5,7 @@ import "@settings/components/openthread-config-form/openthread-config-form.style
 
 export default function OpenThreadConfigForm() {
   const {
-    serialStatus,
+    brStatus,
     otConfig,
     getOtConfig,
     setOtConfig,
@@ -26,9 +26,9 @@ export default function OpenThreadConfigForm() {
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [showNetworkKey, setShowNetworkKey] = useState(false);
 
-  const isConnected = serialStatus?.isConnected ?? false;
+  const isConnected = brStatus?.isConnected ?? false;
 
-  // Tự lấy cấu hình từ thiết bị khi đã kết nối serial; load preference "tự chạy Thread" từ DB
+  // Tự lấy cấu hình từ thiết bị khi đã kết nối BR; load preference "tự chạy Thread" từ DB
   useEffect(() => {
     if (isConnected) {
       getOtConfig();

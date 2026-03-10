@@ -4,12 +4,12 @@
  */
 
 export const EVENTS = {
-  // Serial events
-  SERIAL_STATUS: "serial:status",
-  SERIAL_DATA: "serial:data",
-  SERIAL_CONNECTED: "serial:connected",
-  SERIAL_FRAME_DATA: "serial:frame:data",
-  
+  // BR connection events
+  BR_STATUS: "br:status",
+  BR_DATA: "br:data",
+  BR_CONNECTED: "br:connected",
+  BR_FRAME_DATA: "br:frame:data",
+
   // Config events
   CONFIG_GET: "config:get",
   CONFIG_SAVE: "config:save",
@@ -19,14 +19,14 @@ export const EVENTS = {
   CONFIG_ERROR: "config:error",
   CONFIG_UPDATED: "config:updated",
   
-  // Serial commands
-  SERIAL_CONNECT: "serial:connect",
-  SERIAL_DISCONNECT: "serial:disconnect",
-  SERIAL_TEST: "serial:test",
-  SERIAL_TEST_RESULT: "serial:test:result",
-  SERIAL_ERROR: "serial:error",
-  SERIAL_DISCONNECTED: "serial:disconnected",
-  
+  // BR connection commands
+  BR_CONNECT: "br:connect",
+  BR_DISCONNECT: "br:disconnect",
+  BR_TEST: "br:test",
+  BR_TEST_RESULT: "br:test:result",
+  BR_ERROR: "br:error",
+  BR_DISCONNECTED: "br:disconnected",
+
   // OpenThread events
   OT_CONFIG: "ot:config",
   OT_GET_CONFIG: "ot:getConfig",
