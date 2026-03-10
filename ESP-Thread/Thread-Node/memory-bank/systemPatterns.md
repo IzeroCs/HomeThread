@@ -216,3 +216,7 @@ thread_discovery
 entity_coap_server
     └── uses → entity_model, thread_coap
 ```
+
+## Workflow / Agent
+
+- **Terminal:** Agent không tự chạy lệnh terminal (build, flash, monitor, v.v.). Không yêu cầu user tự chạy lệnh bằng tay — chỉ thực hiện thay đổi code/tài liệu; user tự quyết định khi nào build/chạy.

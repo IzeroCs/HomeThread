@@ -18,8 +18,10 @@ import {
   type UpsertEntityStateItem,
 } from "@database/repositories/device.repository";
 import {
-  DEVICE_REGISTER_KEYS,
-  NETWORK_KEYS,
+  DEVICE_INFO_KEYS,
+  TOPOLOGY_KEY,
+  TOPOLOGY_KEYS,
+  ENTITIES_KEY,
   ENTITY_KEYS,
   getPayloadField,
 } from "./device.payload";
@@ -76,36 +78,36 @@ function getEntityField<T>(entity: Record<string, unknown>, key: number): T | un
 }
 
 export function upsertDeviceInfo(parsed: Record<string, unknown>): "created" | "changed" {
-  const macHex = macAddressToHex(getPayloadField(parsed, DEVICE_REGISTER_KEYS.MAC_ADDRESS));
+  const macHex = macAddressToHex(getPayloadField(parsed, DEVICE_INFO_KEYS.MAC_ADDRESS));
   const params: UpsertDeviceInfoParams = {
     macHex,
-    deviceName: str(getPayloadField(parsed, DEVICE_REGISTER_KEYS.DEVICE_NAME)) ?? null,
-    deviceType: num(getPayloadField(parsed, DEVICE_REGISTER_KEYS.DEVICE_TYPE)) ?? null,
-    manufacturer: str(getPayloadField(parsed, DEVICE_REGISTER_KEYS.MANUFACTURER)) ?? null,
-    model: str(getPayloadField(parsed, DEVICE_REGISTER_KEYS.MODEL)) ?? null,
-    swVersion: num(getPayloadField(parsed, DEVICE_REGISTER_KEYS.SW_VERSION)) ?? null,
-    hwVersion: num(getPayloadField(parsed, DEVICE_REGISTER_KEYS.HW_VERSION)) ?? null,
+    deviceName: str(getPayloadField(parsed, DEVICE_INFO_KEYS.DEVICE_NAME)) ?? null,
+    deviceType: num(getPayloadField(parsed, DEVICE_INFO_KEYS.DEVICE_TYPE)) ?? null,
+    manufacturer: str(getPayloadField(parsed, DEVICE_INFO_KEYS.MANUFACTURER)) ?? null,
+    model: str(getPayloadField(parsed, DEVICE_INFO_KEYS.MODEL)) ?? null,
+    swVersion: num(getPayloadField(parsed, DEVICE_INFO_KEYS.SW_VERSION)) ?? null,
+    hwVersion: num(getPayloadField(parsed, DEVICE_INFO_KEYS.HW_VERSION)) ?? null,
   };
   return repoUpsertDeviceInfo(params);
 }
 
 export function updateDeviceInfo(parsed: Record<string, unknown>): void {
-  const macHex = macAddressToHex(getPayloadField(parsed, DEVICE_REGISTER_KEYS.MAC_ADDRESS));
+  const macHex = macAddressToHex(getPayloadField(parsed, DEVICE_INFO_KEYS.MAC_ADDRESS));
   const params: UpdateDeviceInfoParams = {
     macHex,
-    deviceSlug: str(getPayloadField(parsed, DEVICE_REGISTER_KEYS.DEVICE_ID)) ?? null,
-    deviceName: str(getPayloadField(parsed, DEVICE_REGISTER_KEYS.DEVICE_NAME)) ?? null,
-    deviceType: num(getPayloadField(parsed, DEVICE_REGISTER_KEYS.DEVICE_TYPE)) ?? null,
-    manufacturer: str(getPayloadField(parsed, DEVICE_REGISTER_KEYS.MANUFACTURER)) ?? null,
-    model: str(getPayloadField(parsed, DEVICE_REGISTER_KEYS.MODEL)) ?? null,
-    swVersion: num(getPayloadField(parsed, DEVICE_REGISTER_KEYS.SW_VERSION)) ?? null,
-    hwVersion: num(getPayloadField(parsed, DEVICE_REGISTER_KEYS.HW_VERSION)) ?? null,
+    deviceSlug: str(getPayloadField(parsed, DEVICE_INFO_KEYS.DEVICE_ID)) ?? null,
+    deviceName: str(getPayloadField(parsed, DEVICE_INFO_KEYS.DEVICE_NAME)) ?? null,
+    deviceType: num(getPayloadField(parsed, DEVICE_INFO_KEYS.DEVICE_TYPE)) ?? null,
+    manufacturer: str(getPayloadField(parsed, DEVICE_INFO_KEYS.MANUFACTURER)) ?? null,
+    model: str(getPayloadField(parsed, DEVICE_INFO_KEYS.MODEL)) ?? null,
+    swVersion: num(getPayloadField(parsed, DEVICE_INFO_KEYS.SW_VERSION)) ?? null,
+    hwVersion: num(getPayloadField(parsed, DEVICE_INFO_KEYS.HW_VERSION)) ?? null,
   };
   repoUpdateDeviceInfo(params);
 }
 
 export function upsertTopology(parsed: Record<string, unknown>): void {
-  const macHex = macAddressToHex(getPayloadField(parsed, DEVICE_REGISTER_KEYS.MAC_ADDRESS));
+  const macHex = macAddressToHex(getPayloadField(parsed, DEVICE_INFO_KEYS.MAC_ADDRESS));
   const deviceId = resolveDeviceIdByMac(macHex);
   if (deviceId == null) throw new Error("device not found for mac_address");
 
@@ -114,26 +116,26 @@ export function upsertTopology(parsed: Record<string, unknown>): void {
   let parentRloc16: string | null = null;
   let rssi: number | null = null;
   let linkQuality: number | null = null;
-  const network = getPayloadField<Record<string, unknown>>(parsed, DEVICE_REGISTER_KEYS.NETWORK);
-  if (network && typeof network === "object") {
-    const rloc = network[String(NETWORK_KEYS.RLOC16)] ?? network[NETWORK_KEYS.RLOC16];
+  const topology = getPayloadField<Record<string, unknown>>(parsed, TOPOLOGY_KEY);
+  if (topology && typeof topology === "object") {
+    const rloc = topology[String(TOPOLOGY_KEYS.RLOC16)] ?? topology[TOPOLOGY_KEYS.RLOC16];
     rloc16 = rloc != null ? String(rloc) : null;
-    role = num(network[String(NETWORK_KEYS.ROLE)] ?? network[NETWORK_KEYS.ROLE]) ?? null;
-    const parent = network[String(NETWORK_KEYS.PARENT)] ?? network[NETWORK_KEYS.PARENT];
+    role = num(topology[String(TOPOLOGY_KEYS.ROLE)] ?? topology[TOPOLOGY_KEYS.ROLE]) ?? null;
+    const parent = topology[String(TOPOLOGY_KEYS.PARENT)] ?? topology[TOPOLOGY_KEYS.PARENT];
     parentRloc16 = parent != null ? String(parent) : null;
-    rssi = num(network[String(NETWORK_KEYS.RSSI)] ?? network[NETWORK_KEYS.RSSI]) ?? null;
-    linkQuality = num(network[String(NETWORK_KEYS.LINK_QUALITY)] ?? network[NETWORK_KEYS.LINK_QUALITY]) ?? null;
+    rssi = num(topology[String(TOPOLOGY_KEYS.RSSI)] ?? topology[TOPOLOGY_KEYS.RSSI]) ?? null;
+    linkQuality = num(topology[String(TOPOLOGY_KEYS.LINK_QUALITY)] ?? topology[TOPOLOGY_KEYS.LINK_QUALITY]) ?? null;
   }
 
   repoUpsertTopology({ deviceId, rloc16, parentRloc16, role, rssi, linkQuality });
 }
 
 export function mergeEntity(parsed: Record<string, unknown>): { status: "created" | "changed"; restore: EntityRestoreItem[] } {
-  const macHex = macAddressToHex(getPayloadField(parsed, DEVICE_REGISTER_KEYS.MAC_ADDRESS));
+  const macHex = macAddressToHex(getPayloadField(parsed, DEVICE_INFO_KEYS.MAC_ADDRESS));
   const deviceId = resolveDeviceIdByMac(macHex);
   if (deviceId == null) throw new Error("device not found for mac_address");
 
-  const arr = getPayloadField<unknown[]>(parsed, DEVICE_REGISTER_KEYS.ENTITIES);
+  const arr = getPayloadField<unknown[]>(parsed, ENTITIES_KEY);
   const entitiesList = Array.isArray(arr) ? arr.filter((e): e is Record<string, unknown> => e != null && typeof e === "object" && !Array.isArray(e)) : [];
 
   const keySet = new Set<number>(Object.values(ENTITY_KEYS) as number[]);
@@ -163,11 +165,11 @@ export function mergeEntity(parsed: Record<string, unknown>): { status: "created
 }
 
 export function updateEntityDefinition(parsed: Record<string, unknown>): void {
-  const macHex = macAddressToHex(getPayloadField(parsed, DEVICE_REGISTER_KEYS.MAC_ADDRESS));
+  const macHex = macAddressToHex(getPayloadField(parsed, DEVICE_INFO_KEYS.MAC_ADDRESS));
   const deviceId = resolveDeviceIdByMac(macHex);
   if (deviceId == null) throw new Error("device not found for mac_address");
 
-  const arr = getPayloadField<unknown[]>(parsed, DEVICE_REGISTER_KEYS.ENTITIES);
+  const arr = getPayloadField<unknown[]>(parsed, ENTITIES_KEY);
   const entitiesList = Array.isArray(arr) ? arr.filter((e): e is Record<string, unknown> => e != null && typeof e === "object" && !Array.isArray(e)) : [];
 
   const keySet = new Set<number>(Object.values(ENTITY_KEYS) as number[]);
@@ -196,11 +198,11 @@ export function updateEntityDefinition(parsed: Record<string, unknown>): void {
 }
 
 export function upsertEntityState(parsed: Record<string, unknown>): void {
-  const macHex = macAddressToHex(getPayloadField(parsed, DEVICE_REGISTER_KEYS.MAC_ADDRESS));
+  const macHex = macAddressToHex(getPayloadField(parsed, DEVICE_INFO_KEYS.MAC_ADDRESS));
   const deviceId = resolveDeviceIdByMac(macHex);
   if (deviceId == null) throw new Error("device not found for mac_address");
 
-  const arr = getPayloadField<unknown[]>(parsed, DEVICE_REGISTER_KEYS.ENTITIES);
+  const arr = getPayloadField<unknown[]>(parsed, ENTITIES_KEY);
   const entitiesList = Array.isArray(arr) ? arr.filter((e): e is Record<string, unknown> => e != null && typeof e === "object" && !Array.isArray(e)) : [];
 
   const items: UpsertEntityStateItem[] = [];

@@ -7,7 +7,7 @@ Dashboard-Thread/          # npm workspaces root
 ├── package.json           # Root: scripts + workspaces config
 ├── backend/               # Node.js + TypeScript server
 │   └── src/
-│       ├── coap/          # CoAP server (decorator), CoapStatus, coap.response (sendCoapResponse), DeviceCoapController, device-coap.service, device-register payload
+│       ├── coap/          # CoAP server (decorator), CoapStatus, coap.response, DeviceCoapController, device-coap.service, device.payload (DeviceInfoPayload, DeviceTopologyPayload, entity, state)
 │       ├── communicate/   # TransportTcp, CommandManager, CommunicateManager, frame (parser/builder/constants)
 │       ├── settings/      # BrConnectionConfigService, AppSettingsService
 │       ├── thread/        # OtConfigManager, PollingManager, device-role, thread-data
@@ -40,7 +40,7 @@ Dashboard-Thread/          # npm workspaces root
 | pino | ^9.5.0 | Structured logging |
 | pino-pretty | latest | Pretty console output |
 
-Transport: TCP (net.Socket) to BR; CoAP (UDP 5683, udp6 listen [::]) from Thread-Node. Dependencies: `coap`. CBOR decode/encode noi bo (`backend/src/cbor`). Thread-Node la **CoAP client**: GET /device/ping; POST /device/register/info (keys 0–8, mac 7), /device/register/entity (mac + key 9), /device/update/info|entity|topology|state. Backend luu 6 bang (device_info, device_topology, device_entity, device_entity_state + history); tra qua **sendCoapResponse** (CoapStatus, echo token). Response phai routable toi node. ResponseTimeout → docs troubleshooting (routing/BR).
+Transport: TCP (net.Socket) to BR; CoAP (UDP 5683, udp6 listen [::]) from Thread-Node. Dependencies: `coap`. CBOR decode/encode noi bo (`backend/src/cbor`). Thread-Node la **CoAP client**: GET /device/ping; POST /device/register/info (chỉ keys 0–7), /device/update/topology (mac + key 8), /device/register/entity, /device/update/entity (mac + key 9), /device/update/state. Spec payload: docs/coap/device_payload_spec.md. Backend luu 6 bang (device_info, device_topology, device_entity, device_entity_state + history); tra qua **sendCoapResponse** (CoapStatus, echo token). Response phai routable toi node. ResponseTimeout → docs troubleshooting (routing/BR).
 
 ### Frontend
 

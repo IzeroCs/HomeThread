@@ -8,13 +8,15 @@ import { CoapStatus } from "../core/coap.type";
 import { sendCoapResponse } from "../core/coap.response";
 import { CoapGet, CoapPost, ParseCborOrSend } from "../core/coap.decorator";
 import { logger } from "@utils/logger.util";
-import type { DeviceRegisterPayload } from "./device.payload";
+import type { DeviceInfoPayload } from "./device.payload";
 import {
   getPayloadField,
-  getRloc16,
+  getRloc16FromTopologyPayload,
   roleToString,
-  DEVICE_REGISTER_KEYS,
-  NETWORK_KEYS,
+  DEVICE_INFO_KEYS,
+  TOPOLOGY_KEY,
+  TOPOLOGY_KEYS,
+  ENTITIES_KEY,
 } from "./device.payload";
 import { cborEncode } from "@cbor";
 import {
@@ -79,24 +81,18 @@ export class DeviceCoapController {
       Object.assign(parsed, rest);
       delete (parsed as Record<string, unknown>)["9"];
     }
-
-    const rloc16 = getRloc16(parsed as unknown as DeviceRegisterPayload);
-    const mac = getPayloadField<unknown>(parsed, DEVICE_REGISTER_KEYS.MAC_ADDRESS);
-    const deviceName = getPayloadField<string>(parsed, DEVICE_REGISTER_KEYS.DEVICE_NAME);
-    const deviceType = getPayloadField<number>(parsed, DEVICE_REGISTER_KEYS.DEVICE_TYPE);
-    const network = getPayloadField<Record<string, unknown>>(parsed, DEVICE_REGISTER_KEYS.NETWORK);
-    const role = network ? (network[String(NETWORK_KEYS.ROLE)] ?? network[NETWORK_KEYS.ROLE]) : undefined;
+    const payload = parsed as unknown as DeviceInfoPayload;
+    const mac = getPayloadField<unknown>(parsed, DEVICE_INFO_KEYS.MAC_ADDRESS);
+    const deviceName = getPayloadField<string>(parsed, DEVICE_INFO_KEYS.DEVICE_NAME);
+    const deviceType = getPayloadField<number>(parsed, DEVICE_INFO_KEYS.DEVICE_TYPE);
     coapLog.info(
-      `CoAP /device/register/info: mac=${mac ?? "-"} device_name=${deviceName ?? "-"} device_type=${deviceType ?? "-"} rloc16=${rloc16} role=${roleToString(role)}`
+      `CoAP /device/register/info: mac=${mac ?? "-"} device_name=${deviceName ?? "-"} device_type=${deviceType ?? "-"}`
     );
 
     let status: CoapStatusValue = CoapStatus.CREATED;
     try {
-      const result = upsertDeviceInfo(parsed);
+      const result = upsertDeviceInfo(payload);
       status = result === "created" ? CoapStatus.CREATED : CoapStatus.CHANGED;
-      if (getPayloadField(parsed, DEVICE_REGISTER_KEYS.NETWORK) != null) {
-        upsertTopology(parsed);
-      }
     } catch (e) {
       coapLog.warn(`CoAP /device/register/info failed: ${e instanceof Error ? e.message : String(e)}`);
     }
@@ -106,9 +102,9 @@ export class DeviceCoapController {
   @ParseCborOrSend(CoapStatus.CHANGED)
   @CoapPost("/device/register/entity")
   registerEntity(req: CoapRequest, res: CoapResponse, parsed: Record<string, unknown>): void {
-    const arr = getPayloadField<unknown[]>(parsed, DEVICE_REGISTER_KEYS.ENTITIES);
+    const arr = getPayloadField<unknown[]>(parsed, ENTITIES_KEY);
     const count = Array.isArray(arr) ? arr.length : 0;
-    const mac = getPayloadField<unknown>(parsed, DEVICE_REGISTER_KEYS.MAC_ADDRESS);
+    const mac = getPayloadField<unknown>(parsed, DEVICE_INFO_KEYS.MAC_ADDRESS);
     coapLog.info(`CoAP /device/register/entity: mac=${mac ?? "-"} entities=${count}`);
 
     let status: CoapStatusValue = CoapStatus.CHANGED;
@@ -135,7 +131,7 @@ export class DeviceCoapController {
   @CoapPost("/device/update/info")
   updateInfo(req: CoapRequest, res: CoapResponse, parsed: Record<string, unknown>): void {
     try {
-      updateDeviceInfo(parsed);
+      updateDeviceInfo(parsed as unknown as DeviceInfoPayload);
     } catch (e) {
       coapLog.warn(`CoAP /device/update/info failed: ${e instanceof Error ? e.message : String(e)}`);
     }
@@ -156,6 +152,11 @@ export class DeviceCoapController {
   @ParseCborOrSend(CoapStatus.CHANGED)
   @CoapPost("/device/update/topology")
   updateTopology(req: CoapRequest, res: CoapResponse, parsed: Record<string, unknown>): void {
+    const rloc16 = getRloc16FromTopologyPayload(parsed);
+    const topology = getPayloadField<Record<string, unknown>>(parsed, TOPOLOGY_KEY);
+    const role = topology ? (topology[String(TOPOLOGY_KEYS.ROLE)] ?? topology[TOPOLOGY_KEYS.ROLE]) : undefined;
+    const mac = getPayloadField<unknown>(parsed, DEVICE_INFO_KEYS.MAC_ADDRESS);
+    coapLog.info(`CoAP /device/update/topology: mac=${mac ?? "-"} rloc16=${rloc16} role=${roleToString(role)}`);
     try {
       upsertTopology(parsed);
     } catch (e) {
