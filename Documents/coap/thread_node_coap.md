@@ -10,18 +10,18 @@ Backend       parse CBOR → device_info, device_entity, device_topology, device
               Response: 2.01/2.04 (và có thể kèm restore state trong body).
 ```
 
-- **Thread-Node → Backend**: Gửi **GET** `/device/ping`; **POST** `/device/register` (keys 0–8), **chờ thành công** (retry nếu fail); **chỉ khi register success** mới gửi **POST** `/device/entities` (key 0 = device_id, key 9 = array entities). Các endpoint `/device/update/info`, `/device/update/entity`, `/device/update/topology`, `/device/update/state` là tùy chọn / mở rộng.
+- **Thread-Node → Backend**: Gửi **GET** `/device/ping`; **POST** `/device/register/info` (keys 0–7), **chờ thành công** (retry nếu fail); **chỉ khi register/info success** mới gửi **POST** `/device/register/entity` (key 7 = mac_address, key 9 = array entities). Các endpoint `/device/update/info`, `/device/update/entity`, `/device/update/topology`, `/device/update/state` là tùy chọn / mở rộng.
 - **Backend**: Listen UDP 5683 trên IPv6 ([::]). Mọi response **echo CoAP token** (RFC 7252). **device_slug** hoàn toàn do backend/UI tạo — node **không gửi** và không cần biết slug.
 
-## CoAP URI (Node đang dùng)
+## CoAP URI (Node đang dùng — align backend)
 
 | Path | Method | Ý nghĩa |
 |------|--------|---------|
-| `/device/ping` | **GET** | Ping; backend trả **2.05 Content**, payload **4 byte** = timestamp uint32 LE. Node so sánh; nếu khác → backend restart → gửi lại register + entities. |
-| `/device/register` | POST | Đăng ký device + topology. Payload CBOR **keys 0–8**. Node **chờ** response 2.01/2.04; **nếu fail thì retry** (vd. 2s) đến khi thành công. Chỉ khi success mới gửi entities. |
-| `/device/entities` | POST | Đăng ký danh sách entity. Payload: **key 0** = device_id (string), **key 9** = array entities. Chỉ gửi **sau khi** register đã thành công. Backend có thể trả **restore state** trong body CBOR (map key **10** = array restore). Response 2.01/2.04, echo token. |
+| `/device/ping` | **GET** | Ping; backend trả **2.05 Content**, payload **4 byte** = timestamp uint32 LE. Node so sánh; nếu khác → backend restart → gửi lại register/info + register/entity. |
+| `/device/register/info` | POST | Đăng ký device info. Payload CBOR **keys 0–7** (không key 8). Node **chờ** response 2.01/2.04; **nếu fail thì retry** (vd. 2s) đến khi thành công. Chỉ khi success mới gửi register/entity. |
+| `/device/register/entity` | POST | Đăng ký danh sách entity. Payload: **key 7** = mac_address, **key 9** = array entities. Chỉ gửi **sau khi** register/info đã thành công. Backend có thể trả **restore state** trong body CBOR (map key **10** = array restore). Response 2.01/2.04, echo token. |
 
-**API mở rộng (tùy chọn):** `/device/register/info`, `/device/register/entity`, `/device/update/info`, `/device/update/entity`, `/device/update/topology`, `/device/update/state` — xem border_router_coap_server.md nếu backend hỗ trợ.
+**API mở rộng (tùy chọn):** `/device/update/info`, `/device/update/entity`, `/device/update/topology`, `/device/update/state` — xem border_router_coap_server.md.
 
 ## Slug (backend/UI only)
 
@@ -29,22 +29,21 @@ Backend       parse CBOR → device_info, device_entity, device_topology, device
 
 ## Payload CBOR
 
-- **POST /device/register** — map **keys 0–8** (device + network):
+- **POST /device/register/info** — map **keys 0–7** (device info only, không key 8):
   - **0**: device_id (string, optional).
   - **1**: device_name, **2**: device_type, **3**: manufacturer, **4**: model, **5**: sw_version, **6**: hw_version.
-  - **7**: mac_address (uint, EUI-64) — backend dùng làm identifier.
-  - **8**: network (map: rloc16(0), role(1)=0|1|2, ipv6(2), parent(3), rssi(4), link_quality(5) optional). Backend ghi topology nếu có.
+  - **7**: mac_address (uint, EUI-64) — **bắt buộc**, backend dùng làm identifier.
 
-- **POST /device/entities** — map **key 0** = device_id (string), **key 9** = array entity. Mỗi entity: entity_id(0), name(1), type(2), device_class(3), unit(12), **restore_mode(13)** (optional, 0–4), và các trường state nếu có.
+- **POST /device/register/entity** — map **key 7** = mac_address (uint), **key 9** = array entity. Mỗi entity: entity_id(0), name(1), type(2), device_class(3), unit(12), **restore_mode(13)** (optional, 0–4), và các trường state nếu có.
 
 **restore_mode** (key 13 trong entity): 0 = RESTORE_DEFAULT_OFF, 1 = RESTORE_DEFAULT_ON, 2 = ALWAYS_OFF, 3 = ALWAYS_ON, 4 = DISABLED. Backend dùng khi node boot để quyết định gửi lại state đã lưu hay default ON/OFF trong response.
 
 ## Flow khi boot
 
-1. Node gửi **POST /device/register** (keys 0–8). **Chờ** response thành công (2.01/2.04); **nếu fail thì retry** (vd. sau 2s) đến khi thành công.
-2. **Khi register success** → Node gửi **POST /device/entities** (key 0 = device_id, key 9 = array entities, mỗi entity có thể có restore_mode).
-3. Backend xử lý entities: merge entity, lookup state cũ. Nếu entity có **restore_mode** và có state đã lưu → đưa vào danh sách restore; không có state cũ → dùng default theo restore_mode (OFF/ON/không gửi).
-4. Response của **POST /device/entities** có thể có body **CBOR** (Content-Format application/cbor): map key **10** = mảng restore; mỗi phần tử là map với key 0=entity_id, 1=restore_mode, 2=state, 3=brightness, 4=mode, 5=rgb_json, 6=color_temp, 7=value_real, 8=has_saved_state (0/1). Node decode CBOR và áp dụng state (hoặc default) cho từng entity.
+1. Node gửi **POST /device/register/info** (keys 0–7). **Chờ** response thành công (2.01/2.04); **nếu fail thì retry** (vd. sau 2s) đến khi thành công.
+2. **Khi register/info success** → Node gửi **POST /device/register/entity** (key 7 = mac_address, key 9 = array entities, mỗi entity có thể có restore_mode).
+3. Backend xử lý register/entity: merge entity, lookup state cũ. Nếu entity có **restore_mode** và có state đã lưu → đưa vào danh sách restore; không có state cũ → dùng default theo restore_mode (OFF/ON/không gửi).
+4. Response của **POST /device/register/entity** có thể có body **CBOR** (Content-Format application/cbor): map key **10** = mảng restore; mỗi phần tử là map với key 0=entity_id, 1=restore_mode, 2=state, 3=brightness, 4=mode, 5=rgb_json, 6=color_temp, 7=value_real, 8=has_saved_state (0/1). Node decode CBOR và áp dụng state (hoặc default) cho từng entity.
 
 ## update/topology và update/state
 

@@ -423,8 +423,78 @@ static int encode_device_and_network(cbor_encoder_t *enc,
 }
 
 /**
+ * Encode device info only (keys 0–7). No network (key 8). No entities.
+ * For POST /device/register/info (backend expects keys 0–7 only).
+ */
+static int encode_device_only(cbor_encoder_t *enc, const device_model_t *device)
+{
+    if (cbor_encode_uint(enc, CBOR_K_DEVICE_ID) < 0) return -1;
+    if (cbor_encode_text_string(enc, device->info.device_id) < 0) return -1;
+
+    if (cbor_encode_uint(enc, CBOR_K_DEVICE_NAME) < 0) return -1;
+    if (cbor_encode_text_string(enc, device->info.device_name) < 0) return -1;
+
+    if (cbor_encode_uint(enc, CBOR_K_DEVICE_TYPE) < 0) return -1;
+    if (cbor_encode_uint(enc, device->info.device_type) < 0) return -1;
+
+    if (device->info.manufacturer[0] != '\0') {
+        if (cbor_encode_uint(enc, CBOR_K_MANUFACTURER) < 0) return -1;
+        if (cbor_encode_text_string(enc, device->info.manufacturer) < 0) return -1;
+    }
+
+    if (device->info.model[0] != '\0') {
+        if (cbor_encode_uint(enc, CBOR_K_MODEL) < 0) return -1;
+        if (cbor_encode_text_string(enc, device->info.model) < 0) return -1;
+    }
+
+    if (cbor_encode_uint(enc, CBOR_K_SW_VERSION) < 0) return -1;
+    if (cbor_encode_uint(enc, device->info.sw_version) < 0) return -1;
+
+    if (cbor_encode_uint(enc, CBOR_K_HW_VERSION) < 0) return -1;
+    if (cbor_encode_uint(enc, device->info.hw_version) < 0) return -1;
+
+    if (device->info.mac_address != 0) {
+        if (cbor_encode_uint(enc, CBOR_K_MAC_ADDRESS) < 0) return -1;
+        if (cbor_encode_uint(enc, device->info.mac_address) < 0) return -1;
+    }
+
+    return 0;
+}
+
+/**
+ * Serialize device info only (keys 0–7) to CBOR. No network, no entities.
+ * For POST /device/register/info (backend contract).
+ */
+int entity_serialize_register_info_cbor(uint8_t *buffer, size_t buffer_size)
+{
+    if (!buffer || buffer_size == 0) {
+        ESP_LOGE(TAG, "Invalid buffer");
+        return -1;
+    }
+
+    device_model_t *device = device_model_get();
+    if (!device) {
+        ESP_LOGE(TAG, "Device Model not initialized");
+        return -1;
+    }
+
+    cbor_encoder_t enc = {
+        .buffer = buffer,
+        .buffer_size = buffer_size,
+        .pos = 0
+    };
+
+    if (cbor_start_indefinite_map(&enc) < 0) return -1;
+    if (encode_device_only(&enc, device) < 0) return -1;
+    if (cbor_end_indefinite_map(&enc) < 0) return -1;
+
+    ESP_LOGD(TAG, "Register info CBOR encoded %zu bytes (keys 0-7)", enc.pos);
+    return (int)enc.pos;
+}
+
+/**
  * Serialize device + network only (keys 0–8) to CBOR. No entities.
- * For POST /device/register (first step).
+ * For legacy / full register; topology sent separately via update/topology.
  */
 int entity_serialize_device_cbor(uint16_t rloc16, const char *ml_eid_str,
                                  uint16_t parent_rloc16,
@@ -456,8 +526,8 @@ int entity_serialize_device_cbor(uint16_t rloc16, const char *ml_eid_str,
 }
 
 /**
- * Serialize entities only to CBOR: map with device_id (key 0) + entities array (key 9).
- * For POST /device/entities.
+ * Serialize entities only to CBOR: map with mac_address (key 7) + entities array (key 9).
+ * For POST /device/register/entity (backend contract).
  */
 int entity_serialize_entities_cbor(uint8_t *buffer, size_t buffer_size)
 {
@@ -484,8 +554,10 @@ int entity_serialize_entities_cbor(uint8_t *buffer, size_t buffer_size)
 
     if (cbor_start_indefinite_map(&enc) < 0) return -1;
 
-    if (cbor_encode_uint(&enc, CBOR_K_DEVICE_ID) < 0) return -1;
-    if (cbor_encode_text_string(&enc, device->info.device_id) < 0) return -1;
+    if (device->info.mac_address != 0) {
+        if (cbor_encode_uint(&enc, CBOR_K_MAC_ADDRESS) < 0) return -1;
+        if (cbor_encode_uint(&enc, device->info.mac_address) < 0) return -1;
+    }
 
     if (cbor_encode_uint(&enc, CBOR_K_ENTITIES) < 0) return -1;
     if (cbor_start_indefinite_array(&enc) < 0) return -1;

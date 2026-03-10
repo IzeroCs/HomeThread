@@ -4,20 +4,18 @@ Tài liệu mô tả các endpoint CoAP mà Backend cung cấp cho Thread-Node. 
 
 ## Tổng quan endpoint
 
-**Contract chính (Thread-Node dùng):**
+**Contract chính (Thread-Node dùng, align code backend):**
 
 | Endpoint | Method | Payload CBOR | Hành vi Backend | Response |
 |----------|--------|--------------|-----------------|----------|
 | `/device/ping` | GET | — | Trả 4 byte timestamp (server start) | 2.05 Content, echo token |
-| `/device/register` | POST | Map keys **0–8** (device + network, key 8 = topology) | Upsert device_info, ghi topology nếu có key 8. Node **chờ** response thành công mới gửi entities; nếu fail Node retry register. | 2.01 Created / 2.04 Changed, echo token |
-| `/device/entities` | POST | **key 0** = device_id (string), **key 9** = array entities | Resolve device theo device_id; upsert device_entity; có thể trả body **CBOR** (Content-Format application/cbor): map key **10** = array restore (mỗi item map: 0=entity_id, 1=restore_mode, 2=state, 3=brightness, 4=mode, 5=rgb_json, 6=color_temp, 7=value_real, 8=has_saved_state) | 2.01/2.04, echo token, optional body |
+| `/device/register/info` | POST | Map keys **0–7** (device info; **bắt buộc key 7 mac_address**). Không gửi key 8 ở đây. | Upsert device_info (key = mac_address), generate slug nếu NULL, soft-delete entity/state cũ của device. Node **chờ** response thành công mới gửi register/entity; nếu fail Node retry. | 2.01 Created / 2.04 Changed, echo token |
+| `/device/register/entity` | POST | **key 7** mac_address, **key 9** array entities | Resolve device; upsert device_entity; restore state; có thể trả body **CBOR** (Content-Format application/cbor): map key **10** = array restore (mỗi item map: 0=entity_id, 1=restore_mode, 2=state, 3=brightness, 4=mode, 5=rgb_json, 6=color_temp, 7=value_real, 8=has_saved_state) | 2.01/2.04, echo token, optional body |
 
-**API mở rộng / legacy (backend có thể hỗ trợ thêm):**
+**API mở rộng:**
 
 | Endpoint | Method | Payload CBOR | Hành vi Backend | Response |
 |----------|--------|--------------|-----------------|----------|
-| `/device/register/info` | POST | Map keys **0–8**, **bắt buộc key 7 mac_address** | Upsert device_info (key = mac_address), generate slug nếu NULL, soft-delete entity/state cũ của device | 2.01 Created / 2.04 Changed, echo token |
-| `/device/register/entity` | POST | **key 7** mac_address, **key 9** array entities | Resolve device; upsert device_entity; restore state; có thể trả body key **10** = restore | 2.01/2.04, echo token, optional body |
 | `/device/update/info` | POST | mac_address + device fields | Update device_info theo mac_address | 2.04, echo token |
 | `/device/update/entity` | POST | mac_address + key 9 array entities | Update device_entity (name, type, device_class, unit, attributes_json) | 2.04, echo token |
 | `/device/update/topology` | POST | mac_address + key 8 network | Insert device_topology_history; upsert device_topology (rloc16, parent_rloc16, role, rssi, link_quality) | 2.04, echo token |
@@ -42,10 +40,10 @@ Tài liệu mô tả các endpoint CoAP mà Backend cung cấp cho Thread-Node. 
 
 **restore_mode** (device_entity): 0 = RESTORE_DEFAULT_OFF, 1 = RESTORE_DEFAULT_ON, 2 = ALWAYS_OFF, 3 = ALWAYS_ON, 4 = DISABLED. Khi node boot, backend query entity + state; nếu có state đã lưu (và deleted_at NULL) thì gửi state đó trong response restore; không thì theo restore_mode gửi OFF/ON hoặc không gửi (DISABLED).
 
-## Flow register → entities (Node đang dùng)
+## Flow register/info → register/entity (Node đang dùng)
 
-1. **POST /device/register** (keys 0–8): Node gửi device + network (key 8 = topology). Backend upsert device_info, ghi topology nếu có key 8. Node **chờ** response thành công (2.01/2.04); nếu fail thì **retry** register (vd. sau 2s) đến khi thành công.
-2. **Chỉ khi register đã success**, Node mới gửi **POST /device/entities** (key 0 = device_id, key 9 = array entities). Backend resolve device theo device_id; upsert device_entity; có thể trả body **CBOR** (Content-Format application/cbor): map key **10** = array restore. Node decode CBOR và áp dụng state/default cho từng entity.
+1. **POST /device/register/info** (keys 0–7): Node gửi device info only (không key 8). Backend upsert device_info (key = mac_address). Node **chờ** response thành công (2.01/2.04); nếu fail thì **retry** (vd. sau 2s) đến khi thành công.
+2. **Chỉ khi register/info đã success**, Node mới gửi **POST /device/register/entity** (key 7 = mac_address, key 9 = array entities). Backend resolve device theo mac; upsert device_entity; có thể trả body **CBOR** (Content-Format application/cbor): map key **10** = array restore. Node decode CBOR và áp dụng state/default cho từng entity.
 
 ## CoAP token (RFC 7252)
 

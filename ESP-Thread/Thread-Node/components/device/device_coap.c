@@ -21,7 +21,8 @@ static const char *TAG = "device_coap";
 #define COAP_DEFAULT_PORT 5683
 #define DEVICE_URI_PATH "device"
 #define REGISTER_URI_PATH "register"
-#define ENTITIES_URI_PATH "entities"
+#define REGISTER_INFO_PATH "info"
+#define REGISTER_ENTITY_PATH "entity"
 #define PING_URI_PATH "ping"
 #define COAP_TOKEN_LEN 2
 
@@ -270,6 +271,8 @@ esp_err_t device_coap_send_register(const device_coap_endpoint_t *endpoint,
     COAP_BUILD_FAIL_IF(err != OT_ERROR_NONE, "Failed to append path device");
     err = otCoapMessageAppendUriPathOptions(message, REGISTER_URI_PATH);
     COAP_BUILD_FAIL_IF(err != OT_ERROR_NONE, "Failed to append path register");
+    err = otCoapMessageAppendUriPathOptions(message, REGISTER_INFO_PATH);
+    COAP_BUILD_FAIL_IF(err != OT_ERROR_NONE, "Failed to append path info");
     err = otCoapMessageAppendContentFormatOption(message, OT_COAP_OPTION_CONTENT_FORMAT_CBOR);
     COAP_BUILD_FAIL_IF(err != OT_ERROR_NONE, "Failed to append Content-Format");
     otCoapMessageSetPayloadMarker(message);
@@ -281,7 +284,7 @@ esp_err_t device_coap_send_register(const device_coap_endpoint_t *endpoint,
         return ret;
     }
 
-    ESP_LOGD(TAG, "POST /device/register sent");
+    ESP_LOGD(TAG, "POST /device/register/info sent");
     return ESP_OK;
 }
 
@@ -318,8 +321,10 @@ esp_err_t device_coap_send_entities(const device_coap_endpoint_t *endpoint,
     COAP_BUILD_FAIL_IF(err != OT_ERROR_NONE, "Failed to set token");
     err = otCoapMessageAppendUriPathOptions(message, DEVICE_URI_PATH);
     COAP_BUILD_FAIL_IF(err != OT_ERROR_NONE, "Failed to append path device");
-    err = otCoapMessageAppendUriPathOptions(message, ENTITIES_URI_PATH);
-    COAP_BUILD_FAIL_IF(err != OT_ERROR_NONE, "Failed to append path entities");
+    err = otCoapMessageAppendUriPathOptions(message, REGISTER_URI_PATH);
+    COAP_BUILD_FAIL_IF(err != OT_ERROR_NONE, "Failed to append path register");
+    err = otCoapMessageAppendUriPathOptions(message, REGISTER_ENTITY_PATH);
+    COAP_BUILD_FAIL_IF(err != OT_ERROR_NONE, "Failed to append path entity");
     err = otCoapMessageAppendContentFormatOption(message, OT_COAP_OPTION_CONTENT_FORMAT_CBOR);
     COAP_BUILD_FAIL_IF(err != OT_ERROR_NONE, "Failed to append Content-Format");
     otCoapMessageSetPayloadMarker(message);
@@ -331,7 +336,7 @@ esp_err_t device_coap_send_entities(const device_coap_endpoint_t *endpoint,
         return ret;
     }
 
-    ESP_LOGD(TAG, "POST /device/entities sent");
+    ESP_LOGD(TAG, "POST /device/register/entity sent");
     return ESP_OK;
 }
 

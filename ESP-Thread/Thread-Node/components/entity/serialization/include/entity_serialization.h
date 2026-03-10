@@ -12,16 +12,22 @@ extern "C" {
 #endif
 
 /**
+ * Serialize device info only (keys 0–7) to CBOR. No network, no entities.
+ * For POST /device/register/info (backend contract).
+ */
+int entity_serialize_register_info_cbor(uint8_t *buffer, size_t buffer_size);
+
+/**
  * Serialize device + network only (keys 0–8) to CBOR. No entities.
- * For POST /device/register (first step).
+ * For legacy / full payload; topology may be sent via update/topology.
  */
 int entity_serialize_device_cbor(uint16_t rloc16, const char *ml_eid_str,
                                  uint16_t parent_rloc16,
                                  uint8_t *buffer, size_t buffer_size);
 
 /**
- * Serialize entities only: map with device_id (key 0) + entities array (key 9).
- * For POST /device/entities.
+ * Serialize entities only: map with mac_address (key 7) + entities array (key 9).
+ * For POST /device/register/entity (backend contract).
  */
 int entity_serialize_entities_cbor(uint8_t *buffer, size_t buffer_size);
 

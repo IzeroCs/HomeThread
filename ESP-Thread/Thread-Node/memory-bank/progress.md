@@ -23,7 +23,7 @@ Examples                 █████████████░░░░░�
 | **Status LED** | `status_led.c/.h` | WS2812 via RMT. 6 trạng thái: Boot/NotJoined/Detached/Child/Router/Leader |
 | **Boot Button** | `boot_btn.c/.h` | Long press detection, gọi factory reset |
 | **CoAP Server Manager** | `thread_coap.c/.h` | Idempotent start, resource registration với lock, response helper |
-| **Device** (components/device/) | `device_registry.c/.h`, `device_coap.c/.h` | **device_registry**: gửi POST /device/register; **chờ thành công** (retry 2s nếu fail) rồi mới gửi POST /device/entities; API register/ping/is_registered. **device_coap**: send_register, send_entities, ping; token 2B; response handlers; timestamp → callback re-register. thread_node gọi register/ping khi discovery/ping task. |
+| **Device** (components/device/) | `device_registry.c/.h`, `device_coap.c/.h` | **device_registry**: gửi POST /device/register/info (keys 0–7); **chờ thành công** (retry 2s nếu fail) rồi gửi POST /device/register/entity (mac 7 + key 9); API register/ping/is_registered. **device_coap**: send_register (path register/info), send_entities (path register/entity), ping; token 2B; align backend contract. thread_node gọi register/ping khi discovery/ping task. |
 | **Custom OT Config** | `openthread_custom_config.h` | Child timeout 60s, supervision 30s/60s, leader weight, CoAP API. **Không** define OPENTHREAD_CONFIG_DNS_CLIENT_ENABLE (ESP-IDF 5.5.3 dùng CONFIG_OPENTHREAD_DNS_CLIENT từ sdkconfig trong openthread-core-esp32x-ftd-config.h). |
 | **Thread Discovery** | `thread_discovery.c/.h` | SRP/DNS-SD `_dashboard._udp`; cache NVS + cache_ttl_sec; static fallback. **Log backend IP**: chỉ thread_node log INFO ("Backend discovered" / "Backend endpoint updated") khi có IP lần đầu hoặc khi IP đổi; thread_discovery log cache/static/SRP ở LOGD. |
 
@@ -44,8 +44,9 @@ Examples                 █████████████░░░░░�
 
 | API / Entity type | Trạng thái |
 |---|---|
-| `entity_serialize_device_cbor` | ✅ Device + network only (keys 0–8), cho POST /device/register |
-| `entity_serialize_entities_cbor` | ✅ Map device_id (0) + entities array (9), cho POST /device/entities |
+| `entity_serialize_register_info_cbor` | ✅ Device info only (keys 0–7), cho POST /device/register/info |
+| `entity_serialize_device_cbor` | ✅ Device + network (keys 0–8), legacy / full |
+| `entity_serialize_entities_cbor` | ✅ Map mac (7) + entities array (9), cho POST /device/register/entity |
 | `entity_light_t` | ✅ **Hoàn chỉnh** |
 | `entity_sensor_t` | ✅ **Hoàn chỉnh** |
 | `entity_switch_t` | ❌ Chưa có |

@@ -1,7 +1,7 @@
 /*
- * Device Registry - đăng ký device lên Backend.
- * Bước 1: POST /device/register (device + network only).
- * Bước 2: Chỉ khi register thành công mới gửi POST /device/entities.
+ * Device Registry - đăng ký device lên Backend (align backend contract).
+ * Bước 1: POST /device/register/info (device info keys 0–7 only).
+ * Bước 2: Chỉ khi register/info thành công mới gửi POST /device/register/entity (mac 7 + key 9).
  * Register thất bại: retry sau 2s đến khi thành công.
  */
 #include <string.h>
@@ -59,7 +59,7 @@ static void on_register_response(bool success, void *ctx)
             esp_err_t err = device_coap_send_entities(coap_ep, entities_buffer, entities_len,
                                                      on_entities_response, c);
             if (err == ESP_OK) {
-                ESP_LOGI(TAG, "Register OK, POST /device/entities sent");
+                ESP_LOGI(TAG, "Register/info OK, POST /device/register/entity sent");
                 return;
             }
         }
@@ -151,9 +151,9 @@ static esp_err_t try_send_register(void)
     device_model_update_network(rloc16, ipv6_bytes, role_enum);
 
     uint8_t device_buffer[DEVICE_CBOR_MAX];
-    int device_len = entity_serialize_device_cbor(rloc16, NULL, parent_rloc16, device_buffer, sizeof(device_buffer));
+    int device_len = entity_serialize_register_info_cbor(device_buffer, sizeof(device_buffer));
     if (device_len < 0) {
-        ESP_LOGE(TAG, "Failed to serialize device to CBOR");
+        ESP_LOGE(TAG, "Failed to serialize register/info to CBOR");
         return ESP_FAIL;
     }
 
@@ -241,7 +241,7 @@ esp_err_t device_registry_register(const device_registry_endpoint_t *endpoint,
 
     esp_err_t ret = try_send_register();
     if (ret == ESP_OK) {
-        ESP_LOGI(TAG, "CoAP POST /device/register sent (port=%u)", (unsigned)endpoint->port);
+        ESP_LOGI(TAG, "CoAP POST /device/register/info sent (port=%u)", (unsigned)endpoint->port);
     }
     return ret;
 }
