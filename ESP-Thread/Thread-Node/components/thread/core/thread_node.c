@@ -34,6 +34,9 @@ static const char *TAG = "thread_node";
 #define DEFAULT_DISCOVERY_REFRESH_MS  60000   /* Khi đã có backend: refresh 60s */
 #define DEFAULT_DISCOVERY_RETRY_MS    10000   /* Khi chưa có backend: retry mỗi 10s */
 #define DEFAULT_PING_INTERVAL_MS      10000
+#define DEFAULT_TOPOLOGY_UPDATE_INTERVAL_MS  60000   /* POST /device/update/topology mỗi 60s */
+#define DEFAULT_STATE_UPDATE_INTERVAL_MS     30000   /* POST /device/update/state mỗi 30s */
+#define UPDATE_TASK_SLEEP_MS                  5000   /* Kiểm tra topology/state mỗi 5s */
 
 static thread_node_config_t s_config;
 static bool s_started = false;
@@ -89,7 +92,7 @@ static void backend_trigger_register(void)
     if (!s_backend_ep_valid) {
         return;
     }
-    const device_registry_endpoint_t *ep = (const device_registry_endpoint_t *)&s_backend_ep;
+    const device_coap_endpoint_t *ep = (const device_coap_endpoint_t *)&s_backend_ep;
     esp_err_t err = device_registry_register(ep, NULL, NULL);
     if (err != ESP_OK) {
         ESP_LOGW(TAG, "device_registry_register: %s", esp_err_to_name(err));
@@ -151,10 +154,51 @@ static void backend_ping_task(void *pvParameters)
         if (!s_backend_ep_valid) {
             continue;
         }
-        const device_registry_endpoint_t *ep = (const device_registry_endpoint_t *)&s_backend_ep;
+        const device_coap_endpoint_t *ep = (const device_coap_endpoint_t *)&s_backend_ep;
         esp_err_t err = device_registry_ping(ep, backend_on_ping_timestamp_changed, NULL);
         if (err != ESP_OK) {
             ESP_LOGD(TAG, "device_registry_ping: %s", esp_err_to_name(err));
+        }
+    }
+}
+
+/* Gửi update/topology và update/state theo interval (chỉ khi đã có backend và đã registered). */
+static void backend_update_task(void *pvParameters)
+{
+    (void)pvParameters;
+    const TickType_t sleep_ticks = pdMS_TO_TICKS(UPDATE_TASK_SLEEP_MS);
+    TickType_t last_topology_ticks = 0;
+    TickType_t last_state_ticks = 0;
+    bool first = true;
+
+    for (;;) {
+        vTaskDelay(sleep_ticks);
+        if (!s_backend_ep_valid || !device_coap_is_registered()) {
+            continue;
+        }
+        TickType_t now = xTaskGetTickCount();
+        if (first) {
+            last_topology_ticks = now;
+            last_state_ticks = now;
+            first = false;
+        }
+        const device_coap_endpoint_t *ep = (const device_coap_endpoint_t *)&s_backend_ep;
+
+        if ((now - last_topology_ticks) >= pdMS_TO_TICKS(DEFAULT_TOPOLOGY_UPDATE_INTERVAL_MS)) {
+            esp_err_t err = device_registry_send_update_topology(ep);
+            if (err == ESP_OK) {
+                last_topology_ticks = now;
+            } else {
+                ESP_LOGD(TAG, "device_registry_send_update_topology: %s", esp_err_to_name(err));
+            }
+        }
+        if ((now - last_state_ticks) >= pdMS_TO_TICKS(DEFAULT_STATE_UPDATE_INTERVAL_MS)) {
+            esp_err_t err = device_registry_send_update_state(ep);
+            if (err == ESP_OK) {
+                last_state_ticks = now;
+            } else {
+                ESP_LOGD(TAG, "device_registry_send_update_state: %s", esp_err_to_name(err));
+            }
         }
     }
 }
@@ -258,6 +302,9 @@ static void on_joined_wrapper(void *ctx)
         }
         if (xTaskCreate(backend_ping_task, "thread_ping", 3072, NULL, 5, NULL) != pdPASS) {
             ESP_LOGE(TAG, "Failed to create ping task");
+        }
+        if (xTaskCreate(backend_update_task, "thread_upd", 3072, NULL, 5, NULL) != pdPASS) {
+            ESP_LOGE(TAG, "Failed to create update (topology/state) task");
         }
     }
 

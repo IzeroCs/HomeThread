@@ -6,6 +6,7 @@
  */
 #pragma once
 
+#include "device_coap.h"
 #include "esp_err.h"
 #include "openthread/ip6.h"
 #include <stdbool.h>
@@ -29,14 +30,6 @@ typedef void (*device_registry_callback_fn)(bool success, void *ctx);
 typedef void (*device_registry_ping_timestamp_changed_fn)(void *ctx);
 
 /**
- * Backend endpoint (IPv6 + port) cho CoAP register. Từ thread_discovery.
- */
-typedef struct {
-    otIp6Address addr;
-    uint16_t port;
-} device_registry_endpoint_t;
-
-/**
  * Đã đăng ký thành công với Backend chưa (nhận ACK 2.01/2.04/2.05).
  */
 bool device_registry_is_registered(void);
@@ -51,12 +44,12 @@ esp_err_t device_registry_init(void);
  * Gửi CoAP POST /device/register tới backend (endpoint từ thread_discovery).
  * Gọi sau khi discovery được backend; khi backend IPv6 đổi thì gọi lại với endpoint mới.
  *
- * @param endpoint Backend (IPv6 + port), từ thread_discovery_get_endpoint().
+ * @param endpoint Backend (IPv6 + port), từ thread_discovery_get_endpoint(); dùng device_coap_endpoint_t.
  * @param callback Callback khi nhận response (có thể NULL).
  * @param ctx      Context cho callback.
  * @return ESP_OK nếu gửi request thành công.
  */
-esp_err_t device_registry_register(const device_registry_endpoint_t *endpoint,
+esp_err_t device_registry_register(const device_coap_endpoint_t *endpoint,
                                   device_registry_callback_fn callback,
                                   void *ctx);
 
@@ -70,9 +63,19 @@ esp_err_t device_registry_register(const device_registry_endpoint_t *endpoint,
  * @param ctx                Context cho callback.
  * @return ESP_OK nếu gửi request thành công.
  */
-esp_err_t device_registry_ping(const device_registry_endpoint_t *endpoint,
+esp_err_t device_registry_ping(const device_coap_endpoint_t *endpoint,
                                device_registry_ping_timestamp_changed_fn on_timestamp_changed,
                                void *ctx);
+
+/**
+ * Gửi POST /device/update/topology (device + network CBOR). Gọi theo interval.
+ */
+esp_err_t device_registry_send_update_topology(const device_coap_endpoint_t *endpoint);
+
+/**
+ * Gửi POST /device/update/state (entity updates CBOR). Gọi theo interval.
+ */
+esp_err_t device_registry_send_update_state(const device_coap_endpoint_t *endpoint);
 
 #ifdef __cplusplus
 }
