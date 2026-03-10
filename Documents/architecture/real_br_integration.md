@@ -42,6 +42,17 @@
 - Pull state, dataset, tables, IP, set config, commissioner joiner, reset/factory — **giữ nguyên** (CMD_STATE, CMD_DATASET_ACTIVE, CMD_IP_ADDR, CMD_SET_*, CMD_COMMISSIONER_JOINER, CMD_RESET, CMD_FACTORY, …).
 - Cấu trúc frame, bảng CMD, CRC8, format table: xem [usb_cdc_frame_structure.md](../protocol/usb_cdc_frame_structure.md) và [table_data_format.md](../protocol/table_data_format.md). Chỉ đổi **transport**: socket TCP thay serial.
 
+### 2.4. Backend keepalive / ACK bắt buộc
+
+- **Keepalive (watchdog phía BR):** BR có state watchdog. Backend **phải** gửi `CMD_STATE` định kỳ để BR không tự restart khi mất kết nối (xem `communicate_task.c`: 15s/interval, miss 5 lần → restart).
+- **ACK cho `CMD_IP_ADDR`:** Khi backend gửi `CMD_IP_ADDR` và nhận `CMD_ACK` kèm 16 bytes Leader RLOC, backend **phải gửi lại** một frame `CMD_ACK` **rỗng** (LEN=0) với **cùng Frame ID** để BR dừng retry.
+
+### 2.5. Giảm polling (roadmap)
+
+- BR đã có **OpenThread change detector** (hook `otSetStateChangedCallback()` → debounce → snapshot+diff) để biết “có thay đổi thật hay không” cho: role/rloc/dataset/router/child/joiner tables.\n
+- **Hiện tại:** detector **chưa notify/push** về backend, nên backend vẫn chủ động pull.\n
+- **Mục tiêu tiếp theo:** BR sẽ gửi notify nhỏ (bitmask) khi thay đổi, backend nhận notify rồi mới pull table tương ứng → giảm polling đáng kể.
+
 ---
 
 ## 3. Thread-Node (Child) — Cần làm gì
@@ -107,9 +118,8 @@
 
 ## 5. Debug: RX/TX logging (BR)
 
-- Ở level log **INFO** (mặc định), BR không in frame RX/TX cho CMD_STATE và bảng (ROUTER_TABLE, CHILD_TABLE, JOINER_TABLE) để giảm noise.
-- Để xem **mọi frame nhận/gửi** và **byte stream TCP**: set log level **DEBUG** cho component/tag `communicate` và `transport_tcp` (menuconfig: Component config → Log output → Set log level; hoặc runtime `esp_log_level_set("communicate", ESP_LOG_DEBUG)` và tương tự cho `"transport_tcp"`).
-- Khi bật DEBUG: log `frame RX: id=... cmd=... len=...`, `frame TX: ...`, `tcp rx N bytes`, `tcp tx N bytes`.
+- Ở level log **INFO** (mặc định), BR log **mọi** frame RX/TX theo dạng `frame RX/TX: id=... cmd=... len=...`.
+- Để xem **byte stream TCP** (`tcp rx/tx N bytes`): set log level **DEBUG** cho tag `transport_tcp` (menuconfig hoặc `esp_log_level_set("transport_tcp", ESP_LOG_DEBUG)`).
 
 ---
 

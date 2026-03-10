@@ -61,6 +61,7 @@
 #define TASK_NAME_LED_STATUS    "led_status"
 #define TASK_NAME_TCP_RX        "tcp_rx"
 #define TASK_NAME_STK_MON       "stk_mon"
+#define TASK_NAME_OT_CHANGE     "ot_change"
 
 /* ---- Task stack sizes (bytes) ---- */
 #define TASK_STACK_MAIN         CONFIG_ESP_MAIN_TASK_STACK_SIZE
@@ -70,3 +71,4 @@
 #define TASK_STACK_LED_STATUS   2048
 #define TASK_STACK_TCP_RX       4096
 #define TASK_STACK_STK_MON      3072
+#define TASK_STACK_OT_CHANGE    10240

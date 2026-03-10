@@ -46,6 +46,7 @@ nvs_flash_init → esp_netif_init → esp_event_loop
 | `comm_queue` | `TASK_NAME_COMM_QUEUE` | 10240 | 5 | Dispatch frame → handler |
 | `comm_task` | `TASK_NAME_COMM_TASK` | 4096 | 5 | State watchdog |
 | `tcp_rx` | `TASK_NAME_TCP_RX` | 4096 | 5 | Đọc byte từ socket TCP (frame từ dashboard) |
+| `ot_change` | (local) | 3072 | 4 | OT state changed callback → debounce → snapshot diff (changed_mask) |
 | `led_status` | `TASK_NAME_LED_STATUS` | 2048 | 5 | WS2812 theo OT role (dùng last-known role khi lock timeout) |
 | `boot_btn` | `TASK_NAME_BOOT_BTN` | 4096 | 0 | Poll GPIO0 |
 | `stk_mon` | `TASK_NAME_STK_MON` | 3072 | 2 | Log HWM + heap mỗi 30s |
@@ -73,7 +74,7 @@ TCP socket bytes
 Frame format: `[0xAA][FrameID][CMD][LEN_H][LEN_L][DATA×LEN][CRC8][0x55]`
 CRC8/MAXIM: poly=0x31, init=0x00, input=`[FrameID, CMD, LEN_H, LEN_L, DATA...]`
 
-**Logging:** CMD noisy (STATE, *_TABLE) và ACK tương ứng: **INFO** không log; **DEBUG** log đầy đủ `frame RX`/`frame TX`. Transport: `transport_tcp` log `tcp rx N bytes` / `tcp tx N bytes` ở DEBUG. Bật DEBUG cho tag `communicate` và `transport_tcp` khi cần debug kênh frame.
+**Logging:** `communicate` log **mọi** `frame RX`/`frame TX` ở **INFO** theo dạng `id/cmd/len`. Transport: `transport_tcp` log `tcp rx N bytes` / `tcp tx N bytes` ở **DEBUG**.
 
 ## OpenThread Lock Pattern
 

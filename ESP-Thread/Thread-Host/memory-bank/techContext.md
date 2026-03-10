@@ -84,7 +84,7 @@
 - Backend cần route: prefix Thread **via** BR (link-local). BR gửi RA với RIO; để kernel cài route từ RIO: **per-interface** `sysctl net.ipv6.conf.<iface>.accept_ra_rt_info_max_plen=128` (vd. enp8s0). Không dùng `net.ipv6.conf.all.*` — all chỉ là mặc định, không áp dụng ngược cho interface đã có. Hoặc add tay: `ip -6 route add <prefix>::/64 via <BR_fe80::> dev <iface>`. BR phát RA theo chu kỳ hoặc khi nhận RS; backend có thể gửi **Router Solicitation** (vd. `rdisc6 -1 <iface>`) để nhận RA sớm. Chi tiết: activeContext.md, Documents/architecture/real_br_integration.md. **Docker:** `network_mode: host`; default BR 192.168.31.3. Add route trong container cần `--cap-add=NET_ADMIN`.
 
 ### Logging (frame RX/TX)
-- Mặc định **INFO**: in **mọi frame RX/TX** và hexdump **header/payload/tail**.
+- Mặc định **INFO**: in **mọi frame RX/TX** theo dạng `id/cmd/len`.
 - Để xem thêm **byte stream TCP** (tcp rx/tx N bytes): set log level **DEBUG** cho tag `transport_tcp` (menuconfig hoặc `esp_log_level_set`).
 
 ## Cấu hình quan trọng (sdkconfig / sdkconfig.defaults)
@@ -116,10 +116,14 @@ web_storage| data | 0x82   | 0x420000| 0x32000
 Thread-Host/
 ├── main/
 │   ├── br_main.c                    ← app_main, backhaul chọn backbone, stack_monitor_task
+│   ├── openthread/
+│   │   ├── dataset_init.c           ← dataset init on boot
+│   │   ├── ot_change_detector.c     ← OT callback → debounce → snapshot diff
+│   │   └── ot_table_snapshot.c      ← serialize router/child/joiner tables
 │   ├── backhaul/
 │   │   └── eth_w5500.c              ← Ethernet W5500 (SPI), backhaul LAN
 │   ├── communicate/
-│   │   ├── communicate.c            ← frame parser/builder, log suppression
+│   │   ├── communicate.c            ← frame parser/builder, frame RX/TX logging
 │   │   ├── communicate_command.c    ← tất cả CMD handlers
 │   │   ├── communicate_queue.c      ← FreeRTOS queue + dispatch
 │   │   ├── communicate_task.c       ← state watchdog + IP retry
@@ -130,6 +134,9 @@ Thread-Host/
 ├── include/
 │   ├── br_config.h                  ← TASK_NAME_*, TASK_STACK_* (centralized)
 │   ├── br_custom_config.h           ← OpenThread custom config (SRP server, CoAP API, …); cần HEADER_CUSTOM=y + path "include"
+│   ├── openthread/
+│   │   ├── ot_change_detector.h     ← OT change detector API
+│   │   └── ot_table_snapshot.h      ← Snapshot builder API
 │   ├── backhaul/eth_w5500.h
 │   └── communicate/communicate.h   ← CMD defines, frame API
 ├── memory-bank/                     ← Memory Bank files

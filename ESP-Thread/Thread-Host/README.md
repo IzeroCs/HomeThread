@@ -109,7 +109,7 @@ idf.py -p /dev/ttyUSB0 -b 460800 flash monitor
 
 ### 4. Debug: log frame RX/TX
 
-BR hiện **log mọi frame RX/TX ở mức INFO** (kèm hexdump header/payload/tail). Nếu cần xem thêm **byte stream TCP** (`tcp rx/tx N bytes`) thì set log level **DEBUG** cho component `transport_tcp` (menuconfig → Component config → Log output).
+BR hiện log **mọi frame RX/TX ở mức INFO** (dạng `id/cmd/len`). Nếu cần xem thêm **byte stream TCP** (`tcp rx/tx N bytes`) thì set log level **DEBUG** cho component `transport_tcp` (menuconfig → Component config → Log output).
 
 ## Cấu trúc project
 
@@ -121,6 +121,10 @@ Thread-Host/
 │   ├── br_console.c                 # CLI console (OpenThread + system commands)
 │   ├── br_rcp_ctrl.c                # Control RESET/BOOT pins của RCP
 │   ├── br_custom_config.h           # OpenThread custom config (CoAP API enabled)
+│   ├── openthread/
+│   │   ├── dataset_init.c           # Dataset init on boot
+│   │   ├── ot_change_detector.c     # OT state changed callback → debounce → snapshot diff
+│   │   └── ot_table_snapshot.c      # Serialize router/child/joiner tables to snapshot buffers
 │   ├── hardware/
 │   │   └── led_status.c             # LED status indicator (WS2812)
 │   ├── backhaul/
@@ -140,6 +144,9 @@ Thread-Host/
 │   ├── Kconfig.projbuild            # Menuconfig options
 │   └── idf_component.yml            # Component dependencies
 ├── include/
+│   ├── openthread/
+│   │   ├── ot_change_detector.h     # OT change detector API
+│   │   └── ot_table_snapshot.h      # Snapshot builder API
 │   ├── hardware/
 │   │   └── led_status.h             # LED status header
 │   ├── communicate/
@@ -209,6 +216,7 @@ Thread-Host/
 
 - **Frame & bảng:** [docs/protocol/usb_cdc_frame_structure.md](docs/protocol/usb_cdc_frame_structure.md) (cấu trúc khung, bảng CMD), [docs/protocol/table_data_format.md](docs/protocol/table_data_format.md) (Router/Child/Joiner table).
 - **Tích hợp BR:** [docs/architecture/real_br_integration.md](docs/architecture/real_br_integration.md) (Dashboard TCP, child→backend).
+- **Backend checklist (frame TCP):** [docs/architecture/backend_br_frame_requirements.md](docs/architecture/backend_br_frame_requirements.md)
 
 ### Tài liệu chính thức
 

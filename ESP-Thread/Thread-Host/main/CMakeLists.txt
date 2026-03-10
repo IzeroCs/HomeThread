@@ -9,6 +9,8 @@ idf_component_register(
   "communicate/communicate_task.c"
   "communicate/transport_tcp.c"
   "openthread/dataset_init.c"
+  "openthread/ot_table_snapshot.c"
+  "openthread/ot_change_detector.c"
   INCLUDE_DIRS "../include"
   REQUIRES mdns esp_timer
   PRIV_REQUIRES console cmd_system openthread nvs_flash driver esp_eth

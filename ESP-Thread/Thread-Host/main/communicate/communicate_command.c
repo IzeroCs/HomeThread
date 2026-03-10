@@ -20,6 +20,7 @@
 #include "openthread/thread.h"
 #include "openthread/thread_ftd.h"
 #include "openthread/srp_client.h"
+#include "openthread/ot_table_snapshot.h"
 #include <string.h>
 
 #define TAG "communicate_cmd"
@@ -229,29 +230,14 @@ int communicate_command_handle_router_table(uint8_t frame_id)
         return -1;
     }
     uint8_t buf[256];
-    uint8_t *p = buf + 1;
-    uint8_t count = 0;
-    for (uint8_t router_id = 0; router_id <= 62; router_id++) {
-        otRouterInfo router_info;
-        if (otThreadGetRouterInfo(instance, router_id, &router_info) == OT_ERROR_NONE && router_info.mAllocated) {
-            if (p + 15 > buf + sizeof(buf)) {
-                break;
-            }
-            *p++ = router_info.mRouterId;
-            *p++ = (uint8_t)(router_info.mRloc16 >> 8);
-            *p++ = (uint8_t)(router_info.mRloc16 & 0xFF);
-            memcpy(p, router_info.mExtAddress.m8, 8);
-            p += 8;
-            *p++ = router_info.mLinkQualityIn;
-            *p++ = router_info.mLinkQualityOut;
-            *p++ = (uint8_t)(router_info.mAge >> 8);
-            *p++ = (uint8_t)(router_info.mAge & 0xFF);
-            count++;
-        }
-    }
+    size_t out_len = 0;
+    bool ok = ot_snapshot_build_router_table(instance, buf, sizeof(buf), &out_len);
     esp_openthread_lock_release();
-    buf[0] = count;
-    esp_err_t err = communicate_send_frame(frame_id, CMD_ACK, buf, (size_t)(p - buf));
+    if (!ok || out_len == 0) {
+        send_nack(frame_id, 0x02); /* Not ready */
+        return -1;
+    }
+    esp_err_t err = communicate_send_frame(frame_id, CMD_ACK, buf, out_len);
     return (err == ESP_OK) ? 0 : -1;
 }
 
@@ -267,32 +253,14 @@ int communicate_command_handle_child_table(uint8_t frame_id)
         return -1;
     }
     uint8_t buf[512];
-    uint8_t *p = buf + 1;
-    uint8_t count = 0;
-    uint16_t max_children = otThreadGetMaxAllowedChildren(instance);
-    for (uint16_t index = 0; index < max_children; index++) {
-        otChildInfo child_info;
-        if (otThreadGetChildInfoByIndex(instance, index, &child_info) == OT_ERROR_NONE) {
-            if (p + 17 > buf + sizeof(buf)) {
-                break;
-            }
-            *p++ = child_info.mChildId;
-            *p++ = (uint8_t)(child_info.mRloc16 >> 8);
-            *p++ = (uint8_t)(child_info.mRloc16 & 0xFF);
-            memcpy(p, child_info.mExtAddress.m8, 8);
-            p += 8;
-            *p++ = child_info.mLinkQualityIn;
-            *p++ = (uint8_t)child_info.mAverageRssi;
-            *p++ = child_info.mFullThreadDevice ? 1 : 0;
-            *p++ = child_info.mRxOnWhenIdle ? 1 : 0;
-            *p++ = (uint8_t)(child_info.mAge >> 8);
-            *p++ = (uint8_t)(child_info.mAge & 0xFF);
-            count++;
-        }
-    }
+    size_t out_len = 0;
+    bool ok = ot_snapshot_build_child_table(instance, buf, sizeof(buf), &out_len);
     esp_openthread_lock_release();
-    buf[0] = count;
-    esp_err_t err = communicate_send_frame(frame_id, CMD_ACK, buf, (size_t)(p - buf));
+    if (!ok || out_len == 0) {
+        send_nack(frame_id, 0x02); /* Not ready */
+        return -1;
+    }
+    esp_err_t err = communicate_send_frame(frame_id, CMD_ACK, buf, out_len);
     return (err == ESP_OK) ? 0 : -1;
 }
 
@@ -308,46 +276,14 @@ int communicate_command_handle_joiner_table(uint8_t frame_id)
         return -1;
     }
     uint8_t buf[512];
-    uint8_t *p = buf + 1;
-    uint8_t count = 0;
-    uint16_t iterator = 0;
-    otJoinerInfo joiner_info;
-    while (otCommissionerGetNextJoinerInfo(instance, &iterator, &joiner_info) == OT_ERROR_NONE) {
-        if (p + 50 > buf + sizeof(buf)) {
-            break;
-        }
-        *p++ = (uint8_t)joiner_info.mType;
-        if (joiner_info.mType == OT_JOINER_INFO_TYPE_EUI64) {
-            memcpy(p, joiner_info.mSharedId.mEui64.m8, 8);
-            p += 8;
-        } else if (joiner_info.mType == OT_JOINER_INFO_TYPE_DISCERNER) {
-            uint64_t discerner_val = joiner_info.mSharedId.mDiscerner.mValue;
-            uint8_t discerner_len = joiner_info.mSharedId.mDiscerner.mLength;
-            *p++ = discerner_len;
-            uint8_t discerner_bytes = (discerner_len + 7) / 8;
-            for (int i = discerner_bytes - 1; i >= 0; i--) {
-                *p++ = (uint8_t)((discerner_val >> (i * 8)) & 0xFF);
-            }
-        } else {
-            memset(p, 0, 8);
-            p += 8;
-        }
-        size_t pskd_len = strlen((const char *)joiner_info.mPskd.m8);
-        if (pskd_len > 32) {
-            pskd_len = 32;
-        }
-        *p++ = (uint8_t)pskd_len;
-        memcpy(p, joiner_info.mPskd.m8, pskd_len);
-        p += pskd_len;
-        *p++ = (uint8_t)(joiner_info.mExpirationTime >> 24);
-        *p++ = (uint8_t)(joiner_info.mExpirationTime >> 16);
-        *p++ = (uint8_t)(joiner_info.mExpirationTime >> 8);
-        *p++ = (uint8_t)(joiner_info.mExpirationTime & 0xFF);
-        count++;
-    }
+    size_t out_len = 0;
+    bool ok = ot_snapshot_build_joiner_table(instance, buf, sizeof(buf), &out_len);
     esp_openthread_lock_release();
-    buf[0] = count;
-    esp_err_t err = communicate_send_frame(frame_id, CMD_ACK, buf, (size_t)(p - buf));
+    if (!ok || out_len == 0) {
+        send_nack(frame_id, 0x02); /* Not ready */
+        return -1;
+    }
+    esp_err_t err = communicate_send_frame(frame_id, CMD_ACK, buf, out_len);
     return (err == ESP_OK) ? 0 : -1;
 }
 

@@ -23,6 +23,7 @@
 #include "hardware/boot_btn.h"
 #include "backhaul/eth_w5500.h"
 #include "communicate/communicate_task.h"
+#include "openthread/ot_change_detector.h"
 #include "esp_log.h"
 #include "esp_system.h"
 
@@ -47,6 +48,7 @@ static const task_stack_info_t k_tasks[] = {
     { TASK_NAME_LED_STATUS,   TASK_STACK_LED_STATUS   },
     { TASK_NAME_TCP_RX,       TASK_STACK_TCP_RX       },
     { TASK_NAME_STK_MON,      TASK_STACK_STK_MON      },
+    { TASK_NAME_OT_CHANGE,    TASK_STACK_OT_CHANGE    },
 };
 
 static void __attribute__((unused)) stack_monitor_task(void *pv)
@@ -147,6 +149,16 @@ void app_main(void)
 
     launch_openthread_border_router(&openthread_config);
 
+    /* OpenThread change detector: debounce + snapshot diff (no backend notify yet). */
+    otInstance *instance = esp_openthread_get_instance();
+    if (instance != NULL) {
+        if (!ot_change_detector_init(instance)) {
+            ESP_LOGW(TAG, "ot_change_detector_init failed");
+        }
+    } else {
+        ESP_LOGW(TAG, "ot instance not ready, skip change detector init");
+    }
+
     /* Nếu chưa có active dataset thì tạo mới (ESP-BR-<MAC>) và set active */
     openthread_dataset_init_on_boot();
 
@@ -192,5 +204,5 @@ void app_main(void)
     };
     ESP_ERROR_CHECK(boot_btn_start(&btn_cfg));
 
-    // xTaskCreate(stack_monitor_task, TASK_NAME_STK_MON, TASK_STACK_STK_MON, NULL, STACK_MONITOR_TASK_PRIO, NULL);
+    xTaskCreate(stack_monitor_task, TASK_NAME_STK_MON, TASK_STACK_STK_MON, NULL, STACK_MONITOR_TASK_PRIO, NULL);
 }

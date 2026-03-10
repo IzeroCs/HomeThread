@@ -1,10 +1,14 @@
 # Active Context — Thread-Host
 
-_Cập nhật: 2026-03-08 (W5500 init IPv4-only, timeout restart, RST hold/release)_
+_Cập nhật: 2026-03-10 (OT change detector + table snapshots; update logging/docs)_
 
 ## Công việc hiện tại
 
 Backhaul Ethernet W5500 đã có IPv6 trên backbone (link-local + ULA/global khi router gửi RA). SRP server + SRP client (CMD_SRP_REGISTER) đã bật: backend đăng ký `_dashboard._udp` qua frame TCP; child discovery service qua SRP. Child↔backend: ping/CoAP từ child tới IPv6 backend qua BR. BR không còn CoAP client (Leader Control GET `/network/stop` đã gỡ trong 0.17.0).
+
+### Giảm poll: OpenThread change detector (chưa notify backend)
+- Đã thêm **OpenThread change detector**: hook `otSetStateChangedCallback()` → debounce → build snapshot (role/rloc/dataset + router/child/joiner tables) và diff với snapshot trước để tạo `changed_mask`.
+- Mục tiêu: backend **chỉ cần pull khi có thay đổi**, thay vì poll bảng liên tục. Phần notify backend sẽ làm sau.
 
 ### Backend reply → Thread-Node (route trên host)
 - Node gửi tới backend OK; **reply từ backend về Node** cần **route** trên máy backend: prefix Thread (vd. fdb8:.../fdd7:...) **via BR** (link-local BR trên backbone). BR gửi RA với RIO nhưng **router lifetime = 0** → Linux có thể cài route từ RIO nếu **accept_ra_rt_info_max_plen** đủ lớn (vd. 128). **Quan trọng:** set **per-interface**, không dùng `all`: `sysctl net.ipv6.conf.<iface>.accept_ra_rt_info_max_plen=128` (vd. `enp8s0`). `net.ipv6.conf.all.*` chỉ là mặc định cho interface mới, không áp dụng ngược lại cho interface đã tồn tại. Route từ RA mất sau reboot; có thể gửi **Router Solicitation (RS)** từ backend (vd. `rdisc6 -1 <iface>`) để BR trả RA sớm thay vì chờ chu kỳ. Sau **factory reset BR** prefix và có thể BR link-local đổi → cập nhật route/RS.
@@ -51,13 +55,9 @@ Backhaul Ethernet W5500 đã có IPv6 trên backbone (link-local + ULA/global kh
 ### Phase 1 cleanup (BR thật) — Đã thực hiện
 - Đã xóa Device Registry (CoAP server /device/register|update|ping) và CMD_DATA push/wait-ACK. BR không còn forward child→backend; chuyển hướng sang BR thật (child gửi thẳng backend qua IP). Frame protocol chỉ dùng cho quản lý BR (state, dataset, Commissioner…).
 
-### Frame log suppression — Đã implement
-- `CMD_STATE`, `CMD_ROUTER_TABLE`, `CMD_CHILD_TABLE`, `CMD_JOINER_TABLE` và ACK tương ứng không log ở **INFO** (reduce noise); log ở **DEBUG**.
-
-### RX/TX logging — Đã bổ sung
-- **Frame RX/TX** (communicate.c): CMD noisy và ACK tương ứng log bằng `ESP_LOGD`; các CMD khác log `ESP_LOGI`. Để xem mọi frame: set log level **DEBUG** cho tag `communicate`.
-- **Transport TCP** (transport_tcp.c): Mỗi lần `recv`/`send` log `tcp rx N bytes` / `tcp tx N bytes` ở **DEBUG**. Set tag `transport_tcp` sang DEBUG để xem byte stream.
-- Cách bật: menuconfig → Log output → Set log level for component `communicate`, `transport_tcp` = Debug; hoặc runtime `esp_log_level_set("communicate", ESP_LOG_DEBUG)` và tương tự cho `transport_tcp`.
+### RX/TX logging
+- **Frame RX/TX** (`communicate.c`): log **mọi** frame ở mức **INFO** theo dạng `frame RX/TX: id=%u cmd=%s len=%u` (không suppress noisy).
+- **Transport TCP** (`transport_tcp.c`): log `tcp rx N bytes` / `tcp tx N bytes` ở **DEBUG**. Set tag `transport_tcp` sang DEBUG để xem byte stream.
 
 ### LED status — Fix nháy đỏ khi joiner join
 - **Hiện tượng:** Sau khi commissioner joiner và node join, LED nháy đỏ (disabled) rồi xanh (Leader). BR vẫn Leader.
