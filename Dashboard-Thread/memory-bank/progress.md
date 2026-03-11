@@ -83,7 +83,7 @@ Version notation in this file uses Semantic Versioning `MAJOR.MINOR.PATCH` (no l
 
 ### Backend — CoAP device & System
 
-- CoAP server (coap/coap-device.server.ts): listen UDP 5683 on [::] (udp6). **Decorator:** registerCoapControllers(server, [DeviceCoapController]); paths /device/ping, register/info, register/entity, update/info, update/entity, update/topology, update/state. **GET /device/ping**: query ?mac= (16-char hex) khuyến nghị → update last_seen_at; response 2.05 Content + 4-byte timestamp. **POST register/info**: DeviceInfoPayload keys 0–6; upsert device_info (device_name_raw + COALESCE device_name), slug từ (device_name ?? device_name_raw ?? mac); soft-delete entity/state cũ. **POST register/entity**: key 0 (mac) + **key 1** array entities; merge device_entity (name_raw + COALESCE name, disabled key 6); trả CBOR key 10 = restore. **POST update/topology**: payload flat key 0 = mac, 1–5 (rloc16, role, parent, rssi, link_quality; không ipv6). **POST update/state**: key 0 + **key 1** array (STATE_KEYS 0–6; không available). DB: device_entity.disabled, name_raw; device_info last_seen_at, device_name_raw; device_entity_state không ghi available. Doc: device_payload_spec.md, thread_node_coap.md, border_router_coap_server.md.
+- CoAP server (coap/coap-device.server.ts): listen UDP 5683 on [::] (udp6). **Decorator:** registerCoapControllers(server, [DeviceCoapController]); paths /device/ping, register/info, register/entity, update/info, update/entity, update/topology, update/state. **GET /device/ping**: query ?mac= (16-char hex) khuyến nghị → update last_seen_at; response 2.05 Content + 4-byte timestamp. **POST register/info**: DeviceInfoPayload keys 0–6; upsert device_info (device_name_raw + COALESCE device_name), slug từ (device_name ?? device_name_raw ?? mac); soft-delete entity/state cũ. **POST register/entity**: key 0 (mac) + **key 1** array entities; merge device_entity (name_raw + COALESCE name, disabled key 6); trả CBOR key 10 = restore. **POST update/topology**: payload role-based (child 0–5 parent_*; router/leader 0,1,2,6 neighbors); device_topology_neighbor replace list. **POST update/state**: key 0 + **key 1** array (STATE_KEYS 0–6; không available). DB: device_entity.disabled, name_raw; device_info last_seen_at, device_name_raw; device_entity_state không ghi available. Doc: device_payload_spec.md, thread_node_coap.md, border_router_coap_server.md.
 - System info: getBackendAddresses() (utils/ipv6.util); gui SYSTEM_INFO khi CONFIG_GET/CONFIG_CURRENT. Frontend Status section System (IPv4/IPv6).
 
 ### Backend — Path aliases & build
@@ -116,9 +116,9 @@ Console da bo. Commissioner gop vao Nodes (modal + Joiner List).
 - HomeThread/Documents/protocol/usb_cdc_frame_structure.md
 - HomeThread/Documents/protocol/table_data_format.md
 - HomeThread/Documents/dashboard/migration_to_frame_protocol.md
-- docs/coap/device_payload_spec.md — spec payload Thread-Node (key 0 = mac; device_info 0–6; topology flat 0–6; entity/state key 1 array; ENTITY_KEYS 0–6 disabled; STATE_KEYS 0–6 no available; GET /device/ping ?mac= heartbeat + restart detection; flow register/info → register/entity → update/topology, update/state)
-- docs/coap/thread_node_coap.md — hướng dẫn Thread-Node (CoAP + CBOR, GET /device/ping?mac= heartbeat, flow, SRP discovery)
-- docs/coap/border_router_coap_server.md — spec Backend CoAP (endpoints, 6 bảng, device_topology rssi/link_quality)
+- docs/coap/device_payload_spec.md — spec payload Thread-Node (device_info 0–6; topology **role-based** child 3,4,5 / router/leader key 6 TopologyNeighbor; entity/state key 1 array; GET /device/ping ?mac= heartbeat; flow register/info → register/entity → update/topology, update/state)
+- docs/coap/thread_node_coap.md — hướng dẫn Thread-Node (CoAP + CBOR, GET /device/ping?mac= heartbeat, flow, SRP discovery, update/topology role-based)
+- docs/coap/border_router_coap_server.md — spec Backend CoAP (endpoints, 7 bảng gồm device_topology_neighbor, topology role-based)
 - docs/websocket.md — Backend WebSocket: cấu trúc handler/, @WsOn, getWsRoutes, bảng handler modules
 - README.md + TODO.md cap nhat
 

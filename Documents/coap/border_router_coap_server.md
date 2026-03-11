@@ -25,7 +25,7 @@ Tài liệu mô tả các endpoint CoAP mà Backend cung cấp cho Thread-Node. 
 
 **Topology payload (update/topology):** Role-based. Key 0 = mac_address, 1 = rloc16, 2 = role. Child gửi 3,4,5 (parent_rloc16, parent_rssi, parent_lq). Router/Leader gửi key 6 = array TopologyNeighbor. Backend lưu device_topology, device_topology_history, device_topology_neighbor (router/leader). Xem device_payload_spec.md.
 
-## Schema 6 bảng
+## Schema 7 bảng
 
 | Bảng | Vai trò |
 |------|---------|

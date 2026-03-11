@@ -8,6 +8,12 @@ Giao tiếp BR ↔ backend theo hướng **notify-first**: Thread-Host push `CMD
 
 ## Recent Significant Changes
 
+### Topology role-based payload + device_topology_neighbor (2.10.0)
+- **Payload:** DeviceTopologyPayload parse theo role. Child gửi keys 0–5 (mac, rloc16, role, parent_rloc16, parent_rssi, parent_lq). Router/Leader gửi 0,1,2,6 (mac, rloc16, role, neighbors array TopologyNeighbor). TopologyNeighbor: 0=rloc16, 1?=rssi, 2?=lq_in, 3?=lq_out, 4=is_child.
+- **DB:** Bảng **device_topology_neighbor** (device_id, neighbor_rloc16, rssi, lq_in, lq_out, is_child); migration 0001_add_device_topology_neighbor. upsertTopology: replace list (delete + insert neighbors).
+- **Backend:** device.payload.ts TOPOLOGY_NEIGHBOR_KEYS, TopologyNeighbor; device-coap.service parse key 6, parseTopologyNeighbors(); repo TopologyNeighborItem, neighbors trong UpsertTopologyParams.
+- **Docs:** device_payload_spec.md (role-based topology, TopologyNeighbor, gợi ý otThreadGetParentInfo/otThreadGetNextNeighborInfo), thread_node_coap.md, border_router_coap_server.md (7 bảng). Memory-bank cập nhật (activeContext, techContext, progress, productContext, systemPatterns, projectbrief).
+
 ### Device heartbeat + name raw vs user + frame log filter
 - **Heartbeat (GET /device/ping):** Query `?mac=<16-char-hex>`; backend parse (parsePingMac), gọi `updateDeviceLastSeen(mac)`. Cột `device_info.last_seen_at`; repo `updateDeviceLastSeen`, helper `getDeviceStatus(lastSeenAt, now)` → online (30s) / away (5m) / offline. Constants HEARTBEAT_ONLINE_THRESHOLD_MS, HEARTBEAT_OFFLINE_THRESHOLD_MS. Chỉ cập nhật last_seen_at khi ping có mac hợp lệ; register/topology/state không đụng.
 - **Device/entity name raw vs user:** `device_info.device_name_raw`, `device_entity.name_raw` (tên từ firmware). User name: `device_name` / `name`; khi register: **raw** luôn ghi đè, **user name** = COALESCE(hiện tại, payload). Slug = (device_name ?? device_name_raw ?? macHex). Repo: upsertDeviceInfo(deviceNameRaw), mergeEntity(nameRaw); service truyền cùng giá trị payload vào raw + name. Frontend `shared/utils/display-name.ts`: `deviceDisplayName()`, `entityDisplayName()` (name ?? name_raw).
@@ -117,10 +123,10 @@ ROUTER_TABLE, CHILD_TABLE, JOINER_TABLE TX va ACK bi filter ra khoi console log 
 - `backend/src/coap/coap-device.server.ts` — CoAP server entry; registerCoapControllers, DeviceCoapController
 - `backend/src/coap/coap.type.ts` — CoapRequest, CoapResponse, CoapStatus (CREATED, CHANGED, CONTENT, NOT_FOUND, SERVER_ERROR)
 - `backend/src/coap/coap.response.ts` — echoCoapToken, sendCoapResponse(req, res, status, body?, contentFormat?)
-- `backend/src/coap/device/device.payload.ts` — DEVICE_INFO_KEYS, TOPOLOGY_KEY/TOPOLOGY_KEYS, ENTITIES_KEY; DeviceInfoPayload, DeviceTopologyPayload, DeviceEntityPayload/Item, DeviceStatePayload/Item
+- `backend/src/coap/device/device.payload.ts` — DEVICE_INFO_KEYS, TOPOLOGY_KEYS (role-based), TOPOLOGY_NEIGHBOR_KEYS; DeviceInfoPayload, DeviceTopologyPayload, TopologyNeighbor, DeviceEntityPayload/Item, DeviceStatePayload/Item
 - `backend/src/coap/device-coap.controller.ts` — GET /device/ping, POST /device/register/info (chỉ info), register/entity, update/info, update/entity, update/topology, update/state; type từng handler đúng payload
-- `backend/src/coap/device/device-coap.service.ts` — parse/map payload, goi device.repository (upsertDeviceInfo, updateDeviceInfo, upsertTopology, mergeEntity, updateEntityDefinition, upsertEntityState)
-- `backend/src/database/repositories/device.repository.ts` — resolveDeviceIdByMac, upsertDeviceInfo (deviceNameRaw, COALESCE device_name; slug từ device_name ?? device_name_raw ?? mac), updateDeviceLastSeen, getDeviceStatus, mergeEntity (nameRaw, COALESCE name), updateEntityDefinition, upsertEntityState
+- `backend/src/coap/device/device-coap.service.ts` — parse/map payload theo role (topology key 6 neighbors); goi device.repository (upsertDeviceInfo, updateDeviceInfo, upsertTopology + neighbors, mergeEntity, updateEntityDefinition, upsertEntityState)
+- `backend/src/database/repositories/device.repository.ts` — resolveDeviceIdByMac, upsertDeviceInfo, updateDeviceLastSeen, getDeviceStatus, upsertTopology (device_topology + device_topology_neighbor replace list), mergeEntity, updateEntityDefinition, upsertEntityState
 - `backend/src/coap/device-coap.controller.ts` — ping() parse query mac (parsePingMac), updateDeviceLastSeen
 - `frontend/src/shared/utils/display-name.ts` — deviceDisplayName(), entityDisplayName() (name ?? name_raw)
 - `backend/src/utils/ipv6.util.ts` — getPreferredBackendIPv6(), getBackendAddresses()

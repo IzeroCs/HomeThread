@@ -148,4 +148,4 @@ Request body: **key 0** (mac_address) + **key 1** (array). Mỗi phần tử tro
 
 - **Backend:** `backend/src/coap/device/device.payload.ts` — PAYLOAD_KEY_MAC (0), PAYLOAD_KEY_ARRAY (1), TOPOLOGY_KEYS (0–6, role-based), TOPOLOGY_NEIGHBOR_KEYS (0–4), ENTITY_KEYS (0–6, key 6 = disabled), STATE_KEYS (0–6); DeviceInfoPayload, DeviceTopologyPayload, TopologyNeighbor, DeviceEntityPayload/DeviceEntityItem, DeviceStatePayload/DeviceStateItem.
 - **thread_node_coap.md** — flow tổng thể, SRP discovery, troubleshooting.
-- **border_router_coap_server.md** — spec backend (endpoints, 6 bảng DB, CoapStatus, sendCoapResponse).
+- **border_router_coap_server.md** — spec backend (endpoints, 7 bảng DB gồm device_topology_neighbor, CoapStatus, sendCoapResponse).
