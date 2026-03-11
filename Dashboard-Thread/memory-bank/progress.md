@@ -33,7 +33,7 @@ Version notation in this file uses Semantic Versioning `MAJOR.MINOR.PATCH` (no l
 | 2.8.0   | **Device heartbeat (ping + last_seen_at):** GET /device/ping query **?mac=** (16-char hex); backend parse (parsePingMac), updateDeviceLastSeen(mac). device_info cột **last_seen_at**; repo updateDeviceLastSeen, getDeviceStatus(lastSeenAt, now) → online (30s) / away (5m) / offline. Constants HEARTBEAT_ONLINE_THRESHOLD_MS, HEARTBEAT_OFFLINE_THRESHOLD_MS. Chỉ cập nhật last_seen_at khi ping có mac hợp lệ. Doc: device_payload_spec.md, thread_node_coap.md (ping + query mac, heartbeat và restart detection). |
 | 2.9.0   | **Device/entity name raw vs user:** device_info **device_name_raw**, device_entity **name_raw** (tên firmware). User name (device_name / name): register update = COALESCE(hiện tại, payload); raw luôn ghi đè. Slug = (device_name ?? device_name_raw ?? macHex). Repo: upsertDeviceInfo(deviceNameRaw), mergeEntity(nameRaw); service truyền raw + name từ payload. Frontend `shared/utils/display-name.ts`: deviceDisplayName(), entityDisplayName(). **Frame log:** Ẩn log CMD STATE và ACK (RX + TX) trong command.manager.ts. |
 | 2.10.0  | **Topology role-based payload:** DeviceTopologyPayload parse theo role. Child: keys 0–5 (mac, rloc16, role, parent_rloc16, parent_rssi, parent_lq). Router/Leader: keys 0,1,2,6 (mac, rloc16, role, neighbors array). TopologyNeighbor: 0=rloc16, 1?=rssi, 2?=lq_in, 3?=lq_out, 4=is_child. Bảng **device_topology_neighbor** (device_id, neighbor_rloc16, rssi, lq_in, lq_out, is_child); migration 0001. Repo upsertTopology nhận neighbors; replace list (delete + insert). device.payload.ts: TOPOLOGY_NEIGHBOR_KEYS, TopologyNeighbor. Doc: device_payload_spec.md, thread_node_coap.md, border_router_coap_server.md, memory-bank. |
-| 2.11.0  | **BR health snapshot (device_health_br):** 1 row per device (UNIQUE(device_id)), **upsert** mỗi lần poll/notify, không insert history. Schema: free_heap, minimum_free_heap, uptime, stack_hwm (text), mle_detach_count, recorded_at. CMD_BR_HEALTH (0x17); ACK 16-byte prefix + TLV suffix (doc 5.1). Repo `upsertBrHealth` (onConflictDoUpdate); CommunicateManager fetch on connect + poll 60s + NOTIFY bit 6. getBrDeviceId() từ device_info (is_border_router=1). Doc: border_router_coap_server.md, backend_br_frame_requirements.md. |
+| 2.11.0  | **BR health snapshot (device_health_br):** 1 row per device (UNIQUE(device_id)), **upsert** mỗi lần poll/notify, không insert history. Schema: free_heap, minimum_free_heap, uptime, stack_hwm (text), mle_detach_count, recorded_at. CMD_BR_HEALTH (0x17); ACK 16-byte prefix + TLV suffix (doc 5.1). Repo `upsertBrHealth` (onConflictDoUpdate); CommunicateManager fetch on connect + poll 60s + NOTIFY bit 6. getBrDeviceId() từ device_info (is_border_router=1). Doc: device_payload_spec.md §3, real_br_integration.md §2.4, protocol/usb_cdc_frame_structure.md §5.1. |
 
 
 ## What Works (Completed)
@@ -46,7 +46,7 @@ Version notation in this file uses Semantic Versioning `MAJOR.MINOR.PATCH` (no l
 - pino logging voi child loggers (transportLogger, frameLogger, wsLogger)
 - Table log filtering (ROUTER/CHILD/JOINER TX + ACK bi ẩn); CMD STATE và ACK (RX + TX) cũng ẩn trong command.manager.ts
 - Cursor Memory Bank (memory-bank/)
-- Symlink docs → HomeThread/Documents/ (Dashboard-Thread + ESP-Thread/Thread-Host)
+- Tài liệu hệ thống: HomeThread/Documents/ (README.md mục lục; device_payload_spec, backend_discovery_srp, real_br_integration, websocket, installation, protocol, iot-entity-model)
 
 ### Backend — Frame Protocol
 
@@ -118,17 +118,14 @@ Console da bo. Commissioner gop vao Nodes (modal + Joiner List).
 - HomeThread/Documents/protocol/usb_cdc_frame_structure.md
 - HomeThread/Documents/protocol/table_data_format.md
 - HomeThread/Documents/dashboard/migration_to_frame_protocol.md
-- docs/coap/device_payload_spec.md — spec payload Thread-Node (device_info 0–6; topology **role-based** child 3,4,5 / router/leader key 6 TopologyNeighbor; entity/state key 1 array; GET /device/ping ?mac= heartbeat; flow register/info → register/entity → update/topology, update/state)
-- docs/coap/thread_node_coap.md — hướng dẫn Thread-Node (CoAP + CBOR, GET /device/ping?mac= heartbeat, flow, SRP discovery, update/topology role-based)
-- docs/coap/border_router_coap_server.md — spec Backend CoAP (endpoints, 8 bảng gồm device_topology_neighbor, device_health_br snapshot upsert, topology role-based)
-- docs/websocket.md — Backend WebSocket: cấu trúc handler/, @WsOn, getWsRoutes, bảng handler modules
-- README.md + TODO.md cap nhat
+- **HomeThread/Documents/** — Tài liệu hệ thống (README.md mục lục). **CoAP (canonical):** coap/device_payload_spec.md — endpoints, CBOR keys, DB 8 bảng, flow đăng ký. **SRP:** coap/backend_discovery_srp.md — Thread-Node discovery Backend. **Kiến trúc:** architecture/real_br_integration.md — BR, routing, troubleshooting. **Backend:** websocket.md (handler modules), installation.md (IPv6 route Linux). **Protocol:** protocol/usb_cdc_frame_structure.md, protocol/table_data_format.md. **Entity model (firmware):** iot-entity-model/entity_model_specification.md.
+- README.md + TODO.md cập nhật
 
 ## What's Left to Build
 
 ### Frame Protocol
 
-- **CMD_DATA**: Da bo. Child gui register/update/ping thang backend qua **CoAP** (UDP 5683, payload CBOR). BR chi route IP. Xem docs/coap/thread_node_coap.md.
+- **CMD_DATA**: Da bo. Child gui register/update/ping thang backend qua **CoAP** (UDP 5683, payload CBOR). BR chi route IP. Xem HomeThread/Documents/coap/device_payload_spec.md, backend_discovery_srp.md.
 
 ### Backend
 
@@ -146,8 +143,8 @@ Console da bo. Commissioner gop vao Nodes (modal + Joiner List).
 ## Known Issues / Notes
 
 - Frontend hiện dùng Lit + light DOM; không còn behavior React Strict Mode double-mount.
-- **CMD_DATA da bo**: Child gui thang backend qua CoAP (port 5683, CBOR). BR chi route IP. Thread-Node doc: docs/coap/thread_node_coap.md.
-- **CoAP ResponseTimeout**: Neu Thread-Node bao `Ping/Register response error: ResponseTimeout` thi handler duoc goi voi **loi timeout** (node khong nhan duoc response), khong phai loi logic backend. Nguyen nhan thuong la **routing/forwarding**: response tu backend gui ve dia chi nguon (rsinfo) nhung packet khong toi node. Kiem tra: (1) Host backend co route toi prefix Thread qua BR (`ip -6 route get <node_ula>`); (2) BR (ESP32-S3 + RCP hoac OTBR) bat border routing va forward prefix OMR vao Thread; (3) Neu BR la Linux OTBR thi can `net.ipv6.conf.all.forwarding=1` va firewall ip6tables cho phep FORWARD vao interface Thread. Chi tiet: docs/coap/thread_node_coap.md (Troubleshooting), docs/architecture/real_br_integration.md.
+- **CMD_DATA da bo**: Child gui thang backend qua CoAP (port 5683, CBOR). BR chi route IP. Thread-Node doc: Documents/coap/device_payload_spec.md, backend_discovery_srp.md.
+- **CoAP ResponseTimeout**: Neu Thread-Node bao `Ping/Register response error: ResponseTimeout` thi handler duoc goi voi **loi timeout** (node khong nhan duoc response), khong phai loi logic backend. Nguyen nhan thuong la **routing/forwarding**: response tu backend gui ve dia chi nguon (rsinfo) nhung packet khong toi node. Kiem tra: (1) Host backend co route toi prefix Thread qua BR (`ip -6 route get <node_ula>`); (2) BR (ESP32-S3 + RCP hoac OTBR) bat border routing va forward prefix OMR vao Thread; (3) Neu BR la Linux OTBR thi can `net.ipv6.conf.all.forwarding=1` va firewall ip6tables cho phep FORWARD vao interface Thread. Chi tiết: Documents/architecture/real_br_integration.md (§5.1), Documents/coap/backend_discovery_srp.md (§7).
 - **Log filter**: TABLE commands và CMD STATE/ACK (RX + TX) bi ẩn khỏi console. Cần xem log file để debug table/state/ack data.
 - **Channel la uint8_t**: 1 byte (11-26), KHONG phai 3 byte. Da sua trong CommandManager.
 - **BR connection:** IPv6 link-local (fe80::) can zone ID (vd. %enp7s0) tranh EINVAL; nhieu BR chi listen IPv4 → dung IPv4 lam BR Host tranh ECONNREFUSED. Cap truc tiep PC–BR (khong router): PC can IP tinh cung subnet voi BR.

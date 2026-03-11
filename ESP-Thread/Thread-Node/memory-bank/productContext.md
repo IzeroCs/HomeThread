@@ -20,7 +20,7 @@ Border Router (Thread-Host) cần biết:
 - Các thuộc tính của từng entity
 - Trạng thái mạng của thiết bị (IP, RLOC, role)
 
-Thread-Node giải quyết bằng cách gửi hai request CoAP lên **Backend** (không phải BR): (1) POST `/device/register` — payload chỉ device + network (CBOR keys 0–8); (2) POST `/device/entities` — device_id + array entities (keys 0, 9). Địa chỉ Backend lấy từ **thread_discovery** (SRP/DNS-SD `_dashboard._udp`). **thread_node** khi `enable_device_registry` tự chạy discovery (retry 10s khi chưa có backend, refresh 60s khi đã có), ping 10s; khi có endpoint hoặc endpoint đổi thì gửi register rồi entities (liên tiếp); khi GET `/device/ping` nhận timestamp backend khác thì gửi lại cả hai. Mọi role **Child/Router/Leader** đều gửi được; CoAP token 2 byte; chờ ACK (2.01/2.04/2.05). Backend contract: `Documents/coap/border_router_coap_server.md`.
+Thread-Node giải quyết bằng cách gửi hai request CoAP lên **Backend** (không phải BR): (1) POST `/device/register/info` — device_info (keys 0–6, **key 0 = mac_address bstr(8)** EUI-64 802.15.4); (2) POST `/device/register/entity` — **key 0** mac bstr(8) + **key 1** array entities. Địa chỉ Backend lấy từ **thread_discovery** (SRP/DNS-SD `_dashboard._udp`). **thread_node** khi `enable_device_registry` tự chạy discovery (retry 10s khi chưa có backend, refresh 60s khi đã có), ping 10s; khi có endpoint hoặc endpoint đổi thì gửi register/info rồi register/entity (liên tiếp); khi GET `/device/ping` nhận timestamp backend khác thì gửi lại cả hai. Mọi role **Child/Router/Leader** đều gửi được; CoAP token 2 byte; chờ ACK (2.01/2.04/2.05). Spec: `Documents/coap/device_payload_spec.md`.
 
 ### 3. Quản lý Leader role
 

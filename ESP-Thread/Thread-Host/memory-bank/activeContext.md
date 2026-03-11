@@ -76,9 +76,11 @@ Backhaul Ethernet W5500 đã có IPv6 trên backbone (link-local + ULA/global kh
 - `.cursor/rules/thread-host-memory-bank.mdc` — entry point rule
 - `memory-bank/` — 6 core files theo chuẩn Memory Bank
 
-### Docs migration
-- Tất cả docs đã chuyển sang `HomeThread/Documents/` với symlink `docs/` tại project root
-- Tất cả link trong `README.md` và `TODO.md` đã cập nhật sang `../../Documents/...`
+### Tài liệu hệ thống (Documents)
+- **Vị trí:** Tài liệu tập trung tại `HomeThread/Documents/`. Từ Thread-Host: symlink `docs/` → `../../Documents/`. Danh mục đầy đủ: **Documents/README.md** (ba thành phần: Thread-Node, Thread-Host/BR, Dashboard-Thread; bảng danh mục file).
+- **BR / frame:** Frame protocol, bảng CMD, CRC8, error codes, DATA payload: **protocol/usb_cdc_frame_structure.md**. CMD_BR_HEALTH TLV suffix (type 0x01/0x02/0x03): **§5.1** cùng file. Format Router/Child/Joiner Table: **protocol/table_data_format.md**.
+- **Tích hợp:** Kiến trúc BR thật, keepalive, ACK CMD_IP_ADDR, polling/notify, BR Health, SRP register, route backend→node: **architecture/real_br_integration.md**. Setup sysctl/route IPv6: **installation.md**.
+- **Child ↔ Backend:** CoAP flow, CBOR keys, DB: **coap/device_payload_spec.md**. SRP discovery: **coap/backend_discovery_srp.md**.
 
 ## Decisions đang active
 

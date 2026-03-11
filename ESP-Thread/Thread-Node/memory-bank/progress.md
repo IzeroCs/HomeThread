@@ -23,7 +23,7 @@ Examples                 █████████████░░░░░�
 | **Status LED** | `status_led.c/.h` | WS2812 via RMT. 6 trạng thái: Boot/NotJoined/Detached/Child/Router/Leader |
 | **Boot Button** | `boot_btn.c/.h` | Long press detection, gọi factory reset |
 | **CoAP Server Manager** | `thread_coap.c/.h` | Idempotent start, resource registration với lock, response helper |
-| **Device** (components/device/) | `device_registry.c/.h`, `device_coap.c/.h` | **device_registry**: gửi POST /device/register/info (keys 0–7); **chờ thành công** (retry 2s nếu fail) rồi gửi POST /device/register/entity (mac 7 + key 9); API register/ping/is_registered. **device_coap**: send_register (path register/info), send_entities (path register/entity), ping; token 2B; align backend contract. thread_node gọi register/ping khi discovery/ping task. |
+| **Device** (components/device/) | `device_registry.c/.h`, `device_coap.c/.h` | **device_registry**: gửi POST /device/register/info (keys 0–6, **key 0 = mac bstr(8)**); **chờ thành công** (retry 2s nếu fail) rồi gửi POST /device/register/entity (**key 0** mac bstr(8) + **key 1** array entities); API register/ping/is_registered. **device_coap**: send_register, send_entities, ping; token 2B; align backend. thread_node gọi register/ping khi discovery/ping task. |
 | **Custom OT Config** | `openthread_custom_config.h` | Child timeout 60s, supervision 30s/60s, leader weight, CoAP API. **Không** define OPENTHREAD_CONFIG_DNS_CLIENT_ENABLE (ESP-IDF 5.5.3 dùng CONFIG_OPENTHREAD_DNS_CLIENT từ sdkconfig trong openthread-core-esp32x-ftd-config.h). |
 | **Thread Discovery** | `thread_discovery.c/.h` | SRP/DNS-SD `_dashboard._udp`; cache NVS + cache_ttl_sec; static fallback. **Log backend IP**: chỉ thread_node log INFO ("Backend discovered" / "Backend endpoint updated") khi có IP lần đầu hoặc khi IP đổi; thread_discovery log cache/static/SRP ở LOGD. |
 
@@ -44,11 +44,11 @@ Examples                 █████████████░░░░░�
 
 | API / Entity type | Trạng thái |
 |---|---|
-| `entity_serialize_info_cbor` | ✅ Device info (keys 1–7), POST /device/register/info |
-| `entity_serialize_entities_cbor` | ✅ Map mac (7) + entities array (9), POST /device/register/entity |
-| Topology (role-based) | ✅ **Child:** entity_serialize_topology_child_cbor (keys 0–5). **Router/Leader:** entity_serialize_topology_router_leader_cbor (keys 0,1,2,6 = neighbors). device_registry branch theo role; router/leader dùng otThreadGetNextNeighborInfo. POST /device/update/topology. |
-| `entity_serialize_state_cbor` | ✅ Map mac (7) + entities array (9), POST /device/update/state |
-| Entity item keys 0–13 | ✅ Keys 0–12 + **13 = restore_mode** (uint, default 0) cho backend mergeEntity; light + sensor encode đủ |
+| `entity_serialize_info_cbor` | ✅ Device info (keys 0–6), **key 0 = mac bstr(8)** EUI-64 802.15.4. POST /device/register/info. |
+| `entity_serialize_entities_cbor` | ✅ **Key 0** mac bstr(8) + **key 1** array entities. POST /device/register/entity. |
+| Topology (role-based) | ✅ **Child:** entity_serialize_topology_child_cbor (keys 0–5, mac bstr(8)). **Router/Leader:** entity_serialize_topology_router_leader_cbor (keys 0,1,2,6). device_registry branch theo role; otThreadGetNextNeighborInfo. POST /device/update/topology. |
+| `entity_serialize_state_cbor` | ✅ **Key 0** mac bstr(8) + **key 1** array state. POST /device/update/state. |
+| Entity item ENTITY_KEYS 0–6 | ✅ entity_id, name, type, device_class, unit, **restore_mode**, disabled; light + sensor encode đủ. |
 | `entity_light_t` | ✅ **Hoàn chỉnh** (kèm key 13) |
 | `entity_sensor_t` | ✅ **Hoàn chỉnh** (kèm key 13) |
 | `entity_switch_t` | ❌ Chưa có |
@@ -70,9 +70,10 @@ Examples                 █████████████░░░░░�
 
 | Tài liệu | Trạng thái |
 |---|---|
-| Backend CoAP (register + entities) | ✅ `Documents/coap/border_router_coap_server.md` (repo root) |
-| Node-side register flow | ✅ `Thread-Node/docs/README.md` — hai request, serialization, transport |
-| ACK/NACK bắt buộc (Leader) | ✅ Mục trong border_router_coap_server.md |
+| **Spec CoAP (canonical)** | ✅ `Documents/coap/device_payload_spec.md` (repo root) — endpoints, CBOR keys 0–6 (key 0 = mac bstr(8)), topology role-based, entity/state, DB 8 bảng, flow. MAC = 802.15.4 EUI-64, không đổi khi factory reset. |
+| Danh mục tài liệu | ✅ `Documents/README.md` — kiến trúc HomeThread, danh sách file (architecture, protocol, coap, entity-model, installation, websocket). |
+| SRP discovery | ✅ `Documents/coap/backend_discovery_srp.md` |
+| ACK/NACK, echo token | ✅ Trong device_payload_spec (§5 Response, §4 Flow). |
 
 ### Examples
 
@@ -127,7 +128,7 @@ Chỉ có `light_on_off`. Thiếu:
 
 ### Issue 0: NoBufs (đã giảm thiểu)
 
-Trước đây gửi register mỗi 5s không chờ response → tích tụ request → NoBufs. Đã xử lý bằng **device register ACK flow**: gửi tới Backend (sau discovery); chỉ gửi khi Child/Router, chờ ACK (20s); one-shot sau ACK; Backend phải trả ACK/NACK (tài liệu trong `border_router_coap_server.md`).
+Trước đây gửi register mỗi 5s không chờ response → tích tụ request → NoBufs. Đã xử lý bằng **device register ACK flow**: gửi tới Backend (sau discovery); chờ ACK (20s); one-shot sau ACK; Backend phải trả ACK/NACK (tài liệu trong `Documents/coap/device_payload_spec.md`).
 
 **NoBufs → partition / "nhảy Leader":** Khi message buffer cạn (nhiều CoAP confirmable cùng lúc), MLE/keep-alive có thể mất → topology thay đổi, mạng dễ partition → node có thể tự trở thành Leader (ref: OpenThread issue #4508). ACK flow giảm số request đồng thời nên test ổn định lâu, không còn nhảy.
 
@@ -159,7 +160,7 @@ Discovery browse `_dashboard._udp.default.svc.arpa` qua OpenThread DNS client; q
 - BR chưa đăng ký service `_dashboard._udp` qua SRP client (otSrpClient*), hoặc
 - SRP server trên BR từ chối (vd. lease/key-lease không đúng, ProcessAdditionalSection/SIG(0)).
 
-OpenThread core **không** forward `*.default.svc.arpa` ra upstream (dnssd_server.cpp ShouldForwardToUpstream). Sửa phía BR: đảm bảo SRP client gửi lease/key-lease đúng (otSrpClientSetLeaseInterval, SetKeyLeaseInterval; key lease ≥ lease), và SRP server chấp nhận đăng ký. Xem `docs/coap/backend_discovery_srp.md`.
+OpenThread core **không** forward `*.default.svc.arpa` ra upstream (dnssd_server.cpp ShouldForwardToUpstream). Sửa phía BR: đảm bảo SRP client gửi lease/key-lease đúng (otSrpClientSetLeaseInterval, SetKeyLeaseInterval; key lease ≥ lease), và SRP server chấp nhận đăng ký. Xem `Documents/coap/backend_discovery_srp.md`.
 
 ## Lịch sử phát triển
 
@@ -178,7 +179,8 @@ OpenThread core **không** forward `*.default.svc.arpa` ra upstream (dnssd_serve
 | **0.9.0** | Register chỉ tới Backend; thread_discovery; device registry bật trong thread_node; trigger_register khi discovery/endpoint đổi |
 | **0.9.1** | thread_node; thread_discovery; device/ + device_coap; GET /device/ping 10s, timestamp → re-register; CoAP token 2B; backend IP log 1 lần / khi đổi |
 | **0.9.2** | Discovery retry **10s** khi chưa có backend (60s khi đã có); **CONFIG_ESP_SYSTEM_EVENT_TASK_STACK_SIZE=4096**; log node **Mesh-Local EID + RLOC16**; docs: backend echo token, register callback NULL, ping callback khi timestamp đổi |
-| **0.9.3** | **Tách register/entities:** POST /device/register/info (keys 0–7), POST /device/register/entity (mac 7 + key 9). device_registry gửi hai request liên tiếp; device_coap: send_register, send_entities. Component **device** ở **components/device/**; thread core **components/thread/core/** (rename.sh). Backend contract: `Documents/coap/border_router_coap_server.md`. |
-| **0.9.4** | **Entity restore_mode (key 13):** Mỗi entity trong register/entity payload gửi thêm key 13 = restore_mode (uint). Backend mergeEntity dùng ENTITY_KEYS.RESTORE_MODE. Node: `CBOR_K_ENT_RESTORE_MODE 13` trong cbor_register_keys.h; serialize_light_entity và serialize_sensor_entity encode key 13 (default 0). |
-| **0.9.5 (hiện tại)** | **Topology role-based + key 6 (neighbors):** Child = keys 0–5; Router/Leader = keys 0,1,2,6 (array TopologyNeighbor). API: entity_serialize_topology_child_cbor, entity_serialize_topology_router_leader_cbor; xóa entity_serialize_topology_cbor. device_registry branch theo role; router/leader dùng otThreadGetNextNeighborInfo. cbor_register_keys.h: key 6 + CBOR_K_NEIGHBOR_* 0–4; topology_neighbor_t trong entity_serialization.h. Docs: thread_node_coap.md. |
+| **0.9.3** | **Tách register/entities:** POST /device/register/info (keys 0–6), POST /device/register/entity (key 0 mac + key 1 array). device_registry gửi hai request liên tiếp; device_coap: send_register, send_entities. Backend contract: `Documents/coap/device_payload_spec.md`. |
+| **0.9.4** | **Entity restore_mode:** ENTITY_KEYS key 5 = restore_mode (uint). Backend mergeEntity. Node: CBOR_K_ENT_RESTORE_MODE; serialize_light/sensor encode default 0. |
+| **0.9.5** | **Topology role-based + key 6 (neighbors):** Child = keys 0–5; Router/Leader = keys 0,1,2,6. entity_serialize_topology_child_cbor, entity_serialize_topology_router_leader_cbor; otThreadGetNextNeighborInfo; topology_neighbor_t. |
+| **0.9.6 (hiện tại)** | **mac_address CBOR bstr(8):** Node encode key 0 (mac) là **byte string 8 bytes** (EUI-64 IEEE 802.15.4, `esp_read_mac(..., ESP_MAC_IEEE802154)`). Không đổi khi factory reset. Helper `mac_uint64_to_bstr()` trong entity_serialization.c; dùng trong info, topology, register/entity, update/state. **Tài liệu:** Spec canonical là `Documents/coap/device_payload_spec.md` (endpoints, keys 0–6, DB 8 bảng, flow); danh mục `Documents/README.md`. |
 | 1.0.0 (tiếp theo) | entity_coap_server implementation; CBOR switch/fan/climate/binary_sensor; main.c template; additional examples |

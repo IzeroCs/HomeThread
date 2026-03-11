@@ -32,7 +32,7 @@ Cung cấp giao diện web quản lý Thread network:
 ## Target Device
 
 - **OpenThread Border Router** (vd. ESP32-H2 hoặc thiết bị chạy BR firmware), giao tiếp qua **TCP** (frame protocol), listen port 5000.
-- **Thread-Node** (child/endpoint): gửi dữ liệu lên backend qua **CoAP** (UDP 5683), path /device/ping, register/info, register/entity, update/info, update/entity, update/topology, update/state, payload **CBOR**. BR chỉ route IP. Hướng dẫn tích hợp: [docs/coap/thread_node_coap.md](../docs/coap/thread_node_coap.md).
+- **Thread-Node** (child/endpoint): gửi dữ liệu lên backend qua **CoAP** (UDP 5683), path /device/ping, register/info, register/entity, update/info, update/entity, update/topology, update/state, payload **CBOR**. BR chỉ route IP. Spec và flow: `HomeThread/Documents/coap/device_payload_spec.md`; discovery: `Documents/coap/backend_discovery_srp.md`.
 
 ## Key Constraints
 
@@ -41,9 +41,13 @@ Cung cấp giao diện web quản lý Thread network:
 - Frontend phải hoạt động từ LAN (Vite host: true)
 - Không đóng TCP khi server restart — BR vẫn chạy
 
-## Documents
+## Documents (HomeThread/Documents/)
 
-- Protocol: `HomeThread/Documents/protocol/usb_cdc_frame_structure.md`
-- Table format: `HomeThread/Documents/protocol/table_data_format.md`
-- Migration: `HomeThread/Documents/dashboard/migration_to_frame_protocol.md`
-- Thread-Node CoAP: `docs/coap/thread_node_coap.md` — hướng dẫn child gửi dữ liệu (CoAP + CBOR) lên backend.
+- **README.md** — Mục lục tài liệu, sơ đồ kiến trúc, luồng đăng ký tóm tắt.
+- **Protocol:** `protocol/usb_cdc_frame_structure.md`, `protocol/table_data_format.md`
+- **CoAP (canonical):** `coap/device_payload_spec.md` — endpoints, CBOR keys, DB schema 8 bảng, flow đăng ký Thread-Node.
+- **SRP discovery:** `coap/backend_discovery_srp.md` — Thread-Node tìm Backend qua SRP/DNS-SD.
+- **Kiến trúc:** `architecture/real_br_integration.md` — BR thật, routing, troubleshooting.
+- **Backend:** `websocket.md` (handler modules), `installation.md` (IPv6 route Linux).
+- **Entity model (firmware):** `iot-entity-model/entity_model_specification.md`
+- Migration (nếu có): `HomeThread/Documents/dashboard/migration_to_frame_protocol.md`

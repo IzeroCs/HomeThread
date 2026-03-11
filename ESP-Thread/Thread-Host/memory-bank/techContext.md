@@ -60,8 +60,13 @@
 - **br_main:** Sau border router init, log backbone IPv6 (tag `br_main`).
 - **Kênh BR↔dashboard:** Chỉ TCP (frame protocol); không USB/UART.
 
-### Docs
-- `docs/installation.md`: sysctl nhận route IPv6 (RA/RIO) + add route tay cho backend Linux.
+### Docs (HomeThread/Documents/ — symlink `docs/` từ Thread-Host root)
+- **protocol/usb_cdc_frame_structure.md** — Frame protocol BR↔Dashboard (TCP), CMD table, CRC8, DATA payload; CMD_BR_HEALTH TLV suffix §5.1.
+- **protocol/table_data_format.md** — Binary format Router/Child/Joiner Table.
+- **architecture/real_br_integration.md** — BR thật, tích hợp Dashboard + Thread-Node, keepalive/ACK, notify, BR Health, SRP, route backend→node, troubleshooting.
+- **installation.md** — sysctl nhận route IPv6 (RA/RIO), rdisc6, add route tay.
+- **coap/device_payload_spec.md**, **coap/backend_discovery_srp.md** — CoAP flow child→backend, SRP discovery (ngữ cảnh; BR không chạy CoAP server).
+- Danh mục đầy đủ: **Documents/README.md**.
 
 #### Backbone IPv4-only vs IPv6
 - Mạng LAN nhà hiện tại chỉ cấp **IPv4** (router không cấp IPv6 từ ISP). Điều này **không cản trở** BR làm Border Router cho Thread:

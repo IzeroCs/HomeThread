@@ -1,39 +1,47 @@
-# Thread-Node — Node-side register flow and payloads
+# HomeThread — Tài liệu hệ thống
 
-Tài liệu mô tả luồng đăng ký thiết bị từ Node tới Backend và định dạng CBOR payload. Backend contract chi tiết: repo root `Documents/coap/border_router_coap_server.md`.
+Tài liệu kiến trúc cho hệ thống HomeThread gồm ba thành phần chính:
 
-## Hai request đăng ký
+- **ESP-Thread (Thread-Node):** Firmware ESP32-H2, ESP-IDF + OpenThread. Giao tiếp với Backend qua CoAP/IPv6.
+- **Thread-Host (BR):** Border Router ESP32-S3, backhaul Ethernet W5500. Kênh quản lý qua TCP frame protocol.
+- **Dashboard-Thread (Backend + Frontend):** Node.js/SQLite backend nhận CoAP từ node; frontend Lit/Web Components.
 
-Node gửi **hai** request CoAP **liên tiếp** tới Backend (địa chỉ lấy từ thread_discovery):
+## Sơ đồ kiến trúc
 
-1. **POST /device/register/info** — Chỉ thông tin thiết bị (device info). Payload CBOR map keys **0–6** (key 0 = mac_address bắt buộc).
-2. **POST /device/register/entity** — Chỉ sau khi register/info nhận ACK (2.01/2.04/2.05). Payload: **key 0** (mac_address) + **key 1** (array entities).
+```
+                    [Dashboard Frontend]
+                           |
+                    [Backend Node.js]
+                           | WebSocket / REST
+                           | CoAP UDP 5683 ← Thread-Node gửi trực tiếp
+                           | TCP :5000     ← frame protocol quản lý BR
+                           v
+  [Thread-Node] --Thread mesh--> [BR / Thread-Host] --Ethernet--> [LAN/Router]
+      |                                    |
+      +-- CoAP register/update/ping -------+-----------> Backend
+      +-- SRP browse (_dashboard._udp) --> BR SRP server
+```
 
-Nếu register/info thất bại (NACK hoặc timeout), node retry sau 2s; không gửi register/entity cho đến khi register/info thành công.
+> Thread-Node gửi register/update/ping **trực tiếp tới Backend** qua IPv6. BR **không** làm proxy; BR chỉ route IP và cung cấp kênh quản lý (TCP frame).
 
-## Serialization
+## Danh mục tài liệu
 
-- **register/info**: map keys 0–6 (key 0 = mac_address, 1 = device_name, 2 = device_type, 3 = manufacturer, 4 = model, 5 = sw_version, 6 = hw_version).
-- **register/entity**: map **key 0** = mac_address, **key 1** = array of entity maps. Mỗi entity map **ENTITY_KEYS 0–6** (xem bảng dưới).
+| File | Nội dung |
+|------|----------|
+| [architecture/real_br_integration.md](architecture/real_br_integration.md) | Kiến trúc BR thật, tích hợp Dashboard và Thread-Node, troubleshooting routing |
+| [protocol/usb_cdc_frame_structure.md](protocol/usb_cdc_frame_structure.md) | Frame protocol BR ↔ Dashboard (TCP), CMD table, CRC8, error codes |
+| [protocol/table_data_format.md](protocol/table_data_format.md) | Binary format Router/Child/Joiner Table |
+| [coap/device_payload_spec.md](coap/device_payload_spec.md) | **Spec chính:** CoAP endpoints, CBOR payload keys, DB schema, flow đăng ký |
+| [coap/backend_discovery_srp.md](coap/backend_discovery_srp.md) | SRP/DNS-SD discovery backend từ Thread-Node |
+| [entity-model/entity_model_specification.md](entity-model/entity_model_specification.md) | Firmware entity model (ESP-IDF): struct, API, event system |
+| [installation.md](installation.md) | Setup Linux host: nhận route IPv6 từ BR qua RA/RIO |
+| [websocket.md](websocket.md) | Backend WebSocket server, handler modules, event routing |
 
-### Entity map keys (mỗi item trong array key 1) — ENTITY_KEYS 0–6
+## Luồng đăng ký thiết bị (tóm tắt)
 
-| Key | Tên            | Mô tả |
-|-----|----------------|-------|
-| 0   | entity_id      | Text string |
-| 1   | name           | Text string |
-| 2   | type           | Uint (entity_type_t) |
-| 3   | device_class   | Uint |
-| 4   | unit           | Text string (sensor) |
-| 5   | restore_mode   | Uint (default 0; backend dùng cho mergeEntity) |
-| 6   | disabled       | Uint (1 = không hiện entity trên dashboard) |
+1. Thread-Node join mạng → browse SRP `_dashboard._udp` → lấy Backend IP:port.
+2. **POST /device/register/info** (CBOR, keys 0–6) → chờ 2.01/2.04, retry nếu fail.
+3. **POST /device/register/entity** (key 0 = mac, key 1 = array entities) → nhận restore state (key 10).
+4. Định kỳ: **GET /device/ping?mac=** (heartbeat + restart detection), **POST /device/update/topology**, **POST /device/update/state**.
 
-State payload (update/state): **key 0** = mac, **key 1** = array. Mỗi item **STATE_KEYS 0–6**: entity_id(0), state(1), brightness(2), mode(3), rgb(4), color_temp(5), value(6). Không có available.
-
-Định nghĩa key: `components/entity/serialization/include/cbor_register_keys.h` (CBOR_K_ENT_*).
-
-## Transport
-
-- **device_coap** (components/device/): CoAP client; token 2 byte; lock khi gọi OpenThread.
-- Backend phải echo đúng CoAP token trong response (RFC 7252).
-- Ping: GET /device/ping mỗi 10s; response 4-byte timestamp (LE). Timestamp đổi → node gửi lại register (rồi entities).
+Chi tiết đầy đủ: [coap/device_payload_spec.md](coap/device_payload_spec.md).

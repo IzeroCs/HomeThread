@@ -91,8 +91,8 @@ _(Ghi phiên bản theo Semantic Versioning MAJOR.MINOR.PATCH, không dùng ti�
 - [x] Memory Bank (6 core files)
 - [x] Cursor rule (alwaysApply)
 - [x] README.md và TODO.md cập nhật đầy đủ
-- [x] Docs symlink từ project sang HomeThread/Documents/
-- [x] Docs: Backend reply→Node (route prefix Thread qua BR); Dashboard-Thread Docker (network host, default BR IP) — real_br_integration.md + Memory Bank
+- [x] Tài liệu hệ thống tại **HomeThread/Documents/**; danh mục: **Documents/README.md**. Symlink `docs/` từ Thread-Host root.
+- [x] Frame protocol + CMD_BR_HEALTH TLV: **protocol/usb_cdc_frame_structure.md** (§5.1). BR tích hợp + keepalive/ACK/BR Health: **architecture/real_br_integration.md**. Table format: **protocol/table_data_format.md**. Setup route IPv6: **installation.md**.
 
 ## Chưa làm ❌
 

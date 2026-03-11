@@ -100,19 +100,17 @@ CONFIG_ENTITY_MODEL_MAX_ENTITIES=32  # Số entity tối đa trên một thiết
 
 ### Thread Discovery (thread_discovery.c)
 
-- API: `thread_discovery_init(&cfg)`, `thread_discovery_get_endpoint(out, force_refresh)`. `thread_discovery_cfg_t.cache_ttl_sec`. Bật **CONFIG_OPENTHREAD_DNS_CLIENT=y**. Browse `_dashboard._udp.default.svc.arpa`; mHostNameBuffer API (ESP-IDF 5.5.3). **Log:** Chỉ thread_node log INFO khi có IP lần đầu hoặc khi IP thay đổi ("Backend discovered", "Backend endpoint updated"); thread_discovery log cache/static/SRP ở LOGD. Chi tiết: `docs/coap/backend_discovery_srp.md`.
+- API: `thread_discovery_init(&cfg)`, `thread_discovery_get_endpoint(out, force_refresh)`. `thread_discovery_cfg_t.cache_ttl_sec`. Bật **CONFIG_OPENTHREAD_DNS_CLIENT=y**. Browse `_dashboard._udp.default.svc.arpa`; mHostNameBuffer API (ESP-IDF 5.5.3). **Log:** Chỉ thread_node log INFO khi có IP lần đầu hoặc khi IP thay đổi; thread_discovery log cache/static/SRP ở LOGD. Chi tiết: `Documents/coap/backend_discovery_srp.md`.
 
 ### Device info (device_model.h)
 
+- **mac_address:** uint64_t (EUI-64 IEEE 802.15.4). Lấy từ `esp_read_mac(..., ESP_MAC_IEEE802154)`; **không đổi khi factory reset**. Trong CBOR payload encode là **bstr(8)** (key 0) — helper `mac_uint64_to_bstr()` trong entity_serialization.c. Spec: `Documents/coap/device_payload_spec.md`.
 - **Strings** (manufacturer, model, device_name): dùng cho hiển thị / định danh.
-- **Numbers** (Zigbee-style, giảm băng thông khi gửi register nhiều lần):
-  - `device_type`: uint16 (DEVICE_TYPE_ON_OFF_LIGHT = 0x0100, DEVICE_TYPE_SENSOR_HUB = 0x0200, …)
-  - `sw_version`, `hw_version`: uint32 = `DEVICE_VERSION(major, minor, patch)` (e.g. 1.2.3 → 0x00010203)
-- CBOR payload: device_type, sw_version, hw_version encode dạng unsigned int.
+- **Numbers** (Zigbee-style): `device_type` uint16, `sw_version`/`hw_version` uint32 = `DEVICE_VERSION(major, minor, patch)`. CBOR encode unsigned int.
 
 ### Entity register payload (register/entity)
 
-- Mỗi item trong array entities (key 9): map với keys 0–12 (entity_id, name, type, device_class, available, last_update, state/brightness/mode/rgb/color_temp hoặc value/unit tùy type) và **key 13 = restore_mode** (uint). Node encode restore_mode mặc định 0; backend dùng cho mergeEntity. Định nghĩa key: `cbor_register_keys.h` (`CBOR_K_ENT_RESTORE_MODE 13`).
+- Request: **key 0** = mac_address (bstr(8)), **key 1** = array entities. Mỗi item: ENTITY_KEYS 0–6 (entity_id, name, type, device_class, unit, **restore_mode**, disabled). Node encode restore_mode mặc định 0; backend mergeEntity. Spec: `Documents/coap/device_payload_spec.md` (§2.3).
 
 ## Custom OpenThread config (`openthread_custom_config.h`)
 

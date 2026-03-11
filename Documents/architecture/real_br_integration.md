@@ -1,154 +1,155 @@
 # BR thật — Hướng dẫn tích hợp (Thread-Node & Dashboard-Thread)
 
-> **Mục đích:** Tài liệu cho **Thread-Node** (firmware child) và **Dashboard-Thread** (backend/frontend) biết kiến trúc sau Phase 2: BR thật có backhaul, kênh quản lý qua TCP; child gửi thẳng backend.
+> **Mục đích:** Tài liệu cho **Thread-Node** (firmware child) và **Dashboard-Thread** (backend/frontend) về kiến trúc BR thật: backhaul Ethernet, kênh quản lý TCP, child gửi thẳng backend.
 
 ---
 
 ## 1. Tổng quan kiến trúc
 
-- **BR (Thread-Host):** Border Router thật: backhaul **Ethernet W5500** (khi bật; Wi‑Fi fallback đã tắt), border routing + prefix. Init chờ **IPv4 (DHCP)** (timeout mặc định 25s); nếu timeout thì BR restart. IPv6 trên backbone: link-local tạo khi Ethernet link up; global/ULA nếu router gửi RA. Child có IPv6 routable.
-- **Kênh quản lý BR ↔ Dashboard:** Chỉ qua **TCP** (frame protocol). BR listen một port (mặc định 5000); Dashboard kết nối tới **BR_IP:port**. Không dùng USB/serial.
-- **Child ↔ Backend:** Child (Thread-Node) gửi register/update/ping **trực tiếp tới Backend** (IP:port). BR **không** làm proxy; BR chỉ route IP.
+- **BR (Thread-Host):** Backhaul **Ethernet W5500**; init chờ IPv4 DHCP (timeout 25s, sau đó restart). IPv6 backbone: link-local khi Ethernet up; global/ULA nếu router gửi RA. Child có IPv6 routable qua OMR prefix.
+- **Kênh quản lý BR ↔ Dashboard:** Chỉ qua **TCP** (frame protocol). BR listen một port (mặc định 5000); Dashboard kết nối tới `BR_IP:port`.
+- **Child ↔ Backend:** Thread-Node gửi register/update/ping **trực tiếp tới Backend** qua IPv6. BR **không** làm proxy; BR chỉ route IP.
 
 ```
                     [Dashboard]
                          | TCP (frame protocol)
                          v
-  [Child] --Thread mesh--> [BR] ----backhaul----> [Backend]
-     |                          (Ethernet W5500)        ^
-     |                                                 |
-     +------------------ IPv6 (CoAP/HTTP) -------------+
+  [Child] --Thread mesh--> [BR] ----Ethernet----> [Backend]
+     |                                                 ^
+     +------------------ IPv6 (CoAP) -----------------+
               register / update / ping
 ```
 
 ---
 
-## 2. Dashboard-Thread — Cần làm gì
+## 2. Dashboard-Thread — Kết nối và quản lý BR
 
-### 2.1. Kết nối tới BR
+### 2.1 Kết nối tới BR
 
-- **Transport:** Kết nối **TCP** tới `BR_IP:port` (port mặc định 5000, cấu hình trong BR menuconfig).
-- **Giao thức:** Cùng [frame protocol](../protocol/usb_cdc_frame_structure.md) (SOF/Frame ID/CMD/LEN/DATA/CRC8/EOF) — gửi/nhận **byte stream** trên socket, không phải serial/USB.
-- **BR Host và port:** Khi chạy trên host có thể dùng mDNS (`Thread-Host.local:5000`) nếu resolve được. **Khuyến nghị dùng IPv4** (vd. 192.168.31.3:5000): nhiều BR (vd. ESP32-S3) chỉ listen TCP trên IPv4 → dùng IPv6 (kể cả link-local) dễ **ECONNREFUSED**. Nếu dùng **IPv6 link-local** (fe80::...) bắt buộc có **zone ID** (vd. fe80::...%enp7s0), thiếu sẽ **EINVAL**. Cắm trực tiếp PC–BR (không qua router): trên link thường không có DHCP → đặt **IP tĩnh** trên PC cùng subnet với BR.
-- **mDNS / Tìm BR:** Khi chạy Docker, mDNS trong container không hoạt động → cấu hình BR bằng IP. Tính năng "Tìm BR" sau có thể làm bằng quét dải IP (TCP 5000) thay vì mDNS. **Khi chạy Backend trong Docker:** mDNS thường không resolve được trong container → cấu **BR bằng IP** (vd. 192.168.31.3:5000) trong Settings hoặc dùng default (Dashboard-Thread migration mặc định 192.168.31.3:5000).
+- **Transport:** TCP tới `BR_IP:port` (mặc định 5000).
+- **Giao thức:** Frame protocol (SOF/Frame ID/CMD/LEN/DATA/CRC8/EOF) — byte stream trên socket. Chi tiết: [../protocol/usb_cdc_frame_structure.md](../protocol/usb_cdc_frame_structure.md).
+- **Địa chỉ:** Dùng **IPv4** (vd. `192.168.31.3:5000`). ESP32-S3 chỉ listen TCP trên IPv4 → dùng IPv6 dễ ECONNREFUSED. Nếu dùng IPv6 link-local phải có zone ID (`fe80::...%enp7s0`).
+- **mDNS trong Docker:** Không hoạt động trong container → cấu hình BR bằng IP tĩnh. Backend trong Docker dùng `network_mode: host`.
 
-### 2.2. Không còn CMD_DATA push từ BR
+### 2.2 Keepalive và ACK bắt buộc
 
-- **Đã bỏ:** BR không còn gửi CMD_DATA (CBOR từ child) lên Dashboard. Không còn device registry server trên BR.
-- **Dữ liệu child:** Backend nhận register/update/ping **trực tiếp từ Child** (xem mục 3). Dashboard nếu cần hiển thị device list thì lấy từ Backend API, không từ frame BR.
+**Keepalive (watchdog phía BR):** BR có state watchdog — nếu không nhận `CMD_STATE` trong 15s × 5 lần → tự restart. Backend **phải gửi `CMD_STATE` định kỳ**; BR trả `CMD_ACK` với 1 byte role.
 
-### 2.3. Frame protocol — chỉ cho quản lý BR
+**ACK cho `CMD_IP_ADDR`:** Sau khi nhận `CMD_ACK` kèm 16 bytes Leader RLOC, backend **phải gửi lại một frame `CMD_ACK` rỗng (LEN=0) với cùng Frame ID** để BR dừng retry.
 
-- Pull state, dataset, tables, IP, MAC, BR health, set config, commissioner joiner, reset/factory — **giữ nguyên** (CMD_STATE, CMD_DATASET_ACTIVE, CMD_IP_ADDR, CMD_MAC_ADDRESS, CMD_BR_HEALTH, CMD_SET_*, CMD_COMMISSIONER_JOINER, CMD_RESET, CMD_FACTORY, …).
-- Cấu trúc frame, bảng CMD, CRC8, format table: xem [usb_cdc_frame_structure.md](../protocol/usb_cdc_frame_structure.md) và [table_data_format.md](../protocol/table_data_format.md). Chỉ đổi **transport**: socket TCP thay serial.
+### 2.3 Polling và notify (giảm traffic)
 
-### 2.4. Backend keepalive / ACK bắt buộc
+**Hiện trạng — pull định kỳ:**
+- `CMD_STATE` (keepalive)
+- `CMD_DATASET_ACTIVE`, `CMD_IP_ADDR`, `CMD_MAC_ADDRESS`, `CMD_BR_HEALTH` khi cần
+- `CMD_ROUTER_TABLE / CMD_CHILD_TABLE / CMD_JOINER_TABLE` khi UI cần refresh
 
-- **Keepalive (watchdog phía BR):** BR có state watchdog. Backend **phải** gửi `CMD_STATE` định kỳ để BR không tự restart khi mất kết nối (xem `communicate_task.c`: 15s/interval, miss 5 lần → restart).
-- **ACK cho `CMD_IP_ADDR`:** Khi backend gửi `CMD_IP_ADDR` và nhận `CMD_ACK` kèm 16 bytes Leader RLOC, backend **phải gửi lại** một frame `CMD_ACK` **rỗng** (LEN=0) với **cùng Frame ID** để BR dừng retry.
+**Roadmap — CMD_NOTIFY (0x45):** BR push khi có thay đổi, payload = `changed_mask` (u32 big-endian). Backend nhận notify thì chỉ pull thứ cần thiết:
 
-### 2.5. Giảm polling (roadmap)
+| Bit thay đổi | Pull |
+|---|---|
+| ROLE / IP / DATASET | `CMD_STATE` / `CMD_IP_ADDR` / `CMD_DATASET_ACTIVE` |
+| ROUTER / CHILD / JOINER | `CMD_ROUTER_TABLE` / `CMD_CHILD_TABLE` / `CMD_JOINER_TABLE` |
+| BR health | `CMD_BR_HEALTH` |
 
-- BR có **OpenThread change detector** (hook `otSetStateChangedCallback()` → debounce → snapshot+diff) để biết “có thay đổi thật hay không” cho: role/rloc/dataset/router/child/joiner tables.
-- Khi có thay đổi, BR sẽ push `CMD_NOTIFY (0x45)` với payload `changed_mask` (u32 big-endian). Backend nhận notify rồi pull table/field tương ứng → giảm polling đáng kể.
+**Gợi ý giảm traffic ngay (không cần thay đổi BR):** Chỉ pull tables khi UI đang mở tab tương ứng, user bấm refresh, hoặc vừa thực hiện action có khả năng đổi bảng.
 
----
+### 2.4 BR Health
 
-## 3. Thread-Node (Child) — Cần làm gì
+Backend poll `CMD_BR_HEALTH` định kỳ (~60s) và/hoặc khi nhận NOTIFY bit health. Backend **upsert 1 row duy nhất** per BR device (bảng `device_health_br`, snapshot, không lưu history). ACK data = **16-byte prefix** (free_heap, minimum_free_heap, uptime, mle_detach_count — mỗi uint32 BE) **+ TLV suffix** (task name/hwm/stack_size). Chi tiết format TLV: [../protocol/usb_cdc_frame_structure.md §5.1](../protocol/usb_cdc_frame_structure.md).
 
-### 3.1. Gửi register/update/ping tới Backend
+### 2.5 CMD_DATA push từ BR — đã bỏ
 
-- **Đích (kiến trúc mục tiêu):** Backend (server) — địa chỉ IP và port do cấu hình (commissioning, NVS, hoặc mDNS). **Không** gửi tới BR cho device registry.
-- **Giao thức thường dùng:** CoAP (UDP 5683) hoặc HTTP (TCP). Định dạng payload thường là JSON hoặc CBOR (xem [border_router_coap_server.md](../coap/border_router_coap_server.md) phần payload format — backend có thể giữ resource `/device/register`, `/device/update`, `/device/ping` nhưng **chạy trên Backend**, không trên BR).
+BR không còn gửi `CMD_DATA` (CBOR từ child) lên Dashboard. Không còn device registry server trên BR. Dữ liệu child: Backend nhận trực tiếp từ Thread-Node qua CoAP (xem mục 3).
 
-> **Ghi chú triển khai hiện tại (Thread-Node 0.9.x)**  
-> - Thread-Node **đã** gửi `/device/register` **tới Backend** (sau khi discovery qua `thread_discovery`). Không còn gửi tới Leader RLOC.  
-> - Register được trigger khi: discovery thành công; refresh task (60s) phát hiện endpoint (addr/port) thay đổi; **GET /device/ping** nhận timestamp khác (backend restart) → gửi lại register.  
-> - Xem [thread_node_coap.md](../coap/thread_node_coap.md) và component `thread/device` (device_registry, device_coap) + `thread/thread_discovery`.
+### 2.6 SRP Register (CMD_SRP_REGISTER = 0x44)
 
-### 3.2. Địa chỉ Backend
+Backend đăng ký service DNS-SD khi start (sau khi BR trở thành leader):
 
-- Child cần biết **Backend IP (và port)**. **Ưu tiên:** dùng **discovery (tự scan)** qua SRP/DNS-SD (mục 3.2.1); nếu không tìm thấy service thì **fallback** cấu hình tĩnh (commissioning, NVS, hoặc mDNS khác). BR không cung cấp địa chỉ backend qua frame.
-
-#### 3.2.1. Discovery backend qua SRP/DNS-SD (tự scan)
-
-- **SRP server:** Chạy trên BR/Thread-Host (otbr hoặc firmware Thread-Host thường có sẵn). Backend Dashboard **tự đăng ký** service khi start; Thread-Node **tự scan/browse** để tìm backend.
-- **Service đăng ký:** Backend đăng ký service DNS-SD với SRP server của BR:
-  - **Service type:** `_dashboard._udp`
-  - **Domain:** `default.svc.arpa`
-  - **Instance:** ví dụ `dashboard` (hoặc từ cấu hình)
-  - **Port:** 5683 (CoAP)
-  - **TXT:** `ver=1`, `proto=coap+cbor`, `path=/device`
-- **Luồng Backend:** Dashboard-Thread backend gửi đăng ký SRP **qua frame protocol** (CMD_SRP_REGISTER = 0x44) tới BR khi BR trở thành leader; BR (Thread-Host) nhận frame rồi submit lên SRP server. DATA: hostname_len(1) + hostname(N) + backend_ipv6(16) + port(2 BE). IPv6 backend lấy từ env BACKEND_IPV6 hoặc tự lấy (ULA/link-local).
-- **Luồng Thread-Node:** Sau khi join mạng, browse `_dashboard._udp.default.svc.arpa` (OpenThread SRP client / DNS-SD) → nhận SRV + A/AAAA → lấy IP và port backend → cache; dùng cho CoAP. Nếu browse không thấy service → fallback cấu hình tĩnh (IP/port trong NVS hoặc commissioning).
-- **Kiểm tra trên BR:** Trên serial CLI BR (UART0), chạy **`ot srp server host`** và **`ot srp server service`** để xem host/service đã đăng ký (vd. `dashboard.default.service.arpa.`, `dashboard._dashboard._udp.default.service.arpa.`). Cần `CONFIG_OPENTHREAD_HEADER_CUSTOM=y` và path `include` trong sdkconfig để lệnh SRP CLI có sẵn.
-
-### 3.3. IPv6 routable
-
-- Sau khi BR bật border routing + prefix, child có IPv6 từ prefix BR quảng bá. Child dùng địa chỉ đó để gửi request ra backbone tới Backend.
-
-### 3.4. LAN chỉ IPv4 thì sao?
-
-- Router trong nhà (MikroTik/Deco) hiện chỉ cấp **IPv4** trên LAN; điều này **không ngăn** BR làm Border Router cho Thread:
-  - BR vẫn nhận IPv4 (DHCP hoặc static) để Dashboard/backend kết nối BR qua TCP.
-  - BR vẫn cấp prefix IPv6 cho child trong mạng Thread.
-- Để child nói chuyện được với backend theo mô hình “BR thật” (BR chỉ route, không proxy):
-  - **Khuyến nghị:** Bật **IPv6 local** (link-local/ULA) trên chính máy Backend, không phụ thuộc ISP hay router. Backend listen CoAP/HTTP trên IPv6 đó; BR route giữa prefix Thread và IPv6 của backend.
-  - Nếu backend chỉ IPv4: cần thêm NAT64 hoặc proxy trên BR (chưa implement trong thiết kế hiện tại; nếu dùng, cần cập nhật thêm docs riêng cho mô hình proxy).
+- **Service type:** `_dashboard._udp`, domain `default.svc.arpa`, port 5683
+- **Frame DATA:** `hostname_len(1)` + `hostname(N)` + `backend_ipv6(16)` + `port(2 BE)`
+- BR copy hostname + IPv6 vào buffer tĩnh (`s_srp_hostname`, `s_srp_backend_addr`) rồi mới gọi `otSrpClientSetHostName/SetHostAddresses` (OpenThread SRP client không copy — dangling pointer nếu dùng buffer stack).
 
 ---
 
-## 4. Backend (server nhận request từ Child)
+## 3. Thread-Node (Child) — Gửi tới Backend
 
-- **Listen:** CoAP (vd. port 5683) hoặc HTTP (vd. 8080) trên interface có route tới Thread (vd. `0.0.0.0` hoặc interface kết nối mạng có BR).
-- **Resources:** Có thể giữ API tương tự legacy: POST `/device/register`, `/device/update`, GET `/device/ping` — nhưng **chạy trên Backend**, không trên BR. Payload format (CBOR với numeric map keys) có thể giữ để tương thích Thread-Node.
-- **ACK/NACK:** Backend trả response cho từng request (CoAP 2.01/2.04/2.05 hoặc 4xx/5.03) để Child không treo (xem lưu ý NoBufs trong [border_router_coap_server.md](../coap/border_router_coap_server.md)).
+Thread-Node gửi CoAP trực tiếp tới Backend (không qua BR):
 
-### 4.1. Route Backend → Node (reply CoAP)
+- **POST /device/register/info** → **POST /device/register/entity** → định kỳ **GET /device/ping**, **POST /device/update/topology**, **POST /device/update/state**
+- Địa chỉ Backend lấy qua SRP/DNS-SD (browse `_dashboard._udp.default.svc.arpa`); fallback cấu hình tĩnh NVS.
 
-Để **reply từ Backend tới Thread-Node** tới đích, máy chạy Backend cần **route** tới prefix Thread (OMR) **via** BR (link-local IPv6 của BR trên backbone).
+Chi tiết payload, flow, và CBOR keys: **[../coap/device_payload_spec.md](../coap/device_payload_spec.md)**.  
+Chi tiết SRP discovery: **[../coap/backend_discovery_srp.md](../coap/backend_discovery_srp.md)**.
 
-- **Tự động từ RA (khuyến nghị):** BR gửi RA có RIO. Để kernel Linux **cài route từ RIO**, set **per-interface** (không dùng `all`): `sysctl net.ipv6.conf.<iface>.accept_ra_rt_info_max_plen=128` (vd. `enp8s0`). `net.ipv6.conf.all.*` chỉ là mặc định cho interface mới, không áp dụng ngược cho interface đã tồn tại. BR phát RA theo chu kỳ hoặc khi nhận **Router Solicitation (RS)**; nếu cần route sớm, host có thể gửi RS: `rdisc6 -1 <iface>` (gói ndisc6).
-- **Thêm route tay:** `ip -6 route add <PREFIX>::/64 via <BR_linklocal> dev <iface>`. Route mất sau reboot; sau factory reset BR prefix/link-local có thể đổi → cập nhật lại. Nếu backend trong Docker cần tự add route: chạy container với `--cap-add=NET_ADMIN`.
+### 3.1 IPv6 và LAN chỉ IPv4
 
-**Backend chạy Docker:** Dùng `network_mode: host` để container dùng chung bảng routing với host. Route trên host có hiệu lực cho process trong container.
-
----
-
-## 5. Debug: RX/TX logging (BR)
-
-- Ở level log **INFO** (mặc định), BR log **mọi** frame RX/TX theo dạng `frame RX/TX: id=... cmd=... len=...`.
-- Để xem **byte stream TCP** (`tcp rx/tx N bytes`): set log level **DEBUG** cho tag `transport_tcp` (menuconfig hoặc `esp_log_level_set("transport_tcp", ESP_LOG_DEBUG)`).
+- Router IPv4-only không ngăn BR làm Border Router: BR vẫn nhận IPv4 (DHCP) để Dashboard kết nối TCP; BR vẫn cấp OMR prefix IPv6 cho child trong mesh Thread.
+- **Khuyến nghị:** Bật IPv6 local (link-local/ULA) trên máy Backend, không phụ thuộc ISP. Backend listen CoAP trên IPv6 đó; BR route giữa prefix Thread và IPv6 backend.
+- Nếu backend chỉ IPv4: cần NAT64 hoặc proxy trên BR (chưa implement).
 
 ---
 
-## 6. Troubleshooting: CoAP response không tới node (ResponseTimeout)
+## 4. Backend (Server nhận CoAP từ Child)
 
-Khi Thread-Node báo **ResponseTimeout** (ping/register), response từ backend **chưa tới node**. Backend gửi UDP về đúng địa chỉ nguồn (rsinfo) của request; vấn đề nằm ở **routing và forwarding** giữa host backend và Thread mesh.
+- **Listen:** CoAP UDP 5683 trên `[::]` hoặc interface có route tới Thread.
+- **Resources:** POST `/device/register/info`, POST `/device/register/entity`, GET `/device/ping`, POST `/device/update/topology`, POST `/device/update/state`.
+- **ACK/NACK:** Backend trả response cho từng request (CoAP 2.01/2.04/2.05 hoặc 4xx/5.03); **luôn echo CoAP token** (RFC 7252).
 
-### 6.1 Host chạy backend (Linux)
+### 4.1 Route Backend → Node (reply CoAP)
 
-- **Route:** Host cần có route IPv6 tới **prefix Thread (OMR)** qua BR. Kiểm tra: `ip -6 route get <địa_chỉ_ULA_node>` (vd. `fdb8:3795:e886:1:...`) → next-hop phải là BR (link-local hoặc ULA), dev = interface nối tới BR. Route thường học qua **Router Advertisement** từ BR (proto ra).
-- **IPv6 forwarding:** Nếu BR chạy trên **cùng host** (OTBR trên Linux) thì cần `net.ipv6.conf.all.forwarding=1`. Nếu BR là thiết bị riêng (vd. ESP32-S3), host backend chỉ cần route, không bắt buộc bật forwarding.
+Host Linux chạy Backend cần **route IPv6 tới prefix Thread (OMR) via BR**:
 
-### 6.2 Border Router (ESP32-S3 + RCP hoặc OTBR)
+**Tự động từ RA/RIO (khuyến nghị):**
+```bash
+sudo sysctl -w net.ipv6.conf.<IFACE>.accept_ra=2
+sudo sysctl -w net.ipv6.conf.<IFACE>.accept_ra_rt_info_max_plen=128
+# Xin BR gửi RA sớm (gói ndisc6):
+sudo rdisc6 -1 <IFACE>
+```
+> `net.ipv6.conf.all.*` chỉ là default cho interface mới, không áp dụng ngược cho interface đã tồn tại — phải set per-interface.
 
-- **BR phần cứng (ESP32-S3 + RCP):** Forwarding IPv6 giữa backhaul và Thread do **firmware BR** (border routing) đảm nhiệm. Đảm bảo border routing bật và BR quảng bá **OMR prefix** (fdb8:... hoặc prefix node đang dùng) ra backhaul; packet đích tới prefix đó phải được chuyển vào mesh tới đúng node.
-- **Hai prefix:** BR có **mesh-local prefix** (vd. fd18:2045:c1db:f85d::/64) và có thể có **OMR prefix** (vd. fdb8:3795:e886:1::/64) cho địa chỉ routable từ backbone. Node có cả mesh-local và OMR; backend nhận request từ OMR và gửi response về OMR.
-- **OTBR trên Linux:** Cần bật IPv6 forwarding; firewall (ip6tables) phải cho phép FORWARD vào interface Thread (vd. wpan0). Chi tiết OTBR: tài liệu OpenThread Border Router.
+**Route tay (fallback):**
+```bash
+sudo ip -6 route add <THREAD_PREFIX>/64 via <BR_LINKLOCAL>%<IFACE> dev <IFACE>
+# Ví dụ:
+sudo ip -6 route add fdb8:3795:e886:1::/64 via fe80::fc01:2cff:fecc:5e04%enp8s0 dev enp8s0
+```
+Route tay mất sau reboot và sau factory reset BR (prefix/link-local có thể đổi).
 
-### 6.3 Kiểm tra nhanh
-
-- Từ host backend: `ping6 <node_ULA>`. Nếu ping được thì path đã thông, CoAP response cũng đi cùng đường. Nếu "No route" hoặc timeout → sửa route / BR forwarding trước.
+**Backend trong Docker:** Dùng `network_mode: host`. Thêm route cần `--cap-add=NET_ADMIN`.
 
 ---
 
-## 7. Tài liệu liên quan
+## 5. Troubleshooting
+
+### 5.1 CoAP ResponseTimeout
+
+Thread-Node báo **ResponseTimeout** → response từ backend không tới node. Backend gửi UDP về đúng địa chỉ nguồn (rsinfo); vấn đề ở routing/forwarding.
+
+**Checklist:**
+1. Từ host backend: `ip -6 route get <node_ULA>` → next-hop phải là BR, dev = interface LAN.
+2. Nếu "No route" → thêm route (mục 4.1).
+3. BR phần cứng (ESP32-S3): đảm bảo border routing bật, BR quảng bá OMR prefix ra backhaul.
+4. Kiểm tra nhanh: `ping6 <node_ULA>` từ host backend. Nếu ping được thì CoAP response đi cùng đường.
+
+### 5.2 BR không nhận IPv4 (DHCP timeout)
+
+BR restart sau 25s nếu không lấy được IPv4. Kiểm tra DHCP server trên LAN; hoặc cấu hình IP tĩnh trên BR.
+
+### 5.3 RX/TX logging
+
+- Log **INFO** (mặc định): BR log mọi frame RX/TX dạng `frame RX/TX: id=... cmd=... len=...`.
+- Xem byte stream TCP: set log level **DEBUG** cho tag `transport_tcp`.
+
+---
+
+## 6. Tài liệu liên quan
 
 | Tài liệu | Nội dung |
 |----------|----------|
-| [../protocol/usb_cdc_frame_structure.md](../protocol/usb_cdc_frame_structure.md) | Frame protocol (transport: TCP; CMD, CRC8, error codes) |
+| [../protocol/usb_cdc_frame_structure.md](../protocol/usb_cdc_frame_structure.md) | Frame protocol (CMD table, CRC8, error codes, TLV BR health) |
 | [../protocol/table_data_format.md](../protocol/table_data_format.md) | Binary format Router/Child/Joiner Table |
-| [../coap/border_router_coap_server.md](../coap/border_router_coap_server.md) | Device registry (legacy trên BR; **hiện chạy trên Backend**), payload format, ACK/NACK |
-| [../coap/thread_node_coap.md](../coap/thread_node_coap.md) | CoAP /device/, GET ping, troubleshooting ResponseTimeout |
-| [../installation.md](../installation.md) | Setup nhanh: sysctl nhận route IPv6 (RA/RIO) và add route tay cho backend Linux |
+| [../coap/device_payload_spec.md](../coap/device_payload_spec.md) | CoAP endpoints, CBOR payload, DB schema, flow đăng ký |
+| [../coap/backend_discovery_srp.md](../coap/backend_discovery_srp.md) | SRP/DNS-SD discovery, OpenThread DNS client API |
+| [../installation.md](../installation.md) | Setup nhanh sysctl / route cho backend Linux |

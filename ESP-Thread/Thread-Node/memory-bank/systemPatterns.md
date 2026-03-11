@@ -101,7 +101,7 @@ Thread-Node CoAP Server:
   /entities/{id}/{attr} PUT/POST → Điều khiển entity
 
 Thread-Node CoAP Client (device_coap, gọi từ device_registry):
-  Backend POST /device/register/info → CBOR device only (keys 0–7); POST /device/register/entity → mac (7) + array entities (key 9). Mỗi entity item: keys 0–12 + **13 = restore_mode** (uint, default 0) cho backend mergeEntity. GET /device/ping → timestamp; re-register khi timestamp đổi.
+  Backend POST /device/register/info → CBOR device_info (keys 0–6, **key 0 = mac bstr(8)** EUI-64 802.15.4); POST /device/register/entity → **key 0** mac bstr(8) + **key 1** array entities (ENTITY_KEYS 0–6, restore_mode key 5). GET /device/ping → timestamp; re-register khi timestamp đổi. Spec: `Documents/coap/device_payload_spec.md`.
 ```
 
 **Shared CoAP manager** (`thread_coap.c`): Idempotent `otCoapStart()`. **device_coap**: CoAP client (token 2B, lock), send_register + send_entities + ping; response handlers; ping timestamp → callback re-register. **device_registry**: entity_serialize_info_cbor, entity_serialize_entities_cbor, topology **role-based** (child_cbor hoặc router_leader_cbor + otThreadGetNextNeighborInfo), entity_serialize_state_cbor; gọi send_register (info) rồi send_entities, send_topology, send_state theo flow.
@@ -115,7 +115,7 @@ Không dùng thư viện CBOR ngoài (tinycbor, cn-cbor). Encoder tự viết th
 cbor_encode_uint()          // Major type 0
 cbor_encode_text_string()   // Major type 3
 cbor_encode_bool()          // Simple values
-cbor_encode_byte_string()   // Major type 2 (dùng cho IPv6 address)
+cbor_encode_byte_string()   // Major type 2 (IPv6 address; **mac_address** key 0 = 8 bytes EUI-64)
 cbor_open_map()             // Indefinite-length map (0xBF)
 cbor_close_map()            // Break code (0xFF)
 cbor_open_array()           // Indefinite-length array (0x9F)

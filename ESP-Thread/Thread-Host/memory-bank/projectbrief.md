@@ -28,8 +28,11 @@ Firmware cho **ESP32-S3** chạy vai trò **Thread Border Router (BR)**, giao ti
 
 ## Tài liệu gốc
 
-- `README.md` — tổng quan, hardware, cấu hình
-- `TODO.md` — tính năng chưa làm
-- `../../Documents/protocol/usb_cdc_frame_structure.md` — frame protocol spec
-- `../../Documents/protocol/table_data_format.md` — format Router/Child/Joiner table
-- `../../Documents/coap/border_router_coap_server.md` — CoAP (device registry chạy trên backend; child gửi thẳng backend)
+- **Thread-Host:** `README.md`, `TODO.md` — tổng quan, hardware, cấu hình.
+- **Hệ thống (HomeThread/Documents/):** Danh mục đầy đủ xem `Documents/README.md`. Tài liệu liên quan BR:
+  - `Documents/protocol/usb_cdc_frame_structure.md` — frame protocol (CMD table, CRC8, error codes), **CMD_BR_HEALTH TLV §5.1**
+  - `Documents/protocol/table_data_format.md` — format Router/Child/Joiner Table
+  - `Documents/architecture/real_br_integration.md` — BR thật, tích hợp Dashboard + Thread-Node, keepalive/ACK, BR Health, SRP, troubleshooting
+  - `Documents/installation.md` — setup sysctl/route IPv6 cho backend Linux
+  - `Documents/coap/device_payload_spec.md` — CoAP endpoints (child gửi thẳng backend)
+  - `Documents/coap/backend_discovery_srp.md` — SRP/DNS-SD discovery backend từ node

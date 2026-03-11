@@ -14,7 +14,7 @@ Thread-Node là một **ESP-IDF component library framework** cho phép lập tr
 
 Thread-Node là **lớp thiết bị cuối** (End Device / Router Node) trong hệ thống:
 - Kết nối vào Thread mesh thông qua Border Router (Thread-Host)
-- Đăng ký thông tin thiết bị lên **Backend** qua CoAP POST `/device/register` (địa chỉ Backend lấy từ thread_discovery, SRP/DNS-SD `_dashboard._udp`)
+- Đăng ký thông tin thiết bị lên **Backend** qua CoAP POST `/device/register/info` và `/device/register/entity` (địa chỉ Backend lấy từ thread_discovery, SRP/DNS-SD `_dashboard._udp`). Spec: `Documents/coap/device_payload_spec.md`.
 - Nhận lệnh điều khiển từ Border Router qua CoAP PUT `/entities/{id}/{attr}`
 
 ## Mục tiêu cốt lõi
@@ -52,6 +52,7 @@ Thread-Node là **lớp thiết bị cuối** (End Device / Router Node) trong h
 
 ## Tài liệu tham chiếu
 
-- `Documents/iot-entity-model/entity_model_specification.md` — Entity type system spec v1.3.0
-- `docs/coap/border_router_coap_server.md` — CoAP device registry spec; **ACK/NACK bắt buộc** cho mọi message Node → Leader
-- `Documents/iot-entity-model/entity_model_schema.md` — SQLite schema (phía Dashboard)
+- `Documents/README.md` — Danh mục tài liệu HomeThread (architecture, protocol, coap, entity-model, installation, websocket).
+- `Documents/coap/device_payload_spec.md` — **Spec chính CoAP:** endpoints /device/ping, register/info, register/entity, update/topology, update/state; CBOR keys (device_info 0–6, key 0 = mac bstr(8) EUI-64 802.15.4); topology role-based; DB 8 bảng; flow đăng ký. Echo token, ACK/NACK.
+- `Documents/iot-entity-model/entity_model_specification.md` — Entity type system spec v1.3.0.
+- `Documents/coap/backend_discovery_srp.md` — SRP/DNS-SD discovery backend từ Node.

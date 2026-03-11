@@ -8,6 +8,12 @@ Giao tiếp BR ↔ backend theo hướng **notify-first**: Thread-Host push `CMD
 
 ## Recent Significant Changes
 
+### Tài liệu (HomeThread/Documents/) — cập nhật 2025
+- **Mục lục:** README.md — sơ đồ kiến trúc, bảng danh mục, luồng đăng ký tóm tắt.
+- **Spec chính CoAP:** `coap/device_payload_spec.md` — file canonical (endpoints, CBOR keys, DB 8 bảng, flow). Thay thế nội dung từ thread_node_coap.md + border_router_coap_server.md (đã gộp/xóa).
+- **SRP discovery:** `coap/backend_discovery_srp.md` — Thread-Node tìm Backend qua SRP/DNS-SD.
+- **Đã xóa:** backend_br_frame_requirements.md, border_router_coap_server.md, coap_client_snippet.md, thread_node_coap.md, entity_model_schema.md. Nội dung liên quan nằm trong device_payload_spec, real_br_integration, backend_discovery_srp, entity_model_specification.
+
 ### BR health snapshot — device_health_br upsert (2.11.0)
 - **Schema:** Bảng `device_health_br` — **1 row per device** (UNIQUE(device_id)), snapshot; cột: device_id, free_heap, minimum_free_heap, uptime, stack_hwm (text), mle_detach_count, recorded_at. Không lưu history; mỗi lần fetch thì **upsert** row theo device_id.
 - **Repository:** `device-health.repository.ts` — `upsertBrHealth(deviceId, freeHeap, minimumFreeHeap, uptime, mleDetachCount, stackHwm?)`; Drizzle `onConflictDoUpdate` trên device_id, set recordedAt = CURRENT_TIMESTAMP khi update.
@@ -18,7 +24,7 @@ Giao tiếp BR ↔ backend theo hướng **notify-first**: Thread-Host push `CMD
 - **Payload:** DeviceTopologyPayload parse theo role. Child gửi keys 0–5 (mac, rloc16, role, parent_rloc16, parent_rssi, parent_lq). Router/Leader gửi 0,1,2,6 (mac, rloc16, role, neighbors array TopologyNeighbor). TopologyNeighbor: 0=rloc16, 1?=rssi, 2?=lq_in, 3?=lq_out, 4=is_child.
 - **DB:** Bảng **device_topology_neighbor** (device_id, neighbor_rloc16, rssi, lq_in, lq_out, is_child); migration 0001_add_device_topology_neighbor. upsertTopology: replace list (delete + insert neighbors).
 - **Backend:** device.payload.ts TOPOLOGY_NEIGHBOR_KEYS, TopologyNeighbor; device-coap.service parse key 6, parseTopologyNeighbors(); repo TopologyNeighborItem, neighbors trong UpsertTopologyParams.
-- **Docs:** device_payload_spec.md (role-based topology, TopologyNeighbor, gợi ý otThreadGetParentInfo/otThreadGetNextNeighborInfo), thread_node_coap.md, border_router_coap_server.md (7 bảng). Memory-bank cập nhật (activeContext, techContext, progress, productContext, systemPatterns, projectbrief).
+- **Docs:** device_payload_spec.md (canonical: role-based topology, TopologyNeighbor, otThreadGetParentInfo/otThreadGetNextNeighborInfo), backend_discovery_srp.md, real_br_integration.md (8 bảng). Memory-bank đồng bộ với HomeThread/Documents/.
 
 ### Device heartbeat + name raw vs user + frame log filter
 - **Heartbeat (GET /device/ping):** Query `?mac=<16-char-hex>`; backend parse (parsePingMac), gọi `updateDeviceLastSeen(mac)`. Cột `device_info.last_seen_at`; repo `updateDeviceLastSeen`, helper `getDeviceStatus(lastSeenAt, now)` → online (30s) / away (5m) / offline. Constants HEARTBEAT_ONLINE_THRESHOLD_MS, HEARTBEAT_OFFLINE_THRESHOLD_MS. Chỉ cập nhật last_seen_at khi ping có mac hợp lệ; register/topology/state không đụng.
@@ -57,7 +63,7 @@ Giao tiếp BR ↔ backend theo hướng **notify-first**: Thread-Host push `CMD
 - **Payload types (device.payload.ts):** TOPOLOGY_KEYS (0–6, PARENT_RLOC16/PARENT_RSSI/PARENT_LQ, NEIGHBORS 6), TOPOLOGY_NEIGHBOR_KEYS (0–4); TopologyNeighbor, DeviceTopologyPayload; DeviceInfoPayload, DeviceEntityPayload/DeviceEntityItem, DeviceStatePayload/DeviceStateItem.
 - **Schema:** device_info, device_topology + **device_topology_neighbor** (device_id, neighbor_rloc16, rssi, lq_in, lq_out, is_child) + history, device_entity, device_entity_state + history. Migration 0001_add_device_topology_neighbor.
 - **Registration model:** Thread-Node: POST register/info (chỉ info) → POST update/topology (nếu có) → POST register/entity; GET /device/ping định kỳ, timestamp đổi thì gửi lại register. CoAP fail → SRP re-discovery.
-- **Docs:** `docs/coap/device_payload_spec.md` — spec payload cho Thread-Node (device_info, topology, entity, state). `docs/coap/thread_node_coap.md`, `docs/coap/border_router_coap_server.md` — flow, endpoints, troubleshooting.
+- **Docs:** `HomeThread/Documents/coap/device_payload_spec.md` — spec chính (endpoints, CBOR, DB, flow). `Documents/coap/backend_discovery_srp.md` — SRP discovery. `Documents/architecture/real_br_integration.md` — BR, routing, troubleshooting.
 
 ### UI polish (dark navy, Settings, Modal)
 - **Modal / ConfirmModal:** Dark navy — overlay rgba + backdrop blur; box $card-dark, border $brand-border; title/body $text-dark, $text-dark-subtle; nut Cancel ghost, Confirm danger/warning (#ef4444, #f97316) voi hover glow.
@@ -137,7 +143,7 @@ ROUTER_TABLE, CHILD_TABLE, JOINER_TABLE TX va ACK bi filter ra khoi console log 
 - `backend/src/coap/device-coap.controller.ts` — ping() parse query mac (parsePingMac), updateDeviceLastSeen
 - `frontend/src/shared/utils/display-name.ts` — deviceDisplayName(), entityDisplayName() (name ?? name_raw)
 - `backend/src/utils/ipv6.util.ts` — getPreferredBackendIPv6(), getBackendAddresses()
-- `docs/coap/device_payload_spec.md` — spec payload Thread-Node (device_info, topology, entity, state). `docs/coap/thread_node_coap.md`, `docs/architecture/real_br_integration.md` — flow, SRP discovery
+- `HomeThread/Documents/coap/device_payload_spec.md` — spec chính CoAP/CBOR/DB/flow. `Documents/coap/backend_discovery_srp.md` — SRP discovery. `Documents/architecture/real_br_integration.md` — BR, routing, troubleshooting
 - `backend/src/communicate/communicate.manager.ts` — pullState(), SRP register khi leader
 - `backend/src/communicate/command.manager.ts` — frame handling, sendSrpRegister, replyAck (IP_ADDR)
 - `frontend/src/features/nodes/nodes.component.tsx` — Router/Child table, JoinerList, CommissionNodeModal
