@@ -23,7 +23,7 @@ UI Components (Lit custom elements)
 Thread-Node  -- CoAP UDP 5683 (IPv6 [::]), path /device/
     ↓ GET /device/ping; POST /device/register/info (keys 0–6, key 0 = mac); POST /device/register/entity (key 0 = mac + key 1 array, ENTITY_KEYS 0–6, disabled); POST /device/update/topology (flat 0–6), /device/update/state (key 1 array, STATE_KEYS 0–6, không available)
 CoAP server        (backend/src/coap/coap-device.server.ts) + DeviceCoapController + device-coap.service.ts + device.repository.ts + coap.response.ts
-    ↓ registerCoapControllers(server, [DeviceCoapController]). GET ping: 2.05 + timestamp. POST register/info: upsert device_info, slug, soft-delete. POST register/entity: key 1 array (ENTITY_KEYS 0–6, disabled); merge device_entity; tra restore CBOR key 10. POST update/topology: payload flat 0–6. POST update/state: key 1 array (STATE_KEYS 0–6, không available). DB: device_entity.disabled; device_entity_state không ghi available. Khong emit len frontend.
+    ↓ registerCoapControllers(server, [DeviceCoapController]). GET ping: query ?mac= (16-char hex) → updateDeviceLastSeen; 2.05 + timestamp. POST register/info: upsert device_info (device_name_raw, COALESCE device_name), slug (device_name ?? device_name_raw ?? mac), soft-delete. POST register/entity: key 1 array (ENTITY_KEYS 0–6, disabled); merge device_entity (name_raw, COALESCE name); tra restore CBOR key 10. POST update/topology: payload flat 0–6. POST update/state: key 1 array (STATE_KEYS 0–6, không available). DB: device_info last_seen_at, device_name_raw; device_entity name_raw, disabled; device_entity_state không ghi available. Khong emit len frontend.
 
 Backend (os.networkInterfaces) → getBackendAddresses() → io.emit(SYSTEM_INFO) khi CONFIG_CURRENT
     ↓
@@ -49,7 +49,7 @@ Backend (khi BR = leader) → log "SRP register: IPv6=... hostname=... port=..."
 | `CommunicateManager` | `backend/src/communicate/communicate.manager.ts` | Owner cua toan bo transport + frame. Dieu phoi TransportTcp, polling, broadcast |
 | `TransportTcp` | `backend/src/communicate/transport-tcp.transport.ts` | TCP client: open(host, port), writeRaw, onRawData, setOnDisconnect |
 | `BrConnectionService` | `backend/src/settings/br-connection.service.ts` | Cau hinh BR (brHost, brPort, useMdns) qua app-settings.repository (key-value trong app_settings) |
-| `CommandManager` | `backend/src/communicate/command.manager.ts` | Frame TX/RX. Pending map (frameId → resolve/reject). ACK/NACK routing. Timeout; replyAck cho IP_ADDR |
+| `CommandManager` | `backend/src/communicate/command.manager.ts` | Frame TX/RX. Pending map (frameId → resolve/reject). ACK/NACK routing. Timeout; replyAck cho IP_ADDR. Log ẩn CMD STATE và ACK (RX + TX). |
 | `OtConfigManager` | `backend/src/thread/ot-config.manager.ts` | In-memory store. `.update(partial)` de merge, `.get()` de doc, `.clear()` khi disconnect |
 | `PollingManager` | `backend/src/thread/thread-polling.manager.ts` | Fallback table polling (notify-first); state poll 5s do CommunicateManager, tables theo CMD_NOTIFY + baseline on connect. Không gating theo số client frontend. |
 | `AppSettingsService` | `backend/src/settings/app-settings.service.ts` | SQLite key-value cho app settings (thread_run_on_connect) |

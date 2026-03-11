@@ -18,6 +18,7 @@ import {
   TOPOLOGY_KEYS,
 } from "./device.payload";
 import { cborEncode } from "@cbor";
+import { updateDeviceLastSeen } from "@database/repositories/device.repository";
 import {
   upsertDeviceInfo,
   updateDeviceInfo,
@@ -64,9 +65,25 @@ const coapLog = logger.child("CoAP");
 /** Timestamp when server started; restart = new value so node re-registers. */
 const serverStartTimestamp = (Math.floor(Date.now() / 1000) >>> 0) & 0xffffffff;
 
+/** Normalize and validate mac from query (16-char hex). Returns null if invalid. */
+function parsePingMac(url: string | undefined): string | null {
+  if (!url) return null;
+  let mac: string;
+  try {
+    mac = new URL(url, "coap://localhost").searchParams.get("mac") ?? "";
+  } catch {
+    return null;
+  }
+  mac = mac.trim().toLowerCase().replace(/^0x/, "");
+  if (mac.length !== 16 || !/^[0-9a-f]+$/.test(mac)) return null;
+  return mac;
+}
+
 export class DeviceCoapController {
   @CoapGet("/device/ping")
   ping(req: CoapRequest, res: CoapResponse): void {
+    const mac = parsePingMac(req.url);
+    if (mac !== null) updateDeviceLastSeen(mac);
     const buf = Buffer.alloc(4);
     buf.writeUInt32LE(serverStartTimestamp, 0);
     sendCoapResponse(req, res, CoapStatus.CONTENT, buf);

@@ -12,7 +12,7 @@ Tài liệu mô tả cấu trúc payload CBOR cho CoAP **/device/** giữa Threa
 
 | Method | Path | Payload | Mô tả |
 |--------|------|---------|--------|
-| GET | /device/ping | — | Backend trả 2.05 Content, body 4 byte timestamp uint32 LE. Node so sánh timestamp; đổi thì gửi lại register. |
+| GET | /device/ping | query **?mac=&lt;hex&gt;** (khuyến nghị) | Backend trả 2.05 Content, body 4 byte timestamp uint32 LE. **Nên** gửi kèm `?mac=<eui64_hex>` (16 ký tự hex) để backend cập nhật heartbeat (last_seen_at). Node so sánh timestamp; đổi thì gửi lại register. |
 | POST | /device/register/info | **device_info** (keys 0–6, key 0 = mac) | Đăng ký thông tin thiết bị. Node **chờ** response thành công (retry nếu fail) rồi mới gửi register/entity. |
 | POST | /device/register/entity | **key 0** (mac_address) + **key 1** (array entity) | Đăng ký danh sách entity. Chỉ gửi **sau khi** register/info thành công. Backend có thể trả body CBOR key 10 = restore. |
 
@@ -95,9 +95,18 @@ Request body: **key 0** (mac_address) + **key 1** (array). Mỗi phần tử tro
 
 ---
 
+## GET /device/ping — heartbeat và restart detection
+
+- **Request:** GET `/device/ping` (không body). **Khuyến nghị:** gửi kèm query **?mac=&lt;eui64_hex&gt;** (16 ký tự hex, ví dụ `a1b2c3d4e5f60708`) để backend cập nhật **last_seen_at** (heartbeat) cho thiết bị.
+- **Response:** 2.05 Content, body **4 byte** timestamp uint32 LE (giá trị lúc server khởi động).
+- **Hai vai trò:** (1) **Heartbeat** — khi có `mac` hợp lệ, backend cập nhật last_seen_at; (2) **Restart detection** — node so sánh timestamp với lần trước; nếu đổi → backend đã restart → gửi lại register/info + register/entity.
+- Thiếu hoặc sai `mac` → backend vẫn trả 2.05 + timestamp nhưng không cập nhật last_seen_at.
+
+---
+
 ## Flow khuyến nghị (Thread-Node)
 
-1. **GET /device/ping** — lấy timestamp; nếu khác lần trước → bắt đầu register.
+1. **GET /device/ping?mac=&lt;eui64_hex&gt;** — lấy timestamp (và cập nhật heartbeat); nếu timestamp khác lần trước → bắt đầu register.
 2. **POST /device/register/info** (keys 0–6, key 0 = mac) — gửi device info only. **Retry** đến khi backend trả 2.01/2.04 (không gửi register/entity cho đến khi register/info thành công).
 3. **Chỉ khi register/info success** → **POST /device/register/entity** (key 0 = mac, key 1 = array entity). Nhận restore (key 10) nếu backend trả.
 4. **POST /device/update/topology** (key 0 = mac, 1–6 = topology) và **POST /device/update/state** (key 0 = mac, key 1 = array state) — node gửi định kỳ sau khi đã register. **update/info** và **update/entity** chỉ dùng từ backend/UI, node không gửi.

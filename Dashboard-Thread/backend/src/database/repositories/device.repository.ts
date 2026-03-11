@@ -3,6 +3,41 @@
  */
 
 import { and, eq, isNotNull, isNull, sql } from "drizzle-orm";
+
+/** Heartbeat: online if last_seen within this window. */
+export const HEARTBEAT_ONLINE_THRESHOLD_MS = 30_000;
+/** Heartbeat: offline if last_seen older than this. */
+export const HEARTBEAT_OFFLINE_THRESHOLD_MS = 5 * 60_000;
+
+export type DeviceStatus = "online" | "away" | "offline";
+
+/**
+ * Pure: derive status from lastSeenAt and now. For use when exposing device list/detail.
+ * Online: lastSeenAt within 30s. Away: (30s, 5m]. Offline: null or > 5m.
+ */
+export function getDeviceStatus(lastSeenAt: string | null, now: Date): DeviceStatus {
+  if (lastSeenAt == null || lastSeenAt === "") return "offline";
+  const t = new Date(lastSeenAt);
+  if (Number.isNaN(t.getTime())) return "offline";
+  const elapsed = now.getTime() - t.getTime();
+  if (elapsed <= HEARTBEAT_ONLINE_THRESHOLD_MS) return "online";
+  if (elapsed <= HEARTBEAT_OFFLINE_THRESHOLD_MS) return "away";
+  return "offline";
+}
+
+/**
+ * Update last_seen_at for device with given mac (16-char hex). No-op if not found.
+ * Only called from GET /device/ping when mac query is valid.
+ */
+export function updateDeviceLastSeen(macHex: string): void {
+  const db = getDrizzle();
+  const row = db.select({ id: deviceInfo.id }).from(deviceInfo).where(eq(deviceInfo.macAddress, macHex)).get();
+  if (!row) return;
+  db.update(deviceInfo)
+    .set({ lastSeenAt: sql`datetime('now')` })
+    .where(eq(deviceInfo.macAddress, macHex))
+    .run();
+}
 import { getDatabase, getDrizzle } from "../database.db";
 import {
   deviceInfo,
@@ -53,6 +88,7 @@ export function resolveDeviceIdByMac(macHex: string): number | null {
 export type UpsertDeviceInfoParams = {
   macHex: string;
   deviceName: string | null;
+  deviceNameRaw: string | null;
   deviceType: number | null;
   manufacturer: string | null;
   model: string | null;
@@ -62,14 +98,15 @@ export type UpsertDeviceInfoParams = {
 
 export function upsertDeviceInfo(params: UpsertDeviceInfoParams): "created" | "changed" {
   const db = getDrizzle();
-  const { macHex, deviceName, deviceType, manufacturer, model, swVersion, hwVersion } = params;
+  const { macHex, deviceName, deviceNameRaw, deviceType, manufacturer, model, swVersion, hwVersion } = params;
 
   const existing = db.select({ id: deviceInfo.id }).from(deviceInfo).where(eq(deviceInfo.macAddress, macHex)).get();
 
   if (existing) {
     db.update(deviceInfo)
       .set({
-        deviceName,
+        deviceNameRaw,
+        deviceName: sql`COALESCE(${deviceInfo.deviceName}, ${deviceName})`,
         deviceType,
         manufacturer,
         model,
@@ -84,6 +121,7 @@ export function upsertDeviceInfo(params: UpsertDeviceInfoParams): "created" | "c
       .values({
         macAddress: macHex,
         deviceName,
+        deviceNameRaw,
         deviceType,
         manufacturer,
         model,
@@ -93,7 +131,16 @@ export function upsertDeviceInfo(params: UpsertDeviceInfoParams): "created" | "c
       .run();
   }
 
-  const row = db.select({ id: deviceInfo.id, deviceSlug: deviceInfo.deviceSlug }).from(deviceInfo).where(eq(deviceInfo.macAddress, macHex)).get();
+  const row = db
+    .select({
+      id: deviceInfo.id,
+      deviceSlug: deviceInfo.deviceSlug,
+      deviceName: deviceInfo.deviceName,
+      deviceNameRaw: deviceInfo.deviceNameRaw,
+    })
+    .from(deviceInfo)
+    .where(eq(deviceInfo.macAddress, macHex))
+    .get();
   if (!row) throw new Error("device_info row not found");
   const deviceId = row.id;
 
@@ -105,7 +152,8 @@ export function upsertDeviceInfo(params: UpsertDeviceInfoParams): "created" | "c
       .all()
       .map((r) => r.slug as string);
 
-    const slug = generateSlug(deviceName ?? macHex, existingSlugs);
+    const slugSource = row.deviceName ?? row.deviceNameRaw ?? macHex;
+    const slug = generateSlug(slugSource, existingSlugs);
 
     db.update(deviceInfo)
       .set({ deviceSlug: slug, updatedAt: sql`(CURRENT_TIMESTAMP)` })
@@ -193,6 +241,7 @@ export function upsertTopology(params: UpsertTopologyParams): void {
 export type MergeEntityItem = {
   entityId: string;
   name: string | null;
+  nameRaw: string | null;
   type: number | null;
   deviceClass: number | null;
   unit: string | null;
@@ -212,6 +261,7 @@ export function mergeEntity(macHex: string, deviceId: number, entities: MergeEnt
         deviceId,
         entityId: e.entityId,
         name: e.name,
+        nameRaw: e.nameRaw,
         type: e.type,
         deviceClass: e.deviceClass,
         unit: e.unit,
@@ -223,7 +273,8 @@ export function mergeEntity(macHex: string, deviceId: number, entities: MergeEnt
       .onConflictDoUpdate({
         target: [deviceEntity.deviceId, deviceEntity.entityId],
         set: {
-          name: e.name,
+          nameRaw: e.nameRaw,
+          name: sql`COALESCE(${deviceEntity.name}, ${e.name})`,
           type: e.type,
           deviceClass: e.deviceClass,
           unit: e.unit,

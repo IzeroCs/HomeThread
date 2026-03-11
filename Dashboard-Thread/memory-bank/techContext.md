@@ -40,7 +40,7 @@ Dashboard-Thread/          # npm workspaces root
 | pino | ^9.5.0 | Structured logging |
 | pino-pretty | latest | Pretty console output |
 
-Transport: TCP (net.Socket) to BR; CoAP (UDP 5683, udp6 listen [::]) from Thread-Node. Dependencies: `coap`. CBOR decode/encode noi bo (`backend/src/cbor`). Thread-Node la **CoAP client**: GET /device/ping; POST /device/register/info (keys 0–6, key 0 = mac), /device/update/topology (payload flat key 0 = mac, 1–6), /device/register/entity, /device/update/entity, /device/update/state (key 0 = mac, **key 1** = array). ENTITY_KEYS 0–6 (disabled key 6); STATE_KEYS 0–6 (không available). Spec payload: docs/coap/device_payload_spec.md. Backend luu 6 bang (device_entity có disabled; device_entity_state không còn ghi available); tra qua sendCoapResponse. ResponseTimeout → docs troubleshooting.
+Transport: TCP (net.Socket) to BR; CoAP (UDP 5683, udp6 listen [::]) from Thread-Node. Dependencies: `coap`. CBOR decode/encode noi bo (`backend/src/cbor`). Thread-Node la **CoAP client**: GET /device/ping**?mac=** (16-char hex, heartbeat → last_seen_at); POST /device/register/info (keys 0–6, key 0 = mac), /device/update/topology (payload flat key 0 = mac, 1–6), /device/register/entity, /device/update/entity, /device/update/state (key 0 = mac, **key 1** = array). ENTITY_KEYS 0–6 (disabled key 6); STATE_KEYS 0–6 (không available). Spec payload: docs/coap/device_payload_spec.md. Backend luu 6 bang (device_info: last_seen_at, device_name_raw; device_entity: name_raw, disabled; device_entity_state không available); updateDeviceLastSeen, getDeviceStatus(30s/5m); tra qua sendCoapResponse. ResponseTimeout → docs troubleshooting. Frame log: CMD STATE và ACK ẩn (command.manager.ts).
 
 ### Frontend
 

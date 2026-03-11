@@ -30,6 +30,8 @@ Version notation in this file uses Semantic Versioning `MAJOR.MINOR.PATCH` (no l
 | 2.5.0   | **Frontend React → Lit:** migrate toàn bộ UI sang Lit custom elements (Vite + TS + SCSS). State/WS chuyển sang `WebSocketController` (Lit ReactiveController) thay contexts/hooks. Sau đó chuyển sang **light DOM** (tắt Shadow DOM) để CSS global áp trực tiếp; SCSS import kiểu side-effect (không `?inline`/`unsafeCSS`). `modal-dialog` đổi API: truyền nội dung qua property `.body` (TemplateResult) thay cho `<slot>` để modal/confirm modal render đúng trong light DOM. |
 | 2.6.0   | **Notify-first BR sync:** Thread-Host push `CMD_NOTIFY (0x45)` (mask u32 BE) để báo thay đổi; backend debounce + gộp mask rồi pull dataset/ip/tables tương ứng. Giữ polling **STATE 5s** làm health-check; thêm baseline pull khi TCP connect để UI không stale nếu missed notify. Bỏ `frontendConnectionCount`, `onFrontendConnected`/`onFrontendDisconnected`; BR sync không phụ thuộc số client WS. |
 | 2.7.0   | **CoAP payload: entity disabled, state sort, bỏ available:** ENTITY_KEYS 0–6 (unit 4, restore_mode 5, **disabled** 6); STATE_KEYS 0–6 (entity_id, state, brightness, mode, rgb, color_temp, value); bỏ available. device_entity thêm cột **disabled**; device_entity_state không còn ghi available (cột để null). Array entity/state dùng **key 1** (PAYLOAD_KEY_ARRAY); topology payload flat key 0 = mac, 1–6. Migration 0001_add_entity_disabled. Doc + memory-bank cập nhật. |
+| 2.8.0   | **Device heartbeat (ping + last_seen_at):** GET /device/ping query **?mac=** (16-char hex); backend parse (parsePingMac), updateDeviceLastSeen(mac). device_info cột **last_seen_at**; repo updateDeviceLastSeen, getDeviceStatus(lastSeenAt, now) → online (30s) / away (5m) / offline. Constants HEARTBEAT_ONLINE_THRESHOLD_MS, HEARTBEAT_OFFLINE_THRESHOLD_MS. Chỉ cập nhật last_seen_at khi ping có mac hợp lệ. Doc: device_payload_spec.md, thread_node_coap.md (ping + query mac, heartbeat và restart detection). |
+| 2.9.0   | **Device/entity name raw vs user:** device_info **device_name_raw**, device_entity **name_raw** (tên firmware). User name (device_name / name): register update = COALESCE(hiện tại, payload); raw luôn ghi đè. Slug = (device_name ?? device_name_raw ?? macHex). Repo: upsertDeviceInfo(deviceNameRaw), mergeEntity(nameRaw); service truyền raw + name từ payload. Frontend `shared/utils/display-name.ts`: deviceDisplayName(), entityDisplayName(). **Frame log:** Ẩn log CMD STATE và ACK (RX + TX) trong command.manager.ts. |
 
 
 ## What Works (Completed)
@@ -37,10 +39,10 @@ Version notation in this file uses Semantic Versioning `MAJOR.MINOR.PATCH` (no l
 ### Infrastructure
 
 - npm workspaces monorepo (backend + frontend + shared)
-- SQLite database (WAL mode): Drizzle schema (database.schema.ts), migrations data/migrations. app_settings (key-value; BR config br_host, br_port, use_mdns trong app_settings). Schema 6 bang: device_info (mac_address UNIQUE, device_slug), device_topology + device_topology_history (rloc16, parent_rloc16, role, **rssi**, **link_quality**), device_entity (restore_mode, deleted_at), device_entity_state + history. Repositories: app-settings.repository, device.repository (type-safe Drizzle).
+- SQLite database (WAL mode): Drizzle schema (database.schema.ts), migrations data/migrations. app_settings (key-value; BR config br_host, br_port, use_mdns trong app_settings). Schema 6 bang: device_info (mac_address UNIQUE, device_slug, **last_seen_at**, **device_name_raw**), device_topology + device_topology_history (rloc16, parent_rloc16, role, **rssi**, **link_quality**), device_entity (restore_mode, deleted_at, **name_raw**), device_entity_state + history. Repositories: app-settings.repository, device.repository (updateDeviceLastSeen, getDeviceStatus, upsertDeviceInfo deviceNameRaw/COALESCE, mergeEntity nameRaw/COALESCE).
 - Shared package: types, events, constants, validation
 - pino logging voi child loggers (transportLogger, frameLogger, wsLogger)
-- Table log filtering (ROUTER/CHILD/JOINER TX + ACK bi an)
+- Table log filtering (ROUTER/CHILD/JOINER TX + ACK bi ẩn); CMD STATE và ACK (RX + TX) cũng ẩn trong command.manager.ts
 - Cursor Memory Bank (memory-bank/)
 - Symlink docs → HomeThread/Documents/ (Dashboard-Thread + ESP-Thread/Thread-Host)
 
@@ -80,7 +82,7 @@ Version notation in this file uses Semantic Versioning `MAJOR.MINOR.PATCH` (no l
 
 ### Backend — CoAP device & System
 
-- CoAP server (coap/coap-device.server.ts): listen UDP 5683 on [::] (udp6). **Decorator:** registerCoapControllers(server, [DeviceCoapController]); paths /device/ping, register/info, register/entity, update/info, update/entity, update/topology, update/state. **GET /device/ping**: 2.05 Content + 4-byte timestamp. **POST register/info**: DeviceInfoPayload keys 0–6 (key 0 = mac); upsert device_info, slug; soft-delete entity/state cũ. **POST register/entity**: key 0 (mac) + **key 1** array entities (ENTITY_KEYS 0–6, key 6 = disabled); merge device_entity; trả CBOR key 10 = restore. **POST update/topology**: payload flat key 0 = mac, 1–6. **POST update/state**: key 0 + **key 1** array (STATE_KEYS 0–6; không available). DB: device_entity.disabled; device_entity_state không ghi available. Doc: device_payload_spec.md, thread_node_coap.md, border_router_coap_server.md.
+- CoAP server (coap/coap-device.server.ts): listen UDP 5683 on [::] (udp6). **Decorator:** registerCoapControllers(server, [DeviceCoapController]); paths /device/ping, register/info, register/entity, update/info, update/entity, update/topology, update/state. **GET /device/ping**: query ?mac= (16-char hex) khuyến nghị → update last_seen_at; response 2.05 Content + 4-byte timestamp. **POST register/info**: DeviceInfoPayload keys 0–6; upsert device_info (device_name_raw + COALESCE device_name), slug từ (device_name ?? device_name_raw ?? mac); soft-delete entity/state cũ. **POST register/entity**: key 0 (mac) + **key 1** array entities; merge device_entity (name_raw + COALESCE name, disabled key 6); trả CBOR key 10 = restore. **POST update/topology**: payload flat key 0 = mac, 1–6. **POST update/state**: key 0 + **key 1** array (STATE_KEYS 0–6; không available). DB: device_entity.disabled, name_raw; device_info last_seen_at, device_name_raw; device_entity_state không ghi available. Doc: device_payload_spec.md, thread_node_coap.md, border_router_coap_server.md.
 - System info: getBackendAddresses() (utils/ipv6.util); gui SYSTEM_INFO khi CONFIG_GET/CONFIG_CURRENT. Frontend Status section System (IPv4/IPv6).
 
 ### Backend — Path aliases & build
@@ -113,8 +115,8 @@ Console da bo. Commissioner gop vao Nodes (modal + Joiner List).
 - HomeThread/Documents/protocol/usb_cdc_frame_structure.md
 - HomeThread/Documents/protocol/table_data_format.md
 - HomeThread/Documents/dashboard/migration_to_frame_protocol.md
-- docs/coap/device_payload_spec.md — spec payload Thread-Node (key 0 = mac; device_info 0–6; topology flat 0–6; entity/state key 1 array; ENTITY_KEYS 0–6 disabled; STATE_KEYS 0–6 no available; flow register/info → register/entity → update/topology, update/state)
-- docs/coap/thread_node_coap.md — hướng dẫn Thread-Node (CoAP + CBOR, flow, SRP discovery)
+- docs/coap/device_payload_spec.md — spec payload Thread-Node (key 0 = mac; device_info 0–6; topology flat 0–6; entity/state key 1 array; ENTITY_KEYS 0–6 disabled; STATE_KEYS 0–6 no available; GET /device/ping ?mac= heartbeat + restart detection; flow register/info → register/entity → update/topology, update/state)
+- docs/coap/thread_node_coap.md — hướng dẫn Thread-Node (CoAP + CBOR, GET /device/ping?mac= heartbeat, flow, SRP discovery)
 - docs/coap/border_router_coap_server.md — spec Backend CoAP (endpoints, 6 bảng, device_topology rssi/link_quality)
 - docs/websocket.md — Backend WebSocket: cấu trúc handler/, @WsOn, getWsRoutes, bảng handler modules
 - README.md + TODO.md cap nhat
@@ -143,7 +145,7 @@ Console da bo. Commissioner gop vao Nodes (modal + Joiner List).
 - Frontend hiện dùng Lit + light DOM; không còn behavior React Strict Mode double-mount.
 - **CMD_DATA da bo**: Child gui thang backend qua CoAP (port 5683, CBOR). BR chi route IP. Thread-Node doc: docs/coap/thread_node_coap.md.
 - **CoAP ResponseTimeout**: Neu Thread-Node bao `Ping/Register response error: ResponseTimeout` thi handler duoc goi voi **loi timeout** (node khong nhan duoc response), khong phai loi logic backend. Nguyen nhan thuong la **routing/forwarding**: response tu backend gui ve dia chi nguon (rsinfo) nhung packet khong toi node. Kiem tra: (1) Host backend co route toi prefix Thread qua BR (`ip -6 route get <node_ula>`); (2) BR (ESP32-S3 + RCP hoac OTBR) bat border routing va forward prefix OMR vao Thread; (3) Neu BR la Linux OTBR thi can `net.ipv6.conf.all.forwarding=1` va firewall ip6tables cho phep FORWARD vao interface Thread. Chi tiet: docs/coap/thread_node_coap.md (Troubleshooting), docs/architecture/real_br_integration.md.
-- **Log filter**: TABLE commands bi filter khoi console. Can xem log file de debug table data.
+- **Log filter**: TABLE commands và CMD STATE/ACK (RX + TX) bi ẩn khỏi console. Cần xem log file để debug table/state/ack data.
 - **Channel la uint8_t**: 1 byte (11-26), KHONG phai 3 byte. Da sua trong CommandManager.
 - **BR connection:** IPv6 link-local (fe80::) can zone ID (vd. %enp7s0) tranh EINVAL; nhieu BR chi listen IPv4 → dung IPv4 lam BR Host tranh ECONNREFUSED. Cap truc tiep PC–BR (khong router): PC can IP tinh cung subnet voi BR.
 

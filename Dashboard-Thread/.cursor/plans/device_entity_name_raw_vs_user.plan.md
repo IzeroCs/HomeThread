@@ -15,22 +15,13 @@ isProject: false
 
 ---
 
-## 1. Schema
+## 1. Schema (đã xong)
 
 **File:** [backend/src/database/database.schema.ts](backend/src/database/database.schema.ts)
 
-
-| Bảng              | Cột mới                                  | Cột hiện tại (ý nghĩa mới)                             |
-| ----------------- | ---------------------------------------- | ------------------------------------------------------ |
-| **device_info**   | `deviceNameRaw: text("device_name_raw")` | `deviceName` = tên user (chỉ set lần đầu hoặc qua API) |
-| **device_entity** | `nameRaw: text("name_raw")`              | `name` = tên user (chỉ set lần đầu hoặc qua API)       |
-
-
-**Migration:** File mới (vd. `0003_device_entity_name_raw.sql`):
-
-- `ALTER TABLE device_info ADD COLUMN device_name_raw TEXT DEFAULT NULL;`
-- `ALTER TABLE device_entity ADD COLUMN name_raw TEXT DEFAULT NULL;`
-- (Tuỳ chọn) Backfill: copy giá trị hiện tại `device_name` → `device_name_raw`, `name` → `name_raw` cho dữ liệu cũ.
+- **device_info:** `deviceNameRaw: text("device_name_raw")` đã có (dòng 26). `deviceName` = tên user (chỉ set lần đầu hoặc qua API).
+- **device_entity:** `nameRaw: text("name_raw")` đã có (dòng 73). `name` = tên user (chỉ set lần đầu hoặc qua API).
+- DB đã xóa và tạo lại nên **không cần** migration / ALTER TABLE.
 
 ---
 
@@ -71,31 +62,21 @@ isProject: false
 
 ## 5. CoAP (node)
 
-Node chỉ dùng: POST `/device/register/info`, `/device/register/entity`, `/device/update/topology`, `/device/update/state`, GET `/device/ping`. Không có `/device/update/info` hay `/device/update/entity` từ node; đổi tên chỉ qua backend/UI (PATCH API).
+Node chỉ dùng: POST `/device/register/info`, `/device/register/entity`, `/device/update/topology`, `/device/update/state`, GET `/device/ping`. Không có `/device/update/info` hay `/device/update/entity` từ node; đổi tên chỉ qua backend/UI.
 
 ---
 
-## 6. REST API (khi có HTTP server)
-
-- **PATCH /api/devices/:slug** — body `{ "device_name": string | null }` → `UPDATE device_info SET device_name = ? WHERE device_slug = ?`. `null` = reset về tên gốc (UI hiển thị `device_name_raw`).
-- **PATCH /api/devices/:slug/entities/:entity_id** — body `{ "name": string | null }` → `UPDATE device_entity SET name = ? WHERE ...`. `null` = reset về `name_raw`.
-
-Repo: thêm `updateDeviceNameBySlug(slug, deviceName)` và `updateEntityName(deviceId, entityId, name)` để PATCH gọi vào.
-
----
-
-## 7. UI
+## 6. UI
 
 - Device: hiển thị `device_name ?? device_name_raw`.
 - Entity: hiển thị `name ?? name_raw`.
-- Cho phép user đổi tên và "reset về tên gốc" (set `device_name` / `name` = `null` qua PATCH).
 
 ---
 
-## Checklist triển khai
+## Checklist triển khai (chỉ logic)
 
-- Schema: thêm `device_name_raw`, `name_raw`; migration + optional backfill.
 - Repo: upsert device/entity với raw luôn ghi đè, user name = COALESCE(hiện tại, payload); slug từ (device_name ?? device_name_raw ?? mac).
 - CoAP service: truyền raw + name/deviceName vào repo.
-- (Sau) REST: PATCH devices/:slug, PATCH .../entities/:id; repo updateDeviceNameBySlug, updateEntityName.
 - (Sau) UI: hiển thị user name, fallback raw; form đổi tên + reset = set null.
+
+**Không** cần: tóm tắt lại; cập nhật memory-bank hoặc docs.

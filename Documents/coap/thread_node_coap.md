@@ -10,14 +10,14 @@ Backend       parse CBOR → device_info, device_entity, device_topology, device
               Response: 2.01/2.04 (và có thể kèm restore state trong body).
 ```
 
-- **Thread-Node → Backend**: Gửi **GET** `/device/ping`; **POST** `/device/register/info` (keys 0–6, key 0 = mac), **chờ thành công** (retry nếu fail); **chỉ khi register/info success** mới gửi **POST** `/device/register/entity` (key 0 = mac_address, key 1 = array entities). Các endpoint `/device/update/topology`, `/device/update/state` là tùy chọn; `/device/update/info`, `/device/update/entity` do backend/UI, node không gửi.
+- **Thread-Node → Backend**: Gửi **GET** `/device/ping?mac=<eui64_hex>` (ví dụ mỗi 10s, hex 16 ký tự); **POST** `/device/register/info` (keys 0–6, key 0 = mac), **chờ thành công** (retry nếu fail); **chỉ khi register/info success** mới gửi **POST** `/device/register/entity` (key 0 = mac_address, key 1 = array entities). Các endpoint `/device/update/topology`, `/device/update/state` là tùy chọn; `/device/update/info`, `/device/update/entity` do backend/UI, node không gửi.
 - **Backend**: Listen UDP 5683 trên IPv6 ([::]). Mọi response **echo CoAP token** (RFC 7252). **device_slug** hoàn toàn do backend/UI tạo — node **không gửi** và không cần biết slug.
 
 ## CoAP URI (Node đang dùng — align backend)
 
 | Path | Method | Ý nghĩa |
 |------|--------|---------|
-| `/device/ping` | **GET** | Ping; backend trả **2.05 Content**, payload **4 byte** = timestamp uint32 LE. Node so sánh; nếu khác → backend restart → gửi lại register/info + register/entity. |
+| `/device/ping` | **GET** | Ping; backend trả **2.05 Content**, payload **4 byte** = timestamp uint32 LE. **Nên** gửi kèm query **?mac=&lt;eui64_hex&gt;** (16 ký tự hex) để backend cập nhật heartbeat (last_seen_at). Node so sánh timestamp; nếu khác → backend restart → gửi lại register/info + register/entity. |
 | `/device/register/info` | POST | Đăng ký device info. Payload CBOR **keys 0–6** (key 0 = mac_address bắt buộc). Node **chờ** response 2.01/2.04; **nếu fail thì retry** (vd. 2s) đến khi thành công. Chỉ khi success mới gửi register/entity. |
 | `/device/register/entity` | POST | Đăng ký danh sách entity. Payload: **key 0** = mac_address, **key 1** = array entities (ENTITY_KEYS 0–6: entity_id, name, type, device_class, unit, restore_mode, disabled). Chỉ gửi **sau khi** register/info đã thành công. Backend có thể trả **restore state** trong body CBOR (map key **10** = array restore). Response 2.01/2.04, echo token. |
 
@@ -41,6 +41,11 @@ Backend       parse CBOR → device_info, device_entity, device_topology, device
 2. **Khi register/info success** → Node gửi **POST /device/register/entity** (key 0 = mac_address, key 1 = array entities, mỗi entity ENTITY_KEYS 0–6: entity_id, name, type, device_class, unit, restore_mode, disabled).
 3. Backend xử lý register/entity: merge entity, lookup state cũ. Nếu entity có **restore_mode** và có state đã lưu → đưa vào danh sách restore; không có state cũ → dùng default theo restore_mode (OFF/ON/không gửi).
 4. Response của **POST /device/register/entity** có thể có body **CBOR** (Content-Format application/cbor): map key **10** = mảng restore; mỗi phần tử là map với key 0=entity_id, 1=restore_mode, 2=state, 3=brightness, 4=mode, 5=rgb_json, 6=color_temp, 7=value_real, 8=has_saved_state (0/1). Node decode CBOR và áp dụng state (hoặc default) cho từng entity.
+
+## GET /device/ping — heartbeat và restart detection
+
+- Gửi **GET /device/ping?mac=&lt;eui64_hex&gt;** định kỳ (vd. mỗi 10s). Backend cập nhật **last_seen_at** (heartbeat) cho thiết bị; response vẫn là 2.05 Content + 4 byte timestamp uint32 LE.
+- Node lưu timestamp; nếu lần sau nhận **timestamp khác** → backend đã restart → gửi lại register/info + register/entity.
 
 ## update/topology và update/state
 

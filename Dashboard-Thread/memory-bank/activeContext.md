@@ -8,6 +8,11 @@ Giao tiếp BR ↔ backend theo hướng **notify-first**: Thread-Host push `CMD
 
 ## Recent Significant Changes
 
+### Device heartbeat + name raw vs user + frame log filter
+- **Heartbeat (GET /device/ping):** Query `?mac=<16-char-hex>`; backend parse (parsePingMac), gọi `updateDeviceLastSeen(mac)`. Cột `device_info.last_seen_at`; repo `updateDeviceLastSeen`, helper `getDeviceStatus(lastSeenAt, now)` → online (30s) / away (5m) / offline. Constants HEARTBEAT_ONLINE_THRESHOLD_MS, HEARTBEAT_OFFLINE_THRESHOLD_MS. Chỉ cập nhật last_seen_at khi ping có mac hợp lệ; register/topology/state không đụng.
+- **Device/entity name raw vs user:** `device_info.device_name_raw`, `device_entity.name_raw` (tên từ firmware). User name: `device_name` / `name`; khi register: **raw** luôn ghi đè, **user name** = COALESCE(hiện tại, payload). Slug = (device_name ?? device_name_raw ?? macHex). Repo: upsertDeviceInfo(deviceNameRaw), mergeEntity(nameRaw); service truyền cùng giá trị payload vào raw + name. Frontend `shared/utils/display-name.ts`: `deviceDisplayName()`, `entityDisplayName()` (name ?? name_raw).
+- **Frame log:** Ẩn log CMD STATE và ACK (RX + TX) trong `command.manager.ts` — không logFrame khi frame.cmd === STATE hoặc ACK; không log TX khi sendRequest(cmd === STATE); không log TX reply ACK trong replyAck().
+
 ### BR sync: bỏ frontend connection gating
 - **CommunicateManager:** Xóa `frontendConnectionCount`, `onFrontendConnected()`, `onFrontendDisconnected()`. Polling/tables fetch không còn phụ thuộc số client WS.
 - **websocket.server.ts:** Trên connection chỉ gọi sendCurrentConfig/sendBrStatus + emit last* data; không gọi communicate.onFrontendConnected/onFrontendDisconnected.
@@ -36,9 +41,9 @@ Giao tiếp BR ↔ backend theo hướng **notify-first**: Thread-Host push `CMD
 - **Da xoa:** DashboardSrpClient.ts (UDP SRP), register-srp.ts script, STATE_FAKE_PAYLOAD (sendState gui payload rong khi khong data).
 
 ### CoAP device data (Thread-Node)
-- **Backend:** CoAP server UDP 5683 (`coap-device.server.ts`), socket **udp6** listen `[::]:5683`. Path **/device/** (ping, register/info, register/entity, update/info, update/entity, update/topology, update/state). **Payload:** mac_address key 0; device_info keys 0–6; topology flat key 0 = mac, 1–6 = rloc16, role, ipv6, parent, rssi, link_quality; entity/state **key 1** = array (ENTITY_KEYS 0–6: entity_id, name, type, device_class, unit, restore_mode, **disabled**; STATE_KEYS 0–6: entity_id, state, brightness, mode, rgb, color_temp, value — **không có available**). **GET /device/ping**: 2.05 Content + 4 byte timestamp. **POST register/info**: upsert device_info, slug; soft-delete entity/state cũ. **POST register/entity**: key 0 (mac) + key 1 (array DeviceEntityItem); merge device_entity (disabled key 6); trả CBOR key 10 = restore. **POST update/topology**: payload flat 0–6. **POST update/state**: key 0 + key 1 (DeviceStateItem, không available). Response sendCoapResponse; **không emit** lên frontend.. DB: database/repositories/device.repository; device-coap.service parse/map, goi repo.
+- **Backend:** CoAP server UDP 5683 (`coap-device.server.ts`), socket **udp6** listen `[::]:5683`. Path **/device/** (ping, register/info, register/entity, update/info, update/entity, update/topology, update/state). **Payload:** mac_address key 0; device_info keys 0–6; topology flat key 0 = mac, 1–6 = rloc16, role, ipv6, parent, rssi, link_quality; entity/state **key 1** = array (ENTITY_KEYS 0–6: entity_id, name, type, device_class, unit, restore_mode, **disabled**; STATE_KEYS 0–6: entity_id, state, brightness, mode, rgb, color_temp, value — **không có available**). **GET /device/ping**: query **?mac=** (16-char hex) khuyến nghị → backend cập nhật **last_seen_at** (heartbeat); response 2.05 Content + 4 byte timestamp. **POST register/info**: upsert device_info (device_name_raw luôn ghi đè, device_name = COALESCE(hiện tại, payload)), slug từ (device_name ?? device_name_raw ?? mac); soft-delete entity/state cũ. **POST register/entity**: key 0 (mac) + key 1 (array DeviceEntityItem); merge device_entity (name_raw ghi đè, name = COALESCE(hiện tại, payload); disabled key 6); trả CBOR key 10 = restore. **POST update/topology**: payload flat 0–6. **POST update/state**: key 0 + key 1 (DeviceStateItem, không available). Response sendCoapResponse; **không emit** lên frontend. DB: device.repository (updateDeviceLastSeen, getDeviceStatus, upsertDeviceInfo, mergeEntity); device-coap.service parse/map, goi repo.
 - **Payload types (device.payload.ts):** PAYLOAD_KEY_MAC (0); DEVICE_INFO_KEYS (0–6, key 0 = mac); TOPOLOGY_KEY (8), TOPOLOGY_KEYS; ENTITIES_KEY (9); ENTITY_KEYS (định nghĩa entity); STATE_KEYS (update/state). DeviceInfoPayload, DeviceTopologyPayload, DeviceEntityPayload/DeviceEntityItem, DeviceStatePayload/DeviceStateItem. Handler dùng đúng type từng endpoint.
-- **Schema:** device_info, device_topology + history (rssi, link_quality), device_entity, device_entity_state + history. Drizzle schema `database.schema.ts`; migrations `data/migrations/`. Soft-delete khi register/info; restore flow khi register/entity.
+- **Schema:** device_info (last_seen_at, device_name_raw), device_topology + history (rssi, link_quality), device_entity (name_raw), device_entity_state + history. Drizzle schema `database.schema.ts`; migrations `data/migrations/`. Soft-delete khi register/info; restore flow khi register/entity.
 - **Registration model:** Thread-Node: POST register/info (chỉ info) → POST update/topology (nếu có) → POST register/entity; GET /device/ping định kỳ, timestamp đổi thì gửi lại register. CoAP fail → SRP re-discovery.
 - **Docs:** `docs/coap/device_payload_spec.md` — spec payload cho Thread-Node (device_info, topology, entity, state). `docs/coap/thread_node_coap.md`, `docs/coap/border_router_coap_server.md` — flow, endpoints, troubleshooting.
 
@@ -96,7 +101,7 @@ Channel la `uint8_t` (1 byte), khong phai 3 byte. Range 11-26. Constant trong `s
 Lay tu CMD_IP_ADDR ACK (16-byte IPv6), byte 14-15 big-endian → format "0xXXXX". Luu trong `OtConfig.leaderRloc16`.
 
 ### Table Log Filtering
-ROUTER_TABLE, CHILD_TABLE, JOINER_TABLE TX va ACK bi filter ra khoi console log (giu lai trong log file neu co). Giam noise.
+ROUTER_TABLE, CHILD_TABLE, JOINER_TABLE TX va ACK bi filter ra khoi console log (giu lai trong log file neu co). **CMD STATE và ACK** (RX + TX, gồm reply ACK) cũng ẩn log trong `command.manager.ts` (poll state/ack rất thường xuyên). Giam noise.
 
 ### Agent / Terminal (confirmed)
 **Khong tu chay lenh terminal** va **khong yeu cau nguoi dung tu chay lenh bang tay**. Agent chi sua code, tao/xoa file, doc code; viec chay build/test/dev do nguoi dung tu quyet dinh va thuc hien.
@@ -115,7 +120,9 @@ ROUTER_TABLE, CHILD_TABLE, JOINER_TABLE TX va ACK bi filter ra khoi console log 
 - `backend/src/coap/device/device.payload.ts` — DEVICE_INFO_KEYS, TOPOLOGY_KEY/TOPOLOGY_KEYS, ENTITIES_KEY; DeviceInfoPayload, DeviceTopologyPayload, DeviceEntityPayload/Item, DeviceStatePayload/Item
 - `backend/src/coap/device-coap.controller.ts` — GET /device/ping, POST /device/register/info (chỉ info), register/entity, update/info, update/entity, update/topology, update/state; type từng handler đúng payload
 - `backend/src/coap/device/device-coap.service.ts` — parse/map payload, goi device.repository (upsertDeviceInfo, updateDeviceInfo, upsertTopology, mergeEntity, updateEntityDefinition, upsertEntityState)
-- `backend/src/database/repositories/device.repository.ts` — type-safe Drizzle: resolveDeviceIdByMac, upsertDeviceInfo (slug generateSlug), updateDeviceInfo, upsertTopology (rssi, linkQuality), mergeEntity, restore, updateEntityDefinition, upsertEntityState
+- `backend/src/database/repositories/device.repository.ts` — resolveDeviceIdByMac, upsertDeviceInfo (deviceNameRaw, COALESCE device_name; slug từ device_name ?? device_name_raw ?? mac), updateDeviceLastSeen, getDeviceStatus, mergeEntity (nameRaw, COALESCE name), updateEntityDefinition, upsertEntityState
+- `backend/src/coap/device-coap.controller.ts` — ping() parse query mac (parsePingMac), updateDeviceLastSeen
+- `frontend/src/shared/utils/display-name.ts` — deviceDisplayName(), entityDisplayName() (name ?? name_raw)
 - `backend/src/utils/ipv6.util.ts` — getPreferredBackendIPv6(), getBackendAddresses()
 - `docs/coap/device_payload_spec.md` — spec payload Thread-Node (device_info, topology, entity, state). `docs/coap/thread_node_coap.md`, `docs/architecture/real_br_integration.md` — flow, SRP discovery
 - `backend/src/communicate/communicate.manager.ts` — pullState(), SRP register khi leader

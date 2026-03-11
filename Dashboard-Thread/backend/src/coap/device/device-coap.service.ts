@@ -34,6 +34,7 @@ export type DeviceRecord = {
   mac_address: string;
   device_slug: string | null;
   device_name: string | null;
+  device_name_raw: string | null;
   device_type: number | null;
   manufacturer: string | null;
   model: string | null;
@@ -47,6 +48,7 @@ export type EntityRecord = {
   device_id: number;
   entity_id: string;
   name: string | null;
+  name_raw: string | null;
   type: number | null;
   device_class: number | null;
   unit: string | null;
@@ -80,9 +82,11 @@ function getEntityField<T>(entity: Record<string, unknown>, key: number): T | un
 
 export function upsertDeviceInfo(parsed: Record<string, unknown>): "created" | "changed" {
   const macHex = macAddressToHex(getPayloadField(parsed, DEVICE_INFO_KEYS.MAC_ADDRESS));
+  const deviceNameFromPayload = str(getPayloadField(parsed, DEVICE_INFO_KEYS.DEVICE_NAME)) ?? null;
   const params: UpsertDeviceInfoParams = {
     macHex,
-    deviceName: str(getPayloadField(parsed, DEVICE_INFO_KEYS.DEVICE_NAME)) ?? null,
+    deviceName: deviceNameFromPayload,
+    deviceNameRaw: deviceNameFromPayload,
     deviceType: num(getPayloadField(parsed, DEVICE_INFO_KEYS.DEVICE_TYPE)) ?? null,
     manufacturer: str(getPayloadField(parsed, DEVICE_INFO_KEYS.MANUFACTURER)) ?? null,
     model: str(getPayloadField(parsed, DEVICE_INFO_KEYS.MODEL)) ?? null,
@@ -144,9 +148,11 @@ export function mergeEntity(parsed: Record<string, unknown>): { status: "created
     }
     const attributesJson = Object.keys(extra).length > 0 ? JSON.stringify(extra) : null;
     const disabled = num(getEntityField(entityMap, ENTITY_KEYS.DISABLED)) ?? 0;
+    const nameFromPayload = str(getEntityField(entityMap, ENTITY_KEYS.NAME)) ?? null;
     entities.push({
       entityId,
-      name: str(getEntityField(entityMap, ENTITY_KEYS.NAME)) ?? null,
+      name: nameFromPayload,
+      nameRaw: nameFromPayload,
       type: num(getEntityField(entityMap, ENTITY_KEYS.TYPE)) ?? null,
       deviceClass: num(getEntityField(entityMap, ENTITY_KEYS.DEVICE_CLASS)) ?? null,
       unit: str(getEntityField(entityMap, ENTITY_KEYS.UNIT)) ?? null,

@@ -73,19 +73,8 @@ export class CommandManager {
       return;
     }
 
-    if (frame.cmd === CMD.ACK && this.datasetActiveFrameIds.has(frame.frameId)) {
-      // Thu gọn log ACK của dataset active: chỉ log 1 dòng thay vì toàn bộ hex data
-      const cmdName = CMD_NAMES[frame.cmd] ?? `0x${frame.cmd.toString(16)}`;
-      frameLogger.log(
-        `RX frameId=0x${frame.frameId.toString(16).padStart(2, "0")} cmd=0x${frame.cmd.toString(16).padStart(2, "0")} (${cmdName}) len=${frame.data.length} [Dataset Active - fields logged separately]`
-      );
-    } else if (frame.cmd === CMD.ACK && this.ipAddrFrameIds.has(frame.frameId)) {
-      // Thu gọn log ACK của IP_ADDR: chỉ log 1 dòng thay vì toàn bộ hex data
-      const cmdName = CMD_NAMES[frame.cmd] ?? `0x${frame.cmd.toString(16)}`;
-      frameLogger.log(
-        `RX frameId=0x${frame.frameId.toString(16).padStart(2, "0")} cmd=0x${frame.cmd.toString(16).padStart(2, "0")} (${cmdName}) len=${frame.data.length} [IP Address - logged separately]`
-      );
-    } else {
+    // Ẩn log cho CMD STATE và ACK (poll state/ack rất thường xuyên)
+    if (frame.cmd !== CMD.STATE && frame.cmd !== CMD.ACK) {
       this.logFrame(frame, "RX");
     }
 
@@ -331,7 +320,6 @@ export class CommandManager {
       this.callbacks
         .writeRaw(ackFrame)
         .catch((err) => transportLogger.warn(`Failed to send reply ACK: ${(err as Error)?.message ?? err}`));
-      frameLogger.log(`TX (reply) frameId=0x${frameId.toString(16).padStart(2, "0")} cmd=0x02 (ACK) len=0`);
     } catch (err) {
       transportLogger.warn(`Failed to build reply ACK: ${err}`);
     }
@@ -366,11 +354,13 @@ export class CommandManager {
 
       try {
         const frame = buildFrame(frameId, cmd, data);
-        const cmdName = CMD_NAMES[cmd] ?? `0x${cmd.toString(16)}`;
-        const dataLen = data?.length ?? 0;
-        frameLogger.log(
-          `TX frameId=0x${frameId.toString(16).padStart(2, "0")} cmd=0x${cmd.toString(16).padStart(2, "0")} (${cmdName}) len=${dataLen}`
-        );
+        if (cmd !== CMD.STATE) {
+          const cmdName = CMD_NAMES[cmd] ?? `0x${cmd.toString(16)}`;
+          const dataLen = data?.length ?? 0;
+          frameLogger.log(
+            `TX frameId=0x${frameId.toString(16).padStart(2, "0")} cmd=0x${cmd.toString(16).padStart(2, "0")} (${cmdName}) len=${dataLen}`
+          );
+        }
         this.callbacks.writeRaw(frame).catch(() => {
           if (this.pendingFrames.delete(frameId)) {
             this.datasetActiveFrameIds.delete(frameId);
