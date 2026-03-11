@@ -1,4 +1,5 @@
 @use "shared/styles/variables" as *;
+@use "shared/styles/mixin" as *;
 
 status-page {
   display: contents;
@@ -347,7 +348,7 @@ status-page {
   opacity: 0.3;
   filter: grayscale(1);
   pointer-events: none;
-  user-select: none;
+  @include no-user-select;
 }
 
 .status-ot-overlay {

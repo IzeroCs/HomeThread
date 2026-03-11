@@ -1,0 +1,19 @@
+/**
+ * SCSS mixins dùng chung (no-select, truncate, flex-fill, …).
+ */
+
+@mixin no-user-select {
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+@mixin truncate {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@mixin flex-fill {
+  flex: 1;
+  min-height: 0;
+}

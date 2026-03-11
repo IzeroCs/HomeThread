@@ -8,6 +8,7 @@ import { CoapStatus } from "../core/coap.type";
 import { sendCoapResponse } from "../core/coap.response";
 import { CoapGet, CoapPost, ParseCborOrSend } from "../core/coap.decorator";
 import { logger } from "@utils/logger.util";
+import { formatMacForLog, formatRloc16ForLog } from "@utils/format.util";
 import type { DeviceInfoPayload } from "./device.payload";
 import {
   getPayloadField,
@@ -103,7 +104,7 @@ export class DeviceCoapController {
     const deviceName = getPayloadField<string>(parsed, DEVICE_INFO_KEYS.DEVICE_NAME);
     const deviceType = getPayloadField<number>(parsed, DEVICE_INFO_KEYS.DEVICE_TYPE);
     coapLog.info(
-      `CoAP /device/register/info: mac=${mac ?? "-"} device_name=${deviceName ?? "-"} device_type=${deviceType ?? "-"}`
+      `CoAP /device/register/info: mac=${formatMacForLog(mac)} device_name=${deviceName ?? "-"} device_type=${deviceType ?? "-"}`
     );
 
     let status: CoapStatusValue = CoapStatus.CREATED;
@@ -122,7 +123,7 @@ export class DeviceCoapController {
     const arr = getPayloadField<unknown[]>(parsed, PAYLOAD_KEY_ARRAY);
     const count = Array.isArray(arr) ? arr.length : 0;
     const mac = getPayloadField<unknown>(parsed, PAYLOAD_KEY_MAC);
-    coapLog.info(`CoAP /device/register/entity: mac=${mac ?? "-"} entities=${count}`);
+    coapLog.info(`CoAP /device/register/entity: mac=${formatMacForLog(mac)} entities=${count}`);
 
     let status: CoapStatusValue = CoapStatus.CHANGED;
     let restorePayload: Buffer | undefined;
@@ -169,11 +170,10 @@ export class DeviceCoapController {
   @ParseCborOrSend(CoapStatus.CHANGED)
   @CoapPost("/device/update/topology")
   updateTopology(req: CoapRequest, res: CoapResponse, parsed: Record<string, unknown>): void {
-    console.log("updateTopology", parsed);
     const mac = getPayloadField<unknown>(parsed, TOPOLOGY_KEYS.MAC_ADDRESS);
     const rloc16 = getPayloadField<unknown>(parsed, TOPOLOGY_KEYS.RLOC16);
     const role = getPayloadField<unknown>(parsed, TOPOLOGY_KEYS.ROLE);
-    coapLog.info(`CoAP /device/update/topology: mac=${mac ?? "-"} rloc16=${rloc16 != null ? String(rloc16) : "-"} role=${roleToString(role)}`);
+    coapLog.info(`CoAP /device/update/topology: mac=${formatMacForLog(mac)} rloc16=${formatRloc16ForLog(rloc16)} role=${roleToString(role)}`);
     try {
       upsertTopology(parsed);
     } catch (e) {

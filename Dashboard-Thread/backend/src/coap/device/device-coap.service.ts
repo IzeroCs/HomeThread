@@ -18,6 +18,8 @@ import {
   type UpdateEntityDefinitionItem,
   type UpsertEntityStateItem,
 } from "@database/repositories/device.repository";
+import { str, num } from "@utils/coerce.util";
+import { macAddressToHex } from "@utils/mac.util";
 import {
   DEVICE_INFO_KEYS,
   PAYLOAD_KEY_MAC,
@@ -30,6 +32,7 @@ import {
 } from "./device.payload";
 
 export type { EntityRestoreItem };
+export { macAddressToHex } from "@utils/mac.util";
 
 export type DeviceRecord = {
   id: number;
@@ -57,47 +60,6 @@ export type EntityRecord = {
   restore_mode: number;
   updated_at: string;
 };
-
-function str(v: unknown): string | null {
-  if (v == null) return null;
-  if (typeof v === "string") return v;
-  return String(v);
-}
-
-function num(v: unknown): number | null {
-  if (v == null) return null;
-  if (typeof v === "number" && !Number.isNaN(v)) return v;
-  const n = Number(v);
-  return Number.isNaN(n) ? null : n;
-}
-
-function bytesToHex(bytes: Uint8Array): string {
-  let out = "";
-  for (let i = 0; i < bytes.length; i++) {
-    out += bytes[i]!.toString(16).padStart(2, "0");
-  }
-  return out.toLowerCase();
-}
-
-function asUint8Array(v: unknown): Uint8Array | null {
-  if (v == null) return null;
-  if (v instanceof Uint8Array) return v;
-  // Some decoders may return ArrayBuffer for bstr
-  if (v instanceof ArrayBuffer) return new Uint8Array(v);
-  // Buffer is a Uint8Array subclass; covered above, but keep explicit for clarity
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const maybeBuf = v as any;
-  if (typeof Buffer !== "undefined" && Buffer.isBuffer?.(maybeBuf)) return maybeBuf as Uint8Array;
-  return null;
-}
-
-/** Convert payload mac_address (CBOR bstr(8), EUI-64) to 16-char hex string. Throws if missing/invalid. */
-export function macAddressToHex(v: unknown): string {
-  const bytes = asUint8Array(v);
-  if (!bytes) throw new Error("mac_address (key 0) must be CBOR bstr(8)");
-  if (bytes.length !== 8) throw new Error(`mac_address (key 0) invalid length=${bytes.length}, expected 8`);
-  return bytesToHex(bytes);
-}
 
 function getEntityField<T>(entity: Record<string, unknown>, key: number): T | undefined {
   return (entity[String(key)] ?? entity[key as unknown as string]) as T | undefined;
@@ -141,13 +103,12 @@ function parseTopologyNeighbors(arr: unknown[]): TopologyNeighborItem[] {
   for (const item of arr) {
     if (item == null || typeof item !== "object" || Array.isArray(item)) continue;
     const map = item as Record<string, unknown>;
-    const rloc = getPayloadField<unknown>(map, TOPOLOGY_NEIGHBOR_KEYS.RLOC16);
-    if (rloc == null) continue;
-    const neighborRloc16 = String(rloc);
+    const rloc = num(getPayloadField(map, TOPOLOGY_NEIGHBOR_KEYS.RLOC16));
+    if (rloc == null || Number.isNaN(rloc)) continue;
     const isChildVal = getPayloadField<unknown>(map, TOPOLOGY_NEIGHBOR_KEYS.IS_CHILD);
     const isChild = isChildVal === true || isChildVal === 1;
     out.push({
-      neighborRloc16,
+      neighborRloc16: rloc,
       rssi: num(getPayloadField(map, TOPOLOGY_NEIGHBOR_KEYS.RSSI)) ?? null,
       lqIn: num(getPayloadField(map, TOPOLOGY_NEIGHBOR_KEYS.LQ_IN)) ?? null,
       lqOut: num(getPayloadField(map, TOPOLOGY_NEIGHBOR_KEYS.LQ_OUT)) ?? null,
@@ -162,18 +123,18 @@ export function upsertTopology(parsed: Record<string, unknown>): void {
   const deviceId = resolveDeviceIdByMac(macHex);
   if (deviceId == null) throw new Error("device not found for mac_address");
 
-  const rloc = getPayloadField<unknown>(parsed, TOPOLOGY_KEYS.RLOC16);
-  const rloc16 = rloc != null ? String(rloc) : null;
+  const rloc = num(getPayloadField(parsed, TOPOLOGY_KEYS.RLOC16));
+  const rloc16 = rloc != null && !Number.isNaN(rloc) ? rloc : null;
   const role = num(getPayloadField(parsed, TOPOLOGY_KEYS.ROLE)) ?? null;
 
-  let parentRloc16: string | null = null;
+  let parentRloc16: number | null = null;
   let rssi: number | null = null;
   let linkQuality: number | null = null;
   let neighbors: TopologyNeighborItem[] = [];
 
   if (role === 0) {
-    const parent = getPayloadField<unknown>(parsed, TOPOLOGY_KEYS.PARENT_RLOC16);
-    parentRloc16 = parent != null ? String(parent) : null;
+    const parent = num(getPayloadField(parsed, TOPOLOGY_KEYS.PARENT_RLOC16));
+    parentRloc16 = parent != null && !Number.isNaN(parent) ? parent : null;
     rssi = num(getPayloadField(parsed, TOPOLOGY_KEYS.PARENT_RSSI)) ?? null;
     linkQuality = num(getPayloadField(parsed, TOPOLOGY_KEYS.PARENT_LQ)) ?? null;
   } else if (role === 1 || role === 2) {

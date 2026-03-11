@@ -9,6 +9,7 @@ import "@shared/components/waiting-for-backend/waiting-for-backend.component";
 import "@settings/components/br-connection-form/br-connection-form.component";
 import "@status/status.component";
 import "@nodes/nodes.component";
+import "@features/topology/topology-map.component";
 import "@/features/settings/settings.component";
 
 import "@/app.style.scss";
@@ -29,7 +30,7 @@ export class AppShell extends LitElement {
 
   constructor() {
     super();
-    this.page = "status";
+    this.page = "topology";
     this.toasts = [];
   }
 
@@ -121,7 +122,7 @@ export class AppShell extends LitElement {
           .nodesCount=${this._nodesCount}
         ></sidebar-nav>
         <toast-container .toasts=${this.toasts} .removeToast=${this._removeToast.bind(this)}></toast-container>
-        <main class="app-main">
+        <main class="app-main ${this.page === "topology" ? "app-main--topology" : ""}">
           ${this.page === "status"
             ? html`
                 <div class="app-container">
@@ -157,6 +158,17 @@ export class AppShell extends LitElement {
                     .factoryReset=${this.ws.factoryReset.bind(this.ws)}
                   ></settings-view>
                 </div>
+              `
+            : ""}
+          ${this.page === "topology"
+            ? html`
+                <topology-map
+                  class="app-topology"
+                  .routerTable=${this.ws.routerTable}
+                  .childTable=${this.ws.childTable}
+                  .otConfig=${this.ws.otConfig}
+                  .brStatus=${this.ws.brStatus}
+                ></topology-map>
               `
             : ""}
           ${this.page === "nodes"

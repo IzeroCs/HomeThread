@@ -3,9 +3,11 @@
  * Thread state và OT config (dataset, ipaddr) do CommunicateManager xử lý (pullState / khi state đổi).
  */
 
+import type { RouterEntry, ChildEntry } from "@communicate/frame";
+
 export interface PollingManagerCallbacks {
-  fetchRouterTable: () => Promise<void>;
-  fetchChildTable: () => Promise<void>;
+  fetchRouterTable: () => Promise<void | RouterEntry[] | null>;
+  fetchChildTable: () => Promise<void | ChildEntry[] | null>;
   fetchJoinerTable: () => Promise<void>;
 }
 

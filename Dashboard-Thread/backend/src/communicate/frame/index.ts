@@ -10,5 +10,11 @@ export { FrameParser } from "./frame.parser";
 export type { ParsedFrame } from "./frame.parser";
 export { parseDatasetActive } from "./frame.dataset-parser";
 export type { ParsedDataset } from "./frame.dataset-parser";
-export { parseRouterTable, parseChildTable, parseJoinerTable } from "./frame.table-parser";
+export {
+  parseRouterTable,
+  parseRouterEntries,
+  parseChildTable,
+  parseChildEntries,
+  parseJoinerTable,
+} from "./frame.table-parser";
 export type { RouterEntry, ChildEntry, JoinerEntry, TableData } from "./frame.table-parser";

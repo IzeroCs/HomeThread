@@ -22,7 +22,9 @@ import { DEVICE_ROLE, DEVICE_ROLE_NAMES } from "@thread/thread-role"
 import type { DeviceRole } from "@thread/thread-role"
 import { EVENTS, type EventName } from "shared/src/events"
 import type { ConnectionStatus } from "shared/src/types"
-import { parseRouterTable, parseChildTable, parseJoinerTable } from "../frame"
+import { parseRouterTable, parseChildTable, parseJoinerTable, parseRouterEntries, parseChildEntries } from "../frame"
+import type { RouterEntry, ChildEntry } from "../frame"
+import { persistBrTopology } from "@thread/br-topology-persist.service"
 import { upsertDeviceInfo as repoUpsertDeviceInfo, getBrDeviceId } from "@database/repositories/device.repository"
 import { upsertBrHealth } from "@database/repositories/device-health.repository"
 import { parseBrHealthPayload } from "./command.manager"
@@ -118,16 +120,19 @@ export class CommunicateManager {
     return this.threadDataManager.getJoinerTable()
   }
 
-  /** Fetch router table từ firmware. */
-  async fetchRouterTable(): Promise<void> {
-    if (!this.commandManager) return
+  /** Fetch router table từ firmware. Returns raw entries on success for BR topology persist. */
+  async fetchRouterTable(): Promise<RouterEntry[] | null> {
+    if (!this.commandManager) return null
     try {
       const res = await this.commandManager.fetchRouterTable()
       if (res.ack && res.data) {
+        const entries = parseRouterEntries(res.data)
         const tableData = parseRouterTable(res.data)
         this.threadDataManager.setRouterTable(tableData)
         this.broadcast(EVENTS.OT_ROUTER_TABLE, tableData)
+        return entries
       }
+      return null
     } catch (err) {
       transportLogger.warn(
         `fetchRouterTable failed: ${(err as Error)?.message ?? err}`,
@@ -139,19 +144,23 @@ export class CommunicateManager {
       }
       this.threadDataManager.setRouterTable(errorData)
       this.broadcast(EVENTS.OT_ROUTER_TABLE, errorData)
+      return null
     }
   }
 
-  /** Fetch child table từ firmware. */
-  async fetchChildTable(): Promise<void> {
-    if (!this.commandManager) return
+  /** Fetch child table từ firmware. Returns raw entries on success for BR topology persist. */
+  async fetchChildTable(): Promise<ChildEntry[] | null> {
+    if (!this.commandManager) return null
     try {
       const res = await this.commandManager.fetchChildTable()
       if (res.ack && res.data) {
+        const entries = parseChildEntries(res.data)
         const tableData = parseChildTable(res.data)
         this.threadDataManager.setChildTable(tableData)
         this.broadcast(EVENTS.OT_CHILD_TABLE, tableData)
+        return entries
       }
+      return null
     } catch (err) {
       transportLogger.warn(
         `fetchChildTable failed: ${(err as Error)?.message ?? err}`,
@@ -163,6 +172,7 @@ export class CommunicateManager {
       }
       this.threadDataManager.setChildTable(errorData)
       this.broadcast(EVENTS.OT_CHILD_TABLE, errorData)
+      return null
     }
   }
 
@@ -682,9 +692,31 @@ export class CommunicateManager {
       await this.commandManager.fetchIpAddr().catch(() => {})
 
       if (this.isLeaderRouterOrChild(roleByte)) {
-        await this.fetchRouterTable().catch(() => {})
-        await this.fetchChildTable().catch(() => {})
+        const routerEntries = await this.fetchRouterTable().catch(() => null)
+        const childEntries = await this.fetchChildTable().catch(() => null)
         await this.fetchJoinerTable().catch(() => {})
+
+        if (routerEntries && childEntries) {
+          const otConfig = this.otConfigManager.get()
+          let brRloc16: number | null = null
+          if (otConfig?.leaderRloc16 != null) {
+            const n = parseInt(otConfig.leaderRloc16.replace(/^0x/i, ""), 16)
+            if (!Number.isNaN(n)) brRloc16 = n
+          }
+          if (brRloc16 == null && routerEntries.length > 0) {
+            brRloc16 = routerEntries.reduce((a, b) => (a.age <= b.age ? a : b)).rloc16
+          }
+          try {
+            persistBrTopology({
+              routerEntries,
+              childEntries,
+              brRloc16OrNull: brRloc16,
+              roleByte,
+            })
+          } catch {
+            // ignore DB errors (doesn't affect BR connectivity)
+          }
+        }
       }
 
       await this.tryAutoStartThreadIfDisabled(roleByte)

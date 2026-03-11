@@ -8,6 +8,7 @@ import type { ParsedDataset } from "@communicate/frame";
 export type OtConfig = ParsedDataset & {
   // Additional fields (không có trong ParsedDataset)
   ipaddr?: string;
+  leaderRloc16?: string; // from CMD_IP_ADDR ACK (byte 14-15)
   datasetActive?: string; // Hex string gốc (để giữ lại cho compatibility)
   threadVersion?: string;
   error?: string;

@@ -38,6 +38,35 @@ export interface JoinerEntry {
 export type TableData = { headers: string[]; rows: string[][]; error?: string } | null;
 
 /**
+ * Parse Router Table binary data to raw RouterEntry[] (for DB persist).
+ * Format: [count: 1 byte] + [entry1: 15 bytes] + [entry2: 15 bytes] + ...
+ * Returns empty array on parse error or empty input.
+ */
+export function parseRouterEntries(data: Buffer): RouterEntry[] {
+  if (data.length === 0) return [];
+  try {
+    const count = data[0]!;
+    if (count === 0) return [];
+    const entries: RouterEntry[] = [];
+    let offset = 1;
+    for (let i = 0; i < count; i++) {
+      if (offset + 15 > data.length) return [];
+      const routerId = data[offset]!;
+      const rloc16 = (data[offset + 1]! << 8) | data[offset + 2]!;
+      const extAddress = Array.from(data.slice(offset + 3, offset + 11));
+      const linkQualityIn = data[offset + 11]!;
+      const linkQualityOut = data[offset + 12]!;
+      const age = (data[offset + 13]! << 8) | data[offset + 14]!;
+      entries.push({ routerId, rloc16, extAddress, linkQualityIn, linkQualityOut, age });
+      offset += 15;
+    }
+    return entries;
+  } catch {
+    return [];
+  }
+}
+
+/**
  * Parse Router Table từ binary data.
  * Format: [count: 1 byte] + [entry1: 15 bytes] + [entry2: 15 bytes] + ...
  */
@@ -45,41 +74,8 @@ export function parseRouterTable(data: Buffer): TableData {
   if (data.length === 0) {
     return { headers: [], rows: [] };
   }
-
   try {
-    const count = data[0]!;
-    if (count === 0) {
-      return { headers: ["RouterId", "RLOC16", "ExtAddress", "LinkQualityIn", "LinkQualityOut", "Age"], rows: [] };
-    }
-
-    const entries: RouterEntry[] = [];
-    let offset = 1;
-
-    for (let i = 0; i < count; i++) {
-      if (offset + 15 > data.length) {
-        return { headers: [], rows: [], error: `Incomplete entry at index ${i}` };
-      }
-
-      const routerId = data[offset]!;
-      const rloc16 = (data[offset + 1]! << 8) | data[offset + 2]!;
-      const extAddress = Array.from(data.slice(offset + 3, offset + 11));
-      const linkQualityIn = data[offset + 11]!;
-      const linkQualityOut = data[offset + 12]!;
-      const age = (data[offset + 13]! << 8) | data[offset + 14]!;
-
-      entries.push({
-        routerId,
-        rloc16,
-        extAddress,
-        linkQualityIn,
-        linkQualityOut,
-        age,
-      });
-
-      offset += 15;
-    }
-
-    // Convert to TableData format
+    const entries = parseRouterEntries(data);
     const headers = ["RouterId", "RLOC16", "ExtAddress", "LinkQualityIn", "LinkQualityOut", "Age"];
     const rows = entries.map((entry) => [
       entry.routerId.toString(),
@@ -89,10 +85,50 @@ export function parseRouterTable(data: Buffer): TableData {
       entry.linkQualityOut.toString(),
       entry.age.toString(),
     ]);
-
     return { headers, rows };
   } catch (err) {
     return { headers: [], rows: [], error: `Parse error: ${(err as Error)?.message ?? err}` };
+  }
+}
+
+/**
+ * Parse Child Table binary data to raw ChildEntry[] (for DB persist).
+ * Format: [count: 1 byte] + [entry1: 17 bytes] + [entry2: 17 bytes] + ...
+ * Returns empty array on parse error or empty input.
+ */
+export function parseChildEntries(data: Buffer): ChildEntry[] {
+  if (data.length === 0) return [];
+  try {
+    const count = data[0]!;
+    if (count === 0) return [];
+    const entries: ChildEntry[] = [];
+    let offset = 1;
+    for (let i = 0; i < count; i++) {
+      if (offset + 17 > data.length) return [];
+      const childId = data[offset]!;
+      const rloc16 = (data[offset + 1]! << 8) | data[offset + 2]!;
+      const extAddress = Array.from(data.slice(offset + 3, offset + 11));
+      const linkQualityIn = data[offset + 11]!;
+      const rssiByte = data[offset + 12]!;
+      const averageRssi = rssiByte > 127 ? rssiByte - 256 : rssiByte;
+      const fullThreadDevice = data[offset + 13]! === 1;
+      const rxOnWhenIdle = data[offset + 14]! === 1;
+      const age = (data[offset + 15]! << 8) | data[offset + 16]!;
+      entries.push({
+        childId,
+        rloc16,
+        extAddress,
+        linkQualityIn,
+        averageRssi,
+        fullThreadDevice,
+        rxOnWhenIdle,
+        age,
+      });
+      offset += 17;
+    }
+    return entries;
+  } catch {
+    return [];
   }
 }
 
@@ -104,50 +140,8 @@ export function parseChildTable(data: Buffer): TableData {
   if (data.length === 0) {
     return { headers: [], rows: [] };
   }
-
   try {
-    const count = data[0]!;
-    if (count === 0) {
-      return {
-        headers: ["ChildId", "RLOC16", "ExtAddress", "LinkQualityIn", "AverageRssi", "FullThreadDevice", "RxOnWhenIdle", "Age"],
-        rows: [],
-      };
-    }
-
-    const entries: ChildEntry[] = [];
-    let offset = 1;
-
-    for (let i = 0; i < count; i++) {
-      if (offset + 17 > data.length) {
-        return { headers: [], rows: [], error: `Incomplete entry at index ${i}` };
-      }
-
-      const childId = data[offset]!;
-      const rloc16 = (data[offset + 1]! << 8) | data[offset + 2]!;
-      const extAddress = Array.from(data.slice(offset + 3, offset + 11));
-      const linkQualityIn = data[offset + 11]!;
-      // Convert unsigned byte to signed int8 for RSSI
-      const rssiByte = data[offset + 12]!;
-      const averageRssi = rssiByte > 127 ? rssiByte - 256 : rssiByte;
-      const fullThreadDevice = data[offset + 13]! === 1;
-      const rxOnWhenIdle = data[offset + 14]! === 1;
-      const age = (data[offset + 15]! << 8) | data[offset + 16]!;
-
-      entries.push({
-        childId,
-        rloc16,
-        extAddress,
-        linkQualityIn,
-        averageRssi,
-        fullThreadDevice,
-        rxOnWhenIdle,
-        age,
-      });
-
-      offset += 17;
-    }
-
-    // Convert to TableData format
+    const entries = parseChildEntries(data);
     const headers = ["ChildId", "RLOC16", "ExtAddress", "LinkQualityIn", "AverageRssi", "FullThreadDevice", "RxOnWhenIdle", "Age"];
     const rows = entries.map((entry) => [
       entry.childId.toString(),
@@ -159,7 +153,6 @@ export function parseChildTable(data: Buffer): TableData {
       entry.rxOnWhenIdle ? "Yes" : "No",
       entry.age.toString(),
     ]);
-
     return { headers, rows };
   } catch (err) {
     return { headers: [], rows: [], error: `Parse error: ${(err as Error)?.message ?? err}` };

@@ -7,6 +7,7 @@ import "@shared/components/sidebar/sidebar.style.scss";
 const PRIMARY_ITEMS: { page: NavPage; label: string; icon: string }[] = [
   { page: "status", label: "Status", icon: "speed" },
   { page: "nodes", label: "Nodes", icon: "account_tree" },
+  { page: "topology", label: "Topology", icon: "hub" },
   { page: "settings", label: "Settings", icon: "settings" },
 ];
 

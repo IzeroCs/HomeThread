@@ -24,6 +24,12 @@ app-shell {
   flex-direction: column;
   padding: 24px;
   padding-left: 304px; // 260px sidebar + 44px spacing
+
+  &--topology {
+    padding: 0;
+    padding-left: 260px; // giữ khoảng trống cho sidebar (fixed)
+    min-height: 0;
+  }
 }
 
 .app-container {

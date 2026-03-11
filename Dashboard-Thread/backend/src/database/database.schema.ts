@@ -31,6 +31,7 @@ export const deviceInfo = sqliteTable("device_info", {
   model: text("model"),
   swVersion: integer("sw_version"),
   hwVersion: integer("hw_version"),
+  hop: integer("hop").default(0),
   lastSeenAt: text("last_seen_at"),
   createdAt: text("created_at").default(sql`(CURRENT_TIMESTAMP)`),
   updatedAt: text("updated_at").default(sql`(CURRENT_TIMESTAMP)`),
@@ -42,8 +43,8 @@ export const deviceTopology = sqliteTable(
   {
     id: integer("id").primaryKey({ autoIncrement: true }),
     deviceId: integer("device_id").notNull(),
-    rloc16: text("rloc16"),
-    parentRloc16: text("parent_rloc16"),
+    rloc16: integer("rloc16"),
+    parentRloc16: integer("parent_rloc16"),
     role: integer("role"),
     rssi: integer("rssi"),
     linkQuality: integer("link_quality"),
@@ -55,8 +56,8 @@ export const deviceTopology = sqliteTable(
 export const deviceTopologyHistory = sqliteTable("device_topology_history", {
   id: integer("id").primaryKey({ autoIncrement: true }),
   deviceId: integer("device_id").notNull(),
-  rloc16: text("rloc16"),
-  parentRloc16: text("parent_rloc16"),
+  rloc16: integer("rloc16"),
+  parentRloc16: integer("parent_rloc16"),
   role: integer("role"),
   rssi: integer("rssi"),
   linkQuality: integer("link_quality"),
@@ -69,7 +70,7 @@ export const deviceTopologyNeighbor = sqliteTable(
   {
     id: integer("id").primaryKey({ autoIncrement: true }),
     deviceId: integer("device_id").notNull(),
-    neighborRloc16: text("neighbor_rloc16").notNull(),
+    neighborRloc16: integer("neighbor_rloc16").notNull(),
     rssi: integer("rssi"),
     lqIn: integer("lq_in"),
     lqOut: integer("lq_out"),

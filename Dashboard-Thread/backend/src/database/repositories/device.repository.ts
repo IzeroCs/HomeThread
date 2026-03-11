@@ -217,7 +217,7 @@ export function updateDeviceInfo(params: UpdateDeviceInfoParams): void {
 }
 
 export type TopologyNeighborItem = {
-  neighborRloc16: string;
+  neighborRloc16: number;
   rssi?: number | null;
   lqIn?: number | null;
   lqOut?: number | null;
@@ -226,8 +226,8 @@ export type TopologyNeighborItem = {
 
 export type UpsertTopologyParams = {
   deviceId: number;
-  rloc16: string | null;
-  parentRloc16: string | null;
+  rloc16: number | null;
+  parentRloc16: number | null;
   role: number | null;
   rssi: number | null;
   linkQuality: number | null;
