@@ -95,7 +95,7 @@ CONFIG_ENTITY_MODEL_MAX_ENTITIES=32  # Số entity tối đa trên một thiết
 
 ### Device (components/device/)
 
-- **device_registry**: Build payload: info (`entity_serialize_info_cbor`), entities (`entity_serialize_entities_cbor`), topology (`entity_serialize_topology_cbor`), state (`entity_serialize_state_cbor`). Gửi POST /device/register/info, POST /device/register/entity, POST /device/update/topology, POST /device/update/state. API: `device_registry_register(endpoint, callback, ctx)`, `device_registry_ping(...)`, `device_registry_is_registered()`. Gọi **device_coap** cho transport.
+- **device_registry**: Build payload: info (`entity_serialize_info_cbor`), entities (`entity_serialize_entities_cbor`), topology **role-based** (`entity_serialize_topology_child_cbor` khi Child, `entity_serialize_topology_router_leader_cbor` khi Router/Leader; key 6 = neighbors từ otThreadGetNextNeighborInfo), state (`entity_serialize_state_cbor`). Gửi POST /device/register/info, POST /device/register/entity, POST /device/update/topology, POST /device/update/state. API: `device_registry_register(endpoint, callback, ctx)`, `device_registry_ping(...)`, `device_registry_is_registered()`. Gọi **device_coap** cho transport.
 - **device_coap**: CoAP client: init, `device_coap_send_register(...)`, `device_coap_send_entities(...)`, `device_coap_ping()`. Token 2 byte; GET /device/ping response timestamp → callback re-register khi đổi. Backend restart (timestamp đổi) → trigger re-register.
 
 ### Thread Discovery (thread_discovery.c)

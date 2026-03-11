@@ -43,6 +43,7 @@ import {
   deviceInfo,
   deviceTopology,
   deviceTopologyHistory,
+  deviceTopologyNeighbor,
   deviceEntity,
   deviceEntityState,
   deviceEntityStateHistory,
@@ -199,6 +200,14 @@ export function updateDeviceInfo(params: UpdateDeviceInfoParams): void {
     .run();
 }
 
+export type TopologyNeighborItem = {
+  neighborRloc16: string;
+  rssi?: number | null;
+  lqIn?: number | null;
+  lqOut?: number | null;
+  isChild: boolean;
+};
+
 export type UpsertTopologyParams = {
   deviceId: number;
   rloc16: string | null;
@@ -206,11 +215,12 @@ export type UpsertTopologyParams = {
   role: number | null;
   rssi: number | null;
   linkQuality: number | null;
+  neighbors: TopologyNeighborItem[];
 };
 
 export function upsertTopology(params: UpsertTopologyParams): void {
   const db = getDrizzle();
-  const { deviceId, rloc16, parentRloc16, role, rssi, linkQuality } = params;
+  const { deviceId, rloc16, parentRloc16, role, rssi, linkQuality, neighbors } = params;
 
   const existing = db.select({ deviceId: deviceTopology.deviceId }).from(deviceTopology).where(eq(deviceTopology.deviceId, deviceId)).get();
 
@@ -235,6 +245,18 @@ export function upsertTopology(params: UpsertTopologyParams): void {
       .run();
   } else {
     db.insert(deviceTopology).values({ deviceId, rloc16, parentRloc16, role, rssi, linkQuality }).run();
+  }
+
+  db.delete(deviceTopologyNeighbor).where(eq(deviceTopologyNeighbor.deviceId, deviceId)).run();
+  for (const n of neighbors) {
+    db.insert(deviceTopologyNeighbor).values({
+      deviceId,
+      neighborRloc16: n.neighborRloc16,
+      rssi: n.rssi ?? null,
+      lqIn: n.lqIn ?? null,
+      lqOut: n.lqOut ?? null,
+      isChild: n.isChild ? 1 : 0,
+    }).run();
   }
 }
 

@@ -11,6 +11,7 @@ import {
   updateEntityDefinition as repoUpdateEntityDefinition,
   upsertEntityState as repoUpsertEntityState,
   type EntityRestoreItem,
+  type TopologyNeighborItem,
   type UpsertDeviceInfoParams,
   type UpdateDeviceInfoParams,
   type MergeEntityItem,
@@ -22,6 +23,7 @@ import {
   PAYLOAD_KEY_MAC,
   PAYLOAD_KEY_ARRAY,
   TOPOLOGY_KEYS,
+  TOPOLOGY_NEIGHBOR_KEYS,
   ENTITY_KEYS,
   STATE_KEYS,
   getPayloadField,
@@ -111,6 +113,27 @@ export function updateDeviceInfo(parsed: Record<string, unknown>): void {
   repoUpdateDeviceInfo(params);
 }
 
+function parseTopologyNeighbors(arr: unknown[]): TopologyNeighborItem[] {
+  const out: TopologyNeighborItem[] = [];
+  for (const item of arr) {
+    if (item == null || typeof item !== "object" || Array.isArray(item)) continue;
+    const map = item as Record<string, unknown>;
+    const rloc = getPayloadField<unknown>(map, TOPOLOGY_NEIGHBOR_KEYS.RLOC16);
+    if (rloc == null) continue;
+    const neighborRloc16 = String(rloc);
+    const isChildVal = getPayloadField<unknown>(map, TOPOLOGY_NEIGHBOR_KEYS.IS_CHILD);
+    const isChild = isChildVal === true || isChildVal === 1;
+    out.push({
+      neighborRloc16,
+      rssi: num(getPayloadField(map, TOPOLOGY_NEIGHBOR_KEYS.RSSI)) ?? null,
+      lqIn: num(getPayloadField(map, TOPOLOGY_NEIGHBOR_KEYS.LQ_IN)) ?? null,
+      lqOut: num(getPayloadField(map, TOPOLOGY_NEIGHBOR_KEYS.LQ_OUT)) ?? null,
+      isChild,
+    });
+  }
+  return out;
+}
+
 export function upsertTopology(parsed: Record<string, unknown>): void {
   const macHex = macAddressToHex(getPayloadField(parsed, TOPOLOGY_KEYS.MAC_ADDRESS));
   const deviceId = resolveDeviceIdByMac(macHex);
@@ -119,12 +142,23 @@ export function upsertTopology(parsed: Record<string, unknown>): void {
   const rloc = getPayloadField<unknown>(parsed, TOPOLOGY_KEYS.RLOC16);
   const rloc16 = rloc != null ? String(rloc) : null;
   const role = num(getPayloadField(parsed, TOPOLOGY_KEYS.ROLE)) ?? null;
-  const parent = getPayloadField<unknown>(parsed, TOPOLOGY_KEYS.PARENT);
-  const parentRloc16 = parent != null ? String(parent) : null;
-  const rssi = num(getPayloadField(parsed, TOPOLOGY_KEYS.RSSI)) ?? null;
-  const linkQuality = num(getPayloadField(parsed, TOPOLOGY_KEYS.LINK_QUALITY)) ?? null;
 
-  repoUpsertTopology({ deviceId, rloc16, parentRloc16, role, rssi, linkQuality });
+  let parentRloc16: string | null = null;
+  let rssi: number | null = null;
+  let linkQuality: number | null = null;
+  let neighbors: TopologyNeighborItem[] = [];
+
+  if (role === 0) {
+    const parent = getPayloadField<unknown>(parsed, TOPOLOGY_KEYS.PARENT_RLOC16);
+    parentRloc16 = parent != null ? String(parent) : null;
+    rssi = num(getPayloadField(parsed, TOPOLOGY_KEYS.PARENT_RSSI)) ?? null;
+    linkQuality = num(getPayloadField(parsed, TOPOLOGY_KEYS.PARENT_LQ)) ?? null;
+  } else if (role === 1 || role === 2) {
+    const arr = getPayloadField<unknown>(parsed, TOPOLOGY_KEYS.NEIGHBORS);
+    neighbors = Array.isArray(arr) ? parseTopologyNeighbors(arr) : [];
+  }
+
+  repoUpsertTopology({ deviceId, rloc16, parentRloc16, role, rssi, linkQuality, neighbors });
 }
 
 export function mergeEntity(parsed: Record<string, unknown>): { status: "created" | "changed"; restore: EntityRestoreItem[] } {

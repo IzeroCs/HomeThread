@@ -26,6 +26,8 @@ static const char *TAG = "device_registry";
 
 #define DEVICE_CBOR_MAX 512
 #define ENTITIES_CBOR_MAX 1024
+#define TOPOLOGY_NEIGHBORS_MAX 32
+#define RSSI_NA 0x7FFF
 #define REGISTRY_RETRY_DELAY_MS 2000
 #define RETRY_MSG_REGISTER  0
 #define RETRY_MSG_ENTITIES  1
@@ -213,7 +215,7 @@ static esp_err_t try_send_register(void)
     device_model_update_network(rloc16, ipv6_bytes, role_enum);
 
     uint8_t device_buffer[DEVICE_CBOR_MAX];
-    int device_len = entity_serialize_register_info_cbor(device_buffer, sizeof(device_buffer));
+    int device_len = entity_serialize_info_cbor(device_buffer, sizeof(device_buffer));
     if (device_len < 0) {
         ESP_LOGE(TAG, "Failed to serialize register/info to CBOR");
         return ESP_FAIL;
@@ -365,29 +367,62 @@ esp_err_t device_registry_send_update_topology(const device_coap_endpoint_t *end
         return ESP_ERR_INVALID_STATE;
     }
     uint16_t rloc16 = otThreadGetRloc16(instance);
-    uint16_t parent_rloc16;
-    int16_t rssi_dbm, link_quality;
-    get_parent_info_for_topology(instance, role, &parent_rloc16, &rssi_dbm, &link_quality);
-    const otIp6Address *ml_eid = otThreadGetMeshLocalEid(instance);
     uint8_t role_enum = get_role_enum(role);
+    const otIp6Address *ml_eid = otThreadGetMeshLocalEid(instance);
     char ml_eid_str[40] = {0};
     uint8_t ipv6_bytes[16] = {0};
     if (ml_eid) {
         otIp6AddressToString(ml_eid, ml_eid_str, sizeof(ml_eid_str));
         memcpy(ipv6_bytes, ml_eid->mFields.m8, 16);
     }
-    esp_openthread_lock_release();
 
-    device_model_t *device = device_model_get();
-    if (!device) {
-        return ESP_ERR_INVALID_STATE;
-    }
-    device_model_update_network(rloc16, ipv6_bytes, role_enum);
-
+    int len;
     uint8_t topology_buffer[DEVICE_CBOR_MAX];
-    int len = entity_serialize_device_cbor(rloc16, ml_eid_str, parent_rloc16,
-                                          rssi_dbm, link_quality,
-                                          topology_buffer, sizeof(topology_buffer));
+
+    if (role == OT_DEVICE_ROLE_CHILD) {
+        uint16_t parent_rloc16;
+        int16_t rssi_dbm, link_quality;
+        get_parent_info_for_topology(instance, role, &parent_rloc16, &rssi_dbm, &link_quality);
+        esp_openthread_lock_release();
+
+        device_model_t *device = device_model_get();
+        if (!device) {
+            return ESP_ERR_INVALID_STATE;
+        }
+        device_model_update_network(rloc16, ipv6_bytes, role_enum);
+
+        len = entity_serialize_topology_child_cbor(rloc16, ml_eid_str, parent_rloc16,
+                                                  rssi_dbm, link_quality,
+                                                  topology_buffer, sizeof(topology_buffer));
+    } else {
+        /* Router or Leader: collect neighbors under lock, then serialize after release */
+        static topology_neighbor_t s_neighbors[TOPOLOGY_NEIGHBORS_MAX];
+        size_t neighbor_count = 0;
+
+        otNeighborInfoIterator iter = OT_NEIGHBOR_INFO_ITERATOR_INIT;
+        otNeighborInfo info;
+        while (neighbor_count < TOPOLOGY_NEIGHBORS_MAX &&
+               otThreadGetNextNeighborInfo(instance, &iter, &info) == OT_ERROR_NONE) {
+            s_neighbors[neighbor_count].rloc16 = info.mRloc16;
+            s_neighbors[neighbor_count].rssi_dbm = (info.mAverageRssi != 0) ? (int16_t)info.mAverageRssi : RSSI_NA;
+            s_neighbors[neighbor_count].lq_in = (int16_t)info.mLinkQualityIn;
+            s_neighbors[neighbor_count].lq_out = -1;  /* otNeighborInfo has no LQ out in API */
+            s_neighbors[neighbor_count].is_child = info.mIsChild;
+            neighbor_count++;
+        }
+        esp_openthread_lock_release();
+
+        device_model_t *device = device_model_get();
+        if (!device) {
+            return ESP_ERR_INVALID_STATE;
+        }
+        device_model_update_network(rloc16, ipv6_bytes, role_enum);
+
+        len = entity_serialize_topology_router_leader_cbor(rloc16, role_enum,
+                                                          s_neighbors, neighbor_count,
+                                                          topology_buffer, sizeof(topology_buffer));
+    }
+
     if (len < 0) {
         ESP_LOGE(TAG, "Failed to serialize topology CBOR");
         return ESP_FAIL;
@@ -402,7 +437,7 @@ esp_err_t device_registry_send_update_state(const device_coap_endpoint_t *endpoi
         return ESP_ERR_INVALID_ARG;
     }
     uint8_t state_buffer[ENTITIES_CBOR_MAX];
-    int len = entity_serialize_updates_cbor(state_buffer, sizeof(state_buffer));
+    int len = entity_serialize_state_cbor(state_buffer, sizeof(state_buffer));
     if (len <= 0) {
         return ESP_OK;
     }

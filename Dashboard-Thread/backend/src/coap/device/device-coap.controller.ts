@@ -169,6 +169,7 @@ export class DeviceCoapController {
   @ParseCborOrSend(CoapStatus.CHANGED)
   @CoapPost("/device/update/topology")
   updateTopology(req: CoapRequest, res: CoapResponse, parsed: Record<string, unknown>): void {
+    console.log("updateTopology", parsed);
     const mac = getPayloadField<unknown>(parsed, TOPOLOGY_KEYS.MAC_ADDRESS);
     const rloc16 = getPayloadField<unknown>(parsed, TOPOLOGY_KEYS.RLOC16);
     const role = getPayloadField<unknown>(parsed, TOPOLOGY_KEYS.ROLE);

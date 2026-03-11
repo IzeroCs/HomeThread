@@ -4,6 +4,7 @@
  */
 #pragma once
 
+#include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
 
@@ -12,52 +13,50 @@ extern "C" {
 #endif
 
 /**
- * Serialize device info only (keys 1–7) to CBOR. No network, no entities. Device identified by mac_address.
+ * Serialize device info to CBOR (keys 0–6, key 0 = mac). DeviceInfoPayload.
  * For POST /device/register/info (backend contract).
  */
-int entity_serialize_register_info_cbor(uint8_t *buffer, size_t buffer_size);
+int entity_serialize_info_cbor(uint8_t *buffer, size_t buffer_size);
+
+/** One neighbor entry for topology key 6 (Router/Leader). Align backend TopologyNeighbor. */
+typedef struct {
+    uint16_t rloc16;
+    int16_t  rssi_dbm;   /* optional; use 0x7FFF for N/A */
+    int16_t  lq_in;      /* 0–255 or -1 for N/A */
+    int16_t  lq_out;     /* 0–255 or -1 for N/A */
+    bool     is_child;
+} topology_neighbor_t;
 
 /**
- * Serialize device + network only (keys 1–8) to CBOR. No entities.
- * For legacy / full payload; topology may be sent via update/topology.
- * rssi_dbm: parent RSSI in dBm (optional; use 0x7FFF for N/A).
- * link_quality: 0–255 (optional; use -1 for N/A). From otRouterInfo LQ scaled.
+ * Serialize topology for Child role: keys 0–5 (mac, rloc16, role=0, parent_rloc16, parent_rssi, parent_lq).
+ * For POST /device/update/topology when device is Child.
  */
-int entity_serialize_device_cbor(uint16_t rloc16, const char *ml_eid_str,
-                                 uint16_t parent_rloc16,
-                                 int16_t rssi_dbm,
-                                 int16_t link_quality,
-                                 uint8_t *buffer, size_t buffer_size);
+int entity_serialize_topology_child_cbor(uint16_t rloc16, const char *ml_eid_str,
+                                         uint16_t parent_rloc16,
+                                         int16_t rssi_dbm,
+                                         int16_t link_quality,
+                                         uint8_t *buffer, size_t buffer_size);
 
 /**
- * Serialize entities only: map with mac_address (key 7) + entities array (key 9).
+ * Serialize topology for Router/Leader: keys 0, 1, 2, 6 (mac, rloc16, role, neighbors array).
+ * role: 1=router, 2=leader. neighbors/neighbor_count filled by caller from OpenThread.
+ */
+int entity_serialize_topology_router_leader_cbor(uint16_t rloc16, uint8_t role,
+                                                const topology_neighbor_t *neighbors,
+                                                size_t neighbor_count,
+                                                uint8_t *buffer, size_t buffer_size);
+
+/**
+ * Serialize entities to CBOR: map key 0 = mac, key 1 = array (ENTITY_KEYS 0–6 per item).
  * For POST /device/register/entity (backend contract).
  */
 int entity_serialize_entities_cbor(uint8_t *buffer, size_t buffer_size);
 
 /**
- * Serialize entity model to CBOR binary format (full: device + network + entities).
- * 
- * @param rloc16 Thread RLOC16 of this device
- * @param ml_eid_str Mesh-Local EID as string (IPv6 address)
- * @param parent_rloc16 Parent router RLOC16 (0 if not a child)
- * @param buffer Output buffer for CBOR data
- * @param buffer_size Size of output buffer
- * @return Number of bytes written, or -1 on error
+ * Serialize current entity state to CBOR (key 0 = mac, key 1 = array, STATE_KEYS 0–6 per item).
+ * For POST /device/update/state.
  */
-int entity_serialize_cbor(uint16_t rloc16, const char *ml_eid_str, 
-                         uint16_t parent_rloc16,
-                         uint8_t *buffer, size_t buffer_size);
-
-/**
- * Serialize current entity state to CBOR (for POST /device/update/state).
- * Map: mac_address (7) + entities array (9). Same structure as register/entity.
- *
- * @param buffer Output buffer for CBOR data
- * @param buffer_size Size of output buffer
- * @return Number of bytes written, or -1 on error
- */
-int entity_serialize_updates_cbor(uint8_t *buffer, size_t buffer_size);
+int entity_serialize_state_cbor(uint8_t *buffer, size_t buffer_size);
 
 #ifdef __cplusplus
 }

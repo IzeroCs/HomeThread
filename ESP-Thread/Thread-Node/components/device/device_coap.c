@@ -14,6 +14,7 @@
 #include "openthread/message.h"
 #include "openthread/thread.h"
 #include "openthread/thread_ftd.h"
+#include "device_model.h"
 #include "device_coap.h"
 
 static const char *TAG = "device_coap";
@@ -164,9 +165,11 @@ fail:
     return ESP_FAIL;
 }
 
+/** Build GET message; if uri_query is non-NULL and non-empty, appends Uri-Query option (e.g. "mac=..."). */
 static esp_err_t build_get(otInstance *instance,
                            const char *paths[],
                            int path_count,
+                           const char *uri_query,
                            otMessage **out_message)
 {
     otMessage *message = otCoapNewMessage(instance, NULL);
@@ -187,6 +190,14 @@ static esp_err_t build_get(otInstance *instance,
         err = otCoapMessageAppendUriPathOptions(message, paths[i]);
         if (err != OT_ERROR_NONE) {
             ESP_LOGE(TAG, "Failed to append path: %s", paths[i]);
+            goto fail;
+        }
+    }
+
+    if (uri_query != NULL && uri_query[0] != '\0') {
+        err = otCoapMessageAppendUriQueryOption(message, uri_query);
+        if (err != OT_ERROR_NONE) {
+            ESP_LOGE(TAG, "Failed to append Uri-Query");
             goto fail;
         }
     }
@@ -481,9 +492,25 @@ esp_err_t device_coap_ping(const device_coap_endpoint_t *endpoint,
     s_ping_cb = on_timestamp_changed;
     s_ping_ctx = ctx;
 
+    /* Optional Uri-Query "mac=<16_hex>" for backend heartbeat (last_seen_at) */
+    const char *uri_query = NULL;
+    char mac_query_buf[4 + 16 + 1]; /* "mac=" + 16 hex + NUL */
+    device_model_t *device = device_model_get();
+    if (device != NULL && device->info.mac_address != 0) {
+        uint64_t mac = device->info.mac_address;
+        memcpy(mac_query_buf, "mac=", 4);
+        for (int i = 0; i < 8; i++) {
+            uint8_t b = (uint8_t)(mac >> (56 - i * 8));
+            int n = snprintf(mac_query_buf + 4 + i * 2, 3, "%02x", (unsigned)b);
+            (void)n;
+        }
+        mac_query_buf[4 + 16] = '\0';
+        uri_query = mac_query_buf;
+    }
+
     static const char *paths[] = { URI_DEVICE, URI_PING };
     otMessage *message = NULL;
-    ret = build_get(instance, paths, 2, &message);
+    ret = build_get(instance, paths, 2, uri_query, &message);
     if (ret != ESP_OK) {
         return ret;
     }

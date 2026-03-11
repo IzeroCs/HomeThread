@@ -46,7 +46,7 @@ Examples                 █████████████░░░░░�
 |---|---|
 | `entity_serialize_info_cbor` | ✅ Device info (keys 1–7), POST /device/register/info |
 | `entity_serialize_entities_cbor` | ✅ Map mac (7) + entities array (9), POST /device/register/entity |
-| `entity_serialize_topology_cbor` | ✅ Device + network (keys 1–8), POST /device/update/topology |
+| Topology (role-based) | ✅ **Child:** entity_serialize_topology_child_cbor (keys 0–5). **Router/Leader:** entity_serialize_topology_router_leader_cbor (keys 0,1,2,6 = neighbors). device_registry branch theo role; router/leader dùng otThreadGetNextNeighborInfo. POST /device/update/topology. |
 | `entity_serialize_state_cbor` | ✅ Map mac (7) + entities array (9), POST /device/update/state |
 | Entity item keys 0–13 | ✅ Keys 0–12 + **13 = restore_mode** (uint, default 0) cho backend mergeEntity; light + sensor encode đủ |
 | `entity_light_t` | ✅ **Hoàn chỉnh** (kèm key 13) |
@@ -179,5 +179,6 @@ OpenThread core **không** forward `*.default.svc.arpa` ra upstream (dnssd_serve
 | **0.9.1** | thread_node; thread_discovery; device/ + device_coap; GET /device/ping 10s, timestamp → re-register; CoAP token 2B; backend IP log 1 lần / khi đổi |
 | **0.9.2** | Discovery retry **10s** khi chưa có backend (60s khi đã có); **CONFIG_ESP_SYSTEM_EVENT_TASK_STACK_SIZE=4096**; log node **Mesh-Local EID + RLOC16**; docs: backend echo token, register callback NULL, ping callback khi timestamp đổi |
 | **0.9.3** | **Tách register/entities:** POST /device/register/info (keys 0–7), POST /device/register/entity (mac 7 + key 9). device_registry gửi hai request liên tiếp; device_coap: send_register, send_entities. Component **device** ở **components/device/**; thread core **components/thread/core/** (rename.sh). Backend contract: `Documents/coap/border_router_coap_server.md`. |
-| **0.9.4 (hiện tại)** | **Entity restore_mode (key 13):** Mỗi entity trong register/entity payload gửi thêm key 13 = restore_mode (uint). Backend mergeEntity dùng ENTITY_KEYS.RESTORE_MODE. Node: `CBOR_K_ENT_RESTORE_MODE 13` trong cbor_register_keys.h; serialize_light_entity và serialize_sensor_entity encode key 13 (default 0). |
+| **0.9.4** | **Entity restore_mode (key 13):** Mỗi entity trong register/entity payload gửi thêm key 13 = restore_mode (uint). Backend mergeEntity dùng ENTITY_KEYS.RESTORE_MODE. Node: `CBOR_K_ENT_RESTORE_MODE 13` trong cbor_register_keys.h; serialize_light_entity và serialize_sensor_entity encode key 13 (default 0). |
+| **0.9.5 (hiện tại)** | **Topology role-based + key 6 (neighbors):** Child = keys 0–5; Router/Leader = keys 0,1,2,6 (array TopologyNeighbor). API: entity_serialize_topology_child_cbor, entity_serialize_topology_router_leader_cbor; xóa entity_serialize_topology_cbor. device_registry branch theo role; router/leader dùng otThreadGetNextNeighborInfo. cbor_register_keys.h: key 6 + CBOR_K_NEIGHBOR_* 0–4; topology_neighbor_t trong entity_serialization.h. Docs: thread_node_coap.md. |
 | 1.0.0 (tiếp theo) | entity_coap_server implementation; CBOR switch/fan/climate/binary_sensor; main.c template; additional examples |

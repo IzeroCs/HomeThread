@@ -5,7 +5,7 @@
  *
  * Endpoints:
  * - register/info, update/info: DeviceInfoPayload (keys 0–6, key 0 = mac).
- * - update/topology: DeviceTopologyPayload (key 0 = mac, 1–6 = rloc16, role, ipv6, parent, rssi, link_quality).
+ * - update/topology: DeviceTopologyPayload — role-based: child has 0,1,2,3,4,5; router/leader have 0,1,2,6 (neighbors).
  * - register/entity, update/entity: key 0 (mac) + key 1 (array DeviceEntityItem).
  * - update/state: key 0 (mac) + key 1 (array DeviceStateItem).
  */
@@ -27,15 +27,24 @@ export const DEVICE_INFO_KEYS = {
   HW_VERSION: 6,
 } as const;
 
-/** Keys cho payload topology (update/topology). Index 0 = mac_address, 1–6 = topology 1 thiết bị. */
+/** Keys cho payload topology (update/topology). Parse theo role: child dùng 3,4,5 (parent); router/leader dùng 6 (neighbors). */
 export const TOPOLOGY_KEYS = {
   MAC_ADDRESS: 0,
   RLOC16: 1,
   ROLE: 2,
-  IPV6: 3,
-  PARENT: 4,
-  RSSI: 5,
-  LINK_QUALITY: 6,
+  PARENT_RLOC16: 3,
+  PARENT_RSSI: 4,
+  PARENT_LQ: 5,
+  NEIGHBORS: 6,
+} as const;
+
+/** Keys cho phần tử neighbor (key 6 array). Router/Leader only. */
+export const TOPOLOGY_NEIGHBOR_KEYS = {
+  RLOC16: 0,
+  RSSI: 1,
+  LQ_IN: 2,
+  LQ_OUT: 3,
+  IS_CHILD: 4,
 } as const;
 
 /** Role numeric value: 0=child, 1=router, 2=leader (matches Thread-Node) */
@@ -83,15 +92,24 @@ export interface DeviceInfoPayload {
   6?: number; // hw_version
 }
 
-/** Payload topology (update/topology): key 0 = mac_address, 1–6 = thông tin 1 thiết bị. */
+/** One neighbor in key 6 array (router/leader only). */
+export interface DeviceTopologyNeighbor {
+  0: number;   // rloc16
+  1?: number; // rssi (dBm) — optional if not direct neighbor
+  2?: number; // link_quality_in
+  3?: number; // link_quality_out
+  4: boolean; // is_child
+}
+
+/** Payload topology (update/topology): role-based. Child: 0,1,2,3,4,5. Router/Leader: 0,1,2,6. */
 export interface DeviceTopologyPayload {
-  0?: number; // mac_address
-  1?: number; // rloc16
-  2?: number; // role: 0=child, 1=router, 2=leader
-  3?: Uint8Array; // ipv6
-  4?: number; // parent
-  5?: number; // rssi (dBm)
-  6?: number; // link_quality (0–255)
+  0?: number;   // mac_address
+  1?: number;   // rloc16
+  2?: number;   // role: 0=child, 1=router, 2=leader
+  3?: number;   // parent_rloc16 — child only
+  4?: number;   // parent_rssi (dBm) — child only
+  5?: number;   // parent_lq — child only
+  6?: DeviceTopologyNeighbor[]; // router/leader only
 }
 
 /** Một phần tử entity trong array key 1 — cho register/entity, update/entity (định nghĩa entity). disabled=1 → không thêm vào dashboard. */

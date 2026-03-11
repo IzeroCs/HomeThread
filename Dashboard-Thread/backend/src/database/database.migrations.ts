@@ -16,7 +16,7 @@ function getMigrationsFolder(): string {
 }
 
 const APP_SETTINGS_SEED: Array<{ key: string; value: string }> = [
-  { key: "thread_run_on_connect", value: "0" },
+  { key: "thread_run_on_connect", value: "1" },
   { key: "br_host", value: "192.168.31.3" },
   { key: "br_port", value: "5000" },
   { key: "use_mdns", value: "0" },

@@ -20,7 +20,7 @@ Tài liệu mô tả cấu trúc payload CBOR cho CoAP **/device/** giữa Threa
 
 | Method | Path | Payload | Mô tả |
 |--------|------|---------|--------|
-| POST | /device/update/topology | **DeviceTopologyPayload** (key 0 = mac, 1–6 = rloc16, role, ipv6, parent, rssi, link_quality) | Node gửi định kỳ. Cập nhật topology 1 thiết bị. |
+| POST | /device/update/topology | **DeviceTopologyPayload** (role-based: child 0,1,2,3,4,5; router/leader 0,1,2,6) | Node gửi định kỳ. Cập nhật topology 1 thiết bị; backend parse theo role. |
 | POST | /device/update/state | **key 0** (mac) + **key 1** (array state, STATE_KEYS 0–6) | Node gửi định kỳ. Cập nhật state từng entity. |
 | POST | /device/update/info | **device_info** (keys 0–6, key 0 = mac) | Backend/UI only; node không gửi. |
 | POST | /device/update/entity | **key 0** (mac) + **key 1** (array entity, ENTITY_KEYS 0–6) | Backend/UI only; node không gửi. |
@@ -45,17 +45,39 @@ Tài liệu mô tả cấu trúc payload CBOR cho CoAP **/device/** giữa Threa
 
 ## 2. Payload device_topology (update/topology)
 
-Request body (DeviceTopologyPayload): một map, **key 0** = mac_address (bắt buộc), **key 1–6** = topology 1 thiết bị:
+Request body (DeviceTopologyPayload): **role-based**. Backend đọc key 2 (role) rồi parse tương ứng.
+
+**Key chung (mọi role):**
 
 | Key | Tên | Kiểu | Ghi chú |
 |-----|-----|------|--------|
 | **0** | **mac_address** | number | **Bắt buộc.** EUI-64. |
-| 1 | rloc16 | number | RLOC16 Thread. |
+| 1 | rloc16 | number | RLOC16 Thread của thiết bị. |
 | 2 | role | number | 0 = child, 1 = router, 2 = leader. |
-| 3 | ipv6 | bytes | IPv6 (Uint8Array/bytes). |
-| 4 | parent | number | RLOC16 parent. |
-| 5 | rssi | number | RSSI (dBm). |
-| 6 | link_quality | number | 0–255. |
+
+**Fields theo role:**
+
+| Role | Có | Không có |
+|------|-----|----------|
+| **child** (0) | 3 = parent_rloc16, 4 = parent_rssi (dBm), 5 = parent_lq (0–255) | 6 |
+| **router** (1) / **leader** (2) | 6 = array **TopologyNeighbor** (neighbor list) | 3, 4, 5 |
+
+**TopologyNeighbor** (mỗi phần tử của key 6 — router/leader only):
+
+| Key | Tên | Kiểu | Ghi chú |
+|-----|-----|------|--------|
+| 0 | rloc16 | number | RLOC16 của neighbor. Bắt buộc. |
+| 1 | rssi | number | RSSI (dBm). Optional (N/A khi router xa không phải neighbor trực tiếp). |
+| 2 | link_quality_in | number | Optional. |
+| 3 | link_quality_out | number | Optional. |
+| 4 | is_child | boolean | true = neighbor là child, false = router peer. |
+
+Khi rssi hoặc link_quality N/A, Thread-Node có thể bỏ qua key tương ứng.
+
+**Thread-Node — gợi ý nguồn dữ liệu:**
+
+- **Child:** dùng `otThreadGetParentInfo` để lấy parent RLOC16, link quality (scale 0–3 → 0–255 nếu cần). OpenThread không cung cấp RSSI cho parent từ otRouterInfo.
+- **Router/Leader:** dùng `otThreadGetNextNeighborInfo` để duyệt toàn bộ neighbor (router peer + child); mỗi entry có RLOC16, RSSI (nếu có), LinkQualityIn, LinkQualityOut, IsChild. Router xa (chỉ trong router table, không phải neighbor trực tiếp) chỉ có LQ, không có RSSI — đúng giới hạn OpenThread.
 
 ---
 
@@ -109,7 +131,7 @@ Request body: **key 0** (mac_address) + **key 1** (array). Mỗi phần tử tro
 1. **GET /device/ping?mac=&lt;eui64_hex&gt;** — lấy timestamp (và cập nhật heartbeat); nếu timestamp khác lần trước → bắt đầu register.
 2. **POST /device/register/info** (keys 0–6, key 0 = mac) — gửi device info only. **Retry** đến khi backend trả 2.01/2.04 (không gửi register/entity cho đến khi register/info thành công).
 3. **Chỉ khi register/info success** → **POST /device/register/entity** (key 0 = mac, key 1 = array entity). Nhận restore (key 10) nếu backend trả.
-4. **POST /device/update/topology** (key 0 = mac, 1–6 = topology) và **POST /device/update/state** (key 0 = mac, key 1 = array state) — node gửi định kỳ sau khi đã register. **update/info** và **update/entity** chỉ dùng từ backend/UI, node không gửi.
+4. **POST /device/update/topology** (role-based: child gửi 0,1,2,3,4,5; router/leader gửi 0,1,2,6) và **POST /device/update/state** (key 0 = mac, key 1 = array state) — node gửi định kỳ sau khi đã register. **update/info** và **update/entity** chỉ dùng từ backend/UI, node không gửi.
 
 ---
 
@@ -124,6 +146,6 @@ Request body: **key 0** (mac_address) + **key 1** (array). Mỗi phần tử tro
 
 ## Tài liệu liên quan
 
-- **Backend:** `backend/src/coap/device/device.payload.ts` — PAYLOAD_KEY_MAC (0), PAYLOAD_KEY_ARRAY (1), TOPOLOGY_KEYS (0–6), ENTITY_KEYS (0–6, key 6 = disabled), STATE_KEYS (0–6; không còn available); DeviceInfoPayload, DeviceTopologyPayload, DeviceEntityPayload/DeviceEntityItem, DeviceStatePayload/DeviceStateItem.
+- **Backend:** `backend/src/coap/device/device.payload.ts` — PAYLOAD_KEY_MAC (0), PAYLOAD_KEY_ARRAY (1), TOPOLOGY_KEYS (0–6, role-based), TOPOLOGY_NEIGHBOR_KEYS (0–4), ENTITY_KEYS (0–6, key 6 = disabled), STATE_KEYS (0–6); DeviceInfoPayload, DeviceTopologyPayload, TopologyNeighbor, DeviceEntityPayload/DeviceEntityItem, DeviceStatePayload/DeviceStateItem.
 - **thread_node_coap.md** — flow tổng thể, SRP discovery, troubleshooting.
 - **border_router_coap_server.md** — spec backend (endpoints, 6 bảng DB, CoapStatus, sendCoapResponse).

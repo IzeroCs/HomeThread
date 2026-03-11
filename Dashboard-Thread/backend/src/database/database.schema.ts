@@ -62,6 +62,22 @@ export const deviceTopologyHistory = sqliteTable("device_topology_history", {
   recordedAt: text("recorded_at").default(sql`(CURRENT_TIMESTAMP)`),
 });
 
+/** Neighbors of a device (router/leader only). device_id = device that sent topology (device_info.id). */
+export const deviceTopologyNeighbor = sqliteTable(
+  "device_topology_neighbor",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    deviceId: integer("device_id").notNull(),
+    neighborRloc16: text("neighbor_rloc16").notNull(),
+    rssi: integer("rssi"),
+    lqIn: integer("lq_in"),
+    lqOut: integer("lq_out"),
+    isChild: integer("is_child").default(0),
+    updatedAt: text("updated_at").default(sql`(CURRENT_TIMESTAMP)`),
+  },
+  (t) => [unique("device_topology_neighbor_device_neighbor_unique").on(t.deviceId, t.neighborRloc16)]
+);
+
 /** CoAP register/entity — device_id = device_info.id. */
 export const deviceEntity = sqliteTable(
   "device_entity",

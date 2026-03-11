@@ -49,7 +49,7 @@ Backend       parse CBOR → device_info, device_entity, device_topology, device
 
 ## update/topology và update/state
 
-- **POST /device/update/topology**: Payload **flat** key 0 = mac_address, keys 1–6 = rloc16, role, ipv6, parent, rssi, link_quality. Backend lưu snapshot topology (device_topology, device_topology_history); append history.
+- **POST /device/update/topology**: Payload **role-based**. Key 0 = mac_address, 1 = rloc16, 2 = role (0=child, 1=router, 2=leader). **Child** gửi thêm keys 3,4,5 (parent_rloc16, parent_rssi, parent_lq). **Router/Leader** gửi key 6 = array TopologyNeighbor (mỗi item: rloc16, rssi?, lq_in?, lq_out?, is_child). Thread-Node khi role router/leader dùng `otThreadGetNextNeighborInfo` để build key 6. Backend parse theo role; lưu device_topology + device_topology_history; router/leader còn lưu device_topology_neighbor. Chi tiết: [device_payload_spec.md](device_payload_spec.md).
 - **POST /device/update/state**: Payload **key 0** = mac_address, **key 1** = array state. Mỗi phần tử STATE_KEYS 0–6: entity_id, state, brightness, mode, rgb, color_temp, value (không còn available). Backend lưu snapshot state + append history.
 
 ## Lấy Backend IP/port (SRP/DNS-SD)

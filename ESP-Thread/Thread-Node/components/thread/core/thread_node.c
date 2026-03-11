@@ -37,6 +37,7 @@ static const char *TAG = "thread_node";
 #define DEFAULT_TOPOLOGY_UPDATE_INTERVAL_MS  60000   /* POST /device/update/topology mỗi 60s */
 #define DEFAULT_STATE_UPDATE_INTERVAL_MS     30000   /* POST /device/update/state mỗi 30s */
 #define UPDATE_TASK_SLEEP_MS                  5000   /* Kiểm tra topology/state mỗi 5s */
+#define FIRST_UPDATE_DELAY_MS                 5000   /* Trễ 5s sau khi registered rồi gửi topology/state lần đầu */
 
 static thread_node_config_t s_config;
 static bool s_started = false;
@@ -178,8 +179,9 @@ static void backend_update_task(void *pvParameters)
         }
         TickType_t now = xTaskGetTickCount();
         if (first) {
-            last_topology_ticks = now;
-            last_state_ticks = now;
+            /* Gửi topology/state lần đầu sau FIRST_UPDATE_DELAY_MS (5s), rồi theo interval. */
+            last_topology_ticks = now - pdMS_TO_TICKS(DEFAULT_TOPOLOGY_UPDATE_INTERVAL_MS - FIRST_UPDATE_DELAY_MS);
+            last_state_ticks = now - pdMS_TO_TICKS(DEFAULT_STATE_UPDATE_INTERVAL_MS - FIRST_UPDATE_DELAY_MS);
             first = false;
         }
         const device_coap_endpoint_t *ep = (const device_coap_endpoint_t *)&s_backend_ep;
