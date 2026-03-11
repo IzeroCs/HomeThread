@@ -46,9 +46,12 @@
 | CMD_RESET | `0x10` | Node→ESP32 | **Pull** | Reset thiết bị |
 | CMD_FACTORY | `0x11` | Node→ESP32 | **Pull** | Factory reset |
 | CMD_STATE | `0x12` | Node→ESP32 | **Pull** | Pull state (keepalive); BR trả ACK + 1 byte `device_role_t` (0=disabled..4=leader) |
-| CMD_DATASET_ACTIVE | `0x13` | Node→ESP32 | **Pull** | Đọc Active Dataset |
-| CMD_IP_ADDR | `0x14` | Node→ESP32 | **Pull** | Đọc IPv6 Leader RLOC (16 bytes); backend gửi lại ACK cùng Frame ID để xác nhận; BR retry sau 1s nếu không nhận ACK |
-| *(reserved)* | `0x15–0x1F` | — | — | Dành mở rộng sau |
+| CMD_IP_ADDR | `0x13` | Node→ESP32 | **Pull** | Đọc IPv6 Leader RLOC (16 bytes); backend gửi lại ACK cùng Frame ID để xác nhận; BR retry sau 1s nếu không nhận ACK |
+| CMD_DATASET_ACTIVE | `0x14` | Node→ESP32 | **Pull** | Đọc Active Dataset |
+| *(reserved)* | `0x15` | — | — | Dành mở rộng |
+| CMD_MAC_ADDRESS | `0x16` | Node→ESP32 | **Pull** | Đọc MAC EUI-64 IEEE802154 của BR (ACK data = 8 bytes) |
+| CMD_BR_HEALTH | `0x17` | Node→ESP32 | **Pull** | Đọc health BR (ACK data = 16 bytes prefix + TLV suffix: free_heap, minimum_free_heap, uptime, mle_detach_count — mỗi field uint32 BE; suffix TLV chứa stack_hwm từng task, format cố định) |
+| *(reserved)* | `0x18–0x1F` | — | — | Dành mở rộng sau |
 | CMD_SET_PANID | `0x20` | Node→ESP32 | **Pull** | Set PAN ID |
 | CMD_SET_CHANNEL | `0x21` | Node→ESP32 | **Pull** | Set Channel |
 | CMD_SET_NETWORK_NAME | `0x22` | Node→ESP32 | **Pull** | Set Network Name |
@@ -80,8 +83,10 @@
 | CMD_RESET | Node→ESP32 | Không có | 0 byte |
 | CMD_FACTORY | Node→ESP32 | `0xAA` (confirm byte) | 1 byte |
 | CMD_STATE | Node→ESP32 | Payload vài byte (keepalive / fake) | Vài byte |
-| CMD_DATASET_ACTIVE | Node→ESP32 | Không có (request) | 0 byte |
 | CMD_IP_ADDR | Node→ESP32 | Không có (request) | 0 byte |
+| CMD_DATASET_ACTIVE | Node→ESP32 | Không có (request) | 0 byte |
+| CMD_MAC_ADDRESS | Node→ESP32 | Không có (request) | 0 byte |
+| CMD_BR_HEALTH | Node→ESP32 | Không có (request) | 0 byte |
 | CMD_SET_PANID | Node→ESP32 | PAN ID (2 bytes, uint16 big-endian, 0x0000–0xFFFE) | 2 bytes |
 | CMD_SET_CHANNEL | Node→ESP32 | Channel (1 byte uint8_t, OpenThread 2.4 GHz: 11–26) | 1 byte |
 | CMD_SET_NETWORK_NAME | Node→ESP32 | Network Name (UTF-8 string, max 16 bytes) | 1–16 bytes |
@@ -100,10 +105,24 @@
 - `CMD_STATE`: 1 byte role (0=disabled, 1=detached, 2=child, 3=router, 4=leader)
 - `CMD_DATASET_ACTIVE`: TLV binary (raw bytes từ `otDatasetGetActiveTlvs`)
 - `CMD_IP_ADDR`: IPv6 address – 16 bytes big-endian (xem mục dưới)
+- `CMD_MAC_ADDRESS`: MAC EUI-64 IEEE802154 – 8 bytes (big-endian)
+- `CMD_BR_HEALTH`: **16 bytes cố định** (free_heap, minimum_free_heap, uptime, mle_detach_count — mỗi 4 bytes **uint32 big-endian**) **+ TLV suffix** (luôn gửi): mỗi task gồm 3 TLV — type `0x01` (task name, length + UTF-8), type `0x02` (high_water_mark_bytes, length 4, u32 BE), type `0x03` (stack_size_bytes, length 4, u32 BE). Format thống nhất, backend parse 16 byte đầu rồi parse TLV suffix nếu len > 16.
 - `CMD_ROUTER_TABLE / CMD_CHILD_TABLE / CMD_JOINER_TABLE`: binary format (xem `table_data_format.md`)
 - `CMD_THREAD_VERSION`: UTF-8 string (vd. `"OPENTHREAD/thread-reference-20230706-..."`, tối đa 64 byte)
 - `CMD_COMMISSIONER_JOINER`: Không có data (0 byte) – chỉ xác nhận thêm joiner thành công
 - `CMD_SRP_REGISTER`: Không có data (0 byte) – chỉ xác nhận đã submit đăng ký SRP (BR dùng SRP client auto-start). BR copy hostname vào buffer tĩnh `s_srp_hostname` và 16 byte AAAA vào buffer tĩnh `s_srp_backend_addr` rồi mới gọi `otSrpClientSetHostName` / `otSrpClientSetHostAddresses` (OpenThread SRP client chỉ lưu con trỏ, không copy).
+
+### 5.1. CMD_BR_HEALTH TLV suffix (sau 16 byte prefix)
+
+Suffix là chuỗi TLV: mỗi TLV = **Type (1 byte)** + **Length (1 byte)** + **Value (Length bytes)**. Mỗi task gồm 3 TLV liên tiếp:
+
+| Type | Hex | Length | Value |
+|------|-----|--------|--------|
+| Task name | `0x01` | 1–16 | UTF-8 tên task (vd. `comm_queue`) |
+| High water mark | `0x02` | 4 | uint32 big-endian (bytes còn trống stack) |
+| Stack size | `0x03` | 4 | uint32 big-endian (tổng stack bytes) |
+
+Lặp theo từng task (thứ tự task theo BR). Backend đọc từ offset 16: đọc Type → Length → Value; lặp đến hết payload.
 
 ---
 
@@ -201,7 +220,7 @@ AA  01  01  00 05  01 02 03 04 05  XX  55
 ### Pull đọc IP (CMD_IP_ADDR)
 
 ```
-Node→ESP32:   AA  02  14  00 00  XX  55              (Frame ID=2, CMD_IP_ADDR, LEN=0)
+Node→ESP32:   AA  02  13  00 00  XX  55              (Frame ID=2, CMD_IP_ADDR, LEN=0)
 ESP32→Node:   AA  02  02  00 10  [16 bytes IPv6]  XX  55   (Frame ID=2 echo, CMD_ACK, LEN=16)
 Node→ESP32:   AA  02  02  00 00  XX  55              (Frame ID=2 echo, CMD_ACK reply, LEN=0)
 ```

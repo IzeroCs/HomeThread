@@ -13,6 +13,28 @@ import { EVENTS, type EventName } from "shared/src/events";
 
 const FRAME_RESPONSE_TIMEOUT_MS = 5000;
 
+/** BR health ACK payload: 16-byte prefix (4× uint32 BE) + optional raw suffix (TLV) stored as hex. */
+export type BrHealthPayload = {
+  freeHeap: number | null;
+  minimumFreeHeap: number | null;
+  uptime: number | null;
+  mleDetachCount: number | null;
+  /** Raw bytes after offset 16, hex-encoded; null if no suffix. */
+  stackHwm: string | null;
+};
+
+export function parseBrHealthPayload(data: Buffer): BrHealthPayload | null {
+  if (!data || data.length < 16) return null;
+  const suffix = data.length > 16 ? data.subarray(16) : null;
+  return {
+    freeHeap: data.readUInt32BE(0),
+    minimumFreeHeap: data.readUInt32BE(4),
+    uptime: data.readUInt32BE(8),
+    mleDetachCount: data.readUInt32BE(12),
+    stackHwm: suffix && suffix.length > 0 ? suffix.toString("hex") : null,
+  };
+}
+
 /** Phần config được cập nhật từ ACK data (ipaddr, datasetActive và các field parsed từ dataset). */
 export type AckDataConfig = ParsedDataset & {
   // Additional fields (không có trong ParsedDataset)
@@ -155,6 +177,16 @@ export class CommandManager {
   /** Gửi request CMD_JOINER_TABLE để lấy joiner table. */
   fetchJoinerTable(): Promise<{ ack: boolean; data?: Buffer; errorCode?: number; frameId?: number }> {
     return this.sendRequest(CMD.JOINER_TABLE);
+  }
+
+  /** Gửi request CMD_MAC_ADDRESS; ACK data = 8 bytes EUI-64. */
+  fetchMacAddress(): Promise<{ ack: boolean; data?: Buffer; errorCode?: number; frameId?: number }> {
+    return this.sendRequest(CMD.MAC_ADDRESS);
+  }
+
+  /** Gửi request CMD_BR_HEALTH; ACK data = 16 bytes (free_heap, minimum_free_heap, uptime, mle_detach_count uint32 BE). */
+  fetchBrHealth(): Promise<{ ack: boolean; data?: Buffer; errorCode?: number; frameId?: number }> {
+    return this.sendRequest(CMD.BR_HEALTH);
   }
 
   /** Gửi CMD_SET_PANID với PAN ID (2 bytes uint16 big-endian). */

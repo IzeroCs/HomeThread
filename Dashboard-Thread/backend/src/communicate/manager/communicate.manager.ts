@@ -23,6 +23,9 @@ import type { DeviceRole } from "@thread/thread-role"
 import { EVENTS, type EventName } from "shared/src/events"
 import type { ConnectionStatus } from "shared/src/types"
 import { parseRouterTable, parseChildTable, parseJoinerTable } from "../frame"
+import { upsertDeviceInfo as repoUpsertDeviceInfo, getBrDeviceId } from "@database/repositories/device.repository"
+import { upsertBrHealth } from "@database/repositories/device-health.repository"
+import { parseBrHealthPayload } from "./command.manager"
 
 export type { OtConfig } from "@thread/thread-config.manager"
 export type { ThreadState, TableData } from "@thread/thread-data.manager"
@@ -57,18 +60,20 @@ export class CommunicateManager {
   private stateIntervalId: ReturnType<typeof setInterval> | null = null
   /** Keep polling STATE only. */
   private static readonly STATE_INTERVAL_MS = 5000
+  private brHealthIntervalId: ReturnType<typeof setInterval> | null = null
+  private static readonly BR_HEALTH_POLL_MS = 60_000
 
   private notifyDebounceTimeoutId: ReturnType<typeof setTimeout> | null = null
   private notifyPendingMask = 0
 
   private frameParser = new FrameParser()
   private commandManager: CommandManager | null = null
-  /** Chỉ bật polling (OT config) sau khi leader ready (ví dụ sau khi nhận phản hồi STATE). */
-  private leaderReady = false
   /** Role byte lần trước (để chỉ fetch ipaddr khi state đổi hoặc lần đầu). */
   private lastRoleByte: number | null = null
   /** Chưa đăng ký SRP trong phiên này; reset khi disconnect để reconnect đăng ký lại. */
   private connectedThisSession = false
+  /** Cache MAC của BR (EUI-64 hex16) nếu lấy được qua CMD.MAC_ADDRESS. */
+  private borderRouterMacHex: string | null = null
 
   constructor(
     brConnectionConfigService: BrConnectionConfigService,
@@ -444,6 +449,10 @@ export class CommunicateManager {
       clearInterval(this.stateIntervalId)
       this.stateIntervalId = null
     }
+    if (this.brHealthIntervalId != null) {
+      clearInterval(this.brHealthIntervalId)
+      this.brHealthIntervalId = null
+    }
     if (this.notifyDebounceTimeoutId != null) {
       clearTimeout(this.notifyDebounceTimeoutId)
       this.notifyDebounceTimeoutId = null
@@ -556,6 +565,39 @@ export class CommunicateManager {
     if (mask & BIT_ROUTER_TABLE) this.fetchRouterTable().catch(() => {})
     if (mask & BIT_CHILD_TABLE) this.fetchChildTable().catch(() => {})
     if (mask & BIT_JOINER_TABLE) this.fetchJoinerTable().catch(() => {})
+    const BIT_BR_HEALTH = 1 << 6
+    if (mask & BIT_BR_HEALTH) this.fetchBrHealthAndPersist().catch(() => {})
+  }
+
+  /** Fetch BR health via CMD_BR_HEALTH and upsert one row per device into device_health_br. No-op if no BR deviceId or parse fail. */
+  private async fetchBrHealthAndPersist(): Promise<void> {
+    const deviceId = getBrDeviceId()
+    if (deviceId == null) return
+    if (!this.commandManager) return
+    const res = await this.commandManager.fetchBrHealth()
+    if (!res.ack || !res.data) return
+    const payload = parseBrHealthPayload(res.data)
+    if (!payload) return
+    try {
+      upsertBrHealth(
+        deviceId,
+        payload.freeHeap,
+        payload.minimumFreeHeap,
+        payload.uptime,
+        payload.mleDetachCount,
+        payload.stackHwm
+      )
+    } catch {
+      // ignore DB errors
+    }
+  }
+
+  private startBrHealthPoll(): void {
+    if (this.brHealthIntervalId != null) return
+    if (!this.transportTcp?.getStatus().isConnected || !this.commandManager) return
+    this.brHealthIntervalId = setInterval(() => {
+      this.fetchBrHealthAndPersist().catch(() => {})
+    }, CommunicateManager.BR_HEALTH_POLL_MS)
   }
 
   /**
@@ -591,6 +633,36 @@ export class CommunicateManager {
     if (!this.transportTcp?.getStatus().isConnected || !this.commandManager)
       return
     try {
+      // Nice-to-have: try fetch BR MAC (EUI-64) early. If not supported, skip.
+      await this.commandManager
+        .fetchMacAddress()
+        .then((r) => {
+          if (!r.ack || !r.data) return
+          if (r.data.length !== 8) return
+          const macHex = r.data.toString("hex").toLowerCase()
+          this.borderRouterMacHex = macHex
+          // Upsert a device_info row for BR so it can be identified by is_border_router,
+          // even if topology persist is implemented later.
+          try {
+            repoUpsertDeviceInfo({
+              macHex,
+              deviceName: "Border Router",
+              deviceNameRaw: "Border Router",
+              deviceType: null,
+              isBorderRouter: 1,
+              manufacturer: null,
+              model: null,
+              swVersion: null,
+              hwVersion: null,
+            })
+          } catch {
+            // ignore DB errors here (doesn't affect BR connectivity)
+          }
+        })
+        .catch(() => {})
+
+      await this.fetchBrHealthAndPersist().catch(() => {})
+
       const res = await this.commandManager.fetchState()
       if (!(res.ack && res.data && res.data.length >= 1)) return
 
@@ -751,7 +823,6 @@ export class CommunicateManager {
   }
 
   private onTransportDisconnected(): void {
-    this.leaderReady = false
     this.lastRoleByte = null
     this.connectedThisSession = false
     this.stateWithoutResponseCount = 0
@@ -810,6 +881,7 @@ export class CommunicateManager {
       // Baseline pull on every successful TCP connect (first connect + after reconnect).
       await this.pullAllOnReconnect()
       this.startStateInterval()
+      this.startBrHealthPoll()
     } catch (error) {
       transportLogger.error(`BR connection failed: ${error}`)
       this.broadcast(EVENTS.BR_STATUS, {

@@ -19,6 +19,19 @@ static const char *TAG = "entity_serialize";
 
 #define RSSI_NA 0x7FFF
 
+/** Convert uint64_t MAC (big-endian) to 8-byte buffer for CBOR bstr(8). */
+static void mac_uint64_to_bstr(uint64_t mac, uint8_t out[8])
+{
+    out[0] = (uint8_t)(mac >> 56);
+    out[1] = (uint8_t)(mac >> 48);
+    out[2] = (uint8_t)(mac >> 40);
+    out[3] = (uint8_t)(mac >> 32);
+    out[4] = (uint8_t)(mac >> 24);
+    out[5] = (uint8_t)(mac >> 16);
+    out[6] = (uint8_t)(mac >> 8);
+    out[7] = (uint8_t)(mac);
+}
+
 typedef int (*entity_serialize_fn)(cbor_encoder_t *enc, const void *entity);
 
 /* -------------------------------------------------------------------------
@@ -205,8 +218,10 @@ int entity_serialize_info_cbor(uint8_t *buffer, size_t buffer_size)
 
     if (cbor_start_indefinite_map(&enc) < 0) return -1;
 
+    uint8_t mac_buf[8];
+    mac_uint64_to_bstr(device->info.mac_address, mac_buf);
     if (cbor_encode_uint(&enc, CBOR_K_INFO_MAC_ADDRESS) < 0) return -1;
-    if (cbor_encode_uint(&enc, device->info.mac_address) < 0) return -1;
+    if (cbor_encode_byte_string(&enc, mac_buf, 8) < 0) return -1;
 
     if (cbor_encode_uint(&enc, CBOR_K_INFO_DEVICE_NAME) < 0) return -1;
     if (cbor_encode_text_string(&enc, device->info.device_name) < 0) return -1;
@@ -265,8 +280,10 @@ int entity_serialize_topology_child_cbor(uint16_t rloc16, const char *ml_eid_str
 
     if (cbor_start_indefinite_map(&enc) < 0) return -1;
 
+    uint8_t mac_buf[8];
+    mac_uint64_to_bstr(device->info.mac_address, mac_buf);
     if (cbor_encode_uint(&enc, CBOR_K_TOPOLOGY_MAC_ADDRESS) < 0) return -1;
-    if (cbor_encode_uint(&enc, device->info.mac_address) < 0) return -1;
+    if (cbor_encode_byte_string(&enc, mac_buf, 8) < 0) return -1;
 
     if (cbor_encode_uint(&enc, CBOR_K_TOPOLOGY_RLOC16) < 0) return -1;
     uint16_t net_rloc16 = (device->rloc16 != 0) ? device->rloc16 : rloc16;
@@ -322,8 +339,10 @@ int entity_serialize_topology_router_leader_cbor(uint16_t rloc16, uint8_t role,
 
     if (cbor_start_indefinite_map(&enc) < 0) return -1;
 
+    uint8_t mac_buf[8];
+    mac_uint64_to_bstr(device->info.mac_address, mac_buf);
     if (cbor_encode_uint(&enc, CBOR_K_TOPOLOGY_MAC_ADDRESS) < 0) return -1;
-    if (cbor_encode_uint(&enc, device->info.mac_address) < 0) return -1;
+    if (cbor_encode_byte_string(&enc, mac_buf, 8) < 0) return -1;
 
     if (cbor_encode_uint(&enc, CBOR_K_TOPOLOGY_RLOC16) < 0) return -1;
     uint16_t net_rloc16 = (device->rloc16 != 0) ? device->rloc16 : rloc16;
@@ -398,8 +417,10 @@ static int serialize_entity_items(uint8_t *buffer, size_t buffer_size, const cha
     if (cbor_start_indefinite_map(&enc) < 0) return -1;
 
     if (device->info.mac_address != 0) {
+        uint8_t mac_buf[8];
+        mac_uint64_to_bstr(device->info.mac_address, mac_buf);
         if (cbor_encode_uint(&enc, CBOR_K_ENTITY_MAC) < 0) return -1;
-        if (cbor_encode_uint(&enc, device->info.mac_address) < 0) return -1;
+        if (cbor_encode_byte_string(&enc, mac_buf, 8) < 0) return -1;
     }
 
     if (cbor_encode_uint(&enc, CBOR_K_ENTITY_ARRAY) < 0) return -1;
@@ -449,8 +470,10 @@ int entity_serialize_state_cbor(uint8_t *buffer, size_t buffer_size)
     if (cbor_start_indefinite_map(&enc) < 0) return -1;
 
     if (device->info.mac_address != 0) {
+        uint8_t mac_buf[8];
+        mac_uint64_to_bstr(device->info.mac_address, mac_buf);
         if (cbor_encode_uint(&enc, CBOR_K_STATE_MAC) < 0) return -1;
-        if (cbor_encode_uint(&enc, device->info.mac_address) < 0) return -1;
+        if (cbor_encode_byte_string(&enc, mac_buf, 8) < 0) return -1;
     }
 
     if (cbor_encode_uint(&enc, CBOR_K_STATE_ARRAY) < 0) return -1;

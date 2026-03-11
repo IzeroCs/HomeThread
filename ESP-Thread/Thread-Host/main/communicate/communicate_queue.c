@@ -61,6 +61,10 @@ static void process_task(void *pv)
             (void)communicate_command_handle_dataset_active(item.frame_id);
         } else if (item.cmd == CMD_IP_ADDR) {
             (void)communicate_command_handle_ipaddr(item.frame_id);
+        } else if (item.cmd == CMD_MAC_ADDRESS) {
+            (void)communicate_command_handle_mac_address(item.frame_id);
+        } else if (item.cmd == CMD_BR_HEALTH) {
+            (void)communicate_command_handle_br_health(item.frame_id);
         } else if (item.cmd == CMD_ROUTER_TABLE) {
             (void)communicate_command_handle_router_table(item.frame_id);
         } else if (item.cmd == CMD_CHILD_TABLE) {

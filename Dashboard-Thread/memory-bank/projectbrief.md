@@ -17,7 +17,7 @@ Cung cấp giao diện web quản lý Thread network:
 
 ### In Scope
 - Backend Node.js: TCP client (BR host:port), frame protocol, WebSocket relay
-- Backend CoAP server (UDP 5683, IPv6): nhận dữ liệu từ Thread-Node qua path /device/ (ping, register/info, register/entity, update/info, update/entity, update/topology, update/state), payload CBOR; parse CBOR, lưu 7 bảng SQLite (gồm device_topology_neighbor); có thể trả restore state CBOR; không emit lên frontend
+- Backend CoAP server (UDP 5683, IPv6): nhận dữ liệu từ Thread-Node qua path /device/ (ping, register/info, register/entity, update/info, update/entity, update/topology, update/state), payload CBOR; parse CBOR, lưu 8 bảng SQLite (gồm device_topology_neighbor, device_health_br snapshot từ frame CMD_BR_HEALTH); có thể trả restore state CBOR; không emit lên frontend
 - Frontend Lit: Status (BR, OpenThread, System IPv4/IPv6), Nodes (Router/Child/Joiner List + Commission Node modal), Settings
 - Backend SRP register: CMD_SRP_REGISTER (0x44) qua frame khi BR là leader; IPv6 từ env hoặc auto-detect
 - Shared package: types, events, validation, constants (EVENTS: SRP_REGISTER, SYSTEM_INFO, …)

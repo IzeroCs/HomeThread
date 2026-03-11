@@ -83,7 +83,7 @@ export const STATE_KEYS = {
 
 /** Payload device_info (register/info, update/info): keys 0–6 (key 0 = mac identifier). */
 export interface DeviceInfoPayload {
-  0?: number; // mac_address
+  0?: Uint8Array; // mac_address (CBOR bstr(8), EUI-64)
   1?: string; // device_name
   2?: number; // device_type
   3?: string; // manufacturer
@@ -103,7 +103,7 @@ export interface DeviceTopologyNeighbor {
 
 /** Payload topology (update/topology): role-based. Child: 0,1,2,3,4,5. Router/Leader: 0,1,2,6. */
 export interface DeviceTopologyPayload {
-  0?: number;   // mac_address
+  0?: Uint8Array;   // mac_address (CBOR bstr(8), EUI-64)
   1?: number;   // rloc16
   2?: number;   // role: 0=child, 1=router, 2=leader
   3?: number;   // parent_rloc16 — child only
@@ -125,7 +125,7 @@ export interface DeviceEntityItem {
 
 /** Payload entity (register/entity, update/entity): key 0 (mac) + key 1 (array định nghĩa entity). */
 export interface DeviceEntityPayload {
-  0?: number; // mac_address
+  0?: Uint8Array; // mac_address (CBOR bstr(8), EUI-64)
   1?: DeviceEntityItem[] | unknown[];
 }
 
@@ -142,7 +142,7 @@ export interface DeviceStateItem {
 
 /** Payload state (update/state): key 0 (mac) + key 1 (array state từng entity). */
 export interface DeviceStatePayload {
-  0?: number; // mac_address
+  0?: Uint8Array; // mac_address (CBOR bstr(8), EUI-64)
   1?: DeviceStateItem[] | unknown[];
 }
 

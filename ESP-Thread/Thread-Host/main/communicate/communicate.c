@@ -122,6 +122,8 @@ const char *communicate_cmd_name(uint8_t cmd)
         case CMD_STATE:          return "STATE";
         case CMD_DATASET_ACTIVE: return "DATASET_ACTIVE";
         case CMD_IP_ADDR:        return "IP_ADDR";
+        case CMD_MAC_ADDRESS:    return "MAC_ADDRESS";
+        case CMD_BR_HEALTH:      return "BR_HEALTH";
         case CMD_SET_PANID:      return "SET_PANID";
         case CMD_SET_CHANNEL:    return "SET_CHANNEL";
         case CMD_SET_NETWORK_NAME: return "SET_NETWORK_NAME";

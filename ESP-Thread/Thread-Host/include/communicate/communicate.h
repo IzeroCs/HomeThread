@@ -25,6 +25,8 @@ extern "C" {
 #define CMD_IP_ADDR                0x13
 #define CMD_DATASET_ACTIVE         0x14
 #define CMD_DATASET_COMMIT_ACTIVE  0x15
+#define CMD_MAC_ADDRESS            0x16
+#define CMD_BR_HEALTH              0x17
 
 /* Set config commands (0x20–0x2F) */
 #define CMD_SET_PANID          0x20

@@ -40,7 +40,7 @@ Dashboard-Thread/          # npm workspaces root
 | pino | ^9.5.0 | Structured logging |
 | pino-pretty | latest | Pretty console output |
 
-Transport: TCP (net.Socket) to BR; CoAP (UDP 5683, udp6 listen [::]) from Thread-Node. Dependencies: `coap`. CBOR decode/encode noi bo (`backend/src/cbor`). Thread-Node la **CoAP client**: GET /device/ping**?mac=** (16-char hex, heartbeat → last_seen_at); POST /device/register/info (keys 0–6, key 0 = mac), /device/update/topology (payload **role-based**: child 0–5 parent_*; router/leader 0,1,2,6 neighbors array), /device/register/entity, /device/update/entity, /device/update/state (key 0 = mac, **key 1** = array). ENTITY_KEYS 0–6 (disabled key 6); STATE_KEYS 0–6 (không available). Spec payload: docs/coap/device_payload_spec.md. Backend luu 7 bang (device_info, device_topology, **device_topology_neighbor**, device_topology_history, device_entity, device_entity_state + history); upsertTopology parse theo role, replace neighbors; updateDeviceLastSeen, getDeviceStatus(30s/5m); tra qua sendCoapResponse. ResponseTimeout → docs troubleshooting. Frame log: CMD STATE và ACK ẩn (command.manager.ts).
+Transport: TCP (net.Socket) to BR; CoAP (UDP 5683, udp6 listen [::]) from Thread-Node. Dependencies: `coap`. CBOR decode/encode noi bo (`backend/src/cbor`). Thread-Node la **CoAP client**: GET /device/ping**?mac=** (16-char hex, heartbeat → last_seen_at); POST /device/register/info (keys 0–6, key 0 = mac), /device/update/topology (payload **role-based**: child 0–5 parent_*; router/leader 0,1,2,6 neighbors array), /device/register/entity, /device/update/entity, /device/update/state (key 0 = mac, **key 1** = array). ENTITY_KEYS 0–6 (disabled key 6); STATE_KEYS 0–6 (không available). Spec payload: docs/coap/device_payload_spec.md. Backend luu **8 bảng** (device_info, device_topology, device_topology_neighbor, device_topology_history, device_entity, device_entity_state + history, **device_health_br** — 1 row per device, upsert via CMD_BR_HEALTH); upsertTopology parse theo role, replace neighbors; updateDeviceLastSeen, getDeviceStatus(30s/5m); **upsertBrHealth** (device-health.repository). Frame log: CMD STATE và ACK ẩn (command.manager.ts).
 
 ### Frontend
 
@@ -132,7 +132,7 @@ SQLite (`better-sqlite3`, WAL mode). Migrations:
 - 006: DROP TABLE serial_config (BR chi dung TCP, khong con Serial)
 - 007: device_info, device_entity (legacy register/entities)
 - 008: doi ten coap_device → device_info, coap_entity → device_entity neu da chay 007 voi ten cu
-- 009 / Drizzle: **schema 7 bang** (`database.schema.ts`, migrations `data/migrations/`): device_info, device_topology (rloc16, parent_rloc16, role, rssi, link_quality), **device_topology_neighbor** (device_id, neighbor_rloc16, rssi, lq_in, lq_out, is_child), device_topology_history, device_entity (restore_mode, deleted_at), device_entity_state, device_entity_state_history. BR config gop vao app_settings (br_host, br_port, use_mdns). Migration 0001: add device_topology_neighbor.
+- 009 / Drizzle: **schema 8 bang** (`database.schema.ts`, migrations `data/migrations/`): device_info, device_topology, **device_topology_neighbor**, device_topology_history, device_entity, device_entity_state, device_entity_state_history, **device_health_br** (UNIQUE(device_id), free_heap, minimum_free_heap, uptime, stack_hwm, mle_detach_count; upsert on CMD_BR_HEALTH). BR config gop vao app_settings (br_host, br_port, use_mdns). Migration 0001: add device_topology_neighbor.
 
 ## Docker (backend)
 

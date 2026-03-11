@@ -8,6 +8,12 @@ Giao tiếp BR ↔ backend theo hướng **notify-first**: Thread-Host push `CMD
 
 ## Recent Significant Changes
 
+### BR health snapshot — device_health_br upsert (2.11.0)
+- **Schema:** Bảng `device_health_br` — **1 row per device** (UNIQUE(device_id)), snapshot; cột: device_id, free_heap, minimum_free_heap, uptime, stack_hwm (text), mle_detach_count, recorded_at. Không lưu history; mỗi lần fetch thì **upsert** row theo device_id.
+- **Repository:** `device-health.repository.ts` — `upsertBrHealth(deviceId, freeHeap, minimumFreeHeap, uptime, mleDetachCount, stackHwm?)`; Drizzle `onConflictDoUpdate` trên device_id, set recordedAt = CURRENT_TIMESTAMP khi update.
+- **Frame:** CMD_BR_HEALTH (0x17); ACK data = 16-byte prefix (4× uint32 BE) + optional TLV suffix (mục 5.1 doc: task name 0x01, high_water_mark 0x02, stack_size 0x03). Backend hiện chỉ parse 16 byte đầu; stack_hwm có thể bổ sung parser TLV sau.
+- **CommunicateManager:** fetchBrHealthAndPersist() gọi upsertBrHealth; poll 60s + trigger khi NOTIFY bit 6 (BIT_BR_HEALTH). getBrDeviceId() từ device_info (is_border_router = 1).
+
 ### Topology role-based payload + device_topology_neighbor (2.10.0)
 - **Payload:** DeviceTopologyPayload parse theo role. Child gửi keys 0–5 (mac, rloc16, role, parent_rloc16, parent_rssi, parent_lq). Router/Leader gửi 0,1,2,6 (mac, rloc16, role, neighbors array TopologyNeighbor). TopologyNeighbor: 0=rloc16, 1?=rssi, 2?=lq_in, 3?=lq_out, 4=is_child.
 - **DB:** Bảng **device_topology_neighbor** (device_id, neighbor_rloc16, rssi, lq_in, lq_out, is_child); migration 0001_add_device_topology_neighbor. upsertTopology: replace list (delete + insert neighbors).
@@ -126,7 +132,8 @@ ROUTER_TABLE, CHILD_TABLE, JOINER_TABLE TX va ACK bi filter ra khoi console log 
 - `backend/src/coap/device/device.payload.ts` — DEVICE_INFO_KEYS, TOPOLOGY_KEYS (role-based), TOPOLOGY_NEIGHBOR_KEYS; DeviceInfoPayload, DeviceTopologyPayload, TopologyNeighbor, DeviceEntityPayload/Item, DeviceStatePayload/Item
 - `backend/src/coap/device-coap.controller.ts` — GET /device/ping, POST /device/register/info (chỉ info), register/entity, update/info, update/entity, update/topology, update/state; type từng handler đúng payload
 - `backend/src/coap/device/device-coap.service.ts` — parse/map payload theo role (topology key 6 neighbors); goi device.repository (upsertDeviceInfo, updateDeviceInfo, upsertTopology + neighbors, mergeEntity, updateEntityDefinition, upsertEntityState)
-- `backend/src/database/repositories/device.repository.ts` — resolveDeviceIdByMac, upsertDeviceInfo, updateDeviceLastSeen, getDeviceStatus, upsertTopology (device_topology + device_topology_neighbor replace list), mergeEntity, updateEntityDefinition, upsertEntityState
+- `backend/src/database/repositories/device.repository.ts` — resolveDeviceIdByMac, getBrDeviceId, upsertDeviceInfo, updateDeviceLastSeen, getDeviceStatus, upsertTopology (device_topology + device_topology_neighbor replace list), mergeEntity, updateEntityDefinition, upsertEntityState
+- `backend/src/database/repositories/device-health.repository.ts` — upsertBrHealth (device_health_br, 1 row per device, onConflictDoUpdate)
 - `backend/src/coap/device-coap.controller.ts` — ping() parse query mac (parsePingMac), updateDeviceLastSeen
 - `frontend/src/shared/utils/display-name.ts` — deviceDisplayName(), entityDisplayName() (name ?? name_raw)
 - `backend/src/utils/ipv6.util.ts` — getPreferredBackendIPv6(), getBackendAddresses()

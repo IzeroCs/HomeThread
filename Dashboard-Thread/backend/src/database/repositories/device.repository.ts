@@ -86,11 +86,23 @@ export function resolveDeviceIdByMac(macHex: string): number | null {
   return row?.id ?? null;
 }
 
+/** Resolve device_id of the Border Router (row with is_border_router = 1). Returns null if none. */
+export function getBrDeviceId(): number | null {
+  const db = getDrizzle();
+  const row = db
+    .select({ id: deviceInfo.id })
+    .from(deviceInfo)
+    .where(eq(deviceInfo.isBorderRouter, 1))
+    .get();
+  return row?.id ?? null;
+}
+
 export type UpsertDeviceInfoParams = {
   macHex: string;
   deviceName: string | null;
   deviceNameRaw: string | null;
   deviceType: number | null;
+  isBorderRouter: number;
   manufacturer: string | null;
   model: string | null;
   swVersion: number | null;
@@ -99,7 +111,7 @@ export type UpsertDeviceInfoParams = {
 
 export function upsertDeviceInfo(params: UpsertDeviceInfoParams): "created" | "changed" {
   const db = getDrizzle();
-  const { macHex, deviceName, deviceNameRaw, deviceType, manufacturer, model, swVersion, hwVersion } = params;
+  const { macHex, deviceName, deviceNameRaw, deviceType, isBorderRouter, manufacturer, model, swVersion, hwVersion } = params;
 
   const existing = db.select({ id: deviceInfo.id }).from(deviceInfo).where(eq(deviceInfo.macAddress, macHex)).get();
 
@@ -109,6 +121,7 @@ export function upsertDeviceInfo(params: UpsertDeviceInfoParams): "created" | "c
         deviceNameRaw,
         deviceName: sql`COALESCE(${deviceInfo.deviceName}, ${deviceName})`,
         deviceType,
+        isBorderRouter,
         manufacturer,
         model,
         swVersion,
@@ -124,6 +137,7 @@ export function upsertDeviceInfo(params: UpsertDeviceInfoParams): "created" | "c
         deviceName,
         deviceNameRaw,
         deviceType,
+        isBorderRouter,
         manufacturer,
         model,
         swVersion,
@@ -176,6 +190,7 @@ export type UpdateDeviceInfoParams = {
   deviceSlug: string | null;
   deviceName: string | null;
   deviceType: number | null;
+  isBorderRouter: number;
   manufacturer: string | null;
   model: string | null;
   swVersion: number | null;
@@ -184,12 +199,13 @@ export type UpdateDeviceInfoParams = {
 
 export function updateDeviceInfo(params: UpdateDeviceInfoParams): void {
   const db = getDrizzle();
-  const { macHex, deviceSlug, deviceName, deviceType, manufacturer, model, swVersion, hwVersion } = params;
+  const { macHex, deviceSlug, deviceName, deviceType, isBorderRouter, manufacturer, model, swVersion, hwVersion } = params;
   db.update(deviceInfo)
     .set({
       ...(deviceSlug != null && { deviceSlug }),
       deviceName,
       deviceType,
+      isBorderRouter,
       manufacturer,
       model,
       swVersion,

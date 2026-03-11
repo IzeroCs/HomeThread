@@ -33,6 +33,7 @@ Version notation in this file uses Semantic Versioning `MAJOR.MINOR.PATCH` (no l
 | 2.8.0   | **Device heartbeat (ping + last_seen_at):** GET /device/ping query **?mac=** (16-char hex); backend parse (parsePingMac), updateDeviceLastSeen(mac). device_info cột **last_seen_at**; repo updateDeviceLastSeen, getDeviceStatus(lastSeenAt, now) → online (30s) / away (5m) / offline. Constants HEARTBEAT_ONLINE_THRESHOLD_MS, HEARTBEAT_OFFLINE_THRESHOLD_MS. Chỉ cập nhật last_seen_at khi ping có mac hợp lệ. Doc: device_payload_spec.md, thread_node_coap.md (ping + query mac, heartbeat và restart detection). |
 | 2.9.0   | **Device/entity name raw vs user:** device_info **device_name_raw**, device_entity **name_raw** (tên firmware). User name (device_name / name): register update = COALESCE(hiện tại, payload); raw luôn ghi đè. Slug = (device_name ?? device_name_raw ?? macHex). Repo: upsertDeviceInfo(deviceNameRaw), mergeEntity(nameRaw); service truyền raw + name từ payload. Frontend `shared/utils/display-name.ts`: deviceDisplayName(), entityDisplayName(). **Frame log:** Ẩn log CMD STATE và ACK (RX + TX) trong command.manager.ts. |
 | 2.10.0  | **Topology role-based payload:** DeviceTopologyPayload parse theo role. Child: keys 0–5 (mac, rloc16, role, parent_rloc16, parent_rssi, parent_lq). Router/Leader: keys 0,1,2,6 (mac, rloc16, role, neighbors array). TopologyNeighbor: 0=rloc16, 1?=rssi, 2?=lq_in, 3?=lq_out, 4=is_child. Bảng **device_topology_neighbor** (device_id, neighbor_rloc16, rssi, lq_in, lq_out, is_child); migration 0001. Repo upsertTopology nhận neighbors; replace list (delete + insert). device.payload.ts: TOPOLOGY_NEIGHBOR_KEYS, TopologyNeighbor. Doc: device_payload_spec.md, thread_node_coap.md, border_router_coap_server.md, memory-bank. |
+| 2.11.0  | **BR health snapshot (device_health_br):** 1 row per device (UNIQUE(device_id)), **upsert** mỗi lần poll/notify, không insert history. Schema: free_heap, minimum_free_heap, uptime, stack_hwm (text), mle_detach_count, recorded_at. CMD_BR_HEALTH (0x17); ACK 16-byte prefix + TLV suffix (doc 5.1). Repo `upsertBrHealth` (onConflictDoUpdate); CommunicateManager fetch on connect + poll 60s + NOTIFY bit 6. getBrDeviceId() từ device_info (is_border_router=1). Doc: border_router_coap_server.md, backend_br_frame_requirements.md. |
 
 
 ## What Works (Completed)
@@ -40,7 +41,7 @@ Version notation in this file uses Semantic Versioning `MAJOR.MINOR.PATCH` (no l
 ### Infrastructure
 
 - npm workspaces monorepo (backend + frontend + shared)
-- SQLite database (WAL mode): Drizzle schema (database.schema.ts), migrations data/migrations. app_settings (key-value; BR config br_host, br_port, use_mdns trong app_settings). Schema 7 bang: device_info (mac_address UNIQUE, device_slug, last_seen_at, device_name_raw), device_topology + device_topology_neighbor (router/leader neighbor list) + device_topology_history (rloc16, parent_rloc16, role, rssi, link_quality), device_entity (restore_mode, deleted_at, name_raw), device_entity_state + history. Repositories: app-settings.repository, device.repository (updateDeviceLastSeen, getDeviceStatus, upsertDeviceInfo deviceNameRaw/COALESCE, mergeEntity nameRaw/COALESCE).
+- SQLite database (WAL mode): Drizzle schema (database.schema.ts), migrations data/migrations. app_settings (key-value; BR config br_host, br_port, use_mdns trong app_settings). Schema **8 bảng**: device_info (mac_address UNIQUE, device_slug, last_seen_at, device_name_raw, is_border_router), device_topology + device_topology_neighbor + device_topology_history, device_entity (restore_mode, deleted_at, name_raw), device_entity_state + history, **device_health_br** (1 row per device, UNIQUE(device_id), free_heap, minimum_free_heap, uptime, stack_hwm, mle_detach_count; upsert on poll/NOTIFY). Repositories: app-settings.repository, device.repository, **device-health.repository** (upsertBrHealth).
 - Shared package: types, events, constants, validation
 - pino logging voi child loggers (transportLogger, frameLogger, wsLogger)
 - Table log filtering (ROUTER/CHILD/JOINER TX + ACK bi ẩn); CMD STATE và ACK (RX + TX) cũng ẩn trong command.manager.ts
@@ -71,6 +72,7 @@ Version notation in this file uses Semantic Versioning `MAJOR.MINOR.PATCH` (no l
 - CMD_ROUTER_TABLE, CMD_CHILD_TABLE, CMD_JOINER_TABLE (binary parse)
 - CMD_COMMISSIONER_JOINER (EUI64 + PSKd Thread Base32 + timeout)
 - CMD_SRP_REGISTER (0x44) — dang ky _dashboard._udp len SRP server qua BR (hostname, backend IPv6, port)
+- CMD_BR_HEALTH (0x17) — fetch BR health; ACK 16-byte prefix + TLV suffix; backend upsert 1 row device_health_br (poll 60s + NOTIFY bit 6)
 - CMD_RESET, CMD_FACTORY
 - Auto-start Thread (thread_run_on_connect + portClosedWhileRunning flag)
 - SRP register khi BR chuyen sang leader (BACKEND_IPV6 hoac getPreferredBackendIPv6()); log "SRP register: IPv6=... hostname=... port=..." truoc khi gui
@@ -118,7 +120,7 @@ Console da bo. Commissioner gop vao Nodes (modal + Joiner List).
 - HomeThread/Documents/dashboard/migration_to_frame_protocol.md
 - docs/coap/device_payload_spec.md — spec payload Thread-Node (device_info 0–6; topology **role-based** child 3,4,5 / router/leader key 6 TopologyNeighbor; entity/state key 1 array; GET /device/ping ?mac= heartbeat; flow register/info → register/entity → update/topology, update/state)
 - docs/coap/thread_node_coap.md — hướng dẫn Thread-Node (CoAP + CBOR, GET /device/ping?mac= heartbeat, flow, SRP discovery, update/topology role-based)
-- docs/coap/border_router_coap_server.md — spec Backend CoAP (endpoints, 7 bảng gồm device_topology_neighbor, topology role-based)
+- docs/coap/border_router_coap_server.md — spec Backend CoAP (endpoints, 8 bảng gồm device_topology_neighbor, device_health_br snapshot upsert, topology role-based)
 - docs/websocket.md — Backend WebSocket: cấu trúc handler/, @WsOn, getWsRoutes, bảng handler modules
 - README.md + TODO.md cap nhat
 

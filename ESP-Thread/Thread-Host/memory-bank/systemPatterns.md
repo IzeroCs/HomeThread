@@ -46,7 +46,7 @@ nvs_flash_init → esp_netif_init → esp_event_loop
 | `comm_queue` | `TASK_NAME_COMM_QUEUE` | 10240 | 5 | Dispatch frame → handler |
 | `comm_task` | `TASK_NAME_COMM_TASK` | 4096 | 5 | State watchdog |
 | `tcp_rx` | `TASK_NAME_TCP_RX` | 4096 | 5 | Đọc byte từ socket TCP (frame từ dashboard) |
-| `ot_change` | (local) | 3072 | 4 | OT state changed callback → debounce → snapshot diff (changed_mask) |
+| `ot_change` | `TASK_NAME_OT_CHANGE` | 10240 | 4 | OT state changed callback → debounce → snapshot diff (changed_mask) |
 | `led_status` | `TASK_NAME_LED_STATUS` | 2048 | 5 | WS2812 theo OT role (dùng last-known role khi lock timeout) |
 | `boot_btn` | `TASK_NAME_BOOT_BTN` | 4096 | 0 | Poll GPIO0 |
 | `stk_mon` | `TASK_NAME_STK_MON` | 3072 | 2 | Log HWM + heap mỗi 30s |
@@ -140,6 +140,8 @@ nvs_flash_erase();         // ← erase bị vô hiệu hóa
 | CMD_STATE | 0x12 | Node→ESP | Heartbeat → ACK + 1 byte role |
 | CMD_IP_ADDR | 0x13 | Node→ESP | → ACK + 16 bytes Leader RLOC |
 | CMD_DATASET_ACTIVE | 0x14 | Node→ESP | → ACK + TLV binary |
+| CMD_MAC_ADDRESS | 0x16 | Node→ESP | → ACK + 8 bytes EUI-64 IEEE802154 (factory/extended/esp_read_mac) |
+| CMD_BR_HEALTH | 0x17 | Node→ESP | → ACK + 16-byte prefix (heap, uptime, mle_detach) + TLV suffix (stack_hwm: 0x01 name, 0x02 hwm_bytes, 0x03 stack_bytes per task) |
 | CMD_SET_PANID | 0x20 | Node→ESP | 2 bytes big-endian |
 | CMD_SET_CHANNEL | 0x21 | Node→ESP | 1 byte, 11–26 |
 | CMD_SET_NETWORK_NAME | 0x22 | Node→ESP | UTF-8 string |
@@ -153,3 +155,4 @@ nvs_flash_erase();         // ← erase bị vô hiệu hóa
 | CMD_THREAD_VERSION | 0x42 | Node→ESP | → ACK + version string |
 | CMD_COMMISSIONER_JOINER | 0x43 | Node→ESP | EUI64(8)+PSKd_len(1)+PSKd(1–32)+Timeout(4 BE) |
 | CMD_SRP_REGISTER | 0x44 | Node→ESP | Backend đăng ký `_dashboard._udp` qua SRP client trên BR (hostname + AAAA + port). **Lifetime:** BR copy hostname vào `s_srp_hostname` và AAAA vào `s_srp_backend_addr` (buffer tĩnh) rồi mới gọi `otSrpClientSetHostName` / `otSrpClientSetHostAddresses` — OT SRP client chỉ lưu con trỏ, không copy; buffer stack → dangling → mojibake / địa chỉ rác. |
+| CMD_NOTIFY | 0x45 | ESP→Node | BR push khi OT state/tables thay đổi; payload = changed_mask (u32 BE). Backend pull theo mask. |

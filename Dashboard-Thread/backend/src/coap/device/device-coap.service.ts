@@ -71,11 +71,32 @@ function num(v: unknown): number | null {
   return Number.isNaN(n) ? null : n;
 }
 
-/** Convert payload mac_address (number, EUI-64) to 16-char hex string. Throws if missing/invalid. */
+function bytesToHex(bytes: Uint8Array): string {
+  let out = "";
+  for (let i = 0; i < bytes.length; i++) {
+    out += bytes[i]!.toString(16).padStart(2, "0");
+  }
+  return out.toLowerCase();
+}
+
+function asUint8Array(v: unknown): Uint8Array | null {
+  if (v == null) return null;
+  if (v instanceof Uint8Array) return v;
+  // Some decoders may return ArrayBuffer for bstr
+  if (v instanceof ArrayBuffer) return new Uint8Array(v);
+  // Buffer is a Uint8Array subclass; covered above, but keep explicit for clarity
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const maybeBuf = v as any;
+  if (typeof Buffer !== "undefined" && Buffer.isBuffer?.(maybeBuf)) return maybeBuf as Uint8Array;
+  return null;
+}
+
+/** Convert payload mac_address (CBOR bstr(8), EUI-64) to 16-char hex string. Throws if missing/invalid. */
 export function macAddressToHex(v: unknown): string {
-  const n = num(v);
-  if (n == null) throw new Error("mac_address (key 0) is required");
-  return (n >>> 0).toString(16).padStart(16, "0").toLowerCase();
+  const bytes = asUint8Array(v);
+  if (!bytes) throw new Error("mac_address (key 0) must be CBOR bstr(8)");
+  if (bytes.length !== 8) throw new Error(`mac_address (key 0) invalid length=${bytes.length}, expected 8`);
+  return bytesToHex(bytes);
 }
 
 function getEntityField<T>(entity: Record<string, unknown>, key: number): T | undefined {
@@ -90,6 +111,7 @@ export function upsertDeviceInfo(parsed: Record<string, unknown>): "created" | "
     deviceName: deviceNameFromPayload,
     deviceNameRaw: deviceNameFromPayload,
     deviceType: num(getPayloadField(parsed, DEVICE_INFO_KEYS.DEVICE_TYPE)) ?? null,
+    isBorderRouter: 0,
     manufacturer: str(getPayloadField(parsed, DEVICE_INFO_KEYS.MANUFACTURER)) ?? null,
     model: str(getPayloadField(parsed, DEVICE_INFO_KEYS.MODEL)) ?? null,
     swVersion: num(getPayloadField(parsed, DEVICE_INFO_KEYS.SW_VERSION)) ?? null,
@@ -105,6 +127,7 @@ export function updateDeviceInfo(parsed: Record<string, unknown>): void {
     deviceSlug: null,
     deviceName: str(getPayloadField(parsed, DEVICE_INFO_KEYS.DEVICE_NAME)) ?? null,
     deviceType: num(getPayloadField(parsed, DEVICE_INFO_KEYS.DEVICE_TYPE)) ?? null,
+    isBorderRouter: 0,
     manufacturer: str(getPayloadField(parsed, DEVICE_INFO_KEYS.MANUFACTURER)) ?? null,
     model: str(getPayloadField(parsed, DEVICE_INFO_KEYS.MODEL)) ?? null,
     swVersion: num(getPayloadField(parsed, DEVICE_INFO_KEYS.SW_VERSION)) ?? null,

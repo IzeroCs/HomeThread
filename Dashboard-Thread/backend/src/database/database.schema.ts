@@ -26,7 +26,8 @@ export const deviceInfo = sqliteTable("device_info", {
   deviceName: text("device_name"),
   deviceNameRaw: text("device_name_raw"),
   deviceType: integer("device_type"),
-  manufacturer: text("manufacturer"),
+  isBorderRouter: integer("is_border_router").default(0),
+  manufacturer: text("manufactureri"),
   model: text("model"),
   swVersion: integer("sw_version"),
   hwVersion: integer("hw_version"),
@@ -76,6 +77,22 @@ export const deviceTopologyNeighbor = sqliteTable(
     updatedAt: text("updated_at").default(sql`(CURRENT_TIMESTAMP)`),
   },
   (t) => [unique("device_topology_neighbor_device_neighbor_unique").on(t.deviceId, t.neighborRloc16)]
+);
+
+/** BR health snapshot — one row per device (device_id UNIQUE), updated on each poll/notify. */
+export const deviceHealthBr = sqliteTable(
+  "device_health_br",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    deviceId: integer("device_id").notNull(),
+    freeHeap: integer("free_heap"),
+    minimumFreeHeap: integer("minimum_free_heap"),
+    uptime: integer("uptime"),
+    stackHwm: text("stack_hwm"),
+    mleDetachCount: integer("mle_detach_count"),
+    recordedAt: text("recorded_at").default(sql`(CURRENT_TIMESTAMP)`),
+  },
+  (t) => [unique("device_health_br_device_id_unique").on(t.deviceId)]
 );
 
 /** CoAP register/entity — device_id = device_info.id. */

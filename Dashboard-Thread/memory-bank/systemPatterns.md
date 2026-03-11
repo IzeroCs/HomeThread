@@ -53,7 +53,7 @@ Backend (khi BR = leader) → log "SRP register: IPv6=... hostname=... port=..."
 | `OtConfigManager` | `backend/src/thread/ot-config.manager.ts` | In-memory store. `.update(partial)` de merge, `.get()` de doc, `.clear()` khi disconnect |
 | `PollingManager` | `backend/src/thread/thread-polling.manager.ts` | Fallback table polling (notify-first); state poll 5s do CommunicateManager, tables theo CMD_NOTIFY + baseline on connect. Không gating theo số client frontend. |
 | `AppSettingsService` | `backend/src/settings/app-settings.service.ts` | SQLite key-value cho app settings (thread_run_on_connect) |
-| CoAP server | `backend/src/coap/coap-device.server.ts` + `device-coap.controller.ts` + `device-coap.service.ts` + `database/repositories/device.repository.ts` + `coap.response.ts` | CoAP UDP 5683 (udp6, [::]). Paths: /device/ping, register/info, register/entity, update/info, update/entity, update/topology, update/state. CoapStatus (coap.type.ts); sendCoapResponse/echoCoapToken (coap.response.ts); parseCborOrRespond (controller). GET ping → 2.05 + timestamp. POST register/info: upsert device_info (mac_address), slug (generateSlug); soft-delete; topology optional (rloc16, parent_rloc16, role, rssi, link_quality). POST register/entity: merge device_entity, tra restore CBOR (key 10). POST update/*: update info, entity def, topology (role-based; device_topology_neighbor cho router/leader), state. DB qua Drizzle type-safe (device.repository, app-settings.repository). SQLite 7 bang. Khong emit qua io |
+| CoAP server | `backend/src/coap/coap-device.server.ts` + `device-coap.controller.ts` + `device-coap.service.ts` + `database/repositories/device.repository.ts` + `coap.response.ts` | CoAP UDP 5683 (udp6, [::]). Paths: /device/ping, register/info, register/entity, update/info, update/entity, update/topology, update/state. CoapStatus (coap.type.ts); sendCoapResponse/echoCoapToken (coap.response.ts); parseCborOrRespond (controller). GET ping → 2.05 + timestamp. POST register/info: upsert device_info (mac_address), slug (generateSlug); soft-delete; topology optional. POST register/entity: merge device_entity, tra restore CBOR (key 10). POST update/*: update info, entity def, topology (role-based; device_topology_neighbor), state. DB: device.repository, app-settings.repository, **device-health.repository** (upsertBrHealth — 1 row per BR, frame CMD_BR_HEALTH). SQLite 8 bang. Khong emit qua io |
 
 ## Frame Protocol
 
@@ -79,6 +79,7 @@ Backend (khi BR = leader) → log "SRP register: IPv6=... hostname=... port=..."
 | THREAD_VERSION | 0x42 | Phien ban OpenThread |
 | COMMISSIONER_JOINER | 0x43 | EUI64(8) + PSKD_len(1) + PSKD(var) + Timeout(4) |
 | SRP_REGISTER | 0x44 | hostname_len(1) + hostname(N) + backend_ipv6(16) + port(2 BE) |
+| BR_HEALTH | 0x17 | Pull BR health; ACK = 16-byte prefix (free_heap, minimum_free_heap, uptime, mle_detach_count uint32 BE) + optional TLV suffix (stack_hwm). Backend upsert 1 row device_health_br (poll 60s + NOTIFY bit 6). |
 | NOTIFY | 0x45 | Thread-Host → Backend: push notify thay đổi (payload u32 BE changed_mask) |
 
 ### NACK Codes

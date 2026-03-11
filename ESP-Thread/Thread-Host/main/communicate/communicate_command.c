@@ -5,7 +5,9 @@
 #include "communicate/communicate_command.h"
 #include "communicate/communicate.h"
 #include "communicate/communicate_task.h"
+#include "br_config.h"
 #include "esp_log.h"
+#include "esp_mac.h"
 #include "esp_openthread.h"
 #include "esp_openthread_lock.h"
 #include "esp_partition.h"
@@ -17,10 +19,13 @@
 #include "openthread/dataset.h"
 #include "openthread/instance.h"
 #include "openthread/ip6.h"
+#include "openthread/link.h"
 #include "openthread/thread.h"
 #include "openthread/thread_ftd.h"
 #include "openthread/srp_client.h"
 #include "openthread/ot_table_snapshot.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
 #include <string.h>
 
 #define TAG "communicate_cmd"
@@ -216,6 +221,154 @@ int communicate_command_handle_ipaddr(uint8_t frame_id)
         communicate_task_mark_ip_response_pending(frame_id);
     }
     return (err == ESP_OK) ? 0 : -1;
+}
+
+int communicate_command_handle_mac_address(uint8_t frame_id)
+{
+    uint8_t mac[8] = {0};
+
+    /* Ưu tiên dùng Factory Assigned IEEE EUI-64 từ OpenThread (ổn định theo hardware RCP). */
+    otInstance *instance = esp_openthread_get_instance();
+    if (instance != NULL && esp_openthread_lock_acquire(pdMS_TO_TICKS(500))) {
+        otExtAddress eui64;
+        otLinkGetFactoryAssignedIeeeEui64(instance, &eui64);
+        memcpy(mac, eui64.m8, sizeof(mac));
+        esp_openthread_lock_release();
+        ESP_LOGI(TAG, "CMD_MAC_ADDRESS: source=ot_factory_ieee_eui64 eui64=%02x%02x%02x%02x%02x%02x%02x%02x",
+                 mac[0], mac[1], mac[2], mac[3], mac[4], mac[5], mac[6], mac[7]);
+        esp_err_t err = communicate_send_frame(frame_id, CMD_ACK, mac, sizeof(mac));
+        return (err == ESP_OK) ? 0 : -1;
+
+        /* Fallback: Extended Address hiện tại (cũng là EUI-64), phòng khi factory API không support. */
+        const otExtAddress *ext = otLinkGetExtendedAddress(instance);
+        if (ext != NULL) {
+            memcpy(mac, ext->m8, sizeof(mac));
+            esp_openthread_lock_release();
+            ESP_LOGI(TAG, "CMD_MAC_ADDRESS: source=ot_extended_address eui64=%02x%02x%02x%02x%02x%02x%02x%02x",
+                     mac[0], mac[1], mac[2], mac[3], mac[4], mac[5], mac[6], mac[7]);
+            esp_err_t err = communicate_send_frame(frame_id, CMD_ACK, mac, sizeof(mac));
+            return (err == ESP_OK) ? 0 : -1;
+        }
+        esp_openthread_lock_release();
+    } else if (instance != NULL) {
+        send_nack(frame_id, 0x03); /* Timeout */
+        return -1;
+    }
+
+    /* Last resort: try esp_read_mac (một số platform hỗ trợ IEEE802154). */
+    esp_err_t err = esp_read_mac(mac, ESP_MAC_IEEE802154);
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to read MAC EUI-64 (factory/extended/ieee802154): %s", esp_err_to_name(err));
+        send_nack(frame_id, 0x02); /* Not ready */
+        return -1;
+    }
+    ESP_LOGI(TAG, "CMD_MAC_ADDRESS: source=esp_read_mac_ieee802154 eui64=%02x%02x%02x%02x%02x%02x%02x%02x",
+             mac[0], mac[1], mac[2], mac[3], mac[4], mac[5], mac[6], mac[7]);
+    err = communicate_send_frame(frame_id, CMD_ACK, mac, sizeof(mac));
+    return (err == ESP_OK) ? 0 : -1;
+}
+
+/* Task list for BR health stack HWM; must match br_main / br_config. */
+static const struct {
+    const char *name;
+    uint32_t   stack_bytes;
+} s_br_health_tasks[] = {
+    { TASK_NAME_MAIN,         TASK_STACK_MAIN         },
+    { TASK_NAME_COMM_QUEUE,   TASK_STACK_COMM_QUEUE   },
+    { TASK_NAME_COMM_TASK,    TASK_STACK_COMM_TASK    },
+    { TASK_NAME_BOOT_BTN,     TASK_STACK_BOOT_BTN     },
+    { TASK_NAME_LED_STATUS,   TASK_STACK_LED_STATUS   },
+    { TASK_NAME_TCP_RX,       TASK_STACK_TCP_RX       },
+    { TASK_NAME_STK_MON,      TASK_STACK_STK_MON      },
+    { TASK_NAME_OT_CHANGE,    TASK_STACK_OT_CHANGE    },
+};
+
+#define BR_HEALTH_TLV_BUF_SIZE   400
+#define BR_HEALTH_PREFIX_SIZE   16
+
+/* TLV types for stack_hwm suffix (Type 1 byte + Length 1 byte + Value). */
+#define BR_HEALTH_TLV_TASK_NAME          0x01
+#define BR_HEALTH_TLV_HIGH_WATER_MARK   0x02
+#define BR_HEALTH_TLV_STACK_SIZE        0x03
+
+/* Write one TLV: type, length, value. Returns 0 on overflow. */
+static size_t tlv_put(uint8_t *buf, size_t cap, size_t *off, uint8_t type, const void *val, size_t len)
+{
+    if (len > 255 || *off + 2 + len > cap) return 0;
+    buf[(*off)++] = type;
+    buf[(*off)++] = (uint8_t)len;
+    memcpy(buf + *off, val, len);
+    *off += len;
+    return 2 + len;
+}
+
+static size_t tlv_put_u32_be(uint8_t *buf, size_t cap, size_t *off, uint8_t type, uint32_t v)
+{
+    uint8_t be[4] = { (uint8_t)(v >> 24), (uint8_t)(v >> 16), (uint8_t)(v >> 8), (uint8_t)v };
+    return tlv_put(buf, cap, off, type, be, 4);
+}
+
+int communicate_command_handle_br_health(uint8_t frame_id)
+{
+    uint8_t payload[BR_HEALTH_PREFIX_SIZE + BR_HEALTH_TLV_BUF_SIZE];
+    uint32_t free_heap = (uint32_t)esp_get_free_heap_size();
+    uint32_t min_free = (uint32_t)esp_get_minimum_free_heap_size();
+    uint32_t uptime_ms = (uint32_t)(esp_timer_get_time() / 1000ULL);
+    uint32_t mle_detach = 0;
+    otInstance *instance = esp_openthread_get_instance();
+    if (instance != NULL && esp_openthread_lock_acquire(pdMS_TO_TICKS(200))) {
+        const otMleCounters *counters = otThreadGetMleCounters(instance);
+        if (counters != NULL) {
+            mle_detach = (uint32_t)counters->mDetachedRole;
+        }
+        esp_openthread_lock_release();
+    }
+    /* 16-byte prefix (u32 BE each). */
+    payload[0]  = (uint8_t)(free_heap >> 24);
+    payload[1]  = (uint8_t)(free_heap >> 16);
+    payload[2]  = (uint8_t)(free_heap >> 8);
+    payload[3]  = (uint8_t)free_heap;
+    payload[4]  = (uint8_t)(min_free >> 24);
+    payload[5]  = (uint8_t)(min_free >> 16);
+    payload[6]  = (uint8_t)(min_free >> 8);
+    payload[7]  = (uint8_t)min_free;
+    payload[8]  = (uint8_t)(uptime_ms >> 24);
+    payload[9]  = (uint8_t)(uptime_ms >> 16);
+    payload[10] = (uint8_t)(uptime_ms >> 8);
+    payload[11] = (uint8_t)uptime_ms;
+    payload[12] = (uint8_t)(mle_detach >> 24);
+    payload[13] = (uint8_t)(mle_detach >> 16);
+    payload[14] = (uint8_t)(mle_detach >> 8);
+    payload[15] = (uint8_t)mle_detach;
+
+    uint8_t *tlv = payload + BR_HEALTH_PREFIX_SIZE;
+    size_t cap = BR_HEALTH_TLV_BUF_SIZE;
+    size_t off = 0;
+    const size_t n_tasks = sizeof(s_br_health_tasks) / sizeof(s_br_health_tasks[0]);
+
+    for (size_t i = 0; i < n_tasks; i++) {
+        const char *name = s_br_health_tasks[i].name;
+        size_t name_len = strlen(name);
+        TaskHandle_t h = xTaskGetHandle(name);
+        uint32_t hwm_bytes = 0;
+        if (h != NULL) {
+            UBaseType_t hwm_words = uxTaskGetStackHighWaterMark(h);
+            hwm_bytes = (uint32_t)hwm_words * (uint32_t)sizeof(StackType_t);
+        }
+        uint32_t stack_bytes = s_br_health_tasks[i].stack_bytes;
+        if (!tlv_put(tlv, cap, &off, BR_HEALTH_TLV_TASK_NAME, name, name_len)) goto send_prefix_only;
+        if (!tlv_put_u32_be(tlv, cap, &off, BR_HEALTH_TLV_HIGH_WATER_MARK, hwm_bytes)) goto send_prefix_only;
+        if (!tlv_put_u32_be(tlv, cap, &off, BR_HEALTH_TLV_STACK_SIZE, stack_bytes)) goto send_prefix_only;
+    }
+
+    esp_err_t err = communicate_send_frame(frame_id, CMD_ACK, payload, BR_HEALTH_PREFIX_SIZE + off);
+    return (err == ESP_OK) ? 0 : -1;
+
+send_prefix_only:
+    {
+        esp_err_t err_fb = communicate_send_frame(frame_id, CMD_ACK, payload, BR_HEALTH_PREFIX_SIZE);
+        return (err_fb == ESP_OK) ? 0 : -1;
+    }
 }
 
 int communicate_command_handle_router_table(uint8_t frame_id)

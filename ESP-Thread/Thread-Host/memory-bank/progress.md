@@ -1,6 +1,6 @@
 # Progress — Thread-Host
 
-_Cập nhật: 2026-03-10 (OT change detector + table snapshots; docs/logging)_
+_Cập nhật: 2026-03-11 (CMD_MAC_ADDRESS, CMD_BR_HEALTH với TLV stack_hwm)_
 
 ## Release history
 
@@ -22,6 +22,7 @@ _Cập nhật: 2026-03-10 (OT change detector + table snapshots; docs/logging)_
 | 0.18.0 | 2026-03-06 | Ethernet init: chờ **IPv4** (DHCP) only; timeout 15s. Direct-connect: khi timeout + link up → BR static 192.168.4.1 (Kconfig BR_ETH_DIRECT_IP_*), thử dhcps_start (netif ETH không có dhcps → thường fail, PC set static 192.168.4.2). Backend route: accept_ra_rt_info_max_plen **per-interface** (vd. enp8s0), RS để BR phát RA sớm. |
 | 0.19.0 | 2026-03-08 | W5500: init **chỉ** chờ IPv4 (DHCP), không chấp nhận chỉ IPv6; timeout default **25s** (BR_ETH_LINK_TIMEOUT_MS). **IPv4 timeout → esp_restart()** trong br_main. W5500 RST do code: hold (BR_ETH_RST_HOLD_MS, default 200ms) + release delay (BR_ETH_RST_RELEASE_MS); phy reset_gpio_num = -1. Bỏ INT diagnostic (counter/task). |
 | 0.20.0 | 2026-03-10 | OpenThread change detector: `otSetStateChangedCallback()` → debounce (arm-once) → snapshot+diff (role/rloc/dataset + router/child/joiner tables) để giảm polling. Thêm `CMD_NOTIFY (0x45)` push `changed_mask` về backend. Tách snapshot builders ra module dùng chung. Cập nhật docs/backend requirements. |
+| 0.21.0 | 2026-03-11 | **CMD_MAC_ADDRESS (0x16):** Pull EUI-64 IEEE802154 (8 bytes). BR: `otLinkGetFactoryAssignedIeeeEui64` → `otLinkGetExtendedAddress` → `esp_read_mac(ESP_MAC_IEEE802154)`. **CMD_BR_HEALTH (0x17):** ACK = 16-byte prefix (free_heap, min_free_heap, uptime, mle_detach_count u32 BE) + TLV suffix (stack_hwm: mỗi task 3 TLV — 0x01 name, 0x02 high_water_mark_bytes, 0x03 stack_size_bytes). MLE từ `otThreadGetMleCounters()->mDetachedRole`. Stack HWM từ `uxTaskGetStackHighWaterMark` × sizeof(StackType_t). Spec: usb_cdc_frame_structure.md §5.1. |
 
 _(Ghi phiên bản theo Semantic Versioning MAJOR.MINOR.PATCH, không dùng tiền tố `v`. Nếu chỉ có major/minor thì PATCH = 0.)_
 
@@ -53,6 +54,8 @@ _(Ghi phiên bản theo Semantic Versioning MAJOR.MINOR.PATCH, không dùng ti�
 - [x] CMD_FACTORY (0x11) — ACK + raw NVS erase + restart sau 2s
 - [x] CMD_DATASET_ACTIVE (0x14) — TLV binary
 - [x] CMD_IP_ADDR (0x13) — Leader RLOC 16 bytes + retry
+- [x] CMD_MAC_ADDRESS (0x16) — EUI-64 IEEE802154 8 bytes (factory/extended/esp_read_mac fallback)
+- [x] CMD_BR_HEALTH (0x17) — 16-byte prefix + TLV suffix (stack_hwm per task: name, high_water_mark_bytes, stack_size_bytes)
 - [x] CMD_ROUTER_TABLE (0x30) — count + entries
 - [x] CMD_CHILD_TABLE (0x31) — count + entries
 - [x] CMD_JOINER_TABLE (0x32) — count + variable entries
@@ -96,9 +99,8 @@ _(Ghi phiên bản theo Semantic Versioning MAJOR.MINOR.PATCH, không dùng ti�
 ### Docs & triển khai ngoài Thread-Host
 - [ ] Cập nhật/tạo doc Thread-Node và Dashboard-Thread (child gửi thẳng backend, backend listen IP)
 
-### System Health Push
-- [ ] `CMD_SYS_HEALTH` (TBD): gửi stack HWM + heap size cho backend
-- [ ] Handler `communicate_command_handle_sys_health()` trong `communicate_command.c`
+### System Health (đã thay bằng CMD_BR_HEALTH)
+- [x] CMD_BR_HEALTH (0x17) đã implement: 16-byte prefix (heap, uptime, mle_detach) + TLV stack_hwm (0.21.0)
 
 ### Auto-flash RCP
 - [ ] Partition `rcp_fw` (SPIFFS) để lưu firmware RCP

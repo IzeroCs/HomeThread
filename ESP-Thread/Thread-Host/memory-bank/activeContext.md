@@ -1,6 +1,6 @@
 # Active Context — Thread-Host
 
-_Cập nhật: 2026-03-10 (OT change detector + table snapshots; update logging/docs)_
+_Cập nhật: 2026-03-11 (CMD_BR_HEALTH + CMD_MAC_ADDRESS; stack HWM TLV suffix)_
 
 ## Công việc hiện tại
 
@@ -65,6 +65,10 @@ Backhaul Ethernet W5500 đã có IPv6 trên backbone (link-local + ULA/global kh
 - **Nguyên nhân:** Task LED poll `otThreadGetDeviceRole()` với lock 200ms; khi OT bận (MLE/child table lúc join) lock timeout → code mặc định role = DISABLED → đỏ.
 - **Fix:** Khi không lấy được lock: dùng **last-known role** (`s_last_role` / `s_role_valid`) thay vì mặc định DISABLED. Trong lúc joiner join, LED giữ màu Leader (xanh) thay vì nháy đỏ.
 
+### CMD_MAC_ADDRESS (0x16) và CMD_BR_HEALTH (0x17) — 2026-03-11
+- **CMD_MAC_ADDRESS:** Backend pull EUI-64 IEEE802154 của BR. ACK = 8 bytes. BR ưu tiên `otLinkGetFactoryAssignedIeeeEui64(instance)`; fallback `otLinkGetExtendedAddress()`; last resort `esp_read_mac(..., ESP_MAC_IEEE802154)` (một số platform không hỗ trợ). Log nguồn MAC khi trả ACK.
+- **CMD_BR_HEALTH:** Backend pull health BR. ACK = **16 bytes prefix** (free_heap, minimum_free_heap, uptime, mle_detach_count — mỗi u32 BE) + **TLV suffix** (luôn gửi): mỗi task 3 TLV — type 0x01 (task name), 0x02 (high_water_mark_bytes), 0x03 (stack_size_bytes). `mle_detach_count` từ `otThreadGetMleCounters(instance)->mDetachedRole`. Stack HWM từ `uxTaskGetStackHighWaterMark()` × `sizeof(StackType_t)`; task list và stack size từ `br_config.h`. Format TLV: Type (1) + Length (1) + Value; không dùng CBOR. Spec: `Documents/protocol/usb_cdc_frame_structure.md` §5.1.
+
 ### Leader Control Client removed (0.17.0) — 2026-03-06
 - Đã loại bỏ CoAP Leader Control Client (GET `/network/stop`) và toàn bộ code/docs liên quan trên Thread-Host. BR không còn gửi CoAP request tới Leader; chỉ quản lý qua frame protocol (state, dataset, Commissioner, SRP register, …).
 
@@ -91,8 +95,7 @@ Backhaul Ethernet W5500 đã có IPv6 trên backbone (link-local + ULA/global kh
 1. **Dashboard-Thread:** Sửa reply ACK cho CMD_IP_ADDR — trong `CommandManager.handle()` khi nhận ACK (frameId ∈ ipAddrFrameIds, data.length === 16) gọi `replyAck(frame.frameId)` để BR không retry vô hạn.
 2. **Test child↔backend:** Trên child (hoặc ot-cli join mạng) chạy `ping <IPv6_backend>` hoặc CoAP/HTTP tới backend; BR chỉ route. Sanity check: từ backend ping IPv6 BR; từ BR CLI ping IPv6 backend.
 3. **Docs Thread-Node / Dashboard-Thread:** Cập nhật hoặc tạo doc (child gửi thẳng backend qua IP, backend listen IP)
-4. **CMD_SYS_HEALTH:** Handler gửi stack HWM + heap size cho backend monitor
-5. **Auto-flash RCP:** Tính năng flash firmware RCP khi boot (xem TODO.md)
+4. **Auto-flash RCP:** Tính năng flash firmware RCP khi boot (xem TODO.md)
 
 ## Known Issues đang theo dõi
 

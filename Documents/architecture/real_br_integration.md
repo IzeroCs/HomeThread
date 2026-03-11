@@ -39,7 +39,7 @@
 
 ### 2.3. Frame protocol — chỉ cho quản lý BR
 
-- Pull state, dataset, tables, IP, set config, commissioner joiner, reset/factory — **giữ nguyên** (CMD_STATE, CMD_DATASET_ACTIVE, CMD_IP_ADDR, CMD_SET_*, CMD_COMMISSIONER_JOINER, CMD_RESET, CMD_FACTORY, …).
+- Pull state, dataset, tables, IP, MAC, BR health, set config, commissioner joiner, reset/factory — **giữ nguyên** (CMD_STATE, CMD_DATASET_ACTIVE, CMD_IP_ADDR, CMD_MAC_ADDRESS, CMD_BR_HEALTH, CMD_SET_*, CMD_COMMISSIONER_JOINER, CMD_RESET, CMD_FACTORY, …).
 - Cấu trúc frame, bảng CMD, CRC8, format table: xem [usb_cdc_frame_structure.md](../protocol/usb_cdc_frame_structure.md) và [table_data_format.md](../protocol/table_data_format.md). Chỉ đổi **transport**: socket TCP thay serial.
 
 ### 2.4. Backend keepalive / ACK bắt buộc

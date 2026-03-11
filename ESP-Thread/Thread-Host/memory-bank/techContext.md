@@ -32,7 +32,7 @@
 - `esp_openthread_start()` — khởi động OT main loop (blocking)
 
 ### OT APIs thường dùng
-- Thread: `otThreadGetDeviceRole`, `otThreadSetEnabled`, `otIp6SetEnabled`
+- Thread: `otThreadGetDeviceRole`, `otThreadSetEnabled`, `otIp6SetEnabled`, `otThreadGetMleCounters` (→ mDetachedRole cho CMD_BR_HEALTH)
 - Dataset: `otDatasetGetActiveTlvs`, `otDatasetGetActive`, `otDatasetSetActive`
 - Tables: `otThreadGetRouterInfo`, `otThreadGetChildInfoByIndex`
 - Commissioner: `otCommissionerGetState`, `otCommissionerStart`, `otCommissionerAddJoiner`, `otCommissionerGetNextJoinerInfo`
@@ -43,7 +43,7 @@
 
 ### FreeRTOS
 - `xTaskCreate` / `xQueueCreate` / `xQueueSend` / `xQueueReceive`
-- `uxTaskGetStackHighWaterMark` — đo stack HWM
+- `uxTaskGetStackHighWaterMark` — đo stack HWM (trả words; nhân sizeof(StackType_t) ra bytes). Dùng trong CMD_BR_HEALTH TLV suffix.
 - `xTaskGetHandle(name)` — lấy handle theo tên (assert nếu tên > 15 ký tự)
 - `vTaskDelay(pdMS_TO_TICKS(N))`
 

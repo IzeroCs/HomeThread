@@ -32,6 +32,18 @@ int communicate_command_handle_dataset_active(uint8_t frame_id);
 int communicate_command_handle_ipaddr(uint8_t frame_id);
 
 /**
+ * Xử lý CMD_MAC_ADDRESS: đọc EUI-64 IEEE802154 (8 bytes) từ eFuse, gửi CMD_ACK + 8 bytes.
+ * Trả 0 nếu thành công, khác 0 nếu lỗi.
+ */
+int communicate_command_handle_mac_address(uint8_t frame_id);
+
+/**
+ * Xử lý CMD_BR_HEALTH: trả ACK + 16 bytes (free_heap, minimum_free_heap, uptime, mle_detach_count), mỗi field uint32 BE.
+ * Trả 0 nếu thành công, khác 0 nếu lỗi.
+ */
+int communicate_command_handle_br_health(uint8_t frame_id);
+
+/**
  * Xử lý CMD_ROUTER_TABLE: lấy Router Table, gửi CMD_ACK + data (format: count + entries).
  * Mỗi entry: RouterId(1) + RLOC16(2) + ExtAddress(8) + LinkQualityIn(1) + LinkQualityOut(1) + Age(2) = 15 bytes.
  * Trả 0 nếu thành công, khác 0 nếu lỗi.

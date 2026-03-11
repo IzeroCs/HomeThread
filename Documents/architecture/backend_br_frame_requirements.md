@@ -22,12 +22,14 @@ BR có **state watchdog**: nếu backend không gửi `CMD_STATE` định kỳ, 
 ### Polling (hiện trạng) và giảm polling (roadmap)
 - **Hiện trạng:** backend thường pull:
   - `CMD_STATE` (keepalive)
-  - `CMD_DATASET_ACTIVE`, `CMD_IP_ADDR` khi cần
+  - `CMD_DATASET_ACTIVE`, `CMD_IP_ADDR`, `CMD_MAC_ADDRESS` (EUI-64 8 bytes), `CMD_BR_HEALTH` khi cần
   - `CMD_ROUTER_TABLE / CMD_CHILD_TABLE / CMD_JOINER_TABLE` khi UI cần refresh
 - **Notify (CMD_NOTIFY):** BR sẽ push `CMD_NOTIFY (0x45)` khi phát hiện thay đổi. Payload = `changed_mask` (u32 big-endian).
 - Backend nhận notify thì **chỉ pull những thứ cần thiết**, ví dụ:
   - ROLE/IP/DATASET đổi → pull `CMD_STATE` / `CMD_IP_ADDR` / `CMD_DATASET_ACTIVE`
   - ROUTER/CHILD/JOINER đổi → pull `CMD_ROUTER_TABLE` / `CMD_CHILD_TABLE` / `CMD_JOINER_TABLE`
+  - Bit BR health (vd. bit 6) set → pull `CMD_BR_HEALTH` (backend **upsert** 1 row vào `device_health_br` theo device_id).
+- **BR health:** Backend poll `CMD_BR_HEALTH` định kỳ (vd. 60s) và/hoặc khi nhận NOTIFY bit health. ACK data = **16-byte prefix** (free_heap, minimum_free_heap, uptime, mle_detach_count — mỗi u32 BE) **+ TLV suffix** (luôn gửi): mỗi task 3 TLV — type 0x01 (task name), 0x02 (high_water_mark_bytes), 0x03 (stack_size_bytes). Chi tiết format: `Documents/protocol/usb_cdc_frame_structure.md` §5.1. Backend **upsert** một row duy nhất per BR device (snapshot, không lưu history); không thay thế keepalive.
 
 ### Gợi ý thực tế để giảm traffic ngay (không cần thay đổi BR)
 - Giữ `CMD_STATE` làm keepalive (theo watchdog).

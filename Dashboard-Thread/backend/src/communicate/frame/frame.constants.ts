@@ -15,8 +15,8 @@ export const CMD = {
   STATE: 0x12,
   IP_ADDR: 0x13,
   DATASET_ACTIVE: 0x14,
-  /** Thread-Host → Backend push notification of changes (payload: u32 BE changed_mask) */
-  NOTIFY: 0x45,
+  MAC_ADDRESS: 0x16,
+  BR_HEALTH: 0x17,
 
   // Set config commands (bắt đầu từ 0x20)
   SET_PANID: 0x20,
@@ -36,6 +36,7 @@ export const CMD = {
   THREAD_VERSION: 0x42,
   COMMISSIONER_JOINER: 0x43,
   SRP_REGISTER: 0x44,
+  NOTIFY: 0x45, /** Thread-Host → Backend push notification of changes (payload: u32 BE changed_mask) */
 } as const;
 
 export type CmdCode = (typeof CMD)[keyof typeof CMD];
@@ -50,6 +51,8 @@ export const CMD_NAMES: Record<number, string> = {
   [CMD.STATE]: "STATE",
   [CMD.DATASET_ACTIVE]: "DATASET_ACTIVE",
   [CMD.IP_ADDR]: "IP_ADDR",
+  [CMD.MAC_ADDRESS]: "MAC_ADDRESS",
+  [CMD.BR_HEALTH]: "BR_HEALTH",
   [CMD.NOTIFY]: "NOTIFY",
   [CMD.SET_PANID]: "SET_PANID",
   [CMD.SET_CHANNEL]: "SET_CHANNEL",
