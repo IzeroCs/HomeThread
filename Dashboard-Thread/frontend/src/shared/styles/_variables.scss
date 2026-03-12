@@ -1,7 +1,7 @@
 // Shared design tokens (dark theme per mockup)
 $primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
 $primary-color: #2563eb;
-$primary-blue: #2563eb;
+$primary-blue: #2563eb;   // blue — màu chính app + topology
 $error-color: #e74c3c;
 $text-primary: #333;
 $text-secondary: #666;
@@ -27,3 +27,9 @@ $connected-badge-text: #10b981;
 // Nodes page (LQ progress bars)
 $lq-good: #22c55e;
 $lq-warn: #f59e0b;
+
+// Topology map — cyan riêng cho trang topology
+$topology-accent: #00C8FF;   // cyan — grid, node, edge, spotlight trong topology
+$bg-topology: #081420;   // tối hơn một chút so với #0A1628
+$topology-leader: #F5A623;   // amber — CHỈ BR/leader node (không dùng nếu leader dùng accent)
+$topology-offline: rgba(#94a3b8, 0.35);   // node offline (dùng tone $text-dark-muted)

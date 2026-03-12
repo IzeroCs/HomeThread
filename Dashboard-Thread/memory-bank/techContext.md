@@ -17,7 +17,7 @@ Dashboard-Thread/          # npm workspaces root
 │       └── utils/         # logger, ipv6
 ├── frontend/              # Lit + Vite + SCSS
 │   └── src/
-│       ├── features/      # nodes, settings, status (page + components)
+│       ├── features/      # nodes, settings, status, topology (page + components)
 │       ├── shared/        # components, controllers, types, styles
 │       ├── app-shell.ts
 │       └── main.ts
@@ -162,8 +162,8 @@ SQLite (`better-sqlite3`, WAL mode). Migrations:
 
 ## Styling Convention
 
-- **SCSS only** — không dùng Tailwind. Design theo mockup (ThreadDash) implement bằng SCSS; theme **dark navy** (card-dark, brand-border, text-dark).
-- SCSS co-located với component (VD: `features/nodes/nodes.style.scss`, `shared/components/modal/modal.style.scss`); biến chung `frontend/src/shared/styles/variables` (dark: $bg-dark, $card-dark, $primary-blue, $brand-border, $text-dark, $lq-good, $lq-warn). Import trong SCSS: `@use "shared/styles/variables" as *`.
+- **SCSS only** — không dùng Tailwind. Theme **dark navy**; palette thống nhất: $bg-app, $bg-sidebar, $bg-card, $bg-input; topology: $topology-accent, $bg-topology, $topology-offline; semantic: $action-primary/ghost/warn/danger, $danger-bg, $danger-border.
+- SCSS co-located (VD: `features/topology/topology-map.style.scss`); biến chung `shared/styles/_variables.scss`. Import: `@use "shared/styles/variables" as *`.
 - **Modal/ConfirmModal:** Dark navy — overlay blur, box $card-dark, nút Cancel ghost, Confirm danger/warning với hover glow.
 - **Icons:** Material Symbols (Google Fonts); Sidebar nav dùng `speed`, `account_tree`, `settings`; Settings sub-items `lan`, `device_hub`, `warning`.
 - Font: Inter hoặc IBM Plex Sans (Google Fonts link trong index.html); `_fonts.scss` nếu dùng local.

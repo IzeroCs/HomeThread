@@ -9,11 +9,11 @@ topology-map {
   @include flex-fill;
   overflow: hidden;
   @include no-user-select;
-  background: $bg-dark;
+  background: $bg-topology;
   background-image:
-    linear-gradient(rgba($primary-blue, 0.04) 1px, transparent 1px),
-    linear-gradient(90deg, rgba($primary-blue, 0.04) 1px, transparent 1px);
-  background-size: 50px 50px;
+    linear-gradient(rgba($topology-accent, 0.07) 1px, transparent 1px),
+    linear-gradient(90deg, rgba($topology-accent, 0.07) 1px, transparent 1px);
+  background-size: 48px 48px;
   position: relative;
   cursor: grab;
   touch-action: none;
@@ -21,6 +21,21 @@ topology-map {
   &:active {
     cursor: grabbing;
   }
+
+  &:focus {
+    outline: none;
+  }
+
+  &:focus-visible {
+    box-shadow: inset 0 0 0 2px $topology-accent;
+  }
+}
+
+.topology-spotlight {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 1;
 }
 
 .topology-svg {
@@ -29,102 +44,331 @@ topology-map {
   position: absolute;
   inset: 0;
   display: block;
+  z-index: 2;
 }
 
+// ── EDGES ────────────────────────────────────────────────────────────────────
 .edge {
-  stroke: $primary-blue;
-  stroke-width: 1.5;
-  opacity: 0.3;
-  stroke-dasharray: 6 4;
-  animation: topology-dash-flow 2s linear infinite;
+  stroke: $topology-accent;
+  fill: none;
+  stroke-linecap: round;
+  animation: topology-dash-flow 18s linear infinite;
 
   &--router {
-    opacity: 0.5;
     stroke-width: 2;
+    stroke-opacity: 0.6;
+    stroke-dasharray: 8 5;
   }
 
   &--child {
-    opacity: 0.25;
-    stroke-dasharray: 4 6;
+    stroke-width: 1.4;
+    stroke-opacity: 0.35;
+    stroke-dasharray: 5 7;
+    animation-duration: 25s;
   }
 }
 
 @keyframes topology-dash-flow {
   to {
-    stroke-dashoffset: -20;
+    stroke-dashoffset: -1000;
   }
 }
 
+// ── NODES ─────────────────────────────────────────────────────────────────────
 .topology-node {
-  cursor: pointer;
+  cursor: grab;
+
+  &--dragging {
+    cursor: grabbing;
+  }
+
+  .node__inner {
+    transform-box: fill-box;
+    transform-origin: center;
+    transition:
+      transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1),
+      filter 0.2s ease;
+  }
+
+  &:hover .node__inner {
+    transform: scale(1.13);
+  }
+
+  &--selected .node__inner {
+    transform: scale(1.08);
+  }
+
+  &--lift .node__inner {
+    transform: scale(1.09);
+    filter: drop-shadow(0 10px 28px rgba($topology-accent, 0.55));
+  }
 
   .node__body {
-    fill: $card-dark;
-    stroke: $primary-blue;
+    stroke: rgba($topology-accent, 0.6);
     stroke-width: 1.5;
+    fill: rgba(5, 13, 27, 0.85);
+    filter: none;
+    transition: filter 0.2s ease, stroke 0.2s ease, fill 0.2s ease;
+  }
+
+  &:hover .node__body {
+    filter: drop-shadow(0 0 14px rgba($topology-accent, 0.9));
+    stroke: $topology-accent;
+    stroke-width: 2;
+  }
+
+  &:hover .node__label-bg {
+    fill: rgba($topology-accent, 0.15);
+    stroke: rgba($topology-accent, 0.6);
+  }
+
+  &:hover .node__label {
+    fill: $topology-accent;
+  }
+
+  .node__ripple {
+    fill: none;
+    stroke: $topology-accent;
+    stroke-width: 2;
+    pointer-events: none;
+    transform-box: fill-box;
+    transform-origin: center;
+    animation: topology-ripple 0.5s ease-out 1 forwards;
+  }
+
+  .node__selected-ring {
+    stroke: rgba($topology-accent, 0.12);
+    stroke-width: 4;
+    pointer-events: none;
   }
 
   .node__icon {
     font-family: "Material Symbols Outlined", sans-serif;
-    font-size: 16px;
-    fill: $primary-blue;
+    font-size: 18px;
+    font-variation-settings: "FILL" 0, "wght" 300;
+    fill: $topology-accent;
     text-anchor: middle;
     dominant-baseline: central;
     pointer-events: none;
   }
 
+  .node__label-bg {
+    fill: rgba(10, 25, 47, 0.92);
+    stroke: rgba($topology-accent, 0.25);
+    stroke-width: 1;
+    pointer-events: none;
+
+    &--selected {
+      fill: $topology-accent;
+    }
+
+    &--offline {
+      fill: rgba(255, 77, 109, 0.06);
+      stroke: rgba(255, 77, 109, 0.25);
+    }
+  }
+
   .node__label {
-    font-family: Inter, sans-serif;
-    font-size: 11px;
-    fill: $text-dark;
+    font-family: "Roboto Mono", monospace;
+    font-size: 9px;
+    font-weight: 500;
+    letter-spacing: 0.13em;
+    text-transform: uppercase;
+    fill: $text-dark-muted;
     text-anchor: middle;
     pointer-events: none;
   }
 
   .node__br-ring {
     fill: none;
-    stroke: $primary-blue;
+    stroke: $topology-accent;
     stroke-width: 1.5;
-    stroke-dasharray: 3 2;
-    opacity: 0.8;
+    stroke-dasharray: 4 3;
+    opacity: 0.5;
+    animation: topology-br-spin 20s linear infinite;
   }
 
   .node__pulse {
     fill: none;
-    stroke: $lq-warn;
-    stroke-width: 1;
+    stroke: $topology-accent;
+    stroke-width: 1.2;
     opacity: 0;
-    animation: topology-pulse-ring 2s ease-out infinite;
+    transform-box: fill-box;
+    transform-origin: center;
+    animation: topology-pulse-ring 2.8s ease-out infinite;
+
+    &:nth-child(2) {
+      animation-delay: 1.4s;
+    }
   }
 
   &--leader .node__body {
-    stroke: $lq-warn;
-    stroke-width: 2.5;
+    stroke: rgba($topology-accent, 0.7);
+    stroke-width: 1.5;
   }
 
-  &--leader .node__pulse {
-    opacity: 0;
-    animation: topology-pulse-ring 2s ease-out infinite;
+  &--leader .node__icon {
+    font-size: 22px;
+    fill: $topology-accent;
   }
 
+  /* Icon size theo LQI (link quality) — leader giữ 22px ở trên */
+  &--lqi-3 .node__icon {
+    font-size: 20px;
+  }
+  &--lqi-2 .node__icon {
+    font-size: 18px;
+  }
+  &--lqi-1 .node__icon {
+    font-size: 16px;
+  }
+  &--lqi-0 .node__icon {
+    font-size: 14px;
+  }
+
+  &--leader .node__label {
+    fill: $text-dark-muted;
+    font-weight: 600;
+  }
+
+  &--router .node__body {
+    stroke: rgba($topology-accent, 0.7);
+    stroke-width: 1.5;
+  }
+
+  &--child .node__body {
+    stroke: rgba($topology-accent, 0.7);
+    stroke-width: 1.5;
+  }
+
+  &--child .node__icon {
+    font-size: 14px;
+    fill: $topology-accent;
+  }
+
+  // ── SELECTED — đặt sau hover để thắng cascade; giữ khi không hover
   &--selected .node__body {
-    stroke-width: 2.5;
-    filter: drop-shadow(0 0 6px $primary-blue);
+    fill: rgba($topology-accent, 0.12) !important;
+    stroke: $topology-accent !important;
+    stroke-width: 2.5 !important;
+    filter: drop-shadow(0 0 22px rgba($topology-accent, 1)) !important;
+  }
+
+  &--selected .node__label-bg {
+    fill: $topology-accent !important;
+    stroke: $topology-accent !important;
+  }
+
+  &--selected .node__label,
+  &--selected .node__label--selected {
+    fill: #050d1b !important;
+    font-weight: 700;
+  }
+
+  // Selected + hover: giữ selected look, không bị hover override
+  &--selected:hover .node__body {
+    fill: rgba($topology-accent, 0.18) !important;
+    filter: drop-shadow(0 0 28px rgba($topology-accent, 1)) !important;
+  }
+
+  &--selected:hover .node__label-bg {
+    fill: $topology-accent !important;
+  }
+
+  &--selected:hover .node__label {
+    fill: #050d1b !important;
+  }
+
+  &--offline .node__body {
+    stroke: rgba($text-dark-muted, 0.3);
+    filter: none !important;
+  }
+
+  &--offline .node__icon {
+    fill: $topology-offline;
+  }
+
+  &--offline .node__label {
+    fill: $topology-offline;
+  }
+
+  &--offline:hover .node__label-bg {
+    fill: rgba(255, 77, 109, 0.15);
+    stroke: rgba(255, 77, 109, 0.5);
+  }
+
+  &--offline:hover .node__label {
+    fill: $topology-offline;
   }
 
   &--offline {
-    opacity: 0.4;
-    filter: grayscale(1);
+    opacity: 1;
+    filter: grayscale(0.6);
   }
 }
 
+@keyframes topology-br-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+// Pulse ring: scale + opacity (SVG circle r animation not reliable in all browsers)
 @keyframes topology-pulse-ring {
   0% {
-    r: 30px;
+    opacity: 0.7;
+    transform: scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.8);
+  }
+}
+
+// Ripple: vòng tròn lan ra từ tâm khi click
+@keyframes topology-ripple {
+  0% {
+    transform: scale(0);
     opacity: 0.6;
   }
   100% {
-    r: 50px;
+    transform: scale(1);
     opacity: 0;
+  }
+}
+
+// ── Zoom controls ─────────────────────────────────────────────────────────────
+.topology-zoom {
+  position: absolute;
+  left: 20px;
+  bottom: 24px;
+  display: flex;
+  gap: 6px;
+  z-index: 10;
+  pointer-events: auto;
+}
+
+.topology-zoom__btn {
+  width: 38px;
+  height: 38px;
+  padding: 0;
+  background: rgba(10, 25, 47, 0.88);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: $text-dark;
+  transition: background 0.15s, color 0.15s;
+
+  &:hover {
+    background: rgba($topology-accent, 0.1);
+    color: $topology-accent;
+  }
+
+  .material-symbols-outlined {
+    font-size: 20px;
+    pointer-events: none;
   }
 }

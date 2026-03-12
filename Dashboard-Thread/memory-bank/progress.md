@@ -34,6 +34,7 @@ Version notation in this file uses Semantic Versioning `MAJOR.MINOR.PATCH` (no l
 | 2.9.0   | **Device/entity name raw vs user:** device_info **device_name_raw**, device_entity **name_raw** (tên firmware). User name (device_name / name): register update = COALESCE(hiện tại, payload); raw luôn ghi đè. Slug = (device_name ?? device_name_raw ?? macHex). Repo: upsertDeviceInfo(deviceNameRaw), mergeEntity(nameRaw); service truyền raw + name từ payload. Frontend `shared/utils/display-name.ts`: deviceDisplayName(), entityDisplayName(). **Frame log:** Ẩn log CMD STATE và ACK (RX + TX) trong command.manager.ts. |
 | 2.10.0  | **Topology role-based payload:** DeviceTopologyPayload parse theo role. Child: keys 0–5 (mac, rloc16, role, parent_rloc16, parent_rssi, parent_lq). Router/Leader: keys 0,1,2,6 (mac, rloc16, role, neighbors array). TopologyNeighbor: 0=rloc16, 1?=rssi, 2?=lq_in, 3?=lq_out, 4=is_child. Bảng **device_topology_neighbor** (device_id, neighbor_rloc16, rssi, lq_in, lq_out, is_child); migration 0001. Repo upsertTopology nhận neighbors; replace list (delete + insert). device.payload.ts: TOPOLOGY_NEIGHBOR_KEYS, TopologyNeighbor. Doc: device_payload_spec.md, thread_node_coap.md, border_router_coap_server.md, memory-bank. |
 | 2.11.0  | **BR health snapshot (device_health_br):** 1 row per device (UNIQUE(device_id)), **upsert** mỗi lần poll/notify, không insert history. Schema: free_heap, minimum_free_heap, uptime, stack_hwm (text), mle_detach_count, recorded_at. CMD_BR_HEALTH (0x17); ACK 16-byte prefix + TLV suffix (doc 5.1). Repo `upsertBrHealth` (onConflictDoUpdate); CommunicateManager fetch on connect + poll 60s + NOTIFY bit 6. getBrDeviceId() từ device_info (is_border_router=1). Doc: device_payload_spec.md §3, real_br_integration.md §2.4, protocol/usb_cdc_frame_structure.md §5.1. |
+| 2.12.0  | **Topology map + Settings UI polish.** Topology: feature `frontend/src/features/topology/` (topology-map.component.ts, topology-map.style.scss); cyan accent `$topology-accent`, `$bg-topology`; canvas spotlight (drawSpotlight overlay/tint/hole); manual layout khi ≤10 node (FEW_NODES_THRESHOLD); focus (tabindex, :focus-visible); edge ẩn nếu endpoint offline; label box rect width động (labelText.length*6.5+20); selected state bền (click stopPropagation, toggle select); hover/selected cho label-bg & label; node__body baseline (filter chỉ hover/selected), &--selected .node__inner scale(1.08), selected fill + selected:hover override. Settings: palette thống nhất (bg-app/sidebar/card/input); button semantics (primary cyan, ghost border, warn amber, danger red); danger zone subtle; Connected badge + sidebar dot cyan; System card gradient thay PCB image. |
 
 
 ## What Works (Completed)
@@ -133,6 +134,7 @@ Console da bo. Commissioner gop vao Nodes (modal + Joiner List).
 
 ### Frontend
 
+- **Topology map** (feature): force/manual layout, pan/zoom, spotlight canvas, node drag, select (toggle, persistent), label box động; edge ẩn khi node offline; focus-visible.
 - **Optional**: Shortcut commands, command history (neu lam lai Console hoac terminal)
 
 ### Integration & Operations

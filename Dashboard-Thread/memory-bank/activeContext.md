@@ -2,11 +2,16 @@
 
 ## Current Work Focus
 
-Backend ổn định với BR qua TCP + frame protocol, CoAP device ingest, SRP register, WebSocket handlers theo decorator. Frontend đã **migrate React → Lit** (Web Components) và hiện đang **render light DOM** (tắt Shadow DOM) để CSS global áp trực tiếp. UI dark navy: Modal/ConfirmModal, System action cards, Sidebar nav, Toast dark theme. **Status** có section **System** (IPv4/IPv6 backend). **Cấu trúc:** Frontend feature-based (`src/features/nodes|settings|status`, `src/shared`), backend domain-based (`coap/`, `communicate/`, `settings/`, `thread/`, `websocket/`); **path alias** frontend (`@/`, `@shared/`, `@nodes/`, `@settings/`, `@status/`); **path alias backend** (`@utils/*`, `@cbor`, `@database`, `@communicate`, `@coap/*`, `@settings/*`, `@thread/*`, `@websocket/*`) — dev: tsx tự resolve, build: tsc + tsc-alias. CoAP server refactor decorator (`DeviceCoapController`, `@CoapGet`/`@CoapPost`, `registerCoapControllers`). **Docker:** Backend chạy được bằng Docker (network host, default BR 192.168.31.3). Tiếp theo: bảo trì, optional mDNS/scan BR, security nếu cần.
+Backend ổn định với BR qua TCP + frame protocol, CoAP device ingest, SRP register, WebSocket handlers theo decorator. Frontend đã **migrate React → Lit** (Web Components), **light DOM**. **Topology map** (feature `src/features/topology/`): pan/zoom, spotlight canvas, manual layout khi ≤10 node, node select (toggle, persistent), label box width động, edge ẩn khi offline, focus tabindex + :focus-visible; accent cyan `$topology-accent`, nền `$bg-topology`. **Settings UI:** palette thống nhất (bg-app/sidebar/card/input), button semantics (primary/ghost/warn/danger), danger zone subtle, Connected badge + sidebar dot cyan. **Cấu trúc:** feature-based (`nodes|settings|status|topology`, `src/shared`); path alias frontend/backend như trước. Tiếp theo: bảo trì, optional mDNS/scan BR, security nếu cần.
 
 Giao tiếp BR ↔ backend theo hướng **notify-first**: Thread-Host push `CMD_NOTIFY (0x45)` mask thay đổi; backend debounce + gộp mask rồi pull đúng phần cần (dataset/ip/tables). Backend vẫn **poll STATE mỗi 5s** để health-check và phát hiện role transitions; khi TCP connect thành công sẽ pull baseline để UI không stale nếu missed notify. **Không** theo dõi số client frontend (đã bỏ `frontendConnectionCount`, `onFrontendConnected`/`onFrontendDisconnected`); websocket.server.ts trên connection chỉ gửi config + last* data, không gọi communicate.
 
 ## Recent Significant Changes
+
+### Topology map + Settings polish (2.12.0)
+- **Topology:** `topology-map.component.ts` / `topology-map.style.scss` — drawSpotlight (overlay, hole alpha, cyan tint); FEW_NODES_THRESHOLD=10 → manual placement; tabindex + :focus-visible; filter edge khi from/to offline; label rect width động (labelText.length*6.5+20); click stopPropagation + toggle select (selectedNodeId); hover/selected cho .node__label-bg & .node__label; node__body baseline (filter chỉ hover/selected), &--selected .node__inner scale(1.08), fill rgba(accent,0.12), &--selected:hover override.
+- **Variables:** `$topology-accent`, `$bg-topology`, `$topology-offline`; semantic actions/danger/input; Connected badge cyan; sidebar dot tất cả connected = cyan.
+- **Settings:** bg-app/sidebar/card/input thống nhất; primary/ghost/warn/danger buttons; danger card subtle; System gradient thay PCB image.
 
 ### Tài liệu (HomeThread/Documents/) — cập nhật 2025
 - **Mục lục:** README.md — sơ đồ kiến trúc, bảng danh mục, luồng đăng ký tóm tắt.
@@ -153,6 +158,9 @@ ROUTER_TABLE, CHILD_TABLE, JOINER_TABLE TX va ACK bi filter ra khoi console log 
 - `frontend/src/shared/components/sidebar/` — nav, Settings sub-items icons
 - `frontend/src/features/settings/components/system-tab/` — action cards, danger divider
 - `frontend/src/features/settings/components/openthread-config-form/` — ot-card, footer layout
+- `frontend/src/features/topology/topology-map.component.ts` — layout, drawSpotlight, select, label rect
+- `frontend/src/features/topology/topology-map.style.scss` — node body/label hover & selected, topology-accent
+- `frontend/src/shared/styles/_variables.scss` — bg-*, topology-accent, action/danger/input tokens
 - `shared/src/events.ts`, `shared/src/types.ts` — thêm field/event cập nhật cả hai
 - `backend/src/websocket/websocket.server.ts` — chỉ wire handlers; logic trong handler/
 - `backend/src/websocket/handler/*.ts` — ConfigHandler, BrHandler, DeviceHandler, ThreadHandler, CommissionerHandler, SrpHandler; thêm event mới = thêm method + @WsOn(EVENTS.xxx)

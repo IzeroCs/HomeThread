@@ -190,4 +190,12 @@ Version hiển thị trên Status subtitle lấy từ `frontend/package.json`: V
 
 ### OpenThread form card layout
 
-- `.form-card.ot-card`: `padding: 0`, `overflow: hidden` để footer không lồi góc. `.ot-card-header` full-bleed (padding riêng). `.ot-card-footer` margin `20px 1.75rem 1.75rem` (cùng width với body), border-radius, nền #111722.
+- `.form-card.ot-card`: `padding: 0`, `overflow: hidden` để footer không lồi góc. `.ot-card-header` full-bleed (padding riêng). `.ot-card-footer` margin `20px 1.75rem 1.75rem` (cùng width với body), border-radius, nền $bg-input.
+
+### Topology map (feature)
+
+- **Component:** `topology-map.component.ts` (Lit, light DOM); layout force hoặc manual (FEW_NODES_THRESHOLD=10); pan/zoom; drawSpotlight canvas (overlay, hole destination-out, cyan tint).
+- **Select:** click node → _selectNode(toggle); ev.stopPropagation() trong @click để không bubble lên stage; selected bền khi nhả chuột.
+- **Label:** rect width động `Math.max(80, labelText.length*6.5+20)`; .node__label-bg (default/--selected/--offline); hover/selected styles cho label-bg & label; &--selected:hover override để selected thắng hover.
+- **Node body:** baseline không filter; hover/selected thêm filter + stroke; &--selected .node__inner scale(1.08); fill transition; offline stroke muted.
+- **Edge:** ẩn nếu fromNode.offline || toNode.offline. Focus: tabindex="0", :focus-visible box-shadow.
