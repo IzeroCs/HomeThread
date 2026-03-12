@@ -8,6 +8,12 @@ Giao tiếp BR ↔ backend theo hướng **notify-first**: Thread-Host push `CMD
 
 ## Recent Significant Changes
 
+### RGBA → RGB hex variables (2.13.0)
+- **Nguyên tắc:** Chỉ tạo biến cho **phần RGB** (hex 6 ký tự) trong `_variables.scss`; opacity giữ trong `rgba($var, opacity)`. Không dùng hex 8 ký tự.
+- **_variables.scss:** Thêm section **“RGB tokens (hex 6)”**: `$black`, `$slate-850`, `$navy-900`, `$slate-800`, `$slate-900`, `$red-900`, `$red-950`, `$danger-pink`, `$indigo-400`; `$white` gộp vào đây. Cập nhật mọi biến dùng rgba literal → `rgba($var, opacity)` (shadow, brand-border, alert, topology-offline, system-dot-bg, v.v.).
+- **Component SCSS:** Thay mọi `rgba(R,G,B,A)` literal bằng `rgba($rgb-var, A)` với `$rgb-var` từ _variables; RGB trùng nhau dùng chung một biến. Giữ **functional naming** cấp component (vd. `$modal-overlay-bg: rgba($navy-900, 0.78)`).
+- **Files:** modal, confirm-modal, commission-node-modal, topology-map, _form, joiner-list, settings, waiting-for-backend, sidebar, br-connection-form, openthread-config-form, status, nodes.
+
 ### Topology map + Settings polish (2.12.0)
 - **Topology:** `topology-map.component.ts` / `topology-map.style.scss` — drawSpotlight (overlay, hole alpha, cyan tint); FEW_NODES_THRESHOLD=10 → manual placement; tabindex + :focus-visible; filter edge khi from/to offline; label rect width động (labelText.length*6.5+20); click stopPropagation + toggle select (selectedNodeId); hover/selected cho .node__label-bg & .node__label; node__body baseline (filter chỉ hover/selected), &--selected .node__inner scale(1.08), fill rgba(accent,0.12), &--selected:hover override.
 - **Variables:** `$topology-accent`, `$bg-topology`, `$topology-offline`; semantic actions/danger/input; Connected badge cyan; sidebar dot tất cả connected = cyan.

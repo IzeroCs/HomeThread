@@ -1,5 +1,24 @@
 @use "shared/styles/variables" as *;
 
+// Functional color tokens (component-scoped)
+$waiting-title-text: $text-dark;
+$waiting-subtitle-text: $text-dark-muted;
+$waiting-spinner-track: rgba($primary-blue, 0.2);
+$waiting-spinner-accent: $primary-blue;
+$waiting-card-bg: $card-dark-subtle;
+$waiting-card-border: $brand-border;
+$waiting-card-shadow: 0 25px 50px -12px rgba($black, 0.5);
+$waiting-card-label: $primary-blue;
+$waiting-card-status-text: $text-dark;
+$waiting-progress-track: $card-dark;
+$waiting-progress-bar: $primary-blue;
+$waiting-hint-text: $text-dark-muted;
+$waiting-info-pill-bg: rgba($card-dark, 0.3);
+$waiting-info-pill-border: $border-ultra-subtle;
+$waiting-info-icon: $text-dark-subtle;
+$waiting-orb-top: rgba($primary-blue, 0.08);
+$waiting-orb-bottom: rgba($primary-blue, 0.12);
+
 waiting-for-backend {
   display: contents;
 }
@@ -26,15 +45,15 @@ waiting-for-backend {
   width: 6rem;
   height: 6rem;
   border-radius: 50%;
-  border: 4px solid rgba($primary-blue, 0.2);
-  border-top-color: $primary-blue;
+  border: 4px solid $waiting-spinner-track;
+  border-top-color: $waiting-spinner-accent;
   animation: waiting-spin 2s linear infinite;
 }
 
 .waiting-for-backend__spinner-icon {
   position: absolute;
   font-size: 2.25rem;
-  color: $primary-blue;
+  color: $waiting-spinner-accent;
   pointer-events: none;
 }
 
@@ -59,7 +78,7 @@ waiting-for-backend {
   font-size: 2.25rem;
   font-weight: 900;
   letter-spacing: -0.025em;
-  color: $text-dark;
+  color: $waiting-title-text;
   line-height: 1.2;
 
   @media (min-width: 768px) {
@@ -71,17 +90,17 @@ waiting-for-backend {
   margin: 0;
   font-size: 1.125rem;
   font-weight: 400;
-  color: $text-dark-muted;
+  color: $waiting-subtitle-text;
 }
 
 .waiting-for-backend__card {
   width: 100%;
   max-width: 28rem;
-  background: rgba($card-dark, 0.5);
-  border: 1px solid $brand-border;
+  background: $waiting-card-bg;
+  border: 1px solid $waiting-card-border;
   padding: 1.5rem;
   border-radius: 0.75rem;
-  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+  box-shadow: $waiting-card-shadow;
 }
 
 .waiting-for-backend__card-inner {
@@ -101,7 +120,7 @@ waiting-for-backend {
   font-size: 0.625rem;
   text-transform: uppercase;
   letter-spacing: 0.1em;
-  color: $primary-blue;
+  color: $waiting-card-label;
   font-weight: 700;
   margin-bottom: 0.25rem;
 }
@@ -111,21 +130,21 @@ waiting-for-backend {
   font-size: 0.875rem;
   font-weight: 600;
   line-height: 1;
-  color: $text-dark;
+  color: $waiting-card-status-text;
 }
 
 .waiting-for-backend__progress-track {
   width: 100%;
   height: 0.5rem;
   border-radius: 9999px;
-  background: $card-dark;
+  background: $waiting-progress-track;
   overflow: hidden;
 }
 
 .waiting-for-backend__progress-bar {
   height: 100%;
   border-radius: 9999px;
-  background: $primary-blue;
+  background: $waiting-progress-bar;
   width: 40%;
   animation: waiting-progress 1.5s ease-in-out infinite;
 }
@@ -148,7 +167,7 @@ waiting-for-backend {
 
 .waiting-for-backend__card-icon {
   font-size: 1rem;
-  color: $primary-blue;
+  color: $waiting-card-label;
 }
 
 .waiting-for-backend__card-hint {
@@ -156,7 +175,7 @@ waiting-for-backend {
   font-size: 0.75rem;
   font-weight: 500;
   line-height: 1.4;
-  color: $text-dark-muted;
+  color: $waiting-subtitle-text;
 }
 
 .waiting-for-backend__info {
@@ -165,20 +184,20 @@ waiting-for-backend {
   gap: 0.5rem;
   padding: 0.5rem 1rem;
   border-radius: 9999px;
-  background: rgba($card-dark, 0.3);
-  border: 1px solid rgba(255, 255, 255, 0.03);
+  background: $waiting-info-pill-bg;
+  border: 1px solid $waiting-info-pill-border;
 }
 
 .waiting-for-backend__info-icon {
   font-size: 1rem;
-  color: $text-dark-subtle;
+  color: $waiting-info-icon;
 }
 
 .waiting-for-backend__info-text {
   margin: 0;
   font-size: 0.75rem;
   font-weight: 400;
-  color: $text-dark-subtle;
+  color: $waiting-info-icon;
 }
 
 // Decorative background blurs
@@ -204,7 +223,7 @@ waiting-for-backend {
     left: -10%;
     width: 40%;
     height: 40%;
-    background: rgba($primary-blue, 0.08);
+    background: $waiting-orb-top;
   }
 
   &--bottom {
@@ -212,6 +231,6 @@ waiting-for-backend {
     right: -10%;
     width: 40%;
     height: 40%;
-    background: rgba($primary-blue, 0.12);
+    background: $waiting-orb-bottom;
   }
 }

@@ -1,6 +1,13 @@
 @use "sass:color";
 @use "shared/styles/variables" as *;
 
+// Local rgba (file-scoped) — RGB từ _variables
+$nodes-disconnected-card-shadow: 0 25px 50px -12px rgba($black, 0.6);
+$nodes-disconnected-icon-bg: rgba($red-300, 0.12);
+$nodes-btn-shadow: 0 12px 30px rgba($primary-blue, 0.5);
+$nodes-btn-hover-shadow: 0 18px 40px rgba($primary-blue, 0.6);
+$nodes-table-shadow: 0 1px 3px rgba($black, 0.1);
+
 nodes-view {
   display: contents;
 }
@@ -38,11 +45,11 @@ nodes-view {
 .nodes-disconnected-card {
   max-width: 420px;
   width: 100%;
-  background: #020617;
+  background: $overlay-card-bg;
   border-radius: 0.75rem;
   padding: 32px;
   border: 1px solid $brand-border;
-  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.6);
+  box-shadow: $nodes-disconnected-card-shadow;
   text-align: center;
 }
 
@@ -54,8 +61,8 @@ nodes-view {
   height: 64px;
   border-radius: 9999px;
   margin: 0 auto 24px;
-  background: rgba(248, 113, 113, 0.12);
-  color: #f97373;
+  background: $nodes-disconnected-icon-bg;
+  color: $danger-soft;
 
   .material-symbols-outlined {
     font-size: 2.5rem;
@@ -86,10 +93,10 @@ nodes-view {
   border: none;
   cursor: pointer;
   background: $primary-blue;
-  color: white;
+  color: $white;
   font-size: 0.9rem;
   font-weight: 700;
-  box-shadow: 0 12px 30px rgba(37, 99, 235, 0.5);
+  box-shadow: $nodes-btn-shadow;
   transition: background 0.15s ease, transform 0.15s ease, box-shadow 0.15s ease;
 
   .material-symbols-outlined {
@@ -99,7 +106,7 @@ nodes-view {
   &:hover:not(:disabled) {
     background: color.adjust($primary-blue, $lightness: -4%);
     transform: translateY(-1px);
-    box-shadow: 0 18px 40px rgba(37, 99, 235, 0.6);
+    box-shadow: $nodes-btn-hover-shadow;
   }
 
   &:disabled {
@@ -147,7 +154,7 @@ nodes-view {
   height: 44px;
   padding: 0 24px;
   background: $primary-blue;
-  color: white;
+  color: $white;
   border: none;
   border-radius: $border-radius-small;
   font-size: 0.875rem;
@@ -188,7 +195,7 @@ nodes-view {
   border-radius: 0.75rem;
   border: 1px solid $brand-border;
   background: $card-dark;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  box-shadow: $nodes-table-shadow;
 }
 
 .nodes-table {
@@ -258,7 +265,7 @@ nodes-view {
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.08em;
-  background: color.mix($primary-blue, #1d4ed8, 70%);
+  background: color.mix($primary-blue, $primary-blue-hover, 70%);
   color: white;
 }
 
@@ -377,7 +384,7 @@ nodes-view {
 .nodes-error {
   margin: 0;
   padding: 16px 24px;
-  color: #e74c3c;
+  color: $error-color;
   font-size: 0.875rem;
 }
 

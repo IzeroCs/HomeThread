@@ -1,6 +1,33 @@
 @use "shared/styles/variables" as *;
 @use "shared/styles/mixin" as *;
 
+// Local rgba (file-scoped) — RGB từ _variables
+$status-card-br-shadow: 0 25px 50px -12px rgba($black, 0.25);
+$status-br-icon-bg: rgba($slate-800, 0.5);
+$status-br-icon-gradient: linear-gradient(135deg, rgba($primary-blue, 0.2) 0%, transparent 60%);
+$status-br-icon-color: rgba($primary-blue, 0.4);
+$status-disconnected-bg: rgba($red-900, 0.15);
+$status-disconnected-gradient: linear-gradient(135deg, rgba($red-500, 0.1) 0%, transparent 60%);
+$status-disconnected-icon: rgba($red-500, 0.5);
+$status-badge-disconnected-bg: rgba($white, 0.06);
+$status-badge--disconnected-bg: rgba($red-950, 0.2);
+$status-badge--disconnected-border: rgba($red-label, 0.5);
+$status-field-toggle-hover: rgba($white, 0.06);
+$status-btn-refresh-shadow: 0 4px 14px rgba($primary-blue, 0.35);
+$status-ot-card-shadow: 0 25px 50px -12px rgba($black, 0.25);
+$status-overlay-bg: rgba($bg-dark, 0.6);
+$status-overlay-card-bg: rgba($card-dark, 0.95);
+$status-overlay-card-border: rgba($white, 0.1);
+$status-overlay-card-shadow: 0 25px 50px -12px rgba($black, 0.5);
+$status-overlay-icon-bg: rgba($primary-blue, 0.12);
+$status-overlay-icon-muted-bg: rgba($text-dark-subtle, 0.15);
+$status-overlay-btn-border: rgba($primary-blue, 0.25);
+$status-overlay-btn-bg: rgba($primary-blue, 0.1);
+$status-overlay-btn-hover-bg: rgba($primary-blue, 0.18);
+$status-overlay-btn-hover-border: rgba($primary-blue, 0.35);
+$status-channel-badge-bg: rgba($primary-blue, 0.15);
+$status-channel-badge-border: rgba($primary-blue, 0.25);
+
 status-page {
   display: contents;
 }
@@ -41,7 +68,7 @@ status-page {
   border: 1px solid $brand-border;
   border-radius: $border-radius;
   overflow: hidden;
-  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+  box-shadow: $status-card-br-shadow;
 }
 
 @media (min-width: 640px) {
@@ -58,7 +85,7 @@ status-page {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(30, 41, 59, 0.5);
+  background: $status-br-icon-bg;
   position: relative;
   overflow: hidden;
 
@@ -66,13 +93,13 @@ status-page {
     content: "";
     position: absolute;
     inset: 0;
-    background: linear-gradient(135deg, rgba(37, 99, 235, 0.2) 0%, transparent 60%);
+    background: $status-br-icon-gradient;
     pointer-events: none;
   }
 
   .material-symbols-outlined {
     font-size: 60px;
-    color: rgba(37, 99, 235, 0.4);
+    color: $status-br-icon-color;
     position: relative;
     z-index: 1;
   }
@@ -88,15 +115,15 @@ status-page {
 
 // BR card when disconnected: same layout, left panel red + signal_disconnected
 .status-card-br-icon--disconnected {
-  background: rgba(127, 29, 29, 0.15);
+  background: $status-disconnected-bg;
 
   &::before {
-    background: linear-gradient(135deg, rgba(239, 68, 68, 0.1) 0%, transparent 60%);
+    background: $status-disconnected-gradient;
   }
 
   .material-symbols-outlined {
     font-size: 60px;
-    color: rgba(239, 68, 68, 0.5);
+    color: $status-disconnected-icon;
   }
 }
 
@@ -155,15 +182,15 @@ status-page {
   }
 
   &.disconnected {
-    background: rgba(255, 255, 255, 0.06);
+    background: $status-badge-disconnected-bg;
     border: 1px solid $brand-border;
     color: $text-dark-muted;
   }
 
   &--disconnected {
-    background: rgba(127, 0, 0, 0.2);
-    border: 1px solid rgba(185, 28, 28, 0.5);
-    color: #f87171;
+    background: $status-badge--disconnected-bg;
+    border: 1px solid $status-badge--disconnected-border;
+    color: $red-300;
   }
 }
 
@@ -176,7 +203,7 @@ status-page {
   animation: status-badge-pulse 1.5s ease-in-out infinite;
 
   &--red {
-    background: #ef4444;
+    background: $red-500;
   }
 }
 
@@ -217,7 +244,7 @@ status-page {
   word-break: break-all;
 
   &--accent {
-    color: #93c5fd;
+    color: $blue-300;
   }
 
   &--muted {
@@ -245,9 +272,9 @@ status-page {
   letter-spacing: 0.02em;
   padding: 2px 8px;
   border-radius: 4px;
-  background: rgba(37, 99, 235, 0.15);
-  color: #93c5fd;
-  border: 1px solid rgba(37, 99, 235, 0.25);
+  background: $status-channel-badge-bg;
+  color: $blue-300;
+  border: 1px solid $status-channel-badge-border;
 }
 
 .status-field-toggle {
@@ -267,7 +294,7 @@ status-page {
 
   &:hover {
     color: $text-dark;
-    background: rgba(255, 255, 255, 0.06);
+    background: $status-field-toggle-hover;
   }
 }
 
@@ -279,13 +306,13 @@ status-page {
   margin-top: 4px;
   border: none;
   background: $primary-blue;
-  color: white;
+  color: $white;
   font-size: 14px;
   font-weight: 700;
   border-radius: 8px;
   cursor: pointer;
   width: fit-content;
-  box-shadow: 0 4px 14px rgba(37, 99, 235, 0.35);
+  box-shadow: $status-btn-refresh-shadow;
   transition: background 0.2s, filter 0.2s;
 
   .material-symbols-outlined {
@@ -293,7 +320,7 @@ status-page {
   }
 
   &:hover {
-    background: #3b82f6;
+    background: $blue-500;
     filter: brightness(1.05);
   }
 }
@@ -339,7 +366,7 @@ status-page {
   border: 1px solid $brand-border;
   border-radius: $border-radius;
   overflow: hidden;
-  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+  box-shadow: $status-ot-card-shadow;
   position: relative;
 }
 
@@ -362,19 +389,19 @@ status-page {
 }
 
 .status-ot-overlay {
-  background: rgba(10, 15, 28, 0.6);
+  background: $status-overlay-bg;
   backdrop-filter: blur(1px);
 }
 
 .status-ot-overlay-card {
-  background: rgba(17, 24, 39, 0.95);
+  background: $status-overlay-card-bg;
   backdrop-filter: blur(8px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid $status-overlay-card-border;
   border-radius: 12px;
   padding: 32px;
   max-width: 28rem;
   text-align: center;
-  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+  box-shadow: $status-overlay-card-shadow;
 
   &--compact {
     padding: 24px;
@@ -390,7 +417,7 @@ status-page {
   height: 64px;
   margin: 0 auto 16px;
   border-radius: 50%;
-  background: rgba(37, 99, 235, 0.12);
+  background: $status-overlay-icon-bg;
   color: $primary-blue;
   display: flex;
   align-items: center;
@@ -401,7 +428,7 @@ status-page {
   }
 
   &--muted {
-    background: rgba(100, 116, 139, 0.15);
+    background: $status-overlay-icon-muted-bg;
     color: $text-dark-subtle;
 
     .material-symbols-outlined {
@@ -441,8 +468,8 @@ status-page {
   gap: 8px;
   width: 100%;
   padding: 10px 20px;
-  border: 1px solid rgba(37, 99, 235, 0.25);
-  background: rgba(37, 99, 235, 0.1);
+  border: 1px solid $status-overlay-btn-border;
+  background: $status-overlay-btn-bg;
   color: $primary-blue;
   font-size: 14px;
   font-weight: 600;
@@ -455,8 +482,8 @@ status-page {
   }
 
   &:hover {
-    background: rgba(37, 99, 235, 0.18);
-    border-color: rgba(37, 99, 235, 0.35);
+    background: $status-overlay-btn-hover-bg;
+    border-color: $status-overlay-btn-hover-border;
   }
 }
 
@@ -528,7 +555,7 @@ status-page {
 
 .status-error {
   margin: 0;
-  color: #f87171;
+  color: $red-300;
   font-size: 14px;
 }
 

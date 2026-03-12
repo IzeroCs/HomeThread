@@ -1,9 +1,21 @@
 @use "shared/styles/form";
 @use "shared/styles/variables" as *;
 
+// Functional color tokens (component-scoped)
+$br-divider-line: $brand-border;
+$br-note-box-bg: rgba($slate-850, 0.9);
+$br-note-box-border: rgba($text-dark-muted, 0.4);
+$br-note-icon-border: rgba($text-dark-muted, 0.8);
+$br-note-icon-color: $text-dark-muted;
+$br-note-text: $text-dark-subtle;
+$br-actions-panel-bg: $panel-footer-bg;
+$br-actions-panel-divider: $brand-border;
+$br-test-dot-default: $text-dark-muted;
+$br-test-dot-success: $green-500;
+
 br-connection-form {
   display: contents;
-}
+}   
 
 .br-connection-card {
   padding-bottom: 0;
@@ -11,7 +23,7 @@ br-connection-form {
 
 .br-divider {
   height: 1px;
-  background: $brand-border;
+  background: $br-divider-line;
   margin: 1.5rem 0 0;
 }
 
@@ -19,8 +31,8 @@ br-connection-form {
   margin-top: 8px;
   padding: 14px 16px;
   border-radius: $border-radius-small;
-  background: rgba(15, 23, 42, 0.9);
-  border: 1px solid rgba(148, 163, 184, 0.4);
+  background: $br-note-box-bg;
+  border: 1px solid $br-note-box-border;
   display: flex;
   gap: 12px;
   align-items: flex-start;
@@ -30,11 +42,11 @@ br-connection-form {
   width: 24px;
   height: 24px;
   border-radius: 999px;
-  border: 1px solid rgba(148, 163, 184, 0.8);
+  border: 1px solid $br-note-icon-border;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: $text-dark-muted;
+  color: $br-note-icon-color;
   flex-shrink: 0;
 
   .material-symbols-outlined {
@@ -52,7 +64,7 @@ br-connection-form {
   margin: 0 -32px -32px;
   padding: 1.75rem;
   border-top: 1px solid $brand-border;
-  background: #111722;
+  background: $panel-footer-bg;
   display: flex;
   justify-content: flex-end;
   align-items: center;
@@ -65,13 +77,13 @@ br-connection-form {
   width: 7px;
   height: 7px;
   border-radius: 999px;
-  background: $text-dark-muted;
+  background: $br-test-dot-default;
   transition:
     background 0.3s,
     box-shadow 0.3s;
 }
 
 .test-connect-button:hover:not(:disabled) .test-status-dot {
-  background: #22c55e;
-  box-shadow: 0 0 6px #22c55e;
+  background: $br-test-dot-success;
+  box-shadow: 0 0 6px $br-test-dot-success;
 }

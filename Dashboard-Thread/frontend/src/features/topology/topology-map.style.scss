@@ -1,6 +1,29 @@
 @use "shared/styles/variables" as *;
 @use "shared/styles/mixin" as *;
 
+// Functional color tokens (component-scoped) — tên biến = vai trò trong topology map
+$t-grid: rgba($topology-accent, 0.07);
+$t-node-body-fill: rgba($topology-ink, 0.85);
+$t-label-bg-fill: rgba($slate-900, 0.92);
+$t-offline-fill: rgba($danger-pink, 0.06);
+$t-offline-stroke: rgba($danger-pink, 0.25);
+$t-offline-hover-fill: rgba($danger-pink, 0.15);
+$t-offline-hover-stroke: rgba($danger-pink, 0.5);
+$t-zoom-bg: rgba($slate-900, 0.88);
+$t-zoom-border: rgba($white, 0.1);
+$t-accent-12: rgba($topology-accent, 0.12);
+$t-accent-15: rgba($topology-accent, 0.15);
+$t-accent-25: rgba($topology-accent, 0.25);
+$t-accent-55: rgba($topology-accent, 0.55);
+$t-accent-6: rgba($topology-accent, 0.6);
+$t-accent-7: rgba($topology-accent, 0.7);
+$t-accent-9: rgba($topology-accent, 0.9);
+$t-accent-1: rgba($topology-accent, 1);
+$t-accent-18: rgba($topology-accent, 0.18);
+$t-accent-1-fill: rgba($topology-accent, 0.12);
+$t-muted-stroke: rgba($text-dark-muted, 0.3);
+$t-zoom-hover-bg: rgba($topology-accent, 0.1);
+
 topology-map {
   display: contents;
 }
@@ -11,8 +34,8 @@ topology-map {
   @include no-user-select;
   background: $bg-topology;
   background-image:
-    linear-gradient(rgba($topology-accent, 0.07) 1px, transparent 1px),
-    linear-gradient(90deg, rgba($topology-accent, 0.07) 1px, transparent 1px);
+    linear-gradient($t-grid 1px, transparent 1px),
+    linear-gradient(90deg, $t-grid 1px, transparent 1px);
   background-size: 48px 48px;
   position: relative;
   cursor: grab;
@@ -100,26 +123,26 @@ topology-map {
 
   &--lift .node__inner {
     transform: scale(1.09);
-    filter: drop-shadow(0 10px 28px rgba($topology-accent, 0.55));
+    filter: drop-shadow(0 10px 28px $t-accent-55);
   }
 
   .node__body {
-    stroke: rgba($topology-accent, 0.6);
+    stroke: $t-accent-6;
     stroke-width: 1.5;
-    fill: rgba(5, 13, 27, 0.85);
+    fill: $t-node-body-fill;
     filter: none;
     transition: filter 0.2s ease, stroke 0.2s ease, fill 0.2s ease;
   }
 
   &:hover .node__body {
-    filter: drop-shadow(0 0 14px rgba($topology-accent, 0.9));
+    filter: drop-shadow(0 0 14px $t-accent-9);
     stroke: $topology-accent;
     stroke-width: 2;
   }
 
   &:hover .node__label-bg {
-    fill: rgba($topology-accent, 0.15);
-    stroke: rgba($topology-accent, 0.6);
+    fill: $t-accent-15;
+    stroke: $t-accent-6;
   }
 
   &:hover .node__label {
@@ -137,7 +160,7 @@ topology-map {
   }
 
   .node__selected-ring {
-    stroke: rgba($topology-accent, 0.12);
+    stroke: $t-accent-12;
     stroke-width: 4;
     pointer-events: none;
   }
@@ -153,8 +176,8 @@ topology-map {
   }
 
   .node__label-bg {
-    fill: rgba(10, 25, 47, 0.92);
-    stroke: rgba($topology-accent, 0.25);
+    fill: $t-label-bg-fill;
+    stroke: $t-accent-25;
     stroke-width: 1;
     pointer-events: none;
 
@@ -163,8 +186,8 @@ topology-map {
     }
 
     &--offline {
-      fill: rgba(255, 77, 109, 0.06);
-      stroke: rgba(255, 77, 109, 0.25);
+      fill: $t-offline-fill;
+      stroke: $t-offline-stroke;
     }
   }
 
@@ -203,7 +226,7 @@ topology-map {
   }
 
   &--leader .node__body {
-    stroke: rgba($topology-accent, 0.7);
+    stroke: $t-accent-7;
     stroke-width: 1.5;
   }
 
@@ -232,12 +255,12 @@ topology-map {
   }
 
   &--router .node__body {
-    stroke: rgba($topology-accent, 0.7);
+    stroke: $t-accent-7;
     stroke-width: 1.5;
   }
 
   &--child .node__body {
-    stroke: rgba($topology-accent, 0.7);
+    stroke: $t-accent-7;
     stroke-width: 1.5;
   }
 
@@ -248,10 +271,10 @@ topology-map {
 
   // ── SELECTED — đặt sau hover để thắng cascade; giữ khi không hover
   &--selected .node__body {
-    fill: rgba($topology-accent, 0.12) !important;
+    fill: $t-accent-1-fill !important;
     stroke: $topology-accent !important;
     stroke-width: 2.5 !important;
-    filter: drop-shadow(0 0 22px rgba($topology-accent, 1)) !important;
+    filter: drop-shadow(0 0 22px $t-accent-1) !important;
   }
 
   &--selected .node__label-bg {
@@ -261,14 +284,14 @@ topology-map {
 
   &--selected .node__label,
   &--selected .node__label--selected {
-    fill: #050d1b !important;
+    fill: $topology-ink !important;
     font-weight: 700;
   }
 
   // Selected + hover: giữ selected look, không bị hover override
   &--selected:hover .node__body {
-    fill: rgba($topology-accent, 0.18) !important;
-    filter: drop-shadow(0 0 28px rgba($topology-accent, 1)) !important;
+    fill: $t-accent-18 !important;
+    filter: drop-shadow(0 0 28px $t-accent-1) !important;
   }
 
   &--selected:hover .node__label-bg {
@@ -276,11 +299,11 @@ topology-map {
   }
 
   &--selected:hover .node__label {
-    fill: #050d1b !important;
+    fill: $topology-ink !important;
   }
 
   &--offline .node__body {
-    stroke: rgba($text-dark-muted, 0.3);
+    stroke: $t-muted-stroke;
     filter: none !important;
   }
 
@@ -293,8 +316,8 @@ topology-map {
   }
 
   &--offline:hover .node__label-bg {
-    fill: rgba(255, 77, 109, 0.15);
-    stroke: rgba(255, 77, 109, 0.5);
+    fill: $t-offline-hover-fill;
+    stroke: $t-offline-hover-stroke;
   }
 
   &--offline:hover .node__label {
@@ -352,8 +375,8 @@ topology-map {
   width: 38px;
   height: 38px;
   padding: 0;
-  background: rgba(10, 25, 47, 0.88);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: $t-zoom-bg;
+  border: 1px solid $t-zoom-border;
   border-radius: 8px;
   display: flex;
   align-items: center;
@@ -363,7 +386,7 @@ topology-map {
   transition: background 0.15s, color 0.15s;
 
   &:hover {
-    background: rgba($topology-accent, 0.1);
+    background: $t-zoom-hover-bg;
     color: $topology-accent;
   }
 

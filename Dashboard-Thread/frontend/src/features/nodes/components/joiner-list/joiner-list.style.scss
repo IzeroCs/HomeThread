@@ -1,5 +1,19 @@
 @use "shared/styles/variables" as *;
 
+// Functional color tokens (component-scoped)
+$joiner-section-title-text: $text-dark;
+$joiner-section-title-icon: $primary-blue;
+$joiner-badge-bg: $primary-blue;
+$joiner-badge-text: $white;
+$joiner-error-box-bg: rgba($error-color, 0.1);
+$joiner-error-box-text: $error-color;
+$joiner-empty-text: $text-dark-muted;
+$joiner-card-bg: $card-dark;
+$joiner-card-border: $brand-border;
+$joiner-card-shadow: 0 1px 3px rgba($black, 0.15);
+$joiner-card-icon-bg: rgba($primary-blue, 0.15);
+$joiner-card-icon-color: $primary-blue;
+
 joiner-list {
   display: contents;
 }
@@ -26,12 +40,12 @@ joiner-list {
   align-items: center;
   gap: 8px;
   margin: 0;
-  color: $text-dark;
+  color: $joiner-section-title-text;
   font-size: 1.25rem;
   font-weight: 700;
 
   .joiner-list-icon {
-    color: $primary-blue;
+    color: $joiner-section-title-icon;
     font-size: 1.5rem;
   }
 }
@@ -41,8 +55,8 @@ joiner-list {
   align-items: center;
   padding: 6px 12px;
   border-radius: 9999px;
-  background: $primary-blue;
-  color: white;
+  background: $joiner-badge-bg;
+  color: $joiner-badge-text;
   font-size: 0.75rem;
   font-weight: 700;
   letter-spacing: 0.03em;
@@ -52,8 +66,8 @@ joiner-list {
   margin: 0;
   padding: 12px 16px;
   border-radius: $border-radius-small;
-  background: rgba($error-color, 0.1);
-  color: $error-color;
+  background: $joiner-error-box-bg;
+  color: $joiner-error-box-text;
   font-size: 0.875rem;
 }
 
@@ -61,9 +75,9 @@ joiner-list {
   margin: 0;
   padding: 24px 16px;
   border-radius: 0.75rem;
-  border: 1px solid $brand-border;
-  background: $card-dark;
-  color: $text-dark-muted;
+  border: 1px solid $joiner-card-border;
+  background: $joiner-card-bg;
+  color: $joiner-empty-text;
   font-size: 0.875rem;
   text-align: center;
 }
@@ -80,9 +94,9 @@ joiner-list {
   max-width: 280px;
   padding: 16px;
   border-radius: 0.75rem;
-  border: 1px solid $brand-border;
-  background: $card-dark;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
+  border: 1px solid $joiner-card-border;
+  background: $joiner-card-bg;
+  box-shadow: $joiner-card-shadow;
   display: flex;
   flex-direction: column;
   gap: 12px;
@@ -102,8 +116,8 @@ joiner-list {
   width: 40px;
   height: 40px;
   border-radius: 0.5rem;
-  background: rgba($primary-blue, 0.15);
-  color: $primary-blue;
+  background: $joiner-card-icon-bg;
+  color: $joiner-card-icon-color;
   font-size: 1.5rem;
 }
 

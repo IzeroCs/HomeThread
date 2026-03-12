@@ -2,12 +2,22 @@
 @use "shared/styles/form";
 @use "shared/styles/variables" as *;
 
-// Commission Node modal-style card (mockup: surface #1d2633, input #111821, border #334155, footer #18202b, primary #1978e5)
-$cn-surface: #1d2633;
-$cn-input-bg: #111821;
-$cn-border: #334155;
-$cn-footer: #18202b;
-$cn-primary: #1978e5;
+// Functional color tokens (component-scoped) — tên biến = vai trò trong commission modal
+$cn-overlay-bg: rgba($black, 0.6);
+$cn-close-hover-bg: rgba($white, 0.05);
+$cn-card-shadow: 0 25px 50px -12px rgba($black, 0.5);
+$cn-card-border: rgba($white, 0.1);
+$cn-alert-warn-bg: rgba($lq-warn, 0.1);
+$cn-alert-warn-border: rgba($lq-warn, 0.3);
+$cn-alert-error-bg: rgba($red-500, 0.1);
+$cn-alert-error-border: rgba($red-500, 0.3);
+$cn-alert-success-bg: rgba($green-500, 0.1);
+$cn-alert-success-border: rgba($green-500, 0.3);
+$cn-info-bg: rgba($blue-500, 0.1);
+$cn-info-border: rgba($blue-500, 0.2);
+$cn-btn-secondary-hover-bg: rgba($white, 0.05);
+$cn-btn-primary-shadow: 0 10px 15px -3px rgba($commission-primary, 0.3);
+$cn-input-hover-bg: rgba($white, 0.05);
 
 commission-node-modal {
   display: contents;
@@ -28,7 +38,7 @@ commission-node-modal {
   align-items: center;
   justify-content: center;
   padding: 1rem;
-  background: rgba(0, 0, 0, 0.6);
+  background: $cn-overlay-bg;
   backdrop-filter: blur(4px);
 }
 
@@ -49,7 +59,7 @@ commission-node-modal {
 
   &:hover:not(:disabled) {
     color: $text-dark;
-    background: rgba(255, 255, 255, 0.05);
+    background: $cn-close-hover-bg;
   }
 
   &:disabled {
@@ -66,10 +76,10 @@ commission-node-modal {
 .commission-node-card {
   max-width: 32rem;
   overflow: hidden;
-  background: $cn-surface;
+  background: $commission-surface;
   border-radius: 0.75rem;
-  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: $cn-card-shadow;
+  border: 1px solid $cn-card-border;
 }
 
 .commission-node-header {
@@ -77,8 +87,8 @@ commission-node-modal {
   align-items: center;
   justify-content: space-between;
   padding: 1.25rem 1.5rem;
-  border-bottom: 1px solid $cn-border;
-  background: $cn-surface;
+  border-bottom: 1px solid $commission-border;
+  background: $commission-surface;
 }
 
 .commission-node-header-text {
@@ -111,21 +121,21 @@ commission-node-modal {
   font-size: 0.875rem;
 
   &.commission-node-alert-warn {
-    background: rgba(245, 158, 11, 0.1);
-    border: 1px solid rgba(245, 158, 11, 0.3);
-    color: #fbbf24;
+    background: $cn-alert-warn-bg;
+    border: 1px solid $cn-alert-warn-border;
+    color: $amber-300;
   }
 
   &.commission-node-alert-error {
-    background: rgba(239, 68, 68, 0.1);
-    border: 1px solid rgba(239, 68, 68, 0.3);
-    color: #f87171;
+    background: $cn-alert-error-bg;
+    border: 1px solid $cn-alert-error-border;
+    color: $red-300;
   }
 
   &.commission-node-alert-success {
-    background: rgba(34, 197, 94, 0.1);
-    border: 1px solid rgba(34, 197, 94, 0.3);
-    color: #4ade80;
+    background: $cn-alert-success-bg;
+    border: 1px solid $cn-alert-success-border;
+    color: $green-400;
   }
 }
 
@@ -149,7 +159,7 @@ commission-node-modal {
 }
 
 .commission-node-required {
-  color: #f87171;
+  color: $red-300;
 }
 
 .commission-node-input-wrap {
@@ -174,8 +184,8 @@ commission-node-modal {
   font-size: 0.875rem;
   line-height: 1.5;
   color: $text-dark;
-  background: $cn-input-bg;
-  border: 1px solid $cn-border;
+  background: $commission-input-bg;
+  border: 1px solid $commission-border;
   border-radius: 0.5rem;
   font-family: ui-monospace, monospace;
   transition: border-color 0.15s, box-shadow 0.15s;
@@ -186,8 +196,8 @@ commission-node-modal {
 
   &:focus {
     outline: none;
-    border-color: $cn-primary;
-    box-shadow: 0 0 0 1px $cn-primary;
+    border-color: $commission-primary;
+    box-shadow: 0 0 0 1px $commission-primary;
   }
 
   &:disabled {
@@ -224,8 +234,8 @@ commission-node-modal {
   font-size: 0.875rem;
   line-height: 1.5;
   color: $text-dark;
-  background: $cn-input-bg;
-  border: 1px solid $cn-border;
+  background: $commission-input-bg;
+  border: 1px solid $commission-border;
   border-radius: 0.5rem;
   cursor: pointer;
   appearance: none;
@@ -233,8 +243,8 @@ commission-node-modal {
 
   &:focus {
     outline: none;
-    border-color: $cn-primary;
-    box-shadow: 0 0 0 1px $cn-primary;
+    border-color: $commission-primary;
+    box-shadow: 0 0 0 1px $commission-primary;
   }
 
   &:disabled {
@@ -248,20 +258,20 @@ commission-node-modal {
   gap: 0.75rem;
   padding: 1rem;
   border-radius: 0.5rem;
-  background: rgba(59, 130, 246, 0.1);
-  border: 1px solid rgba(59, 130, 246, 0.2);
+  background: $cn-info-bg;
+  border: 1px solid $cn-info-border;
 }
 
 .commission-node-info-icon {
   flex-shrink: 0;
   font-size: 1.25rem;
-  color: #60a5fa;
+  color: $blue-500;
 }
 
 .commission-node-info-text {
   margin: 0;
   font-size: 0.875rem;
-  color: #93c5fd;
+  color: $blue-300;
 }
 
 .commission-node-footer {
@@ -270,8 +280,8 @@ commission-node-modal {
   justify-content: flex-end;
   gap: 0.75rem;
   padding: 1rem 1.5rem;
-  background: $cn-footer;
-  border-top: 1px solid $cn-border;
+  background: $commission-footer;
+  border-top: 1px solid $commission-border;
 }
 
 .commission-node-btn {
@@ -298,18 +308,18 @@ commission-node-modal {
   background: transparent;
 
   &:hover:not(:disabled) {
-    background: rgba(255, 255, 255, 0.05);
+    background: $cn-close-hover-bg;
     color: $text-dark;
   }
 }
 
 .commission-node-btn-primary {
-  color: white;
-  background: $cn-primary;
-  box-shadow: 0 10px 15px -3px rgba(25, 120, 229, 0.3);
+  color: $white;
+  background: $commission-primary;
+  box-shadow: $cn-btn-primary-shadow;
 
   &:hover:not(:disabled) {
-    background: color.adjust($cn-primary, $lightness: -5%);
+    background: color.adjust($commission-primary, $lightness: -5%);
   }
 }
 
@@ -532,7 +542,7 @@ commission-node-modal {
 
 .commissioner-joiner-error {
   margin: 0;
-  color: #721c24;
+  color: $danger-text-dark;
   font-size: 14px;
 }
 

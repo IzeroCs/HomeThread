@@ -163,8 +163,10 @@ SQLite (`better-sqlite3`, WAL mode). Migrations:
 ## Styling Convention
 
 - **SCSS only** — không dùng Tailwind. Theme **dark navy**; palette thống nhất: $bg-app, $bg-sidebar, $bg-card, $bg-input; topology: $topology-accent, $bg-topology, $topology-offline; semantic: $action-primary/ghost/warn/danger, $danger-bg, $danger-border.
+- **RGB tokens (hex 6):** Màu dùng trong `rgba()` được định nghĩa trong `_variables.scss` là **hex 6 ký tự** (vd. `$black`, `$slate-850`, `$navy-900`, `$white`). Trong code luôn dùng `rgba($var, opacity)` — không chuyển opacity sang hex 8 ký tự. Cùng RGB → một biến, nhiều opacity.
+- **Functional naming (component):** File style từng component có thể khai báo biến local theo vai trò (vd. `$modal-overlay-bg`, `$sidebar-panel-shadow`) gán từ token: `rgba($navy-900, 0.78)`, `rgba($black, 0.45)`.
 - SCSS co-located (VD: `features/topology/topology-map.style.scss`); biến chung `shared/styles/_variables.scss`. Import: `@use "shared/styles/variables" as *`.
-- **Modal/ConfirmModal:** Dark navy — overlay blur, box $card-dark, nút Cancel ghost, Confirm danger/warning với hover glow.
+- **Modal/ConfirmModal:** Dark navy — overlay/blur, box $card-dark, nút Cancel ghost, Confirm danger/warning với hover glow; màu qua RGB tokens + rgba($var, opacity).
 - **Icons:** Material Symbols (Google Fonts); Sidebar nav dùng `speed`, `account_tree`, `settings`; Settings sub-items `lan`, `device_hub`, `warning`.
 - Font: Inter hoặc IBM Plex Sans (Google Fonts link trong index.html); `_fonts.scss` nếu dùng local.
 - Version: `frontend/package.json` → Vite `__APP_VERSION__`; hiển thị Status subtitle; khi release cập nhật package.json và progress.md.

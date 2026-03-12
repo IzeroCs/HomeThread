@@ -2,27 +2,126 @@
 $primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
 $primary-color: #2563eb;
 $primary-blue: #2563eb;   // blue — màu chính app + topology
+$primary-blue-hover: #1d4ed8;
 $error-color: #e74c3c;
 $text-primary: #333;
 $text-secondary: #666;
 $text-muted: #999;
 $border-color: #e0e0e0;
 $bg-light: #f8f9fa;
-$shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
-$shadow-hover: 0 4px 12px rgba(102, 126, 234, 0.4);
 $border-radius: 12px;
 $border-radius-small: 8px;
+
+// RGB tokens (hex 6 — dùng với rgba($var, opacity))
+$black: #000000;
+$white: #fff;
+$slate-850: #0f172a;
+$navy-900: #060b19;
+$slate-800: #1e293b;
+$slate-900: #0a192f;
+$red-900: #7f1d1d;
+$red-950: #7f0000;
+$danger-pink: #ff4d6d;
+$indigo-400: #667eea;
+
+$shadow: 0 10px 40px rgba($black, 0.2);
+$shadow-hover: 0 4px 12px rgba($indigo-400, 0.4);
 
 // Dark theme (mockup)
 $bg-dark: #0a0f1c;
 $card-dark: #111827;
-$brand-border: rgba(255, 255, 255, 0.05);
+$card-dark-subtle: rgba($card-dark, 0.5);
+$brand-border: rgba($white, 0.05);
+$border-ultra-subtle: rgba($white, 0.03);
 $text-dark: #e2e8f0;
 $text-dark-muted: #94a3b8;
 $text-dark-subtle: #64748b;
 $connected-badge-bg: #06201b;
 $connected-badge-border: #14463a;
 $connected-badge-text: #10b981;
+
+// Semantic colors
+$amber-500: #eab308;
+$amber-400: #facc15;
+$amber-300: #fbbf24;
+$blue-500: #3b82f6;
+$blue-300: #93c5fd;
+$green-500: #22c55e;
+$green-400: #4ade80;
+$red-500: #ef4444;
+$red-600: #dc2626;
+$red-300: #f87171;
+$red-200: #fca5a5;
+$orange-500: #f97316;
+$orange-600: #ea6c0a;
+$red-divider: #3d1a1a;
+$red-label: #b91c1c;
+
+// Actions
+$action-warn: $orange-500;
+$action-warn-hover: $orange-600;
+$action-danger: $red-500;
+$action-danger-hover: $red-600;
+$action-warn-glow: 0 0 22px rgba($orange-500, 0.45);
+$action-danger-glow: 0 0 22px rgba($red-500, 0.45);
+
+// Ghost button tokens (forms)
+$btn-ghost-border: #2d3748;
+$btn-ghost-text: #cbd5e1;
+$btn-ghost-hover-bg: #1a2236;
+$btn-ghost-hover-border: #3d4f6b;
+$btn-primary-glow: 0 0 16px rgba($primary-blue, 0.4);
+
+// Alerts (forms)
+$alert-warn-bg: rgba($amber-500, 0.12);
+$alert-warn-text: $amber-400;
+$alert-success-bg: rgba($green-500, 0.1);
+$alert-success-text: $green-400;
+$alert-error-bg: rgba($red-500, 0.14);
+$alert-error-text: $red-200;
+
+// Shadows
+$shadow-card-strong: 0 18px 60px rgba($slate-850, 0.8);
+$shadow-card-stronger: 0 18px 60px rgba($slate-850, 0.9);
+$shadow-toast: 0 4px 12px rgba($black, 0.4);
+$shadow-toast-hover: 0 6px 16px rgba($black, 0.5);
+
+// System page
+$system-card-restart-bg: #111827;
+$system-card-factory-bg: #111116;
+$system-icon-warn-shadow: drop-shadow(0 0 10px rgba($orange-500, 0.7));
+$system-icon-danger-shadow: drop-shadow(0 0 10px rgba($red-500, 0.7));
+$system-dot-bg: rgba($white, 0.25);
+$system-dot-active-shadow: 0 0 6px rgba($orange-500, 0.9);
+$system-danger-divider-text: $red-label;
+$system-warning-inline: $red-300;
+$system-hint: $amber-400;
+
+// Panels / inputs
+$panel-footer-bg: #111722;
+$ot-toggle-track-bg: $btn-ghost-border;
+$ot-toggle-thumb-bg: $white;
+$ot-input-bg: #1a2032;
+$ot-input-border: #2a3347;
+$ot-input-focus-border: #3b82f6;
+$ot-input-focus-ring: 0 0 0 3px rgba($ot-input-focus-border, 0.12);
+$ot-field-hint: #4a6fa5;
+
+// Sidebar status dot colors (thread state mapping)
+$state-orange: #ed6c02; // detached/disabled indicator (legacy)
+$state-purple: #7b1fa2; // router
+
+// Nodes overlays
+$overlay-card-bg: #020617;
+$danger-soft: #f97373;
+$danger-text-dark: #721c24;
+
+// Commission modal
+$commission-surface: #1d2633;
+$commission-input-bg: #111821;
+$commission-border: #334155;
+$commission-footer: #18202b;
+$commission-primary: #1978e5;
 
 // Nodes page (LQ progress bars)
 $lq-good: #22c55e;
@@ -32,4 +131,5 @@ $lq-warn: #f59e0b;
 $topology-accent: #00C8FF;   // cyan — grid, node, edge, spotlight trong topology
 $bg-topology: #081420;   // tối hơn một chút so với #0A1628
 $topology-leader: #F5A623;   // amber — CHỈ BR/leader node (không dùng nếu leader dùng accent)
-$topology-offline: rgba(#94a3b8, 0.35);   // node offline (dùng tone $text-dark-muted)
+$topology-offline: rgba($text-dark-muted, 0.35);   // node offline (dùng tone $text-dark-muted)
+$topology-ink: #050d1b;

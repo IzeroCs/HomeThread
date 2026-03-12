@@ -176,9 +176,14 @@ Version hiển thị trên Status subtitle lấy từ `frontend/package.json`: V
 
 ### Modal & ConfirmModal (dark navy)
 
-- **Modal:** Overlay dark navy `rgba(6,11,25,0.78)` + `backdrop-filter: blur(6px)`; box `$card-dark`, border `$brand-border`, shadow đậm; header border-bottom subtle; title/close dùng `$text-dark` / `$text-dark-subtle`.
-- **ConfirmModal:** Message `$text-dark`; nút Cancel: transparent, border muted, hover nền navy; nút Confirm danger `#ef4444` / warning `#f97316` với hover glow. Countdown 5s không đổi.
+- **Modal:** Overlay `rgba($navy-900, 0.78)` + `backdrop-filter: blur(6px)`; box `$card-dark`, border `$brand-border`, shadow `rgba($slate-850, 0.95)`; header divider `rgba($text-dark-muted, 0.16)`; close hover `rgba($slate-850, 0.85)`; title/close dùng `$text-dark` / `$text-dark-subtle`.
+- **ConfirmModal:** Message `$text-dark`; nút Cancel: transparent, border/hover dùng `rgba($text-dark-muted, …)` và `rgba($slate-850, 0.85)`; nút Confirm danger/warning với hover glow. Countdown 5s không đổi.
 - **Light DOM note:** `modal-dialog` không dùng `<slot>` nữa; nội dung được truyền qua property `.body` (TemplateResult) để render đúng khi tắt Shadow DOM.
+
+### SCSS color tokens (RGB + functional naming)
+
+- **RGB tokens (hex 6):** Trong `_variables.scss`, màu dùng trong `rgba()` được định nghĩa là **hex 6 ký tự** (không hex 8). Opacity luôn là tham số thứ hai: `rgba($var, opacity)`. Cùng bộ RGB → một biến, nhiều chỗ dùng với opacity khác nhau (vd. `$slate-850` cho shadow 0.8, 0.85, 0.9, 0.95).
+- **Functional naming (component):** Mỗi file style component có thể định nghĩa biến local mô tả **vai trò** màu (vd. `$modal-overlay-bg`, `$confirm-cancel-hover-bg`) gán từ token global: `rgba($navy-900, 0.78)`, `rgba($slate-850, 0.85)`.
 
 ### Sidebar Settings sub-items
 

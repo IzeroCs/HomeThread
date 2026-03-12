@@ -4,6 +4,36 @@
  */
 @use "variables" as *;
 
+// Functional color tokens (form component-scoped)
+$form-card-bg: $card-dark;
+$form-card-shadow: $shadow-card-strong;
+$form-card-border: $brand-border;
+$form-page-title-text: $text-dark;
+$form-page-description-text: $text-dark-muted;
+$form-alert-warn-bg: $alert-warn-bg;
+$form-alert-warn-text: $alert-warn-text;
+$form-alert-success-bg: $alert-success-bg;
+$form-alert-success-text: $alert-success-text;
+$form-alert-error-bg: $alert-error-bg;
+$form-alert-error-text: $alert-error-text;
+$form-label-text: $text-dark;
+$form-input-text: $text-dark;
+$form-input-border: $brand-border;
+$form-input-focus-border: $primary-blue;
+$form-input-disabled-bg: rgba($slate-850, 0.8);
+$form-input-placeholder: $text-dark-subtle;
+$form-btn-primary-bg: $primary-blue;
+$form-btn-primary-text: $white;
+$form-btn-primary-hover-bg: $primary-blue-hover;
+$form-btn-primary-glow: $btn-primary-glow;
+$form-btn-ghost-border: $btn-ghost-border;
+$form-btn-ghost-text: $btn-ghost-text;
+$form-btn-ghost-hover-bg: $btn-ghost-hover-bg;
+$form-btn-ghost-hover-border: $btn-ghost-hover-border;
+$form-btn-ghost-hover-text: $text-dark;
+$form-hint-text: $text-dark-subtle;
+$form-error-message-text: $alert-error-text;
+
 // --- Container & card (thống nhất config-container, ot-config-container, commissioner-page) ---
 .form-page {
   width: 100%;
@@ -16,22 +46,22 @@
 }
 
 .form-card {
-  background: $card-dark;
+  background: $form-card-bg;
   border-radius: $border-radius;
   padding: 32px;
-  box-shadow: 0 18px 60px rgba(15, 23, 42, 0.8);
-  border: 1px solid $brand-border;
+  box-shadow: $form-card-shadow;
+  border: 1px solid $form-card-border;
 }
 
 .form-page-title {
   margin: 0 0 8px 0;
-  color: $text-dark;
+  color: $form-page-title-text;
   font-size: 28px;
   font-weight: 600;
 }
 
 .form-page-description {
-  color: $text-dark-muted;
+  color: $form-page-description-text;
   margin: 0 0 30px 0;
   font-size: 14px;
 }
@@ -44,18 +74,18 @@
   font-weight: 500;
 
   &.form-page-alert-warn {
-    background: rgba(234, 179, 8, 0.12);
-    color: #facc15;
+    background: $form-alert-warn-bg;
+    color: $form-alert-warn-text;
   }
 
   &.form-page-alert-success {
-    background: rgba(34, 197, 94, 0.1);
-    color: #4ade80;
+    background: $form-alert-success-bg;
+    color: $form-alert-success-text;
   }
 
   &.form-page-alert-error {
-    background: rgba(239, 68, 68, 0.14);
-    color: #fca5a5;
+    background: $form-alert-error-bg;
+    color: $form-alert-error-text;
   }
 }
 
@@ -88,28 +118,28 @@
 
   label {
     font-weight: 600;
-    color: $text-dark;
+    color: $form-label-text;
     font-size: 14px;
   }
 
   input {
     width: 100%;
     padding: 12px 16px;
-    border: 1px solid $brand-border;
+    border: 1px solid $form-input-border;
     border-radius: $border-radius-small;
     font-size: 16px;
-    color: $text-dark;
+    color: $form-input-text;
     background: transparent;
     font-family: inherit;
     transition: border-color 0.2s;
 
     &::placeholder {
-      color: $text-dark-subtle;
+      color: $form-input-placeholder;
     }
 
     &:focus {
       outline: none;
-      border-color: $primary-blue;
+      border-color: $form-input-focus-border;
     }
 
     &.error {
@@ -117,7 +147,7 @@
     }
 
     &:disabled {
-      background: rgba(15, 23, 42, 0.8);
+      background: $form-input-disabled-bg;
       cursor: not-allowed;
     }
   }
@@ -163,25 +193,25 @@
 }
 
 .form-btn--primary {
-  background: $primary-blue;
-  color: #fff;
+  background: $form-btn-primary-bg;
+  color: $form-btn-primary-text;
   border-color: transparent;
 
   &:hover:not(:disabled) {
-    background: #1d4ed8;
-    box-shadow: 0 0 16px rgba(37, 99, 235, 0.4);
+    background: $form-btn-primary-hover-bg;
+    box-shadow: $form-btn-primary-glow;
   }
 }
 
 .form-btn--ghost {
   background: transparent;
-  border-color: #2d3748;
-  color: #cbd5e1;
+  border-color: $form-btn-ghost-border;
+  color: $form-btn-ghost-text;
 
   &:hover:not(:disabled) {
-    background: #1a2236;
-    border-color: #3d4f6b;
-    color: $text-dark;
+    background: $form-btn-ghost-hover-bg;
+    border-color: $form-btn-ghost-hover-border;
+    color: $form-btn-ghost-hover-text;
   }
 }
 
@@ -192,13 +222,13 @@
 }
 
 .form-hint {
-  color: $text-dark-subtle;
+  color: $form-hint-text;
   font-size: 12px;
   margin-top: -4px;
 }
 
 .error-message {
-  color: #fca5a5;
+  color: $form-error-message-text;
   font-size: 12px;
   margin-top: -4px;
 }

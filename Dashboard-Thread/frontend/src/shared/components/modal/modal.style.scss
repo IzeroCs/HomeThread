@@ -1,6 +1,20 @@
 @use "shared/styles/variables" as *;
 @use "shared/styles/mixin" as *;
 
+// Functional color tokens (component-scoped)
+$modal-overlay-bg: rgba($navy-900, 0.78);
+$modal-box-bg: $card-dark;
+$modal-box-border: $brand-border;
+$modal-box-shadow: 0 26px 80px rgba($slate-850, 0.95);
+$modal-header-divider: rgba($text-dark-muted, 0.16);
+$modal-title-text: $text-dark;
+$modal-close-icon: $text-dark-subtle;
+$modal-close-hover-bg: rgba($slate-850, 0.85);
+$modal-close-hover-icon: $text-dark;
+$modal-detail-row-divider: $border-color;
+$modal-detail-key-text: $text-dark-subtle;
+$modal-detail-value-text: $text-dark;
+
 modal-dialog {
   display: contents;
 }
@@ -13,7 +27,7 @@ modal-dialog {
   align-items: center;
   justify-content: center;
   padding: 24px;
-  background: rgba(6, 11, 25, 0.78);
+  background: $modal-overlay-bg;
   backdrop-filter: blur(6px);
   animation: modal-overlay-in 0.2s ease-out;
 }
@@ -28,16 +42,16 @@ modal-dialog {
 }
 
 .modal-box {
-  background: $card-dark;
+  background: $modal-box-bg;
   border-radius: $border-radius;
-  box-shadow: 0 26px 80px rgba(15, 23, 42, 0.95);
+  box-shadow: $modal-box-shadow;
   max-width: 480px;
   width: 100%;
   max-height: calc(100vh - 48px);
   display: flex;
   flex-direction: column;
   animation: modal-box-in 0.2s ease-out;
-  border: 1px solid $brand-border;
+  border: 1px solid $modal-box-border;
 }
 
 @keyframes modal-box-in {
@@ -57,14 +71,14 @@ modal-dialog {
   justify-content: space-between;
   gap: 16px;
   padding: 16px 20px 12px;
-  border-bottom: 1px solid rgba(148, 163, 184, 0.16);
+  border-bottom: 1px solid $modal-header-divider;
 }
 
 .modal-title {
   margin: 0;
   font-size: 18px;
   font-weight: 600;
-  color: $text-dark;
+  color: $modal-title-text;
 }
 
 .modal-close {
@@ -75,13 +89,13 @@ modal-dialog {
   background: transparent;
   font-size: 24px;
   line-height: 1;
-  color: $text-dark-subtle;
+  color: $modal-close-icon;
   cursor: pointer;
   border-radius: $border-radius-small;
 
   &:hover {
-    background: rgba(15, 23, 42, 0.85);
-    color: $text-dark;
+    background: $modal-close-hover-bg;
+    color: $modal-close-hover-icon;
   }
 }
 
@@ -101,7 +115,7 @@ modal-dialog {
     align-items: flex-start;
     gap: 12px;
     padding: 10px 0;
-    border-bottom: 1px solid $border-color;
+    border-bottom: 1px solid $modal-detail-row-divider;
 
     &:last-child {
       border-bottom: none;
@@ -112,13 +126,13 @@ modal-dialog {
 .modal-detail-key {
   flex: 0 0 120px;
   font-weight: 600;
-  color: $text-dark-subtle;
+  color: $modal-detail-key-text;
   font-size: 13px;
 }
 
 .modal-detail-value {
   flex: 1;
-  color: $text-dark;
+  color: $modal-detail-value-text;
   font-size: 14px;
   font-family: ui-monospace, monospace;
   word-break: break-all;

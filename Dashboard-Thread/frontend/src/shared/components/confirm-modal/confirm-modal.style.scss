@@ -1,5 +1,20 @@
 @use "shared/styles/variables" as *;
 
+// Functional color tokens (component-scoped) — tên biến = vai trò trong modal
+$confirm-message-text: $text-dark;
+$confirm-cancel-border: rgba($text-dark-muted, 0.35);
+$confirm-cancel-hover-bg: rgba($slate-850, 0.85);
+$confirm-cancel-hover-border: rgba($text-dark-muted, 0.55);
+$confirm-cancel-text: $text-dark-muted;
+$confirm-cancel-hover-text: $text-dark;
+$confirm-btn-text-on-primary: $white;
+$confirm-danger-btn-bg: $action-danger;
+$confirm-danger-btn-hover-bg: $action-danger-hover;
+$confirm-danger-btn-glow: $action-danger-glow;
+$confirm-warning-btn-bg: $action-warn;
+$confirm-warning-btn-hover-bg: $action-warn-hover;
+$confirm-warning-btn-glow: $action-warn-glow;
+
 confirm-modal {
   display: contents;
 }
@@ -13,7 +28,7 @@ confirm-modal {
 .confirm-modal-message {
   margin: 0;
   font-size: 15px;
-  color: $text-dark;
+  color: $confirm-message-text;
   line-height: 1.6;
 }
 
@@ -47,34 +62,34 @@ confirm-modal {
 
   &.cancel {
     background: transparent;
-    color: $text-dark-muted;
-    border-color: rgba(148, 163, 184, 0.35);
+    color: $confirm-cancel-text;
+    border-color: $confirm-cancel-border;
 
     &:hover:not(:disabled) {
-      background: rgba(15, 23, 42, 0.85);
-      color: $text-dark;
-      border-color: rgba(148, 163, 184, 0.55);
+      background: $confirm-cancel-hover-bg;
+      color: $confirm-cancel-hover-text;
+      border-color: $confirm-cancel-hover-border;
     }
   }
 
   &.confirm {
-    color: white;
+    color: $confirm-btn-text-on-primary;
 
     &.danger {
-      background: #ef4444;
+      background: $confirm-danger-btn-bg;
 
       &:hover:not(:disabled) {
-        background: #dc2626;
-        box-shadow: 0 0 22px rgba(239, 68, 68, 0.45);
+        background: $confirm-danger-btn-hover-bg;
+        box-shadow: $confirm-danger-btn-glow;
       }
     }
 
     &.warning {
-      background: #f97316;
+      background: $confirm-warning-btn-bg;
 
       &:hover:not(:disabled) {
-        background: #ea6c0a;
-        box-shadow: 0 0 22px rgba(249, 115, 22, 0.45);
+        background: $confirm-warning-btn-hover-bg;
+        box-shadow: $confirm-warning-btn-glow;
       }
     }
   }
