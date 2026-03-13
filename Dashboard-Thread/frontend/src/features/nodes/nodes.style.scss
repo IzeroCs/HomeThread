@@ -1,5 +1,7 @@
 @use "sass:color";
 @use "shared/styles/variables" as *;
+@use "shared/styles/tokens" as *;
+@use "shared/styles/spacing" as *;
 
 // Local rgba (file-scoped) — RGB từ _variables
 $nodes-disconnected-card-shadow: 0 25px 50px -12px rgba($black, 0.6);
@@ -8,16 +10,9 @@ $nodes-btn-shadow: 0 12px 30px rgba($primary-blue, 0.5);
 $nodes-btn-hover-shadow: 0 18px 40px rgba($primary-blue, 0.6);
 $nodes-table-shadow: 0 1px 3px rgba($black, 0.1);
 
-nodes-view {
-  display: contents;
-}
-
 .nodes-page {
-  background: $bg-dark;
-  border-radius: $border-radius;
-  padding: 32px;
-  max-width: 100%;
   width: 100%;
+  max-width: $app-page-max-width;
   position: relative;
 }
 

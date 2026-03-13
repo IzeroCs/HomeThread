@@ -30,7 +30,7 @@ export class AppShell extends LitElement {
 
   constructor() {
     super();
-    this.page = "status";
+    this.page = "nodes";
     this.toasts = [];
   }
 

@@ -1,10 +1,10 @@
 import { LitElement, html } from "lit";
 import { customElement, property, state } from "lit/decorators.js";
+import type { OtConfig, OtTableData } from "@shared/types/websocket.type";
+
 import "@shared/components/modal/modal.component";
 import "@nodes/components/commission-node-modal/commission-node-modal.component";
 import "@nodes/components/joiner-list/joiner-list.component";
-import type { OtConfig, OtTableData } from "@shared/types/websocket.type";
-
 import "@nodes/nodes.style.scss";
 
 function normCol(name: string): string {
@@ -189,178 +189,156 @@ export class NodesComponent extends LitElement {
     }
 
     return html`
-      <div class="nodes-page">
-        ${showDisconnectedOverlay
-          ? html`
-              <div class="nodes-disconnected-overlay">
-                <div class="nodes-disconnected-card">
-                  <div class="nodes-disconnected-icon">
-                    <span class="material-symbols-outlined">wifi_off</span>
-                  </div>
-                  <h1 class="nodes-disconnected-title">Border Router Disconnected</h1>
-                  <p class="nodes-disconnected-text">Connect to the Border Router to view network topology and node information.</p>
-                  <button
-                    type="button"
-                    class="nodes-disconnected-btn"
-                    @click=${() => this.brConfig && this.testBrConnect({ brHost: this.brConfig!.brHost, brPort: this.brConfig!.brPort })}
-                    ?disabled=${!this.brConfig}
-                  >
-                    <span class="material-symbols-outlined">refresh</span>
-                    <span>Try Reconnecting</span>
-                  </button>
-                </div>
+      <page-header
+        heading="Nodes"
+        subtitle="Manage and monitor network topology and connectivity"
+        .action=${html`
+          <button type="button" class="btn-icon" @click=${() => (this.isCommissionModalOpen = true)}>
+            <span class="material-symbols-outlined">add_circle</span>
+        </button>
+        `}
+      ></page-header>
+      <div class="page-container">
+        <div class="nodes-page">
+          <div class="nodes-content">
+            <section class="nodes-section">
+              <h2 class="nodes-section-title">
+                <span class="material-symbols-outlined nodes-section-icon">router</span>
+                Router Table
+              </h2>
+              <div class="nodes-table-wrap">
+                ${showDisconnectedOverlay
+                  ? html`<p class="nodes-muted">Loading…</p>`
+                  : this.routerTable?.error
+                    ? html`<p class="nodes-error">${this.routerTable.error}</p>`
+                    : routerLoading && !hasRouterData
+                      ? html`<p class="nodes-muted">Loading…</p>`
+                      : !hasRouterData
+                        ? html`<p class="nodes-muted">No routers found in the network.</p>`
+                        : html`
+                            <table class="nodes-table">
+                              <thead>
+                                <tr>
+                                  <th>Router ID</th>
+                                  <th>RLOC16</th>
+                                  <th>Ext Address</th>
+                                  <th>Link Quality In</th>
+                                  <th>Link Quality Out</th>
+                                  <th>Age</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                ${routerRows.length === 0
+                                  ? html`<tr class="nodes-row-empty"><td class="nodes-cell-empty" colspan="6">No routers found in the network.</td></tr>`
+                                  : routerRows.map((row, ri) => {
+                                      const rloc16 = rRloc16 >= 0 ? row[rRloc16] ?? "" : "";
+                                      const isLeader = leaderRloc16 != null && rloc16.toLowerCase() === leaderRloc16.toLowerCase();
+                                      const baseAge = rAge >= 0 ? parseInt(row[rAge] ?? "0", 10) : 0;
+                                      const ageSec = baseAge + (this.routerAgeOffsets[ri] ?? 0);
+                                      return html`
+                                        <tr class="${isLeader ? "nodes-table-row-leader" : ""}" @click=${() => (this.selectedRow = { type: "router", rowIndex: ri })}>
+                                          <td class="nodes-cell-id">
+                                            <span class="nodes-cell-id-main">${rRouterId >= 0 ? row[rRouterId] : ""}</span>
+                                            ${isLeader ? html`<span class="nodes-leader-badge">LEADER</span>` : ""}
+                                          </td>
+                                          <td class="nodes-cell-mono">${rRloc16 >= 0 ? row[rRloc16] : ""}</td>
+                                          <td class="nodes-cell-mono">${rExtAddress >= 0 ? row[rExtAddress] : ""}</td>
+                                          <td>${this._lqBarCell(rLqIn >= 0 ? row[rLqIn] : "")}</td>
+                                          <td>${this._lqBarCell(rLqOut >= 0 ? row[rLqOut] : "")}</td>
+                                          <td class="nodes-cell-age">${ageSec}s</td>
+                                        </tr>
+                                      `;
+                                    })}
+                              </tbody>
+                            </table>
+                          `}
               </div>
-            `
-          : ""}
-        <div class="nodes-content">
-          <div class="nodes-header">
-            <div class="nodes-header-text">
-              <h1 class="nodes-title">Nodes</h1>
-              <p class="nodes-subtitle">Manage and monitor network topology and connectivity</p>
-            </div>
-            <button type="button" class="nodes-btn-commission" @click=${() => (this.isCommissionModalOpen = true)}>
-              <span class="material-symbols-outlined">add_circle</span>
-              <span>Commission Node</span>
-            </button>
+            </section>
+
+            <section class="nodes-section">
+              <h2 class="nodes-section-title">
+                <span class="material-symbols-outlined nodes-section-icon">account_tree</span>
+                Child Table
+              </h2>
+              <div class="nodes-table-wrap">
+                ${showDisconnectedOverlay
+                  ? html`<p class="nodes-muted">Loading…</p>`
+                  : this.childTable?.error
+                    ? html`<p class="nodes-error">${this.childTable.error}</p>`
+                    : childLoading && !hasChildData
+                      ? html`<p class="nodes-muted">Loading…</p>`
+                      : !hasChildData
+                        ? html`<p class="nodes-muted">No child nodes connected.</p>`
+                        : html`
+                            <table class="nodes-table">
+                              <thead>
+                                <tr>
+                                  <th>Child ID</th>
+                                  <th>RLOC16</th>
+                                  <th>Ext Address</th>
+                                  <th>LQ In</th>
+                                  <th>Avg RSSI</th>
+                                  <th class="nodes-th-center">FTD</th>
+                                  <th class="nodes-th-center">RxOnIdle</th>
+                                  <th>Age</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                ${childRows.length === 0
+                                  ? html`<tr class="nodes-row-empty"><td class="nodes-cell-empty" colspan="8">No child nodes connected.</td></tr>`
+                                  : childRows.map((row, ri) => {
+                                      const baseAge = cAge >= 0 ? parseInt(row[cAge] ?? "0", 10) : 0;
+                                      const ageSec = baseAge + (this.childAgeOffsets[ri] ?? 0);
+                                      const ftdVal = cFtd >= 0 ? row[cFtd] ?? "" : "";
+                                      const rxVal = cRxOnIdle >= 0 ? row[cRxOnIdle] ?? "" : "";
+                                      return html`
+                                        <tr @click=${() => (this.selectedRow = { type: "child", rowIndex: ri })}>
+                                          <td class="nodes-cell-id">${cChildId >= 0 ? row[cChildId] : ""}</td>
+                                          <td class="nodes-cell-mono">${cRloc16 >= 0 ? row[cRloc16] : ""}</td>
+                                          <td class="nodes-cell-mono">${cExtAddress >= 0 ? row[cExtAddress] : ""}</td>
+                                          <td>${this._lqBarsCell(cLqIn >= 0 ? row[cLqIn] : "")}</td>
+                                          <td class="nodes-cell-rssi">${cAvgRssi >= 0 ? row[cAvgRssi] : ""}</td>
+                                          <td class="nodes-cell-icon">
+                                            ${ftdVal === "FTD"
+                                              ? html`<span class="material-symbols-outlined nodes-icon-ok">check_circle</span>`
+                                              : html`<span class="material-symbols-outlined nodes-icon-no">cancel</span>`}
+                                          </td>
+                                          <td class="nodes-cell-icon">
+                                            ${rxVal === "Yes"
+                                              ? html`<span class="material-symbols-outlined nodes-icon-ok">check_circle</span>`
+                                              : html`<span class="material-symbols-outlined nodes-icon-no">cancel</span>`}
+                                          </td>
+                                          <td class="nodes-cell-age">${ageSec}s</td>
+                                        </tr>
+                                      `;
+                                    })}
+                              </tbody>
+                            </table>
+                          `}
+              </div>
+            </section>
+
+            <joiner-list .joinerTable=${this.joinerTable} .getJoinerTable=${this.getJoinerTable} .isConnected=${this.isConnected}></joiner-list>
+
+            <modal-dialog
+              .open=${this.selectedRow != null}
+              .title=${modalTitle}
+              .body=${html`
+                <ul class="modal-detail-list">
+                  ${modalEntries.map(({ key: fieldKey, value }) => html`<li><span class="modal-detail-key">${fieldKey}</span><span class="modal-detail-value">${value}</span></li>`)}
+                </ul>
+              `}
+              .onClose=${() => (this.selectedRow = null)}
+            ></modal-dialog>
+
+            <commission-node-modal
+              .open=${this.isCommissionModalOpen}
+              .onClose=${() => (this.isCommissionModalOpen = false)}
+              .threadState=${this.threadState}
+              .commissionerConnect=${this.commissionerConnect}
+              .showToast=${this.showToast}
+            ></commission-node-modal>
           </div>
-
-          <section class="nodes-section">
-            <h2 class="nodes-section-title">
-              <span class="material-symbols-outlined nodes-section-icon">router</span>
-              Router Table
-            </h2>
-            <div class="nodes-table-wrap">
-              ${showDisconnectedOverlay
-                ? html`<p class="nodes-muted">Loading…</p>`
-                : this.routerTable?.error
-                  ? html`<p class="nodes-error">${this.routerTable.error}</p>`
-                  : routerLoading && !hasRouterData
-                    ? html`<p class="nodes-muted">Loading…</p>`
-                    : !hasRouterData
-                      ? html`<p class="nodes-muted">No routers found in the network.</p>`
-                      : html`
-                          <table class="nodes-table">
-                            <thead>
-                              <tr>
-                                <th>Router ID</th>
-                                <th>RLOC16</th>
-                                <th>Ext Address</th>
-                                <th>Link Quality In</th>
-                                <th>Link Quality Out</th>
-                                <th>Age</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              ${routerRows.length === 0
-                                ? html`<tr class="nodes-row-empty"><td class="nodes-cell-empty" colspan="6">No routers found in the network.</td></tr>`
-                                : routerRows.map((row, ri) => {
-                                    const rloc16 = rRloc16 >= 0 ? row[rRloc16] ?? "" : "";
-                                    const isLeader = leaderRloc16 != null && rloc16.toLowerCase() === leaderRloc16.toLowerCase();
-                                    const baseAge = rAge >= 0 ? parseInt(row[rAge] ?? "0", 10) : 0;
-                                    const ageSec = baseAge + (this.routerAgeOffsets[ri] ?? 0);
-                                    return html`
-                                      <tr class="${isLeader ? "nodes-table-row-leader" : ""}" @click=${() => (this.selectedRow = { type: "router", rowIndex: ri })}>
-                                        <td class="nodes-cell-id">
-                                          <span class="nodes-cell-id-main">${rRouterId >= 0 ? row[rRouterId] : ""}</span>
-                                          ${isLeader ? html`<span class="nodes-leader-badge">LEADER</span>` : ""}
-                                        </td>
-                                        <td class="nodes-cell-mono">${rRloc16 >= 0 ? row[rRloc16] : ""}</td>
-                                        <td class="nodes-cell-mono">${rExtAddress >= 0 ? row[rExtAddress] : ""}</td>
-                                        <td>${this._lqBarCell(rLqIn >= 0 ? row[rLqIn] : "")}</td>
-                                        <td>${this._lqBarCell(rLqOut >= 0 ? row[rLqOut] : "")}</td>
-                                        <td class="nodes-cell-age">${ageSec}s</td>
-                                      </tr>
-                                    `;
-                                  })}
-                            </tbody>
-                          </table>
-                        `}
-            </div>
-          </section>
-
-          <section class="nodes-section">
-            <h2 class="nodes-section-title">
-              <span class="material-symbols-outlined nodes-section-icon">account_tree</span>
-              Child Table
-            </h2>
-            <div class="nodes-table-wrap">
-              ${showDisconnectedOverlay
-                ? html`<p class="nodes-muted">Loading…</p>`
-                : this.childTable?.error
-                  ? html`<p class="nodes-error">${this.childTable.error}</p>`
-                  : childLoading && !hasChildData
-                    ? html`<p class="nodes-muted">Loading…</p>`
-                    : !hasChildData
-                      ? html`<p class="nodes-muted">No child nodes connected.</p>`
-                      : html`
-                          <table class="nodes-table">
-                            <thead>
-                              <tr>
-                                <th>Child ID</th>
-                                <th>RLOC16</th>
-                                <th>Ext Address</th>
-                                <th>LQ In</th>
-                                <th>Avg RSSI</th>
-                                <th class="nodes-th-center">FTD</th>
-                                <th class="nodes-th-center">RxOnIdle</th>
-                                <th>Age</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              ${childRows.length === 0
-                                ? html`<tr class="nodes-row-empty"><td class="nodes-cell-empty" colspan="8">No child nodes connected.</td></tr>`
-                                : childRows.map((row, ri) => {
-                                    const baseAge = cAge >= 0 ? parseInt(row[cAge] ?? "0", 10) : 0;
-                                    const ageSec = baseAge + (this.childAgeOffsets[ri] ?? 0);
-                                    const ftdVal = cFtd >= 0 ? row[cFtd] ?? "" : "";
-                                    const rxVal = cRxOnIdle >= 0 ? row[cRxOnIdle] ?? "" : "";
-                                    return html`
-                                      <tr @click=${() => (this.selectedRow = { type: "child", rowIndex: ri })}>
-                                        <td class="nodes-cell-id">${cChildId >= 0 ? row[cChildId] : ""}</td>
-                                        <td class="nodes-cell-mono">${cRloc16 >= 0 ? row[cRloc16] : ""}</td>
-                                        <td class="nodes-cell-mono">${cExtAddress >= 0 ? row[cExtAddress] : ""}</td>
-                                        <td>${this._lqBarsCell(cLqIn >= 0 ? row[cLqIn] : "")}</td>
-                                        <td class="nodes-cell-rssi">${cAvgRssi >= 0 ? row[cAvgRssi] : ""}</td>
-                                        <td class="nodes-cell-icon">
-                                          ${ftdVal === "FTD"
-                                            ? html`<span class="material-symbols-outlined nodes-icon-ok">check_circle</span>`
-                                            : html`<span class="material-symbols-outlined nodes-icon-no">cancel</span>`}
-                                        </td>
-                                        <td class="nodes-cell-icon">
-                                          ${rxVal === "Yes"
-                                            ? html`<span class="material-symbols-outlined nodes-icon-ok">check_circle</span>`
-                                            : html`<span class="material-symbols-outlined nodes-icon-no">cancel</span>`}
-                                        </td>
-                                        <td class="nodes-cell-age">${ageSec}s</td>
-                                      </tr>
-                                    `;
-                                  })}
-                            </tbody>
-                          </table>
-                        `}
-            </div>
-          </section>
-
-          <joiner-list .joinerTable=${this.joinerTable} .getJoinerTable=${this.getJoinerTable} .isConnected=${this.isConnected}></joiner-list>
-
-          <modal-dialog
-            .open=${this.selectedRow != null}
-            .title=${modalTitle}
-            .body=${html`
-              <ul class="modal-detail-list">
-                ${modalEntries.map(({ key: fieldKey, value }) => html`<li><span class="modal-detail-key">${fieldKey}</span><span class="modal-detail-value">${value}</span></li>`)}
-              </ul>
-            `}
-            .onClose=${() => (this.selectedRow = null)}
-          ></modal-dialog>
-
-          <commission-node-modal
-            .open=${this.isCommissionModalOpen}
-            .onClose=${() => (this.isCommissionModalOpen = false)}
-            .threadState=${this.threadState}
-            .commissionerConnect=${this.commissionerConnect}
-            .showToast=${this.showToast}
-          ></commission-node-modal>
         </div>
       </div>
     `;
