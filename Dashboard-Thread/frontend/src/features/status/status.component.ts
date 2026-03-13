@@ -78,110 +78,80 @@ export class StatusComponent extends LitElement {
             </div>
           </section>
 
-          <section class="status-section status-section-ot">
-            <div class="status-section-ot-header ${!isConnected ? "status-section-ot-header--faded" : ""}">
+          <section class="status-section ${!isConnected ? "disconnected" : ""}">
+            <div class="status-section-ot-header">
               <h2 class="status-section-ot-title">
                 <span class="material-symbols-outlined">lan</span>
                 OpenThread Network
               </h2>
             </div>
             <div class="status-card status-card-ot">
-              ${this.otConfig?.error
-                ? html`<p class="status-error">${this.otConfig.error}</p>`
-                : !isConnected
-                  ? html`
-                      <div class="status-ot-grid status-ot-grid--placeholder" aria-hidden>
-                        <div class="status-field"><span class="status-field-label">Network Name</span><span class="status-field-value status-field-value--muted">Not Available</span></div>
-                        <div class="status-field"><span class="status-field-label">IP Address</span><span class="status-field-value mono-text status-field-value--muted">Not Available</span></div>
-                        <div class="status-field status-field-with-action"><span class="status-field-label">Network Key</span><span class="status-field-value mono-text status-field-value--muted">--------------------------------</span><button type="button" class="status-field-toggle" disabled aria-hidden><span class="material-symbols-outlined">visibility_off</span></button></div>
-                        <div class="status-field"><span class="status-field-label">PAN ID</span><span class="status-field-value mono-text status-field-value--muted">----</span></div>
-                        <div class="status-field"><span class="status-field-label">Mesh Local Prefix</span><span class="status-field-value mono-text status-field-value--muted">----:----:----:----::/--</span></div>
-                        <div class="status-field"><span class="status-field-label">PSKc</span><span class="status-field-value mono-text status-field-value--muted">--------------------------------</span></div>
-                        <div class="status-field"><span class="status-field-label">Channel</span><span class="status-field-value mono-text status-field-value--muted">--</span></div>
-                        <div class="status-field"><span class="status-field-label">Channel Mask</span><span class="status-field-value mono-text status-field-value--muted">--------------</span></div>
-                        <div class="status-field"><span class="status-field-label">Security Policy</span><span class="status-field-value mono-text status-field-value--muted">---</span></div>
-                        <div class="status-field"><span class="status-field-label">Extended PAN ID</span><span class="status-field-value mono-text status-field-value--muted">----------------</span></div>
-                        <div class="status-field"><span class="status-field-label">Active Timestamp</span><span class="status-field-value status-field-value--muted">-----</span></div>
-                        <div class="status-field status-field-version"><span class="status-field-label">Thread Version</span><span class="status-field-value status-field-value--muted status-field-value--mono-small">Unknown</span></div>
-                      </div>
-                      <div class="status-ot-overlay">
-                        <div class="status-ot-overlay-card status-ot-overlay-card--compact">
-                          <div class="status-ot-overlay-icon status-ot-overlay-icon--muted">
-                            <span class="material-symbols-outlined">cloud_off</span>
-                          </div>
-                          <span class="status-ot-overlay-text-only">Network data unavailable</span>
-                        </div>
-                      </div>
-                    `
-                  : html`
-                      <div class="status-ot-grid">
-                        <div class="status-field">
-                          <span class="status-field-label">Network Name</span>
-                          <span class="status-field-value status-field-value--accent">${this.otConfig?.networkName ?? "—"}</span>
-                        </div>
-                        <div class="status-field">
-                          <span class="status-field-label">IP Address</span>
-                          <span class="status-field-value status-field-value--accent mono-text">${ipaddr ?? "—"}</span>
-                        </div>
-                        <div class="status-field status-field-with-action">
-                          <span class="status-field-label">Network Key</span>
-                          <span class="status-field-value mono-text">
-                            ${this.networkKeyVisible ? (this.otConfig?.networkKey ?? "—") : "••••••••••••••••"}
-                          </span>
-                          <button
-                            type="button"
-                            class="status-field-toggle"
-                            @click=${() => (this.networkKeyVisible = !this.networkKeyVisible)}
-                            aria-label=${this.networkKeyVisible ? "Hide" : "Show"}
-                          >
-                            <span class="material-symbols-outlined">${this.networkKeyVisible ? "visibility_off" : "visibility"}</span>
-                          </button>
-                        </div>
-                        <div class="status-field">
-                          <span class="status-field-label">PAN ID</span>
-                          <span class="status-field-value mono-text">${formatPanId(this.otConfig?.panid)}</span>
-                        </div>
-                        <div class="status-field">
-                          <span class="status-field-label">Mesh Local Prefix</span>
-                          <span class="status-field-value mono-text">${this.otConfig?.meshLocalPrefix ?? "—"}</span>
-                        </div>
-                        <div class="status-field">
-                          <span class="status-field-label">PSKc</span>
-                          <span class="status-field-value mono-text">${this.otConfig?.pskc ?? "—"}</span>
-                        </div>
-                        <div class="status-field">
-                          <span class="status-field-label">Channel</span>
-                          <div class="status-channel-row">
-                            <span class="status-field-value mono-text">${this.otConfig?.channel ?? "—"}</span>
-                            <span class="status-channel-badge">2.4 GHz</span>
-                          </div>
-                        </div>
-                        <div class="status-field">
-                          <span class="status-field-label">Channel Mask</span>
-                          <span class="status-field-value mono-text">${this.otConfig?.channelMask ?? "—"}</span>
-                        </div>
-                        <div class="status-field">
-                          <span class="status-field-label">Security Policy</span>
-                          <span class="status-field-value mono-text">${this.otConfig?.securityPolicy ?? "—"}</span>
-                        </div>
-                        <div class="status-field">
-                          <span class="status-field-label">Extended PAN ID</span>
-                          <span class="status-field-value mono-text">${this.otConfig?.extendedPanId ?? "—"}</span>
-                        </div>
-                        <div class="status-field">
-                          <span class="status-field-label">Active Timestamp</span>
-                          <span class="status-field-value">${this.otConfig?.activeTimestamp ?? "—"}</span>
-                        </div>
-                        <div class="status-field status-field-version">
-                          <span class="status-field-label">Thread Version</span>
-                          <span class="status-field-value status-field-value--mono-small">${this.otConfig?.threadVersion ?? "—"}</span>
-                        </div>
-                      </div>
-                    `}
+              <div class="status-ot-grid">
+                <div class="status-field">
+                  <span class="status-field-label">Network Name</span>
+                  <span class="status-field-value">${!isConnected ? "—" : this.otConfig?.networkName ?? "—"}</span>
+                </div>
+                <div class="status-field">
+                  <span class="status-field-label">IP Address</span>
+                  <span class="status-field-value">${!isConnected ? "—" : ipaddr ?? "—"}</span>
+                </div>
+                <div class="status-field ${isConnected ? "status-field-with-action" : ""}">
+                  <span class="status-field-label">Network Key</span>
+                  <span class="status-field-value">
+                    ${!isConnected ? "—" : this.networkKeyVisible ? (this.otConfig?.networkKey ?? "—") : "••••••••••••••••"}
+                  </span>
+                  ${isConnected ? html`
+                    <button
+                      type="button"
+                      class="status-field-toggle"
+                      @click=${() => (this.networkKeyVisible = !this.networkKeyVisible)}
+                      aria-label=${this.networkKeyVisible ? "Hide" : "Show"}
+                    >
+                      <span class="material-symbols-outlined">${this.networkKeyVisible ? "visibility_off" : "visibility"}</span>
+                    </button>
+                  ` : ""}
+                </div>
+                <div class="status-field">
+                  <span class="status-field-label">PAN ID</span>
+                  <span class="status-field-value">${!isConnected ? "—" : formatPanId(this.otConfig?.panid)}</span>
+                </div>
+                <div class="status-field">
+                  <span class="status-field-label">Mesh Local Prefix</span>
+                  <span class="status-field-value">${!isConnected ? "—" : this.otConfig?.meshLocalPrefix ?? "—"}</span>
+                </div>
+                <div class="status-field">
+                  <span class="status-field-label">PSKc</span>
+                  <span class="status-field-value">${!isConnected ? "—" : this.otConfig?.pskc ?? "—"}</span>
+                </div>
+                <div class="status-field">
+                  <span class="status-field-label">Channel</span>
+                  <span class="status-field-value">${!isConnected ? "—" : this.otConfig?.channel ?? "—"}</span>
+                </div>
+                <div class="status-field">
+                  <span class="status-field-label">Channel Mask</span>
+                  <span class="status-field-value">${!isConnected ? "—" : this.otConfig?.channelMask ?? "—"}</span>
+                </div>
+                <div class="status-field">
+                  <span class="status-field-label">Security Policy</span>
+                  <span class="status-field-value">${!isConnected ? "—" : this.otConfig?.securityPolicy ?? "—"}</span>
+                </div>
+                <div class="status-field">
+                  <span class="status-field-label">Extended PAN ID</span>
+                  <span class="status-field-value">${!isConnected ? "—" : this.otConfig?.extendedPanId ?? "—"}</span>
+                </div>
+                <div class="status-field">
+                  <span class="status-field-label">Active Timestamp</span>
+                  <span class="status-field-value">${!isConnected ? "—" : this.otConfig?.activeTimestamp ?? "—"}</span>
+                </div>
+                <div class="status-field status-field-version">
+                  <span class="status-field-label">Thread Version</span>
+                  <span class="status-field-value">${!isConnected ? "—" : this.otConfig?.threadVersion ?? "—"}</span>
+                </div>
+              </div>
             </div>
           </section>
 
-          <section class="status-section status-section-system">
+          <section class="status-section">
             <div class="status-section-ot-header">
               <h2 class="status-section-ot-title">
                 <span class="material-symbols-outlined">computer</span>
@@ -189,16 +159,16 @@ export class StatusComponent extends LitElement {
               </h2>
             </div>
             <div class="status-card status-card-ot">
-              <div class="status-ot-grid status-ot-grid--system">
+              <div class="status-ot-grid status-ot-grid-system">
                 <div class="status-field">
                   <span class="status-field-label">IPv4 (backend)</span>
-                  <span class="status-field-value status-field-value--accent mono-text">
+                  <span class="status-field-value">
                     ${this.systemInfo?.ipv4?.length ? this.systemInfo.ipv4.join(", ") : "—"}
                   </span>
                 </div>
                 <div class="status-field">
                   <span class="status-field-label">IPv6 (backend)</span>
-                  <span class="status-field-value status-field-value--accent mono-text status-field-value--wrap">
+                  <span class="status-field-value status-field-value-wrap">
                     ${this.systemInfo?.ipv6?.length ? this.systemInfo.ipv6.join(", ") : "—"}
                   </span>
                 </div>

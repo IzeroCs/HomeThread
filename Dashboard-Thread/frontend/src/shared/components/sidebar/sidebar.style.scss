@@ -4,8 +4,6 @@
 @use "shared/styles/button" as *;
 
 .sidebar {
-  width: $sidebar-width;
-  height: 100vh;
   background: $surface-container-low;
   display: flex;
   flex-direction: column;
@@ -13,8 +11,11 @@
   position: fixed;
   top: 0;
   left: 0;
+  width: $sidebar-width;
+  height: 100vh;
   font-family: inherit;
   z-index: 1000;
+  user-select: none;
 }
 
 .sidebar-header {
@@ -63,6 +64,8 @@
 }
 
 .sidebar-status-text {
+  color: $on-surface;
+
   font-size: 0.8rem;
   font-weight: bold;
   display: inline-block;
@@ -70,7 +73,6 @@
   background-color: $primary;
   @include border-radius(8px);
   @include text-transform(uppercase);
-  color: $on-surface;
 
   &.status-role-disconnected {
     background-color: $role-disconnected
@@ -146,6 +148,7 @@
     background: $primary;
     color: $on-primary;
     font-weight: 600;
+    cursor: auto;
   }
 
   &:hover:not(.active) {

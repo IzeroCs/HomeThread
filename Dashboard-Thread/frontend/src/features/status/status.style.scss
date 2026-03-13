@@ -1,33 +1,5 @@
-@use "shared/styles/variables" as *;
 @use "shared/styles/tokens" as *;
 @use "shared/styles/mixin" as *;
-
-// Local rgba (file-scoped) — RGB từ _variables
-$status-card-br-shadow: 0 25px 50px -12px rgba($black, 0.25);
-$status-br-icon-bg: rgba($slate-800, 0.5);
-$status-br-icon-gradient: linear-gradient(135deg, rgba($primary-blue, 0.2) 0%, transparent 60%);
-$status-br-icon-color: rgba($primary-blue, 0.4);
-$status-disconnected-bg: rgba($red-900, 0.15);
-$status-disconnected-gradient: linear-gradient(135deg, rgba($red-500, 0.1) 0%, transparent 60%);
-$status-disconnected-icon: rgba($red-500, 0.5);
-$status-badge-disconnected-bg: rgba($white, 0.06);
-$status-badge--disconnected-bg: rgba($red-950, 0.2);
-$status-badge--disconnected-border: rgba($red-label, 0.5);
-$status-field-toggle-hover: rgba($white, 0.06);
-$status-btn-refresh-shadow: 0 4px 14px rgba($primary-blue, 0.35);
-$status-ot-card-shadow: 0 25px 50px -12px rgba($black, 0.25);
-$status-overlay-bg: rgba($bg-dark, 0.6);
-$status-overlay-card-bg: rgba($card-dark, 0.95);
-$status-overlay-card-border: rgba($white, 0.1);
-$status-overlay-card-shadow: 0 25px 50px -12px rgba($black, 0.5);
-$status-overlay-icon-bg: rgba($primary-blue, 0.12);
-$status-overlay-icon-muted-bg: rgba($text-dark-subtle, 0.15);
-$status-overlay-btn-border: rgba($primary-blue, 0.25);
-$status-overlay-btn-bg: rgba($primary-blue, 0.1);
-$status-overlay-btn-hover-bg: rgba($primary-blue, 0.18);
-$status-overlay-btn-hover-border: rgba($primary-blue, 0.35);
-$status-channel-badge-bg: rgba($primary-blue, 0.15);
-$status-channel-badge-border: rgba($primary-blue, 0.25);
 
 .status-page {
   width: 100%;
@@ -124,7 +96,7 @@ $status-channel-badge-border: rgba($primary-blue, 0.25);
 }
 
 .status-badge {
-  background: color-mix(in srgb, $br-state-disconnected 15%, transparent);
+  background: color-mix(in oklab, $br-state-disconnected 15%, transparent);
   color: $br-state-disconnected;
   display: inline-flex;
   align-items: center;
@@ -138,7 +110,7 @@ $status-channel-badge-border: rgba($primary-blue, 0.25);
   width: fit-content;
 
   &.connected {
-    background: color-mix(in srgb, $br-state-connected 15%, transparent);
+    background: color-mix(in oklab, $br-state-connected 15%, transparent);
     color: $br-state-connected;
   }
 }
@@ -164,6 +136,14 @@ $status-channel-badge-border: rgba($primary-blue, 0.25);
 
   50% {
     opacity: 0.4;
+  }
+}
+
+.status-section {
+  &.disconnected {
+    .status-field-value {
+      color: $on-surface-variant;
+    }
   }
 }
 
@@ -196,7 +176,7 @@ $status-channel-badge-border: rgba($primary-blue, 0.25);
 
 .status-field-value {
   font-size: 14px;
-  color: color-mix(in srgb, $primary 60%, $on-primary);
+  color: color-mix(in oklab, $primary 60%, $on-primary);
   word-break: break-all;
 
   &.muted {
@@ -204,30 +184,11 @@ $status-channel-badge-border: rgba($primary-blue, 0.25);
   }
 }
 
-.status-channel-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-
-.status-channel-badge {
-  font-size: 10px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.02em;
-  padding: 2px 8px;
-  border-radius: 4px;
-  background: $status-channel-badge-bg;
-  color: $blue-300;
-  border: 1px solid $status-channel-badge-border;
-}
-
 .status-field-toggle {
   padding: 4px;
   border: none;
   background: transparent;
-  color: $text-dark-muted;
+  color: $on-surface-variant;
   cursor: pointer;
   border-radius: 4px;
   display: flex;
@@ -239,39 +200,11 @@ $status-channel-badge-border: rgba($primary-blue, 0.25);
   }
 
   &:hover {
-    color: $text-dark;
-    background: $status-field-toggle-hover;
+    color: $on-surface;
+    background: $surface-container-high;
   }
 }
 
-.status-btn-refresh {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 10px 18px;
-  margin-top: 4px;
-  border: none;
-  background: $primary-blue;
-  color: $white;
-  font-size: 14px;
-  font-weight: 700;
-  border-radius: 8px;
-  cursor: pointer;
-  width: fit-content;
-  box-shadow: $status-btn-refresh-shadow;
-  transition: background 0.2s, filter 0.2s;
-
-  .material-symbols-outlined {
-    font-size: 18px;
-  }
-
-  &:hover {
-    background: $blue-500;
-    filter: brightness(1.05);
-  }
-}
-
-// OpenThread Network section
 .status-section-ot-header {
   display: flex;
   align-items: center;
@@ -285,160 +218,29 @@ $status-channel-badge-border: rgba($primary-blue, 0.25);
   margin: 0;
   font-size: 20px;
   font-weight: 700;
-  color: $text-dark;
+  color: $on-surface;
   display: flex;
   align-items: center;
   gap: 8px;
 
   .material-symbols-outlined {
     font-size: 22px;
-    color: $primary-blue;
+    color: $primary;
   }
-}
-
-.status-section-ot-snapshot {
-  font-size: 12px;
-  font-weight: 500;
-  color: $text-dark-muted;
-  letter-spacing: 0.02em;
-}
-
-.status-section-ot-header--faded {
-  opacity: 0.5;
 }
 
 .status-card-ot {
-  background: $card-dark;
-  border: 1px solid $brand-border;
-  border-radius: $border-radius;
+  background: $surface-container;
+  border-radius: 10px;
   overflow: hidden;
-  box-shadow: $status-ot-card-shadow;
   position: relative;
 }
 
-// Disconnected: same grid with placeholder values, dimmed + grayscale
-.status-ot-grid--placeholder {
-  opacity: 0.3;
-  filter: grayscale(1);
-  pointer-events: none;
-  @include no-user-select;
-}
-
-.status-ot-overlay {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 10;
-  padding: 24px;
-}
-
-.status-ot-overlay {
-  background: $status-overlay-bg;
-  backdrop-filter: blur(1px);
-}
-
-.status-ot-overlay-card {
-  background: $status-overlay-card-bg;
-  backdrop-filter: blur(8px);
-  border: 1px solid $status-overlay-card-border;
-  border-radius: 12px;
-  padding: 32px;
-  max-width: 28rem;
-  text-align: center;
-  box-shadow: $status-overlay-card-shadow;
-
-  &--compact {
-    padding: 24px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 12px;
-  }
-}
-
-.status-ot-overlay-icon {
-  width: 64px;
-  height: 64px;
-  margin: 0 auto 16px;
-  border-radius: 50%;
-  background: $status-overlay-icon-bg;
-  color: $primary-blue;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-
-  .material-symbols-outlined {
-    font-size: 40px;
-  }
-
-  &--muted {
-    background: $status-overlay-icon-muted-bg;
-    color: $text-dark-subtle;
-
-    .material-symbols-outlined {
-      font-size: 40px;
-    }
-  }
-}
-
-.status-ot-overlay-card--compact .status-ot-overlay-icon--muted {
-  margin: 0;
-}
-
-.status-ot-overlay-text-only {
-  font-size: 14px;
-  font-weight: 500;
-  color: $text-dark-muted;
-}
-
-.status-ot-overlay-title {
-  margin: 0 0 8px 0;
-  font-size: 20px;
-  font-weight: 700;
-  color: $text-dark;
-}
-
-.status-ot-overlay-text {
-  margin: 0 0 24px 0;
-  font-size: 14px;
-  line-height: 1.5;
-  color: $text-dark-muted;
-}
-
-.status-ot-overlay-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  width: 100%;
-  padding: 10px 20px;
-  border: 1px solid $status-overlay-btn-border;
-  background: $status-overlay-btn-bg;
-  color: $primary-blue;
-  font-size: 14px;
-  font-weight: 600;
-  border-radius: 8px;
-  cursor: pointer;
-  transition: background 0.2s, border-color 0.2s;
-
-  .material-symbols-outlined {
-    font-size: 18px;
-  }
-
-  &:hover {
-    background: $status-overlay-btn-hover-bg;
-    border-color: $status-overlay-btn-hover-border;
-  }
-}
-
-// Grid 3×4 (12 cells) so each row has equal height across columns
 .status-ot-grid {
   display: grid;
   grid-template-columns: 1fr;
   grid-auto-rows: minmax(100px, auto);
-  border-top: 1px solid $brand-border;
+  border-top: 1px solid $outline-variant;
 
   >.status-field {
     min-height: 100px;
@@ -447,7 +249,7 @@ $status-channel-badge-border: rgba($primary-blue, 0.25);
     flex-direction: column;
     justify-content: center;
     gap: 8px;
-    border-top: 1px solid $brand-border;
+    border-top: 1px solid $outline-variant;
 
     &:nth-child(-n+1) {
       border-top: none;
@@ -455,7 +257,7 @@ $status-channel-badge-border: rgba($primary-blue, 0.25);
   }
 
   >.status-field:nth-child(n+2) {
-    border-top: 1px solid $brand-border;
+    border-top: 1px solid $outline-variant;
   }
 }
 
@@ -467,8 +269,8 @@ $status-channel-badge-border: rgba($primary-blue, 0.25);
     border-top: none;
 
     >.status-field {
-      border-top: 1px solid $brand-border;
-      border-left: 1px solid $brand-border;
+      border-top: 1px solid $outline-variant;
+      border-left: 1px solid $outline-variant;
 
       &:nth-child(-n+2) {
         border-top: none;
@@ -496,30 +298,13 @@ $status-channel-badge-border: rgba($primary-blue, 0.25);
       }
 
       &:not(:nth-child(3n+1)) {
-        border-left: 1px solid $brand-border;
+        border-left: 1px solid $outline-variant;
       }
     }
   }
 }
 
-.status-error {
-  margin: 0;
-  color: $red-300;
-  font-size: 14px;
-}
-
-.status-muted {
-  margin: 0;
-  color: $text-dark-muted;
-  font-size: 14px;
-}
-
-// System section — cùng bảng/grid như OpenThread Network, chỉ 2 ô
-.status-section-system .status-section-ot-header {
-  margin-bottom: 16px;
-}
-
-.status-ot-grid--system {
+.status-ot-grid-system {
   @media (min-width: 768px) {
     grid-template-rows: minmax(100px, auto);
     grid-auto-rows: unset;
@@ -530,6 +315,6 @@ $status-channel-badge-border: rgba($primary-blue, 0.25);
   }
 }
 
-.status-field-value--wrap {
+.status-field-value-wrap {
   word-break: break-all;
 }
