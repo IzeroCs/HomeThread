@@ -226,7 +226,7 @@ system-tab {
 
     &:hover:not(:disabled) {
       background: $action-warn-hover;
-      box-shadow: $system-btn-warn-glow;
+      box-shadow: $system-btn-restart-glow;
     }
   }
 
@@ -236,7 +236,7 @@ system-tab {
 
     &:hover:not(:disabled) {
       background: $action-danger-hover;
-      box-shadow: $system-btn-danger-glow;
+      box-shadow: $system-btn-factory-glow;
     }
   }
 

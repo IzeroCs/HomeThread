@@ -1,4 +1,5 @@
 @use "shared/styles/variables" as *;
+@use "shared/styles/tokens" as *;
 @use "shared/styles/mixin" as *;
 
 // Local rgba (file-scoped) — RGB từ _variables
@@ -28,28 +29,10 @@ $status-overlay-btn-hover-border: rgba($primary-blue, 0.35);
 $status-channel-badge-bg: rgba($primary-blue, 0.15);
 $status-channel-badge-border: rgba($primary-blue, 0.25);
 
-status-page {
-  display: contents;
-}
-
 .status-page {
   width: 100%;
   max-width: 1200px;
   margin: 0 auto;
-}
-
-.status-page-title {
-  margin: 0 0 4px 0;
-  font-size: 30px;
-  font-weight: 700;
-  color: $text-dark;
-  letter-spacing: -0.025em;
-}
-
-.status-page-subtitle {
-  margin: 0 0 32px 0;
-  font-size: 14px;
-  color: $text-dark-muted;
 }
 
 .status-section {
@@ -60,15 +43,12 @@ status-page {
   }
 }
 
-// BR Connection card (connected: large icon + content)
 .status-card-br {
   display: flex;
   flex-direction: column;
-  background: $card-dark;
-  border: 1px solid $brand-border;
-  border-radius: $border-radius;
+  background: $surface-container;
+  border-radius: 10px;
   overflow: hidden;
-  box-shadow: $status-card-br-shadow;
 }
 
 @media (min-width: 640px) {
@@ -85,23 +65,23 @@ status-page {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: $status-br-icon-bg;
+  background: rgba($primary, 0.15);
   position: relative;
   overflow: hidden;
 
-  &::before {
-    content: "";
-    position: absolute;
-    inset: 0;
-    background: $status-br-icon-gradient;
-    pointer-events: none;
-  }
-
   .material-symbols-outlined {
     font-size: 60px;
-    color: $status-br-icon-color;
+    color: rgba($primary, 0.5);
     position: relative;
     z-index: 1;
+  }
+
+  &.disconnected {
+    background: rgba($red-900, 0.15);
+
+    .material-symbols-outlined {
+      color: rgba($red-500, 0.5);
+    }
   }
 }
 
@@ -110,20 +90,6 @@ status-page {
     width: 33.333%;
     max-width: 280px;
     min-height: auto;
-  }
-}
-
-// BR card when disconnected: same layout, left panel red + signal_disconnected
-.status-card-br-icon--disconnected {
-  background: $status-disconnected-bg;
-
-  &::before {
-    background: $status-disconnected-gradient;
-  }
-
-  .material-symbols-outlined {
-    font-size: 60px;
-    color: $status-disconnected-icon;
   }
 }
 
@@ -148,22 +114,18 @@ status-page {
   margin: 0;
   font-size: 20px;
   font-weight: 700;
-  color: $text-dark;
+  color: $on-surface;
 }
 
 .status-card-br-fields {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 16px;
-}
-
-@media (min-width: 1024px) {
-  .status-card-br-fields {
-    grid-template-columns: 1fr 1fr;
-  }
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
 }
 
 .status-badge {
+  background: color-mix(in srgb, $br-state-disconnected 15%, transparent);
+  color: $br-state-disconnected;
   display: inline-flex;
   align-items: center;
   gap: 8px;
@@ -176,21 +138,8 @@ status-page {
   width: fit-content;
 
   &.connected {
-    background: $connected-badge-bg;
-    border: 1px solid $connected-badge-border;
-    color: $connected-badge-text;
-  }
-
-  &.disconnected {
-    background: $status-badge-disconnected-bg;
-    border: 1px solid $brand-border;
-    color: $text-dark-muted;
-  }
-
-  &--disconnected {
-    background: $status-badge--disconnected-bg;
-    border: 1px solid $status-badge--disconnected-border;
-    color: $red-300;
+    background: color-mix(in srgb, $br-state-connected 15%, transparent);
+    color: $br-state-connected;
   }
 }
 
@@ -198,18 +147,24 @@ status-page {
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background: $connected-badge-text;
+  background: $br-state-disconnected;
   flex-shrink: 0;
   animation: status-badge-pulse 1.5s ease-in-out infinite;
 
-  &--red {
-    background: $red-500;
+  &.connected {
+    background: $br-state-connected;
   }
 }
 
 @keyframes status-badge-pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.4; }
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.4;
+  }
 }
 
 .status-field {
@@ -233,28 +188,19 @@ status-page {
 .status-field-label {
   font-size: 11px;
   font-weight: 700;
-  color: $text-dark-subtle;
+  color: $on-surface-variant;
   text-transform: uppercase;
   letter-spacing: 0.08em;
+  line-height: 1.5;
 }
 
 .status-field-value {
   font-size: 14px;
-  color: $text-dark;
+  color: color-mix(in srgb, $primary 60%, $on-primary);
   word-break: break-all;
 
-  &--accent {
-    color: $blue-300;
-  }
-
-  &--muted {
-    color: $text-dark-subtle;
-  }
-
-  &--mono-small {
-    font-size: 10px;
-    line-height: 1.4;
-    color: $text-dark-muted;
+  &.muted {
+    color: $on-surface-variant;
   }
 }
 
@@ -494,7 +440,7 @@ status-page {
   grid-auto-rows: minmax(100px, auto);
   border-top: 1px solid $brand-border;
 
-  > .status-field {
+  >.status-field {
     min-height: 100px;
     padding: 24px;
     display: flex;
@@ -508,7 +454,7 @@ status-page {
     }
   }
 
-  > .status-field:nth-child(n+2) {
+  >.status-field:nth-child(n+2) {
     border-top: 1px solid $brand-border;
   }
 }
@@ -520,13 +466,14 @@ status-page {
     grid-auto-rows: unset;
     border-top: none;
 
-    > .status-field {
+    >.status-field {
       border-top: 1px solid $brand-border;
       border-left: 1px solid $brand-border;
 
       &:nth-child(-n+2) {
         border-top: none;
       }
+
       &:nth-child(2n+1) {
         border-left: none;
       }
@@ -539,13 +486,15 @@ status-page {
     grid-template-columns: repeat(3, 1fr);
     grid-template-rows: repeat(4, minmax(100px, 1fr));
 
-    > .status-field {
+    >.status-field {
       &:nth-child(-n+3) {
         border-top: none;
       }
+
       &:nth-child(3n+1) {
         border-left: none;
       }
+
       &:not(:nth-child(3n+1)) {
         border-left: 1px solid $brand-border;
       }

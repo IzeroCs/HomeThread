@@ -1,6 +1,11 @@
-@use "shared/styles/variables" as *;
+@use "shared/styles/tokens" as *;
+@use "shared/styles/spacing" as *;
 
-app-shell {
+app-shell,
+waiting-for-backend,
+sidebar-nav,
+page-header,
+status-view {
   display: contents;
 }
 
@@ -8,7 +13,7 @@ app-shell {
   min-height: 100vh;
   display: flex;
   flex-direction: row;
-  background: $bg-dark;
+  background: $background;
 
   &--waiting {
     flex-direction: column;
@@ -22,8 +27,7 @@ app-shell {
   min-width: 0;
   display: flex;
   flex-direction: column;
-  padding: 24px;
-  padding-left: 304px; // 260px sidebar + 44px spacing
+  padding-left: $sidebar-width;
 
   &--topology {
     padding: 0;
@@ -32,14 +36,14 @@ app-shell {
   }
 }
 
-.app-container {
+.page-container {
   width: 100%;
   max-width: 100%;
   display: flex;
   align-items: flex-start;
   justify-content: center;
   min-height: 0;
-  padding: 0;
+  padding: $app-main-padding;
 
   .app-layout--waiting & {
     min-height: auto;

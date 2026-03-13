@@ -30,7 +30,7 @@ export class AppShell extends LitElement {
 
   constructor() {
     super();
-    this.page = "topology";
+    this.page = "status";
     this.toasts = [];
   }
 
@@ -68,7 +68,6 @@ export class AppShell extends LitElement {
 
   get _isSettingsPage(): boolean {
     return (
-      this.page === "settings" ||
       this.page === "settings-br" ||
       this.page === "settings-openthread" ||
       this.page === "settings-system"
@@ -86,9 +85,7 @@ export class AppShell extends LitElement {
     if (!wsConnected) {
       return html`
         <div class="app-layout app-layout--waiting">
-          <div class="app-container">
-            <waiting-for-backend></waiting-for-backend>
-          </div>
+          <waiting-for-backend></waiting-for-backend>
         </div>
       `;
     }
@@ -96,7 +93,7 @@ export class AppShell extends LitElement {
     if (!config) {
       return html`
         <div class="app-layout">
-          <sidebar-nav logoOnly></sidebar-nav>
+          <sidebar-nav></sidebar-nav>
           <main class="app-main">
             <div class="app-container">
               <br-connection-form
@@ -122,74 +119,68 @@ export class AppShell extends LitElement {
           .nodesCount=${this._nodesCount}
         ></sidebar-nav>
         <toast-container .toasts=${this.toasts} .removeToast=${this._removeToast.bind(this)}></toast-container>
+
         <main class="app-main ${this.page === "topology" ? "app-main--topology" : ""}">
-          ${this.page === "status"
-            ? html`
-                <div class="app-container">
-                  <status-view
-                    .brStatus=${this.ws.brStatus}
-                    .otConfig=${this.ws.otConfig}
-                    .brConfig=${config}
-                    .systemInfo=${this.ws.systemInfo}
-                    .testBrConnect=${this.ws.testBrConnect.bind(this.ws)}
-                  ></status-view>
-                </div>
-              `
-            : ""}
-          ${this._isSettingsPage
-            ? html`
-                <div class="app-container">
-                  <settings-view
-                    .brConfig=${config}
-                    .onSaveBrConfig=${this._handleConfigSave}
-                    .onTestBrConnect=${this.ws.testBrConnect.bind(this.ws)}
-                    .activeSection=${this._settingsSection}
-                    .showToast=${this._showToast.bind(this)}
-                    .isConnected=${this.ws.brStatus?.isConnected ?? false}
-                    .otConfig=${this.ws.otConfig}
-                    .threadRunOnConnect=${this.ws.threadRunOnConnect}
-                    .getOtConfig=${this.ws.getOtConfig.bind(this.ws)}
-                    .setOtConfig=${this.ws.setOtConfig.bind(this.ws)}
-                    .startThread=${this.ws.startThread.bind(this.ws)}
-                    .stopThread=${this.ws.stopThread.bind(this.ws)}
-                    .getThreadRunOnConnect=${this.ws.getThreadRunOnConnect.bind(this.ws)}
-                    .setThreadRunOnConnect=${this.ws.setThreadRunOnConnect.bind(this.ws)}
-                    .reset=${this.ws.reset.bind(this.ws)}
-                    .factoryReset=${this.ws.factoryReset.bind(this.ws)}
-                  ></settings-view>
-                </div>
-              `
-            : ""}
-          ${this.page === "topology"
-            ? html`
-                <topology-map
-                  class="app-topology"
-                  .routerTable=${this.ws.routerTable}
-                  .childTable=${this.ws.childTable}
-                  .otConfig=${this.ws.otConfig}
-                  .brStatus=${this.ws.brStatus}
-                ></topology-map>
-              `
-            : ""}
-          ${this.page === "nodes"
-            ? html`
-                <div class="app-container">
-                  <nodes-view
-                    .isConnected=${this.ws.brStatus?.isConnected ?? false}
-                    .brConfig=${config}
-                    .routerTable=${this.ws.routerTable}
-                    .childTable=${this.ws.childTable}
-                    .joinerTable=${this.ws.joinerTable}
-                    .otConfig=${this.ws.otConfig}
-                    .threadState=${this.ws.threadState}
-                    .testBrConnect=${this.ws.testBrConnect.bind(this.ws)}
-                    .getJoinerTable=${this.ws.getJoinerTable.bind(this.ws)}
-                    .commissionerConnect=${this.ws.commissionerConnect.bind(this.ws)}
-                    .showToast=${this._showToast.bind(this)}
-                  ></nodes-view>
-                </div>
-              `
-            : ""}
+          ${this.page === "status" ? html`
+            <status-view
+              .brStatus=${this.ws.brStatus}
+              .otConfig=${this.ws.otConfig}
+              .brConfig=${config}
+              .systemInfo=${this.ws.systemInfo}
+              .testBrConnect=${this.ws.testBrConnect.bind(this.ws)}
+            ></status-view>
+          ` : ""}
+
+          ${this._isSettingsPage ? html`
+            <div class="app-container">
+              <settings-view
+                .brConfig=${config}
+                .onSaveBrConfig=${this._handleConfigSave}
+                .onTestBrConnect=${this.ws.testBrConnect.bind(this.ws)}
+                .activeSection=${this._settingsSection}
+                .showToast=${this._showToast.bind(this)}
+                .isConnected=${this.ws.brStatus?.isConnected ?? false}
+                .otConfig=${this.ws.otConfig}
+                .threadRunOnConnect=${this.ws.threadRunOnConnect}
+                .getOtConfig=${this.ws.getOtConfig.bind(this.ws)}
+                .setOtConfig=${this.ws.setOtConfig.bind(this.ws)}
+                .startThread=${this.ws.startThread.bind(this.ws)}
+                .stopThread=${this.ws.stopThread.bind(this.ws)}
+                .getThreadRunOnConnect=${this.ws.getThreadRunOnConnect.bind(this.ws)}
+                .setThreadRunOnConnect=${this.ws.setThreadRunOnConnect.bind(this.ws)}
+                .reset=${this.ws.reset.bind(this.ws)}
+                .factoryReset=${this.ws.factoryReset.bind(this.ws)}
+              ></settings-view>
+            </div>
+          ` : ""}
+
+          ${this.page === "topology" ? html`
+              <topology-map
+                class="app-topology"
+                .routerTable=${this.ws.routerTable}
+                .childTable=${this.ws.childTable}
+                .otConfig=${this.ws.otConfig}
+                .brStatus=${this.ws.brStatus}
+              ></topology-map>
+            ` : ""}
+
+          ${this.page === "nodes" ? html`
+            <div class="app-container">
+              <nodes-view
+                .isConnected=${this.ws.brStatus?.isConnected ?? false}
+                .brConfig=${config}
+                .routerTable=${this.ws.routerTable}
+                .childTable=${this.ws.childTable}
+                .joinerTable=${this.ws.joinerTable}
+                .otConfig=${this.ws.otConfig}
+                .threadState=${this.ws.threadState}
+                .testBrConnect=${this.ws.testBrConnect.bind(this.ws)}
+                .getJoinerTable=${this.ws.getJoinerTable.bind(this.ws)}
+                .commissionerConnect=${this.ws.commissionerConnect.bind(this.ws)}
+                .showToast=${this._showToast.bind(this)}
+              ></nodes-view>
+            </div>
+          ` : ""}
         </main>
       </div>
     `;

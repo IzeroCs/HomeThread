@@ -1,41 +1,15 @@
-@use "shared/styles/variables" as *;
+@use "shared/styles/tokens" as *;
 @use "shared/styles/mixin" as *;
-
-// Functional color tokens (component-scoped)
-$sidebar-bg: $card-dark;
-$sidebar-panel-shadow: 0 14px 40px rgba($black, 0.45);
-$sidebar-logo-bg: $primary-blue;
-$sidebar-logo-icon: $white;
-$sidebar-brand-text: $text-dark;
-$sidebar-status-dot-disconnected: $text-dark-subtle;
-$sidebar-status-dot-br: $state-orange;
-$sidebar-status-dot-thread-connected: $primary-blue;
-$sidebar-status-dot-router: $state-purple;
-$sidebar-status-dot-leader: $connected-badge-text;
-$sidebar-nav-item-text: $text-dark-muted;
-$sidebar-nav-item-active-bg: rgba($white, 0.08);
-$sidebar-nav-item-active-text: $primary-blue;
-$sidebar-nav-item-hover-text: $text-dark;
-$sidebar-nav-item-hover-bg: rgba($white, 0.03);
-$sidebar-section-title-text: $text-dark-muted;
-$sidebar-nested-active-text: $primary-blue;
-$sidebar-nested-hover-text: $text-dark;
-$sidebar-expand-icon: $text-dark-muted;
-$sidebar-expand-icon-open: $text-dark;
-$sidebar-footer-divider: $brand-border;
-
-sidebar-nav {
-  display: contents;
-}
+@use "shared/styles/spacing" as *;
+@use "shared/styles/button" as *;
 
 .sidebar {
-  width: 260px;
+  width: $sidebar-width;
   height: 100vh;
-  background: $sidebar-bg;
+  background: $surface-container-low;
   display: flex;
   flex-direction: column;
-  padding: 24px 18px;
-  box-shadow: $sidebar-panel-shadow;
+  padding: 18px;
   position: fixed;
   top: 0;
   left: 0;
@@ -48,13 +22,14 @@ sidebar-nav {
   align-items: center;
   gap: 12px;
   flex-shrink: 0;
-  margin-bottom: 80px;
+  margin-bottom: 30px;
 }
 
-.sidebar-brand-row {
+.sidebar-brand {
   display: flex;
   align-items: center;
-  gap: 10px;
+  justify-content: center;
+  gap: 12px;
   flex: 1;
   min-width: 0;
 }
@@ -62,12 +37,12 @@ sidebar-nav {
 .sidebar-logo {
   width: 40px;
   height: 40px;
-  border-radius: $border-radius-small;
-  background: $sidebar-logo-bg;
+  border-radius: 8px;
+  background: $primary;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: $sidebar-logo-icon;
+  color: $on-surface;
   flex-shrink: 0;
 
   .material-symbols-outlined {
@@ -78,79 +53,43 @@ sidebar-nav {
 .sidebar-brand-text {
   font-size: 18px;
   font-weight: 600;
-  color: $sidebar-brand-text;
+  color: $on-surface;
 }
 
-@keyframes status-dot-ripple {
-  0% {
-    transform: translate(-50%, -50%) scale(1);
-    opacity: 0.6;
-  }
-  100% {
-    transform: translate(-50%, -50%) scale(2.5);
-    opacity: 0;
-  }
-}
-
-.sidebar-status-dot {
-  position: relative;
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
+.sidebar-status {
   flex-shrink: 0;
+  margin-bottom: 50px;
+  text-align: center;
+}
 
-  &::after {
-    content: "";
-    position: absolute;
-    left: 50%;
-    top: 50%;
-    width: 10px;
-    height: 10px;
-    border-radius: 50%;
-    border: 2px solid;
-    background: transparent;
-    animation: status-dot-ripple 1.5s ease-out infinite;
-    pointer-events: none;
+.sidebar-status-text {
+  font-size: 0.8rem;
+  font-weight: bold;
+  display: inline-block;
+  padding: 4px 8px;
+  background-color: $primary;
+  @include border-radius(8px);
+  @include text-transform(uppercase);
+  color: $on-surface;
+
+  &.status-role-disconnected {
+    background-color: $role-disconnected
   }
 
-  &.status-disconnected {
-    background: $sidebar-status-dot-disconnected;
-
-    &::after {
-      border-color: $sidebar-status-dot-disconnected;
-    }
+  &.status-role-disabled {
+    background-color: $role-disabled;
   }
 
-  &.status-br {
-    background: $sidebar-status-dot-br;
-
-    &::after {
-      border-color: $sidebar-status-dot-br;
-    }
+  &.status-role-child {
+    background-color: $role-child;
   }
 
-  &.status-thread-blue {
-    background: $sidebar-status-dot-thread-connected;
-
-    &::after {
-      border-color: $sidebar-status-dot-thread-connected;
-    }
+  &.status-role-router {
+    background-color: $role-router;
   }
 
-  &.status-thread-purple {
-    background: $sidebar-status-dot-router;
-
-    &::after {
-      border-color: $sidebar-status-dot-router;
-    }
-  }
-
-  &.status-thread-green {
-    background: $sidebar-status-dot-leader;
-
-    &::after {
-      border-color: $sidebar-status-dot-leader;
-    }
+  &.status-role-leader {
+    background-color: $role-leader;
   }
 }
 
@@ -159,7 +98,33 @@ sidebar-nav {
   flex-direction: column;
   gap: 14px;
   flex: 1;
+  overflow-y: auto;
   min-height: 0;
+  @include scrollbar(4px, transparent, transparent, 8px);
+}
+
+.sidebar-nav-section {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+
+  button,
+  button:focus-visible {
+    outline: none;
+  }
+}
+
+.sidebar-nav-section-title {
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: $on-surface-variant;
+  margin-top: 30px;
+
+  &:first-child {
+    margin-top: 0;
+  }
 }
 
 .sidebar-nav-item {
@@ -169,117 +134,75 @@ sidebar-nav {
   padding: 12px 18px;
   border: none;
   background: transparent;
-  color: $sidebar-nav-item-text;
+  color: $on-surface;
   font-size: 14px;
-  font-weight: 500;
-  cursor: pointer;
-  border-radius: 9999px;
-  transition: color 0.2s, background 0.2s;
-  text-align: left;
-  width: 100%;
+  font-weight: 400;
   font-family: inherit;
-
-  .material-symbols-outlined {
-    font-size: 20px;
-    flex-shrink: 0;
-  }
+  cursor: pointer;
+  @include transition(color 0.2s, background 0.2s);
+  @include border-radius(10px);
 
   &.active {
-    background: $sidebar-nav-item-active-bg;
-    color: $sidebar-nav-item-active-text;
-
-    .material-symbols-outlined {
-      color: $sidebar-nav-item-active-text;
-    }
+    background: $primary;
+    color: $on-primary;
+    font-weight: 600;
   }
 
   &:hover:not(.active) {
-    color: $sidebar-nav-item-hover-text;
-    background: $sidebar-nav-item-hover-bg;
+    background: $surface-container;
+    color: $on-surface;
   }
-}
-
-.sidebar-section {
-  margin-left: 18px;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.sidebar-section-items {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  padding-left: 8px;
-  max-height: 0;
-  opacity: 0;
-  overflow: hidden;
-  transform: translateY(-4px);
-  transition:
-    max-height 0.2s ease,
-    opacity 0.2s ease,
-    transform 0.2s ease;
-  pointer-events: none;
-}
-
-.sidebar-section--open .sidebar-section-items {
-  max-height: 120px;
-  opacity: 1;
-  transform: translateY(0);
-  pointer-events: auto;
-}
-
-.sidebar-section-title {
-  font-size: 12px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: $sidebar-section-title-text;
-}
-
-.sidebar-nav-item--nested {
-  padding: 6px 0 6px 10px;
-  border-radius: 0;
-  background: transparent;
-  gap: 8px;
-
-  .sidebar-nav-nested-icon {
-    font-size: 16px;
-  }
-
-  .sidebar-nav-label {
-    font-size: 13px;
-  }
-
-  &.active {
-    background: transparent;
-    color: $sidebar-nested-active-text;
-  }
-
-  &:hover:not(.active) {
-    background: transparent;
-    color: $sidebar-nested-hover-text;
-  }
-}
-
-.sidebar-nav-label {
-  @include truncate;
-}
-
-.sidebar-expand-icon {
-  margin-left: auto;
-  font-size: 18px;
-  color: $sidebar-expand-icon;
-  transition: transform 0.2s ease, color 0.2s ease;
-}
-
-.sidebar-expand-icon--open {
-  transform: rotate(180deg);
-  color: $sidebar-expand-icon-open;
 }
 
 .sidebar-footer {
-  padding-top: 16px;
+  margin-left: -18px;
+  margin-right: -18px;
+  padding: 18px;
+  padding-bottom: 0;
   flex-shrink: 0;
-  border-top: 1px solid $sidebar-footer-divider;
+  border-top: 1px solid $outline-variant;
+}
+
+.sidebar-user-box {
+  display: flex;
+  background: $surface-container;
+  @include border-radius(10px);
+  align-items: center;
+  gap: 12px;
+  padding: 12px 18px;
+
+  &:hover {
+    background: $surface-container-high;
+    color: $on-surface;
+    cursor: pointer;
+  }
+}
+
+.sidebar-user-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: $surface-container-high;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: $on-surface;
+}
+
+.sidebar-user-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.sidebar-user-username {
+  font-size: 14px;
+  font-weight: 500;
+  color: $on-surface;
+  margin-bottom: 4px;
+}
+
+.sidebar-user-name {
+  font-size: 12px;
+  color: $on-surface-variant;
 }

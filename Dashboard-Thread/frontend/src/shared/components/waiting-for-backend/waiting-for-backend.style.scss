@@ -1,27 +1,4 @@
-@use "shared/styles/variables" as *;
-
-// Functional color tokens (component-scoped)
-$waiting-title-text: $text-dark;
-$waiting-subtitle-text: $text-dark-muted;
-$waiting-spinner-track: rgba($primary-blue, 0.2);
-$waiting-spinner-accent: $primary-blue;
-$waiting-card-bg: $card-dark-subtle;
-$waiting-card-border: $brand-border;
-$waiting-card-shadow: 0 25px 50px -12px rgba($black, 0.5);
-$waiting-card-label: $primary-blue;
-$waiting-card-status-text: $text-dark;
-$waiting-progress-track: $card-dark;
-$waiting-progress-bar: $primary-blue;
-$waiting-hint-text: $text-dark-muted;
-$waiting-info-pill-bg: rgba($card-dark, 0.3);
-$waiting-info-pill-border: $border-ultra-subtle;
-$waiting-info-icon: $text-dark-subtle;
-$waiting-orb-top: rgba($primary-blue, 0.08);
-$waiting-orb-bottom: rgba($primary-blue, 0.12);
-
-waiting-for-backend {
-  display: contents;
-}
+@use "shared/styles/tokens" as *;
 
 .waiting-for-backend {
   position: relative;
@@ -45,15 +22,15 @@ waiting-for-backend {
   width: 6rem;
   height: 6rem;
   border-radius: 50%;
-  border: 4px solid $waiting-spinner-track;
-  border-top-color: $waiting-spinner-accent;
+  border: 4px solid $surface-container-low;
+  border-top-color: $primary;
   animation: waiting-spin 2s linear infinite;
 }
 
 .waiting-for-backend__spinner-icon {
   position: absolute;
   font-size: 2.25rem;
-  color: $waiting-spinner-accent;
+  color: $primary;
   pointer-events: none;
 }
 
@@ -78,7 +55,7 @@ waiting-for-backend {
   font-size: 2.25rem;
   font-weight: 900;
   letter-spacing: -0.025em;
-  color: $waiting-title-text;
+  color: $on-surface;
   line-height: 1.2;
 
   @media (min-width: 768px) {
@@ -90,17 +67,15 @@ waiting-for-backend {
   margin: 0;
   font-size: 1.125rem;
   font-weight: 400;
-  color: $waiting-subtitle-text;
+  color: $on-surface-variant;
 }
 
 .waiting-for-backend__card {
   width: 100%;
   max-width: 28rem;
-  background: $waiting-card-bg;
-  border: 1px solid $waiting-card-border;
+  background: $surface-container;
   padding: 1.5rem;
   border-radius: 0.75rem;
-  box-shadow: $waiting-card-shadow;
 }
 
 .waiting-for-backend__card-inner {
@@ -120,7 +95,7 @@ waiting-for-backend {
   font-size: 0.625rem;
   text-transform: uppercase;
   letter-spacing: 0.1em;
-  color: $waiting-card-label;
+  color: $primary;
   font-weight: 700;
   margin-bottom: 0.25rem;
 }
@@ -130,21 +105,21 @@ waiting-for-backend {
   font-size: 0.875rem;
   font-weight: 600;
   line-height: 1;
-  color: $waiting-card-status-text;
+  color: $on-surface;
 }
 
 .waiting-for-backend__progress-track {
   width: 100%;
   height: 0.5rem;
   border-radius: 9999px;
-  background: $waiting-progress-track;
+  background: $surface-container-low;
   overflow: hidden;
 }
 
 .waiting-for-backend__progress-bar {
   height: 100%;
   border-radius: 9999px;
-  background: $waiting-progress-bar;
+  background: $primary;
   width: 40%;
   animation: waiting-progress 1.5s ease-in-out infinite;
 }
@@ -167,7 +142,7 @@ waiting-for-backend {
 
 .waiting-for-backend__card-icon {
   font-size: 1rem;
-  color: $waiting-card-label;
+  color: $primary;
 }
 
 .waiting-for-backend__card-hint {
@@ -175,7 +150,7 @@ waiting-for-backend {
   font-size: 0.75rem;
   font-weight: 500;
   line-height: 1.4;
-  color: $waiting-subtitle-text;
+  color: $on-surface-variant;
 }
 
 .waiting-for-backend__info {
@@ -184,20 +159,19 @@ waiting-for-backend {
   gap: 0.5rem;
   padding: 0.5rem 1rem;
   border-radius: 9999px;
-  background: $waiting-info-pill-bg;
-  border: 1px solid $waiting-info-pill-border;
+  background: $surface-container-lowest;
 }
 
 .waiting-for-backend__info-icon {
   font-size: 1rem;
-  color: $waiting-info-icon;
+  color: $on-surface-variant;
 }
 
 .waiting-for-backend__info-text {
   margin: 0;
   font-size: 0.75rem;
   font-weight: 400;
-  color: $waiting-info-icon;
+  color: $on-surface-variant;
 }
 
 // Decorative background blurs
@@ -210,27 +184,4 @@ waiting-for-backend {
   pointer-events: none;
   z-index: -1;
   overflow: hidden;
-}
-
-.waiting-for-backend__bg-orb {
-  position: absolute;
-  border-radius: 50%;
-  filter: blur(120px);
-  opacity: 0.6;
-
-  &--top {
-    top: -10%;
-    left: -10%;
-    width: 40%;
-    height: 40%;
-    background: $waiting-orb-top;
-  }
-
-  &--bottom {
-    bottom: -10%;
-    right: -10%;
-    width: 40%;
-    height: 40%;
-    background: $waiting-orb-bottom;
-  }
 }

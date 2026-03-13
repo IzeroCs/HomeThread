@@ -1,0 +1,51 @@
+@use "shared/styles/tokens" as *;
+@use "shared/styles/mixin" as *;
+@use "shared/styles/spacing" as *;
+@use "shared/styles/button" as *;
+
+.page-header {
+  background: color-mix(in srgb, $background 85%, transparent);
+  @include backdrop-filter(blur(10px));
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  position: sticky;
+  top: 0;
+  left: 0;
+  height: $page-header-height;
+  width: 100%;
+  max-width: 100%;
+  z-index: 1000;
+  padding: 18px;
+}
+
+.page-header-heading {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 10px;
+}
+
+.page-header-heading-title {
+  display: inline-block;
+  margin: 0;
+  padding: 0;
+  font-size: 24px;
+  font-weight: 700;
+  color: $on-surface;
+  line-height: 1.5;
+}
+
+.page-header-heading-subtitle {
+  font-size: 13px;
+  color: $on-surface-variant;
+  margin: 0;
+  padding: 0;
+}
+
+.page-header-action {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
