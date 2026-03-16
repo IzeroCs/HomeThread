@@ -60,6 +60,17 @@ export class WebSocketController implements ReactiveController {
     this.host.requestUpdate();
   }
 
+  /** Xóa dữ liệu OT/Thread khi BR disconnect để UI không hiển thị dữ liệu cũ. */
+  private clearBrData(): void {
+    this.otConfig = null;
+    this.threadRunning = null;
+    this.threadState = null;
+    this.routerTable = null;
+    this.childTable = null;
+    this.joinerTable = null;
+    this.systemInfo = null;
+  }
+
   hostConnected(): void {
     if (this.socket?.connected) return;
 
@@ -123,6 +134,7 @@ export class WebSocketController implements ReactiveController {
     socket.on(EVENTS.BR_STATUS, (data: ConnectionStatus) => {
       this.brStatus = data;
       this.brError = null;
+      if (!data?.isConnected) this.clearBrData();
       this.requestUpdate();
     });
 
@@ -134,6 +146,7 @@ export class WebSocketController implements ReactiveController {
 
     socket.on(EVENTS.BR_DISCONNECTED, () => {
       this.brStatus = this.brStatus ? { ...this.brStatus, isConnected: false } : null;
+      this.clearBrData();
       this.requestUpdate();
     });
 

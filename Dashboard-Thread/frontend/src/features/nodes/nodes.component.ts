@@ -17,16 +17,16 @@ function colIndex(headers: string[] | undefined, name: string): number {
   return headers.findIndex((h) => normCol(h) === n);
 }
 
-function lqToPercent(cell: string): number {
+function linkQualityToPercent(cell: string): number {
   const v = parseInt(cell, 10);
   if (Number.isNaN(v)) return 0;
   return Math.round((Math.min(3, Math.max(0, v)) / 3) * 100);
 }
 
-function lqBarClass(percent: number): string {
-  if (percent >= 80) return "nodes-lq-bar-fill--good";
-  if (percent >= 50) return "nodes-lq-bar-fill--mid";
-  return "nodes-lq-bar-fill--warn";
+function linkQualityBarClass(percent: number): string {
+  if (percent >= 80) return "nodes-link-quality-bar-fill--good";
+  if (percent >= 50) return "nodes-link-quality-bar-fill--mid";
+  return "nodes-link-quality-bar-fill--warn";
 }
 
 type SelectedRow = { type: "router"; rowIndex: number } | { type: "child"; rowIndex: number };
@@ -120,27 +120,27 @@ export class NodesComponent extends LitElement {
     super.disconnectedCallback();
   }
 
-  private _lqBarCell(value: string) {
-    const percent = lqToPercent(value);
-    const fillClass = lqBarClass(percent);
+  private _linkQualityBarCell(value: string) {
+    const percent = linkQualityToPercent(value);
+    const fillClass = linkQualityBarClass(percent);
     return html`
-      <div class="nodes-lq-bar-cell">
-        <div class="nodes-lq-bar-track">
-          <div class="nodes-lq-bar-fill ${fillClass}" style="width: ${percent}%"></div>
+      <div class="nodes-link-quality-bar-cell">
+        <div class="nodes-link-quality-bar-track">
+          <div class="nodes-link-quality-bar-fill ${fillClass}" style="width: ${percent}%"></div>
         </div>
-        <span class="nodes-lq-bar-num">${percent}</span>
+        <span class="nodes-link-quality-bar-num">${percent}</span>
       </div>
     `;
   }
 
-  private _lqBarsCell(value: string) {
+  private _linkQualityBarsCell(value: string) {
     const n = Math.min(4, Math.max(0, parseInt(value, 10) || 0));
     return html`
-      <div class="nodes-lq-bars-cell">
-        <div class="nodes-lq-bars">
-          ${[0, 1, 2, 3].map((i) => html`<div class="nodes-lq-bar-v ${i < n ? "nodes-lq-bar-v--filled" : ""}"></div>`)}
+      <div class="nodes-link-quality-bars-cell">
+        <div class="nodes-link-quality-bars">
+          ${[0, 1, 2, 3].map((i) => html`<div class="nodes-link-quality-bar-v ${i < n ? "nodes-link-quality-bar-v--filled" : ""}"></div>`)}
         </div>
-        <span class="nodes-lq-bars-num">${n}</span>
+        <span class="nodes-link-quality-bars-num">${n}</span>
       </div>
     `;
   }
@@ -166,7 +166,6 @@ export class NodesComponent extends LitElement {
     const routerRows = this.routerTable?.rows ?? [];
     const childRows = this.childTable?.rows ?? [];
     const leaderRloc16 = this.otConfig?.leaderRloc16 ?? null;
-    const showDisconnectedOverlay = !this.isConnected;
     const routerLoading = this.isConnected && this.routerTable === null;
     const childLoading = this.isConnected && this.childTable === null;
     const hasRouterData = this.routerTable && !this.routerTable.error && (rH.length > 0 || routerRows.length > 0);
@@ -200,145 +199,147 @@ export class NodesComponent extends LitElement {
       ></page-header>
       <div class="page-container">
         <div class="nodes-page">
-          <div class="nodes-content">
-            <section class="nodes-section">
-              <h2 class="nodes-section-title">
-                <span class="material-symbols-outlined nodes-section-icon">router</span>
-                Router Table
-              </h2>
-              <div class="nodes-table-wrap">
-                ${showDisconnectedOverlay
-                  ? html`<p class="nodes-muted">Loading…</p>`
-                  : this.routerTable?.error
-                    ? html`<p class="nodes-error">${this.routerTable.error}</p>`
-                    : routerLoading && !hasRouterData
-                      ? html`<p class="nodes-muted">Loading…</p>`
-                      : !hasRouterData
-                        ? html`<p class="nodes-muted">No routers found in the network.</p>`
-                        : html`
-                            <table class="nodes-table">
-                              <thead>
-                                <tr>
-                                  <th>Router ID</th>
-                                  <th>RLOC16</th>
-                                  <th>Ext Address</th>
-                                  <th>Link Quality In</th>
-                                  <th>Link Quality Out</th>
-                                  <th>Age</th>
-                                </tr>
-                              </thead>
-                              <tbody>
-                                ${routerRows.length === 0
-                                  ? html`<tr class="nodes-row-empty"><td class="nodes-cell-empty" colspan="6">No routers found in the network.</td></tr>`
-                                  : routerRows.map((row, ri) => {
-                                      const rloc16 = rRloc16 >= 0 ? row[rRloc16] ?? "" : "";
-                                      const isLeader = leaderRloc16 != null && rloc16.toLowerCase() === leaderRloc16.toLowerCase();
-                                      const baseAge = rAge >= 0 ? parseInt(row[rAge] ?? "0", 10) : 0;
-                                      const ageSec = baseAge + (this.routerAgeOffsets[ri] ?? 0);
-                                      return html`
-                                        <tr class="${isLeader ? "nodes-table-row-leader" : ""}" @click=${() => (this.selectedRow = { type: "router", rowIndex: ri })}>
-                                          <td class="nodes-cell-id">
-                                            <span class="nodes-cell-id-main">${rRouterId >= 0 ? row[rRouterId] : ""}</span>
-                                            ${isLeader ? html`<span class="nodes-leader-badge">LEADER</span>` : ""}
-                                          </td>
-                                          <td class="nodes-cell-mono">${rRloc16 >= 0 ? row[rRloc16] : ""}</td>
-                                          <td class="nodes-cell-mono">${rExtAddress >= 0 ? row[rExtAddress] : ""}</td>
-                                          <td>${this._lqBarCell(rLqIn >= 0 ? row[rLqIn] : "")}</td>
-                                          <td>${this._lqBarCell(rLqOut >= 0 ? row[rLqOut] : "")}</td>
-                                          <td class="nodes-cell-age">${ageSec}s</td>
-                                        </tr>
-                                      `;
-                                    })}
-                              </tbody>
-                            </table>
-                          `}
-              </div>
-            </section>
+          <section class="nodes-section">
+            <h2 class="nodes-section-title">
+              <span class="material-symbols-outlined nodes-section-icon">router</span>
+              Router Table
+            </h2>
+            <div class="nodes-table-wrap">
+              <table class="nodes-table">
+                <thead>
+                  <tr>
+                    <th>Router ID</th>
+                    <th>RLOC16</th>
+                    <th>Ext Address</th>
+                    <th>Link Quality In</th>
+                    <th>Link Quality Out</th>
+                    <th>Age</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${!this.isConnected ? html `
+                    <tr class="nodes-row-empty">
+                      <td class="nodes-cell-empty" colspan="6">Connect to the Border Router to view network topology and node information.</td>
+                    </tr>
+                  ` : this.routerTable?.error ? html `
+                    <tr class="nodes-row-empty">
+                      <td class="nodes-cell-empty nodes-error" colspan="6">${this.routerTable.error}sadasd</td>
+                    </tr>
+                  ` : routerLoading && !hasRouterData ? html `
+                    <tr class="nodes-row-empty">
+                      <td class="nodes-cell-empty nodes-muted" colspan="6">Loading…</td>
+                    </tr>
+                  ` : !hasRouterData ? html `
+                    <tr class="nodes-row-empty">
+                      <td class="nodes-cell-empty nodes-muted" colspan="6">No routers found in the network.</td>
+                    </tr>
+                  ` : routerRows.map((row, ri) => {
+                    const rloc16 = rRloc16 >= 0 ? row[rRloc16] ?? "" : "";
+                    const isLeader = leaderRloc16 != null && rloc16.toLowerCase() === leaderRloc16.toLowerCase();
+                    const baseAge = rAge >= 0 ? parseInt(row[rAge] ?? "0", 10) : 0;
+                    const ageSec = baseAge + (this.routerAgeOffsets[ri] ?? 0);
+                    return html`
+                      <tr class="${isLeader ? "nodes-table-row-leader" : ""}" @click=${() => (this.selectedRow = { type: "router", rowIndex: ri })}>
+                        <td class="nodes-cell-id">
+                          <span class="nodes-cell-id-main">${rRouterId >= 0 ? row[rRouterId] : ""}</span>
+                          ${isLeader ? html`<span class="nodes-leader-badge">LEADER</span>` : ""}
+                        </td>
+                        <td class="nodes-cell-mono">${rRloc16 >= 0 ? row[rRloc16] : ""}</td>
+                        <td class="nodes-cell-mono">${rExtAddress >= 0 ? row[rExtAddress] : ""}</td>
+                        <td>${this._linkQualityBarCell(rLqIn >= 0 ? row[rLqIn] : "")}</td>
+                        <td>${this._linkQualityBarCell(rLqOut >= 0 ? row[rLqOut] : "")}</td>
+                        <td class="nodes-cell-age">${ageSec}s</td>
+                      </tr>
+                    `;
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </section>
 
-            <section class="nodes-section">
-              <h2 class="nodes-section-title">
-                <span class="material-symbols-outlined nodes-section-icon">account_tree</span>
-                Child Table
-              </h2>
-              <div class="nodes-table-wrap">
-                ${showDisconnectedOverlay
-                  ? html`<p class="nodes-muted">Loading…</p>`
-                  : this.childTable?.error
-                    ? html`<p class="nodes-error">${this.childTable.error}</p>`
-                    : childLoading && !hasChildData
-                      ? html`<p class="nodes-muted">Loading…</p>`
-                      : !hasChildData
-                        ? html`<p class="nodes-muted">No child nodes connected.</p>`
-                        : html`
-                            <table class="nodes-table">
-                              <thead>
-                                <tr>
-                                  <th>Child ID</th>
-                                  <th>RLOC16</th>
-                                  <th>Ext Address</th>
-                                  <th>LQ In</th>
-                                  <th>Avg RSSI</th>
-                                  <th class="nodes-th-center">FTD</th>
-                                  <th class="nodes-th-center">RxOnIdle</th>
-                                  <th>Age</th>
-                                </tr>
-                              </thead>
-                              <tbody>
-                                ${childRows.length === 0
-                                  ? html`<tr class="nodes-row-empty"><td class="nodes-cell-empty" colspan="8">No child nodes connected.</td></tr>`
-                                  : childRows.map((row, ri) => {
-                                      const baseAge = cAge >= 0 ? parseInt(row[cAge] ?? "0", 10) : 0;
-                                      const ageSec = baseAge + (this.childAgeOffsets[ri] ?? 0);
-                                      const ftdVal = cFtd >= 0 ? row[cFtd] ?? "" : "";
-                                      const rxVal = cRxOnIdle >= 0 ? row[cRxOnIdle] ?? "" : "";
-                                      return html`
-                                        <tr @click=${() => (this.selectedRow = { type: "child", rowIndex: ri })}>
-                                          <td class="nodes-cell-id">${cChildId >= 0 ? row[cChildId] : ""}</td>
-                                          <td class="nodes-cell-mono">${cRloc16 >= 0 ? row[cRloc16] : ""}</td>
-                                          <td class="nodes-cell-mono">${cExtAddress >= 0 ? row[cExtAddress] : ""}</td>
-                                          <td>${this._lqBarsCell(cLqIn >= 0 ? row[cLqIn] : "")}</td>
-                                          <td class="nodes-cell-rssi">${cAvgRssi >= 0 ? row[cAvgRssi] : ""}</td>
-                                          <td class="nodes-cell-icon">
-                                            ${ftdVal === "FTD"
-                                              ? html`<span class="material-symbols-outlined nodes-icon-ok">check_circle</span>`
-                                              : html`<span class="material-symbols-outlined nodes-icon-no">cancel</span>`}
-                                          </td>
-                                          <td class="nodes-cell-icon">
-                                            ${rxVal === "Yes"
-                                              ? html`<span class="material-symbols-outlined nodes-icon-ok">check_circle</span>`
-                                              : html`<span class="material-symbols-outlined nodes-icon-no">cancel</span>`}
-                                          </td>
-                                          <td class="nodes-cell-age">${ageSec}s</td>
-                                        </tr>
-                                      `;
-                                    })}
-                              </tbody>
-                            </table>
-                          `}
-              </div>
-            </section>
+          <section class="nodes-section">
+            <h2 class="nodes-section-title">
+              <span class="material-symbols-outlined nodes-section-icon">account_tree</span>
+              Child Table
+            </h2>
+            <div class="nodes-table-wrap">
+              ${!this.isConnected
+                ? html`<p class="nodes-muted">Loading…</p>`
+                : this.childTable?.error
+                  ? html`<p class="nodes-error">${this.childTable.error}</p>`
+                  : childLoading && !hasChildData
+                    ? html`<p class="nodes-muted">Loading…</p>`
+                    : !hasChildData
+                      ? html`<p class="nodes-muted">No child nodes connected.</p>`
+                      : html`
+                          <table class="nodes-table">
+                            <thead>
+                              <tr>
+                                <th>Child ID</th>
+                                <th>RLOC16</th>
+                                <th>Ext Address</th>
+                                <th>LQ In</th>
+                                <th>Avg RSSI</th>
+                                <th class="nodes-th-center">FTD</th>
+                                <th class="nodes-th-center">RxOnIdle</th>
+                                <th>Age</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              ${childRows.length === 0
+                                ? html`<tr class="nodes-row-empty"><td class="nodes-cell-empty" colspan="8">No child nodes connected.</td></tr>`
+                                : childRows.map((row, ri) => {
+                                    const baseAge = cAge >= 0 ? parseInt(row[cAge] ?? "0", 10) : 0;
+                                    const ageSec = baseAge + (this.childAgeOffsets[ri] ?? 0);
+                                    const ftdVal = cFtd >= 0 ? row[cFtd] ?? "" : "";
+                                    const rxVal = cRxOnIdle >= 0 ? row[cRxOnIdle] ?? "" : "";
+                                    return html`
+                                      <tr @click=${() => (this.selectedRow = { type: "child", rowIndex: ri })}>
+                                        <td class="nodes-cell-id">${cChildId >= 0 ? row[cChildId] : ""}</td>
+                                        <td class="nodes-cell-mono">${cRloc16 >= 0 ? row[cRloc16] : ""}</td>
+                                        <td class="nodes-cell-mono">${cExtAddress >= 0 ? row[cExtAddress] : ""}</td>
+                                        <td>${this._linkQualityBarsCell(cLqIn >= 0 ? row[cLqIn] : "")}</td>
+                                        <td class="nodes-cell-rssi">${cAvgRssi >= 0 ? row[cAvgRssi] : ""}</td>
+                                        <td class="nodes-cell-icon">
+                                          ${ftdVal === "FTD"
+                                            ? html`<span class="material-symbols-outlined nodes-icon-ok">check_circle</span>`
+                                            : html`<span class="material-symbols-outlined nodes-icon-no">cancel</span>`}
+                                        </td>
+                                        <td class="nodes-cell-icon">
+                                          ${rxVal === "Yes"
+                                            ? html`<span class="material-symbols-outlined nodes-icon-ok">check_circle</span>`
+                                            : html`<span class="material-symbols-outlined nodes-icon-no">cancel</span>`}
+                                        </td>
+                                        <td class="nodes-cell-age">${ageSec}s</td>
+                                      </tr>
+                                    `;
+                                  })}
+                            </tbody>
+                          </table>
+                        `}
+            </div>
+          </section>
 
-            <joiner-list .joinerTable=${this.joinerTable} .getJoinerTable=${this.getJoinerTable} .isConnected=${this.isConnected}></joiner-list>
+          <joiner-list .joinerTable=${this.joinerTable} .getJoinerTable=${this.getJoinerTable} .isConnected=${this.isConnected}></joiner-list>
 
-            <modal-dialog
-              .open=${this.selectedRow != null}
-              .title=${modalTitle}
-              .body=${html`
-                <ul class="modal-detail-list">
-                  ${modalEntries.map(({ key: fieldKey, value }) => html`<li><span class="modal-detail-key">${fieldKey}</span><span class="modal-detail-value">${value}</span></li>`)}
-                </ul>
-              `}
-              .onClose=${() => (this.selectedRow = null)}
-            ></modal-dialog>
+          <modal-dialog
+            .open=${this.selectedRow != null}
+            .title=${modalTitle}
+            .body=${html`
+              <ul class="modal-detail-list">
+                ${modalEntries.map(({ key: fieldKey, value }) => html`<li><span class="modal-detail-key">${fieldKey}</span><span class="modal-detail-value">${value}</span></li>`)}
+              </ul>
+            `}
+            .onClose=${() => (this.selectedRow = null)}
+          ></modal-dialog>
 
-            <commission-node-modal
-              .open=${this.isCommissionModalOpen}
-              .onClose=${() => (this.isCommissionModalOpen = false)}
-              .threadState=${this.threadState}
-              .commissionerConnect=${this.commissionerConnect}
-              .showToast=${this.showToast}
-            ></commission-node-modal>
-          </div>
+          <commission-node-modal
+            .open=${this.isCommissionModalOpen}
+            .onClose=${() => (this.isCommissionModalOpen = false)}
+            .threadState=${this.threadState}
+            .commissionerConnect=${this.commissionerConnect}
+            .showToast=${this.showToast}
+          ></commission-node-modal>
         </div>
       </div>
     `;

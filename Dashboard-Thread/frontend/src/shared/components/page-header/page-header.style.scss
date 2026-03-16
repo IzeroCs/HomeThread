@@ -4,7 +4,7 @@
 @use "shared/styles/button" as *;
 
 .page-header {
-  background: color-mix(in srgb, $background 85%, transparent);
+  background: color-mix(in oklab, $background 85%, transparent);
   @include backdrop-filter(blur(10px));
   display: flex;
   align-items: center;

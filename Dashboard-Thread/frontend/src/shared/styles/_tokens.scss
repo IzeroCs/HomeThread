@@ -1,6 +1,8 @@
 $red-500: #ef4444;
 $red-900: #7f1d1d;
 
+$green-700: #22c55e;
+
 $background: #0a0f1c; // background là nền toàn bộ app
 
 $surface: $background; // surface là nền component cơ bản nhất
@@ -29,3 +31,7 @@ $role-leader: #10b981;
 
 $br-state-connected:    #4ade80;
 $br-state-disconnected: #f87171;
+
+$link-quality-good: #22c55e;
+$link-quality-mid: #0ba3f5;
+$link-quality-warn: #f59e0b;

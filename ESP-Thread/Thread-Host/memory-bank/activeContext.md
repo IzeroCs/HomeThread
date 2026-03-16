@@ -94,10 +94,11 @@ Backhaul Ethernet W5500 đã có IPv6 trên backbone (link-local + ULA/global kh
 
 ## Bước tiếp theo
 
-1. **Dashboard-Thread:** Sửa reply ACK cho CMD_IP_ADDR — trong `CommandManager.handle()` khi nhận ACK (frameId ∈ ipAddrFrameIds, data.length === 16) gọi `replyAck(frame.frameId)` để BR không retry vô hạn.
-2. **Test child↔backend:** Trên child (hoặc ot-cli join mạng) chạy `ping <IPv6_backend>` hoặc CoAP/HTTP tới backend; BR chỉ route. Sanity check: từ backend ping IPv6 BR; từ BR CLI ping IPv6 backend.
-3. **Docs Thread-Node / Dashboard-Thread:** Cập nhật hoặc tạo doc (child gửi thẳng backend qua IP, backend listen IP)
-4. **Auto-flash RCP:** Tính năng flash firmware RCP khi boot (xem TODO.md)
+1. **CMD_IP_ADDR / RLOC Leader vs local:** Hiện CMD_IP_ADDR trả về RLOC của **Leader** (`...:fe00:0`). Nếu backend/dashboard cần **RLOC của chính BR** (vd. `...:fe00:8c00`), cân nhắc thêm command hoặc mở rộng payload (vd. CMD_LOCAL_IP hoặc CMD_IP_ADDR trả thêm 16 byte RLOC local). Xem TODO.md mục "CMD_IP_ADDR: Leader RLOC vs RLOC của thiết bị (BR)".
+2. **Dashboard-Thread:** Sửa reply ACK cho CMD_IP_ADDR — trong `CommandManager.handle()` khi nhận ACK (frameId ∈ ipAddrFrameIds, data.length === 16) gọi `replyAck(frame.frameId)` để BR không retry vô hạn.
+3. **Test child↔backend:** Trên child (hoặc ot-cli join mạng) chạy `ping <IPv6_backend>` hoặc CoAP/HTTP tới backend; BR chỉ route. Sanity check: từ backend ping IPv6 BR; từ BR CLI ping IPv6 backend.
+4. **Docs Thread-Node / Dashboard-Thread:** Cập nhật hoặc tạo doc (child gửi thẳng backend qua IP, backend listen IP)
+5. **Auto-flash RCP:** Tính năng flash firmware RCP khi boot (xem TODO.md)
 
 ## Known Issues đang theo dõi
 

@@ -144,6 +144,10 @@
   @include transition(color 0.2s, background 0.2s);
   @include border-radius(10px);
 
+  .material-symbols-outlined {
+    font-size: 18px;
+  }
+
   &.active {
     background: $primary;
     color: $on-primary;

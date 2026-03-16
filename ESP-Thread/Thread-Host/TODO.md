@@ -95,6 +95,17 @@ Tính năng: Giao tiếp với dashboard qua **TCP** (BR listen port, dashboard 
    - **Nguồn dữ liệu:** `uxTaskGetStackHighWaterMark()` + `esp_get_free_heap_size()` + `esp_get_minimum_free_heap_size()` — đã có trong `stack_monitor_task` ở `br_main.c`.
    - **Hướng triển khai:** Thêm handler `communicate_command_handle_sys_health()` trong `communicate_command.c`; backend pull theo interval hoặc ESP push khi heap thấp.
 
+### CMD_IP_ADDR: Leader RLOC vs RLOC của thiết bị (BR)
+
+**Hiện trạng:** `communicate_command_handle_ipaddr` trả về **RLOC của Leader** (16 byte IPv6, luôn dạng `...:fe00:0` vì Leader có RLOC16 = 0). Đây là hành vi đúng theo spec Thread.
+
+**Vấn đề:** Khi chạy `ot ipaddr` trên BR, danh sách địa chỉ có RLOC của **chính BR** (vd. `...:fe00:8c00`). Backend/dashboard có thể cần hiển thị **IP của host (BR)** chứ không phải IP của Leader.
+
+**Cân nhắc (TODO):**
+
+- [ ] Thêm command/API riêng (hoặc mở rộng CMD_IP_ADDR) để backend có thể pull **RLOC của chính thiết bị BR** (local device), ví dụ dùng `otThreadGetRloc()` / `otIp6GetUnicastAddresses` cho RLOC của BR.
+- [ ] Cập nhật spec frame (usb_cdc_frame_structure.md) và backend nếu thêm command mới hoặc format payload mới (vd. CMD_IP_ADDR trả 2 địa chỉ: leader 16 byte + local 16 byte, hoặc CMD_LOCAL_IP / CMD_BR_RLOC riêng).
+
 ### Lưu ý
 
 - SOF/EOF không escape; parser dựa vào LEN để biết độ dài DATA (trong DATA có thể chứa mọi byte).
