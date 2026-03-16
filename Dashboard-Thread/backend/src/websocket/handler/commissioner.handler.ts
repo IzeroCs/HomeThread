@@ -17,7 +17,7 @@ export class CommissionerHandler {
       return;
     }
     const table = this.communicate.getLastJoinerTable();
-    socket.emit(EVENTS.OT_JOINER_TABLE, table ?? { error: "No data." });
+    socket.emit(EVENTS.OT_JOINER_TABLE, table);
   }
 
   @WsOn(EVENTS.COMMISSIONER_CONNECT)

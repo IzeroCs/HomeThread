@@ -1,0 +1,329 @@
+import { LitElement, html } from "lit";
+import { customElement, property, state } from "lit/decorators.js";
+import type { OtTableData } from "@shared/types/websocket.type";
+
+import "@shared/components/page-header/page-header.component";
+import "@shared/components/modal/modal.component";
+import "@joiner/joiner.style.scss";
+
+const DEFAULT_EUI64 = "f0f5bdfffe104b24";
+const DEFAULT_PSK = "H01THREAD";
+const TIMEOUT_OPTIONS = [60, 120, 300] as const;
+const DEFAULT_TIMEOUT = 60;
+
+function normCol(name: string): string {
+  return String(name).trim().toLowerCase();
+}
+
+function colIndex(headers: string[] | undefined, name: string): number {
+  if (!headers?.length) return -1;
+  const n = normCol(name);
+  return headers.findIndex((h) => normCol(h) === n);
+}
+
+function formatCountdown(seconds: number): string {
+  const s = Math.max(0, Math.floor(seconds));
+  const m = Math.floor(s / 60);
+  const sec = s % 60;
+  return `${String(m).padStart(2, "0")}:${String(sec).padStart(2, "0")}`;
+}
+
+function formatEui64(sharedId: string): string {
+  if (!sharedId) return "—";
+  if (sharedId === "ANY") return sharedId;
+  if (sharedId.startsWith("Discerner")) return sharedId;
+  return sharedId.replace(/:/g, "").toUpperCase();
+}
+
+@customElement("joiner-view")
+export class JoinerViewComponent extends LitElement {
+  override createRenderRoot() {
+    return this;
+  }
+
+  @property({ type: Boolean }) isConnected = false;
+  @property({ type: Object }) joinerTable: OtTableData | null = null;
+  @property({ attribute: false }) getJoinerTable: () => void = () => {};
+  @property({ type: String }) threadState: string | null = null;
+  @property({ attribute: false }) commissionerConnect: (eui64: string, psk: string, timeoutSeconds?: number) => Promise<{ success: boolean; error?: string }> = async () => ({ success: false });
+  @property({ attribute: false }) showToast: (type: "success" | "error", message: string) => void = () => {};
+
+  @state() private now = Date.now();
+  @state() private snapshot: { receivedAt: number; initialSeconds: number[] } = { receivedAt: 0, initialSeconds: [] };
+  @state() private isCommissionModalOpen = false;
+  @state() private commissionEui64 = DEFAULT_EUI64;
+  @state() private commissionPsk = DEFAULT_PSK;
+  @state() private commissionTimeoutSeconds: (typeof TIMEOUT_OPTIONS)[number] = DEFAULT_TIMEOUT;
+  @state() private commissionConnecting = false;
+  private _intervalId: ReturnType<typeof setInterval> | null = null;
+
+  /** Commissioner allowed when attached as leader, router, or child. */
+  private get _canCommission(): boolean {
+    const s = this.threadState?.toLowerCase();
+    return s === "leader" || s === "router" || s === "child";
+  }
+
+  private _openCommissionModal() {
+    this.isCommissionModalOpen = true;
+  }
+
+  private _resetCommissionForm() {
+    this.commissionEui64 = DEFAULT_EUI64;
+    this.commissionPsk = DEFAULT_PSK;
+    this.commissionTimeoutSeconds = DEFAULT_TIMEOUT;
+  }
+
+  private _closeCommissionModal() {
+    this.commissionConnecting = false;
+    this._resetCommissionForm();
+    this.isCommissionModalOpen = false;
+  }
+
+  private async _handleCommissionConnect() {
+    const eui64 = this.commissionEui64.trim();
+    const psk = this.commissionPsk.trim();
+    if (!eui64 || !psk) {
+      this.showToast("error", "EUI64 và PSK không được để trống.");
+      return;
+    }
+    this.commissionConnecting = true;
+    const result = await this.commissionerConnect(eui64, psk, this.commissionTimeoutSeconds);
+    if (!this.commissionConnecting) return;
+    this.commissionConnecting = false;
+    if (result.success) {
+      this.showToast("success", "Đã thêm joiner. Thiết bị có thể kết nối mạng.");
+      this._closeCommissionModal();
+    } else {
+      this.showToast("error", result.error ?? "Kết nối thất bại.");
+    }
+  }
+
+  override connectedCallback() {
+    super.connectedCallback();
+    if (this.isConnected) this.getJoinerTable();
+  }
+
+  override willUpdate(changed: Map<string, unknown>) {
+    if (changed.has("isConnected") && this.isConnected) this.getJoinerTable();
+    if (changed.has("joinerTable") && this.joinerTable?.rows?.length) {
+      const rows = this.joinerTable.rows;
+      const headers = this.joinerTable.headers ?? [];
+      const iExpiration = colIndex(headers, "Expiration");
+      const initialSeconds = rows.map((row) => {
+        const expirationMs = iExpiration >= 0 ? parseInt(row[iExpiration] ?? "0", 10) : 0;
+        return Math.max(0, expirationMs / 1000);
+      });
+      this.snapshot = { receivedAt: Date.now(), initialSeconds };
+    }
+  }
+
+  override updated(changed: Map<string, unknown>) {
+    if (changed.has("joinerTable")) {
+      const rows = this.joinerTable?.rows ?? [];
+      if (rows.length > 0 && !this._intervalId) {
+        this._intervalId = setInterval(() => {
+          this.now = Date.now();
+        }, 1000);
+      } else if (rows.length === 0 && this._intervalId) {
+        clearInterval(this._intervalId);
+        this._intervalId = null;
+      }
+    }
+  }
+
+  override disconnectedCallback() {
+    if (this._intervalId) clearInterval(this._intervalId);
+    super.disconnectedCallback();
+  }
+
+  private _getRowsWithMeta(): { key: string; eui64: string; countdown: string }[] {
+    const rows = this.joinerTable?.rows ?? [];
+    const headers = this.joinerTable?.headers ?? [];
+    const iSharedId = colIndex(headers, "SharedId");
+    const iExpiration = colIndex(headers, "Expiration");
+    const elapsedSec = (this.now - this.snapshot.receivedAt) / 1000;
+    return rows.map((row, index) => {
+      const sharedId = iSharedId >= 0 ? row[iSharedId] ?? "" : "";
+      const expirationMs = iExpiration >= 0 ? parseInt(row[iExpiration] ?? "0", 10) : 0;
+      const initialSec = this.snapshot.initialSeconds[index] ?? Math.max(0, expirationMs / 1000);
+      const remainingSec = Math.max(0, initialSec - elapsedSec);
+      const key = sharedId ? `joiner-${sharedId}-${expirationMs}` : `joiner-unknown-${expirationMs}-${index}`;
+      return { key, eui64: formatEui64(sharedId), countdown: formatCountdown(remainingSec) };
+    });
+  }
+
+  private _renderCommissionBody() {
+    return html`
+      <div>
+        ${!this._canCommission
+          ? html`
+              <div class="modal-alert modal-alert--warn">
+                Commissioner chỉ khả dụng khi thiết bị đã attached (leader, router hoặc child).
+                ${this.threadState ? ` State hiện tại: ${this.threadState}.` : " Đang lấy state…"}
+              </div>
+            `
+          : ""}
+        <div class="form-page-form">
+          <div class="form-field">
+            <label class="form-label" for="commission-modal-eui64">
+              Joiner EUI64 <span class="form-required">*</span>
+            </label>
+            <div class="form-control-wrap">
+              <span class="material-symbols-outlined form-control-icon" aria-hidden>qr_code_2</span>
+              <input
+                id="commission-modal-eui64"
+                type="text"
+                class="form-control form-control--mono form-control--with-icon"
+                .value=${this.commissionEui64}
+                @input=${(e: Event) => (this.commissionEui64 = (e.target as HTMLInputElement).value)}
+                placeholder="e.g. d431f4e1f7481234"
+                autocomplete="off"
+                spellcheck="false"
+                ?disabled=${this.commissionConnecting || !this._canCommission}
+              />
+            </div>
+            <p class="form-helper">The unique identifier for the device.</p>
+          </div>
+          <div class="form-field">
+            <label class="form-label" for="commission-modal-psk">
+              Joiner PIN <span class="form-required">*</span>
+            </label>
+            <div class="form-control-wrap">
+              <span class="material-symbols-outlined form-control-icon" aria-hidden>pin</span>
+              <input
+                id="commission-modal-psk"
+                type="text"
+                class="form-control form-control--with-icon"
+                .value=${this.commissionPsk}
+                @input=${(e: Event) => (this.commissionPsk = (e.target as HTMLInputElement).value)}
+                placeholder="e.g. J01NME"
+                autocomplete="off"
+                ?disabled=${this.commissionConnecting || !this._canCommission}
+              />
+            </div>
+            <p class="form-helper">The commissioning credential provided with the device.</p>
+          </div>
+          <div class="form-field">
+            <label class="form-label">Commissioning Timeout</label>
+            <div class="form-radio-row" role="radiogroup" aria-label="Commissioning timeout">
+              ${TIMEOUT_OPTIONS.map((sec) => html`
+                <label class="form-radio">
+                  <input
+                    class="form-radio-input"
+                    type="radio"
+                    name="commission-timeout"
+                    .value=${String(sec)}
+                    .checked=${this.commissionTimeoutSeconds === sec}
+                    @change=${() => (this.commissionTimeoutSeconds = sec)}
+                    ?disabled=${this.commissionConnecting || !this._canCommission}
+                  />
+                  <span class="form-radio-pill">${sec}s</span>
+                </label>
+              `)}
+            </div>
+          </div>
+          <div class="modal-info-box">
+            <span class="material-symbols-outlined modal-info-box__icon" aria-hidden>info</span>
+            <p class="modal-info-box__text">
+              Ensure the joining device is powered on and in range of a router.
+            </p>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  render() {
+    const rowsWithMeta = this._getRowsWithMeta();
+    const hasRows = rowsWithMeta.length > 0;
+
+    return html`
+      <page-header
+        heading="Joiner"
+        subtitle="Quản lý các thiết bị đang chờ join vào mạng Thread"
+        .action=${html`
+          <button
+            type="button"
+            class="btn-icon"
+            @click=${() => this._openCommissionModal()}
+          >
+            <span class="material-symbols-outlined">add_circle</span>
+          </button>
+        `}
+      ></page-header>
+      <div class="page-container">
+        <div class="nodes-page">
+          <section class="nodes-section">
+            <h2 class="nodes-section-title">
+              <span class="material-symbols-outlined nodes-section-icon">group_add</span>
+              Joiner Table
+            </h2>
+            <div class="nodes-table-wrap">
+              <table class="nodes-table">
+                <thead>
+                  <tr>
+                    <th>EUI64</th>
+                    <th>Timeout</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${!this.isConnected ? html`
+                    <tr class="nodes-row-empty">
+                      <td class="nodes-cell-empty nodes-muted" colspan="2">
+                        Connect to the Border Router to view network topology and node information
+                      </td>
+                    </tr>
+                  ` : this.joinerTable?.error ? html`
+                    <tr class="nodes-row-empty">
+                      <td class="nodes-cell-empty nodes-error" colspan="2">
+                        ${this.joinerTable?.error}
+                      </td>
+                    </tr>
+                  ` : !hasRows ? html`
+                    <tr class="nodes-row-empty">
+                      <td class="nodes-cell-empty nodes-muted" colspan="2">
+                        Không có thiết bị nào đang chờ join.
+                      </td>
+                    </tr>
+                  ` : rowsWithMeta.map((row) => html`
+                    <tr>
+                      <td class="nodes-cell-mono">${row.eui64}</td>
+                      <td class="nodes-cell-age">${row.countdown}</td>
+                    </tr>
+                  `)}
+                </tbody>
+              </table>
+            </div>
+          </section>
+
+          <modal-dialog
+            .open=${this.isCommissionModalOpen}
+            .shouldRender=${() => this.isConnected}
+            .title=${"Commission Node"}
+            .subtitle=${"Enter Joiner credentials to add a new device"}
+            .body=${this._renderCommissionBody()}
+            .cancelAction=${{
+              onClick: () => this._closeCommissionModal(),
+            }}
+            .confirmAction=${{
+              label: "Start",
+              style: "filled",
+              tone: "warning",
+              onClick: () => this._handleCommissionConnect(),
+              disabled: !this._canCommission,
+              loading: this.commissionConnecting,
+              icon: "play_arrow",
+            }}
+            .onClose=${() => this._closeCommissionModal()}
+          ></modal-dialog>
+        </div>
+      </div>
+    `;
+  }
+}
+
+declare global {
+  interface HTMLElementTagNameMap {
+    "joiner-view": JoinerViewComponent;
+  }
+}

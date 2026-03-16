@@ -18,9 +18,12 @@ export default defineConfig({
       "@": resolve(__dirname, "src"),
       "@features": resolve(__dirname, "src/features"),
       "@shared": resolve(__dirname, "src/shared"),
+      "@components": resolve(__dirname, "src/features/components"),
       "@nodes": resolve(__dirname, "src/features/nodes"),
+      "@joiner": resolve(__dirname, "src/features/joiner"),
       "@settings": resolve(__dirname, "src/features/settings"),
       "@status": resolve(__dirname, "src/features/status"),
+      "@topology": resolve(__dirname, "src/features/topology"),
     },
   },
   css: {

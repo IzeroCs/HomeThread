@@ -176,9 +176,16 @@ Version hiển thị trên Status subtitle lấy từ `frontend/package.json`: V
 
 ### Modal & ConfirmModal (dark navy)
 
-- **Modal:** Overlay `rgba($navy-900, 0.78)` + `backdrop-filter: blur(6px)`; box `$card-dark`, border `$brand-border`, shadow `rgba($slate-850, 0.95)`; header divider `rgba($text-dark-muted, 0.16)`; close hover `rgba($slate-850, 0.85)`; title/close dùng `$text-dark` / `$text-dark-subtle`.
-- **ConfirmModal:** Message `$text-dark`; nút Cancel: transparent, border/hover dùng `rgba($text-dark-muted, …)` và `rgba($slate-850, 0.85)`; nút Confirm danger/warning với hover glow. Countdown 5s không đổi.
-- **Light DOM note:** `modal-dialog` không dùng `<slot>` nữa; nội dung được truyền qua property `.body` (TemplateResult) để render đúng khi tắt Shadow DOM.
+- **modal-dialog:** Nội dung truyền qua `.body` (TemplateResult). **Portal:** overlay render ra `document.body` (Lit `render(template, _portalNode)` trong `updated()`; node tạo/append trong `connectedCallback`, remove trong `disconnectedCallback`) để overlay phủ cả sidebar/header. **ModalAction:** `tone` (default|info|success|warning|danger), `style` (text|filled|outlined), `icon` (string = Material Symbol name hoặc TemplateResult), `loading` (hiện spin-loader, không disable nút); mặc định theo kind: Confirm = filled + info, Cancel = text + danger, Action = text + default. `className` append thêm khi cần custom. Footer buttons cố định chiều cao; `.modal-action-icon` 20×20px, line-height 0 (tránh icon nhích khi font load).
+- **Modal overlay/box:** Overlay `rgba($navy-900, 0.78)` + `backdrop-filter: blur(6px)`; box `$card-dark`, border `$brand-border`, shadow; header divider; close hover; title/subtitle. `.modal-alert`, `.modal-alert--warn`, `.modal-info-box` cho nội dung modal.
+- **ConfirmModal:** Message `$text-dark`; nút Cancel/Confirm; countdown 5s không đổi.
+- **Light DOM:** `modal-dialog` không dùng `<slot>`; `.body` TemplateResult render trong portal.
+
+### Joiner / Commissioner (Nodes)
+
+- **Trang Joiner** (`features/joiner/`): Joiner Table + nút mở commission modal. Commission form (EUI64, PIN, timeout) và footer actions nằm trong `joiner.component.ts`; dùng `modal-dialog` với body/form classes chung từ _form.scss và modal.style.scss.
+- **Commissioner điều kiện:** Cho phép khi BR **attached** (state = leader, router hoặc child). `_canCommission` (thay `_isLeader`) = true khi `threadState` là "leader" | "router" | "child"; alert và disable form khi không thỏa.
+- **Timeout chọn:** Horizontal radio row (`.form-radio-row`, `.form-radio`, `.form-radio-pill` trong _form.scss); wrapper có border/radius, items hình chữ nhật, gap giữa item, hover bg cho item chưa chọn, selected = primary background.
 
 ### SCSS color tokens (RGB + functional naming)
 

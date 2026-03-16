@@ -1,0 +1,23 @@
+spin-loader {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 0;
+}
+
+.spin-loader {
+  display: inline-block;
+  border-radius: 50%;
+  border-style: solid;
+  border-color: currentColor;
+  border-bottom-color: transparent;
+  box-sizing: border-box;
+  flex-shrink: 0;
+  animation: spin-rotate 0.65s linear infinite;
+}
+
+@keyframes spin-rotate {
+  to {
+    transform: rotate(360deg);
+  }
+}

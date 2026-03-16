@@ -9,8 +9,9 @@ import "@shared/components/waiting-for-backend/waiting-for-backend.component";
 import "@settings/components/br-connection-form/br-connection-form.component";
 import "@status/status.component";
 import "@nodes/nodes.component";
-import "@features/topology/topology-map.component";
-import "@/features/settings/settings.component";
+import "@joiner/joiner.component";
+import "@topology/topology-map.component";
+import "@settings/settings.component";
 
 import "@/app.style.scss";
 
@@ -30,7 +31,7 @@ export class AppShell extends LitElement {
 
   constructor() {
     super();
-    this.page = "nodes";
+    this.page = "joiner";
     this.toasts = [];
   }
 
@@ -164,23 +165,34 @@ export class AppShell extends LitElement {
               ></topology-map>
             ` : ""}
 
-          ${this.page === "nodes" ? html`
-            <div class="app-container">
-              <nodes-view
-                .isConnected=${this.ws.brStatus?.isConnected ?? false}
-                .brConfig=${config}
-                .routerTable=${this.ws.routerTable}
-                .childTable=${this.ws.childTable}
-                .joinerTable=${this.ws.joinerTable}
-                .otConfig=${this.ws.otConfig}
-                .threadState=${this.ws.threadState}
-                .testBrConnect=${this.ws.testBrConnect.bind(this.ws)}
-                .getJoinerTable=${this.ws.getJoinerTable.bind(this.ws)}
-                .commissionerConnect=${this.ws.commissionerConnect.bind(this.ws)}
-                .showToast=${this._showToast.bind(this)}
-              ></nodes-view>
-            </div>
-          ` : ""}
+          ${this.page === "nodes"
+            ? html`
+                <div class="app-container">
+                  <nodes-view
+                    .isConnected=${this.ws.brStatus?.isConnected ?? false}
+                    .routerTable=${this.ws.routerTable}
+                    .childTable=${this.ws.childTable}
+                    .otConfig=${this.ws.otConfig}
+                    .threadState=${this.ws.threadState}
+                  ></nodes-view>
+                </div>
+              `
+            : ""}
+
+          ${this.page === "joiner"
+            ? html`
+                <div class="app-container">
+                  <joiner-view
+                    .isConnected=${this.ws.brStatus?.isConnected ?? false}
+                    .joinerTable=${this.ws.joinerTable}
+                    .getJoinerTable=${this.ws.getJoinerTable.bind(this.ws)}
+                    .threadState=${this.ws.threadState}
+                    .commissionerConnect=${this.ws.commissionerConnect.bind(this.ws)}
+                    .showToast=${this._showToast.bind(this)}
+                  ></joiner-view>
+                </div>
+              `
+            : ""}
         </main>
       </div>
     `;

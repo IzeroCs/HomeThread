@@ -1,0 +1,7 @@
+@use "sass:color";
+@use "shared/styles/form";
+@use "shared/styles/variables" as *;
+
+// Reuse nodes table/page layout
+@use "../nodes/nodes.style";
+

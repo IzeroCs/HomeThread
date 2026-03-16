@@ -16,16 +16,23 @@ interface NavGroup {
 }
 
 const NAV_ITEMS: NavGroup[] = [
-  { label: "Monitor", items: [
-    { page: "status", label: "Status", icon: "speed" },
-    { page: "nodes", label: "Nodes", icon: "account_tree" },
-    { page: "topology", label: "Topology", icon: "hub" },
-  ] },
-  { label: "Settings", items: [
-    { page: "settings-br", label: "BR Connection", icon: "lan" },
-    { page: "settings-openthread", label: "OpenThread", icon: "device_hub" },
-    { page: "settings-system", label: "System", icon: "warning" },
-  ] },
+  {
+    label: "Monitor",
+    items: [
+      { page: "status", label: "Status", icon: "speed" },
+      { page: "nodes", label: "Nodes", icon: "account_tree" },
+      { page: "joiner", label: "Joiner", icon: "group_add" },
+      { page: "topology", label: "Topology", icon: "hub" },
+    ],
+  },
+  {
+    label: "Settings",
+    items: [
+      { page: "settings-br", label: "BR Connection", icon: "lan" },
+      { page: "settings-openthread", label: "OpenThread", icon: "device_hub" },
+      { page: "settings-system", label: "System", icon: "warning" },
+    ],
+  },
 ];
 
 @customElement("sidebar-nav")

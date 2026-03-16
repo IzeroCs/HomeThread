@@ -48,4 +48,9 @@
   align-items: center;
   gap: 8px;
   flex-shrink: 0;
+
+  button,
+  button:focus-visible {
+    outline: none;
+  }
 }

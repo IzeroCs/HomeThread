@@ -5,9 +5,12 @@
       "@/*": ["src/*"],
       "@features/*": ["src/features/*"],
       "@shared/*": ["src/shared/*"],
+      "@components/*": ["src/features/components/*"],
       "@nodes/*": ["src/features/nodes/*"],
+      "@joiner/*": ["src/features/joiner/*"],
       "@settings/*": ["src/features/settings/*"],
-      "@status/*": ["src/features/status/*"]
+      "@status/*": ["src/features/status/*"],
+      "@topology/*": ["src/features/topology/*"]
     },
     "target": "ES2020",
     "useDefineForClassFields": false,

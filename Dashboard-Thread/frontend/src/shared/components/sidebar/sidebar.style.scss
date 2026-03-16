@@ -102,7 +102,7 @@
   flex: 1;
   overflow-y: auto;
   min-height: 0;
-  @include scrollbar(4px, transparent, transparent, 8px);
+  @include scrollbar(0, transparent, transparent, 0);
 }
 
 .sidebar-nav-section {

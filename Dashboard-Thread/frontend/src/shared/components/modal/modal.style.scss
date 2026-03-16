@@ -1,3 +1,4 @@
+@use "sass:color";
 @use "shared/styles/variables" as *;
 @use "shared/styles/mixin" as *;
 
@@ -22,7 +23,7 @@ modal-dialog {
 .modal-overlay {
   position: fixed;
   inset: 0;
-  z-index: 1000;
+  z-index: 4000;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -44,7 +45,6 @@ modal-dialog {
 .modal-box {
   background: $modal-box-bg;
   border-radius: $border-radius;
-  box-shadow: $modal-box-shadow;
   max-width: 480px;
   width: 100%;
   max-height: calc(100vh - 48px);
@@ -74,11 +74,23 @@ modal-dialog {
   border-bottom: 1px solid $modal-header-divider;
 }
 
+.modal-header-text {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
 .modal-title {
   margin: 0;
   font-size: 18px;
   font-weight: 600;
   color: $modal-title-text;
+}
+
+.modal-subtitle {
+  margin: 0;
+  font-size: 13px;
+  color: $text-dark-muted;
 }
 
 .modal-close {
@@ -100,9 +112,206 @@ modal-dialog {
 }
 
 .modal-body {
-  padding: 18px 20px 20px;
+  padding: 25px;
   overflow-y: auto;
   @include flex-fill;
+  @include scrollbar(4px, transparent, white, 4px);
+}
+
+.modal-alert {
+  margin: 0 0 16px;
+  padding: 12px 14px;
+  border-radius: $border-radius-small;
+  font-size: 13px;
+  font-weight: 500;
+  border: 1px solid transparent;
+}
+
+.modal-alert--warn {
+  background: rgba($amber-500, 0.12);
+  border-color: rgba($amber-500, 0.28);
+  color: $amber-300;
+}
+
+.modal-info-box {
+  display: flex;
+  gap: 12px;
+  padding: 14px;
+  border-radius: $border-radius-small;
+  background: rgba($blue-500, 0.1);
+  border: 1px solid rgba($blue-500, 0.2);
+}
+
+.modal-info-box__icon {
+  flex-shrink: 0;
+  font-size: 1.25rem;
+  color: $blue-500;
+}
+
+.modal-info-box__text {
+  margin: 0;
+  font-size: 13px;
+  color: $blue-300;
+}
+
+.modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 12px 20px 16px;
+  border-top: 1px solid $modal-header-divider;
+}
+
+.modal-action-btn {
+  border: none;
+  padding: 0;
+  margin: 0;
+  background: transparent;
+  font: inherit;
+  color: inherit;
+  text-align: inherit;
+  text-decoration: none;
+
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 10px;
+  box-sizing: border-box;
+  flex-shrink: 0;
+  white-space: nowrap;
+  font-size: 13px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  border-radius: $border-radius-small;
+  border: 1px solid transparent;
+  cursor: pointer;
+  // Defaults (tone=info)
+  --modal-btn-fg: #{$primary-blue};
+  --modal-btn-fg-filled: #{$white};
+  --modal-btn-bg: #{$primary-blue};
+  --modal-btn-bg-hover: #{$primary-blue-hover};
+  --modal-btn-border: #{$primary-blue};
+  --modal-btn-shadow: 0 10px 15px -3px rgba(#{$primary-blue}, 0.3);
+  color: var(--modal-btn-fg);
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+}
+
+.modal-action-btn--action {
+  margin-right: auto;
+}
+
+// --- Semantic tones ---
+.modal-tone--default {
+  --modal-btn-fg: #{$text-dark-muted};
+  --modal-btn-fg-filled: #{$text-dark};
+  --modal-btn-bg: #{rgba($white, 0.06)};
+  --modal-btn-bg-hover: #{rgba($white, 0.1)};
+  --modal-btn-border: #{rgba($white, 0.14)};
+  --modal-btn-shadow: none;
+}
+
+.modal-tone--info {
+  --modal-btn-fg: #{$primary-blue};
+  --modal-btn-fg-filled: #{$white};
+  --modal-btn-bg: #{$primary-blue};
+  --modal-btn-bg-hover: #{$primary-blue-hover};
+  --modal-btn-border: #{$primary-blue};
+  --modal-btn-shadow: 0 10px 15px -3px rgba(#{$primary-blue}, 0.3);
+}
+
+.modal-tone--success {
+  --modal-btn-fg: #{$green-400};
+  --modal-btn-fg-filled: #{$white};
+  --modal-btn-bg: #{$green-500};
+  --modal-btn-bg-hover: #{color.adjust($green-500, $lightness: -6%)};
+  --modal-btn-border: #{$green-500};
+  --modal-btn-shadow: 0 10px 15px -3px rgba(#{$green-500}, 0.3);
+}
+
+.modal-tone--warning {
+  --modal-btn-fg: #{$orange-500};
+  --modal-btn-fg-filled: #{$white};
+  --modal-btn-bg: #{$orange-500};
+  --modal-btn-bg-hover: #{color.adjust($orange-500, $lightness: -6%)};
+  --modal-btn-border: #{$orange-500};
+  --modal-btn-shadow: 0 10px 15px -3px rgba(#{$orange-500}, 0.3);
+}
+
+.modal-tone--danger {
+  --modal-btn-fg: #{$red-300};
+  --modal-btn-fg-filled: #{$white};
+  --modal-btn-bg: #{$red-500};
+  --modal-btn-bg-hover: #{color.adjust($red-500, $lightness: -6%)};
+  --modal-btn-border: #{$red-500};
+  --modal-btn-shadow: 0 10px 15px -3px rgba(#{$red-500}, 0.3);
+}
+
+// --- Visual styles ---
+.modal-btn--text {
+  background: transparent;
+
+  &:hover:not(:disabled) {
+    background: rgba($white, 0.06);
+  }
+}
+
+.modal-btn--filled {
+  background: var(--modal-btn-bg);
+  color: var(--modal-btn-fg-filled);
+  box-shadow: var(--modal-btn-shadow);
+
+  &:hover:not(:disabled) {
+    background: var(--modal-btn-bg-hover);
+  }
+}
+
+.modal-btn--outlined {
+  background: transparent;
+  border-color: var(--modal-btn-border);
+
+  &:hover:not(:disabled) {
+    background: rgba($white, 0.04);
+  }
+}
+
+// Backwards-compat aliases (deprecated)
+.modal-btn--ghost {
+  @extend .modal-btn--text;
+}
+
+.modal-btn--primary {
+  @extend .modal-btn--filled;
+  @extend .modal-tone--info;
+}
+
+
+.modal-action-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  line-height: 0;
+  flex-shrink: 0;
+}
+
+.modal-action-icon--md {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  line-height: 1;
+}
+
+.modal-action-label {
+  display: inline-block;
 }
 
 .modal-detail-list {

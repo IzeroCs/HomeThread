@@ -153,6 +153,171 @@ $form-error-message-text: $alert-error-text;
   }
 }
 
+.form-field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.form-label {
+  display: block;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: $form-label-text;
+}
+
+.form-required {
+  color: $red-300;
+}
+
+.form-control-wrap {
+  position: relative;
+  display: block;
+}
+
+.form-control-icon {
+  position: absolute;
+  left: 0.75rem;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 1.25rem;
+  color: $text-dark-subtle;
+  pointer-events: none;
+}
+
+.form-control {
+  display: block;
+  width: 100%;
+  padding: 0.625rem 1rem;
+  font-size: 0.875rem;
+  line-height: 1.5;
+  color: $form-input-text;
+  background: $ot-input-bg;
+  border: 1px solid $ot-input-border;
+  border-radius: 0.5rem;
+  font-family: inherit;
+  transition: border-color 0.15s, box-shadow 0.15s;
+
+  &::placeholder {
+    color: $form-input-placeholder;
+  }
+
+  &:focus {
+    outline: none;
+    border-color: $ot-input-focus-border;
+    box-shadow: $ot-input-focus-ring;
+  }
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+}
+
+.form-control--mono {
+  font-family: ui-monospace, monospace;
+}
+
+.form-control--with-icon {
+  padding-left: 2.5rem;
+}
+
+.form-select-wrap {
+  position: relative;
+  display: block;
+}
+
+.form-select-icon {
+  position: absolute;
+  right: 0.75rem;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 1.25rem;
+  color: $text-dark-subtle;
+  pointer-events: none;
+}
+
+.form-select {
+  @extend .form-control;
+  appearance: none;
+  cursor: pointer;
+  padding-right: 2.5rem;
+  padding-left: 0.75rem;
+}
+
+.form-radio-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  width: 100%;
+  padding: 6px;
+  border-radius: 0.5rem;
+  border: 1px solid $ot-input-border;
+  background: $ot-input-bg;
+  box-sizing: border-box;
+}
+
+.form-radio {
+  position: relative;
+  display: inline-flex;
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+// Hide native radio but keep it accessible
+.form-radio-input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.form-radio-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 34px;
+  width: 100%;
+  padding: 0 12px;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: $text-dark;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  user-select: none;
+  transition: background 0.15s, color 0.15s;
+}
+
+.form-radio-input:checked {
+  cursor: auto;
+}
+
+.form-radio:hover .form-radio-input:not(:checked):not(:disabled) + .form-radio-pill {
+  background: rgba($white, 0.06);
+}
+
+.form-radio-input:focus-visible + .form-radio-pill {
+  outline: none;
+}
+
+.form-radio-input:checked + .form-radio-pill {
+  background: $primary-blue;
+  color: $white;
+}
+
+.form-radio-input:disabled + .form-radio-pill {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.form-helper {
+  margin: 0;
+  font-size: 12px;
+  color: $form-hint-text;
+}
+
 .form-actions {
   display: flex;
   flex-wrap: wrap;

@@ -8,6 +8,12 @@ Giao tiếp BR ↔ backend theo hướng **notify-first**: Thread-Host push `CMD
 
 ## Recent Significant Changes
 
+### Joiner / Modal / Form polish (2.14.0)
+- **Joiner feature:** Trang Joiner tách riêng (`src/features/joiner/`); commission modal gộp vào `joiner.component.ts` (không còn component commission-node-modal riêng). **Commissioner** cho phép khi BR **attached** (leader, router hoặc child) — `_canCommission` thay `_isLeader`; alert và disable form khi state khác.
+- **modal-dialog:** Render qua **portal** (Lit `render(template, node)` vào `document.body` trong `updated()`; node tạo/remove trong `connectedCallback`/`disconnectedCallback`) để overlay phủ cả sidebar/header. **ModalAction** có `tone` (default|info|success|warning|danger), `style` (text|filled|outlined), `icon` (string = Material Symbol name hoặc TemplateResult), `loading` (spinner thay icon); mặc định Confirm = filled + info, Cancel = text + danger; `className` vẫn dùng khi cần custom. Nút footer cố định chiều cao; icon wrapper `.modal-action-icon` 20×20px, line-height 0 để không nhích khi font load.
+- **Shared components:** `spin-loader` (shared/components/spinner): global, props size/thickness; dùng trong modal confirm khi loading. **Form:** `_form.scss` có `.form-radio-row` (horizontal segmented control), `.form-radio`/`.form-radio-pill`, hover + selected (primary bg); timeout trong commission modal dùng radio thay select. **modal.style.scss:** `.modal-alert`, `.modal-alert--warn`, `.modal-info-box`, button tone/style classes; form controls (form-field, form-label, form-control, form-select) và alert/info trong shared form/modal.
+- **joiner.style.scss:** Chỉ import nodes + form; toàn bộ style commission chuyển sang _form.scss và modal.style.scss (class chung form-*, modal-*).
+
 ### RGBA → RGB hex variables (2.13.0)
 - **Nguyên tắc:** Chỉ tạo biến cho **phần RGB** (hex 6 ký tự) trong `_variables.scss`; opacity giữ trong `rgba($var, opacity)`. Không dùng hex 8 ký tự.
 - **_variables.scss:** Thêm section **“RGB tokens (hex 6)”**: `$black`, `$slate-850`, `$navy-900`, `$slate-800`, `$slate-900`, `$red-900`, `$red-950`, `$danger-pink`, `$indigo-400`; `$white` gộp vào đây. Cập nhật mọi biến dùng rgba literal → `rgba($var, opacity)` (shadow, brand-border, alert, topology-offline, system-dot-bg, v.v.).
@@ -157,8 +163,11 @@ ROUTER_TABLE, CHILD_TABLE, JOINER_TABLE TX va ACK bi filter ra khoi console log 
 - `HomeThread/Documents/coap/device_payload_spec.md` — spec chính CoAP/CBOR/DB/flow. `Documents/coap/backend_discovery_srp.md` — SRP discovery. `Documents/architecture/real_br_integration.md` — BR, routing, troubleshooting
 - `backend/src/communicate/communicate.manager.ts` — pullState(), SRP register khi leader
 - `backend/src/communicate/command.manager.ts` — frame handling, sendSrpRegister, replyAck (IP_ADDR)
-- `frontend/src/features/nodes/nodes.component.tsx` — Router/Child table, JoinerList, CommissionNodeModal
-- `frontend/src/features/nodes/components/joiner-list/joiner-list.component.tsx` — joiner cards, countdown
+- `frontend/src/features/nodes/nodes.component.ts` — Router/Child table, leader badge
+- `frontend/src/features/joiner/joiner.component.ts` — Joiner Table, commission modal (form + modal-dialog), _canCommission (leader/router/child)
+- `frontend/src/shared/components/modal/modal.component.ts` — portal render, ModalAction tone/style/icon/loading
+- `frontend/src/shared/components/spinner/spinner.component.ts` — spin-loader (global)
+- `frontend/src/shared/styles/_form.scss` — form-radio-row, form-field, form-control, form-select
 - `frontend/src/shared/components/toast-container/` — toast dark
 - `frontend/src/shared/components/modal/`, `confirm-modal/` — dark navy theme
 - `frontend/src/shared/components/sidebar/` — nav, Settings sub-items icons
