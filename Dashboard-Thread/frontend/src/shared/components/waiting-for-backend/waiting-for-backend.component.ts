@@ -1,5 +1,9 @@
 import { LitElement, html } from "lit";
 import { customElement } from "lit/decorators.js";
+import { LitStoreController } from "@/shared/store/lit-store-controller";
+import { store } from "@/shared/store/store";
+import { selectLocale } from "@/shared/store/selectors";
+import { t } from "@/shared/i18n/i18n";
 
 import "@shared/components/waiting-for-backend/waiting-for-backend.style.scss";
 
@@ -9,7 +13,15 @@ export class WaitingForBackendComponent extends LitElement {
     return this;
   }
 
+  private readonly locale = new LitStoreController(
+    this,
+    store,
+    (s) => selectLocale(s),
+    Object.is
+  );
+
   render() {
+    void this.locale.value;
     return html`
       <div class="page-container">
         <div class="waiting-for-backend">
@@ -18,15 +30,15 @@ export class WaitingForBackendComponent extends LitElement {
             <span class="material-symbols-outlined waiting-for-backend__spinner-icon" aria-hidden>router</span>
           </div>
           <div class="waiting-for-backend__copy">
-            <h1 class="waiting-for-backend__title">Waiting for backend...</h1>
-            <p class="waiting-for-backend__subtitle">Start the backend or reconnecting.</p>
+            <h1 class="waiting-for-backend__title">${t("waiting.title")}</h1>
+            <p class="waiting-for-backend__subtitle">${t("waiting.subtitle")}</p>
           </div>
           <div class="waiting-for-backend__card">
             <div class="waiting-for-backend__card-inner">
               <div class="waiting-for-backend__card-header">
                 <div>
-                  <span class="waiting-for-backend__card-label">Connection Pipeline</span>
-                  <p class="waiting-for-backend__card-status">SYSTEM STATUS: RETRYING</p>
+                  <span class="waiting-for-backend__card-label">${t("waiting.card.label")}</span>
+                  <p class="waiting-for-backend__card-status">${t("waiting.card.status")}</p>
                 </div>
               </div>
               <div class="waiting-for-backend__progress-track">
@@ -36,14 +48,14 @@ export class WaitingForBackendComponent extends LitElement {
                 <span class="material-symbols-outlined waiting-for-backend__card-icon" aria-hidden
                   >settings_input_antenna</span
                 >
-                <p class="waiting-for-backend__card-hint">Connecting to OpenThread network...</p>
+                <p class="waiting-for-backend__card-hint">${t("waiting.card.hint")}</p>
               </div>
             </div>
           </div>
           <div class="waiting-for-backend__info">
             <span class="material-symbols-outlined waiting-for-backend__info-icon" aria-hidden>info</span>
             <p class="waiting-for-backend__info-text">
-              Please check your local server settings if this persists.
+              ${t("waiting.info")}
             </p>
           </div>
         </div>

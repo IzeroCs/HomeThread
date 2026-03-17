@@ -1,5 +1,9 @@
 import { LitElement, html, render, type TemplateResult } from "lit";
 import { customElement, property } from "lit/decorators.js";
+import { LitStoreController } from "@/shared/store/lit-store-controller";
+import { store } from "@/shared/store/store";
+import { selectLocale } from "@/shared/store/selectors";
+import { t } from "@/shared/i18n/i18n";
 
 import "@shared/components/modal/modal.style.scss";
 import "@shared/components/spinner/spinner.component";
@@ -38,6 +42,13 @@ export class ModalComponent extends LitElement {
   override createRenderRoot() {
     return this;
   }
+
+  private readonly locale = new LitStoreController(
+    this,
+    store,
+    (s) => selectLocale(s),
+    Object.is
+  );
 
   @property({ type: Boolean }) open = false;
   @property({ type: String }) title = "";
@@ -199,14 +210,15 @@ export class ModalComponent extends LitElement {
   }
 
   private _buildOverlay(): TemplateResult {
+    void this.locale.value;
     const action = this.actionAction
-      ? { label: this.actionAction.label ?? "Action", ...this.actionAction }
+      ? { label: this.actionAction.label ?? t("modal.actions.default"), ...this.actionAction }
       : undefined;
     const cancel = this.cancelAction
-      ? { label: this.cancelAction.label ?? "Cancel", ...this.cancelAction }
+      ? { label: this.cancelAction.label ?? t("modal.actions.cancel"), ...this.cancelAction }
       : undefined;
     const confirm = this.confirmAction
-      ? { label: this.confirmAction.label ?? "Confirm", ...this.confirmAction }
+      ? { label: this.confirmAction.label ?? t("modal.actions.confirm"), ...this.confirmAction }
       : undefined;
     const hasFooter = !!(action || cancel || confirm);
     return html`
@@ -227,7 +239,7 @@ export class ModalComponent extends LitElement {
               type="button"
               class="modal-close"
               @click=${() => (this.cancelAction ? this.cancelAction.onClick() : this.onClose())}
-              aria-label="Đóng"
+              aria-label=${t("modal.closeAriaLabel")}
             >
               ×
             </button>

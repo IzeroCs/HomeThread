@@ -1,10 +1,11 @@
 import { LitElement, html, svg } from "lit";
 import { customElement, property, state } from "lit/decorators.js";
-import type { OtTableData, OtConfig } from "@shared/types/websocket.type";
+import type { OtTableData } from "@shared/types/websocket.type";
 import type { ConnectionStatus } from "shared/src/types";
 import { store } from "@/shared/store/store";
 import { LitStoreController, shallowEqual } from "@/shared/store/lit-store-controller";
-import { selectBrStatus, selectChildTable, selectOtConfig, selectRouterTable } from "@/shared/store/selectors";
+import { selectBrStatus, selectChildTable, selectLocale, selectOtConfig, selectRouterTable } from "@/shared/store/selectors";
+import { t } from "@/shared/i18n/i18n";
 
 import "@features/topology/topology-map.style.scss";
 
@@ -366,6 +367,13 @@ export class TopologyMapComponent extends LitElement {
   override createRenderRoot() {
     return this;
   }
+
+  private readonly locale = new LitStoreController(
+    this,
+    store,
+    (s) => selectLocale(s),
+    Object.is
+  );
 
   private readonly appState = new LitStoreController(
     this,
@@ -825,6 +833,7 @@ export class TopologyMapComponent extends LitElement {
   }
 
   render() {
+    void this.locale.value;
     const { nodes, edges } = this._getLayout();
     const { w, h } = this.containerSize;
     const viewBox = `0 0 ${w} ${h}`;
@@ -834,7 +843,7 @@ export class TopologyMapComponent extends LitElement {
         class="topology-map"
         tabindex="0"
         role="application"
-        aria-label="Topology map"
+        aria-label=${t("topology.aria.map")}
         @pointerdown=${this._onPointerDown}
         @pointermove=${this._onPointerMove}
         @pointerup=${this._onPointerUp}
@@ -945,7 +954,7 @@ export class TopologyMapComponent extends LitElement {
                     >${node.icon}</text>
 
                     ${(() => {
-                      const labelText = node.offline ? "OFFLINE" : node.label;
+                      const labelText = node.offline ? t("topology.node.offline") : node.label;
                       const labelW = Math.max(80, labelText.length * 6.5 + 20);
                       const labelX = -labelW / 2;
                       return svg`<rect
@@ -969,12 +978,12 @@ export class TopologyMapComponent extends LitElement {
           </g>
         </svg>
 
-        <div class="topology-zoom" aria-label="Zoom">
+        <div class="topology-zoom" aria-label=${t("topology.aria.zoom")}>
           <button
             type="button"
             class="topology-zoom__btn"
             @click=${() => this._zoomBy(1.2)}
-            aria-label="Zoom in"
+            aria-label=${t("topology.zoom.in")}
           >
             <span class="material-symbols-outlined">add</span>
           </button>
@@ -982,7 +991,7 @@ export class TopologyMapComponent extends LitElement {
             type="button"
             class="topology-zoom__btn"
             @click=${() => this._zoomBy(0.83)}
-            aria-label="Zoom out"
+            aria-label=${t("topology.zoom.out")}
           >
             <span class="material-symbols-outlined">remove</span>
           </button>
@@ -990,7 +999,7 @@ export class TopologyMapComponent extends LitElement {
             type="button"
             class="topology-zoom__btn"
             @click=${() => this._fitView()}
-            aria-label="Fit view"
+            aria-label=${t("topology.zoom.fit")}
           >
             <span class="material-symbols-outlined">fit_screen</span>
           </button>

@@ -3,6 +3,8 @@ import type { RootState } from "@/shared/store/store";
 export const selectWsConnected = (s: RootState) => s.ws.connected;
 export const selectWsConnectError = (s: RootState) => s.ws.connectError;
 
+export const selectLocale = (s: RootState) => s.i18n.locale;
+
 export const selectBrStatus = (s: RootState) => s.br.brStatus;
 export const selectBrError = (s: RootState) => s.br.brError;
 

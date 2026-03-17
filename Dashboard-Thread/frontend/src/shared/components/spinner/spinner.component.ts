@@ -1,5 +1,9 @@
 import { LitElement, html } from "lit";
 import { customElement, property } from "lit/decorators.js";
+import { LitStoreController } from "@/shared/store/lit-store-controller";
+import { store } from "@/shared/store/store";
+import { selectLocale } from "@/shared/store/selectors";
+import { t } from "@/shared/i18n/i18n";
 
 import "@shared/components/spinner/spinner.style.scss";
 
@@ -9,15 +13,23 @@ export class SpinnerComponent extends LitElement {
     return this;
   }
 
+  private readonly locale = new LitStoreController(
+    this,
+    store,
+    (s) => selectLocale(s),
+    Object.is
+  );
+
   @property({ type: Number }) size = 16;
   @property({ type: Number }) thickness = 2;
 
   render() {
+    void this.locale.value;
     return html`
       <span
         class="spin-loader"
         role="status"
-        aria-label="Loading"
+        aria-label=${t("common.loading")}
         style="width:${this.size}px;height:${this.size}px;border-width:${this.thickness}px;"
       ></span>
     `;

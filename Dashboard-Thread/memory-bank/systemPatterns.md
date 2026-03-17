@@ -117,6 +117,7 @@ CMD_STATE that bai **5 lan lien tiep** → dong transport + bat dau reconnect.
 - `WebSocketController` (`frontend/src/shared/controllers/websocket.controller.ts`) = **single source of truth** cho WS state + actions.
 - Root `app-shell` tạo controller và truyền state/callback xuống các component qua property.
 - Socket URL: `window.location.origin` (LAN-friendly via Vite proxy).
+- **i18n locale state:** Locale nằm trong Redux store slice `i18n` (`frontend/src/shared/store/slices/i18n.slice.ts`), persist `localStorage` key `dashboard-thread.locale`. UI components dùng `LitStoreController` subscribe `selectLocale` để re-render khi đổi locale.
 - **Path alias:** Import dùng `@shared/*`, `@nodes/*`, `@settings/*`, `@status/*`, `@/` (tsconfig + Vite alias). SCSS: `loadPaths: [src]` → `@use "shared/styles/variables"` / `shared/styles/form`.
 
 ### Backend path aliases
@@ -142,6 +143,12 @@ socket.emit("ot:setConfig", payload); // string literal
 - **Frontend**: CHI check "khong duoc de trong" — khong validate format/range
 - **Backend**: Toan bo validation chi tiet (EUI64 format, PSKd alphabet, channel range...)
 - **Error display**: Frontend hien thi message tu backend via WebSocket event result
+
+### Internationalization (i18n)
+
+- **Translation lookup:** `frontend/src/shared/i18n/i18n.ts` export `t(key, params?)` đọc locale từ store, lookup nested JSON dict theo dot-path, interpolate `{name}` placeholders, fallback `current locale → en → key`.
+- **Source of truth:** `frontend/src/shared/i18n/locales/en.json` là dictionary chính cho UI text. `vi.json` được dùng cho dịch sau (có thể trống/partial).
+- **Scope:** Chỉ i18n **user-facing strings** do frontend render. Không i18n technical tokens (icon names, CSS classes, ids, event names, protocol/table column keys) và không dịch raw error string/data từ backend; chỉ dịch fallback messages do frontend tự tạo.
 
 ### Age Counter Pattern (Nodes)
 

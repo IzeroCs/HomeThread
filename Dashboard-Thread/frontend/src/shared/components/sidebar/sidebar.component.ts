@@ -6,10 +6,12 @@ import { LitStoreController, shallowEqual } from "@/shared/store/lit-store-contr
 import {
   selectBrStatus,
   selectChildTable,
+  selectLocale,
   selectRouterTable,
   selectThreadRunOnConnect,
   selectThreadState,
 } from "@/shared/store/selectors";
+import { t } from "@/shared/i18n/i18n";
 
 import "@shared/components/sidebar/sidebar.style.scss";
 
@@ -26,20 +28,20 @@ interface NavGroup {
 
 const NAV_ITEMS: NavGroup[] = [
   {
-    label: "Monitor",
+    label: "sidebar.group.monitor",
     items: [
-      { page: "status", label: "Status", icon: "speed" },
-      { page: "nodes", label: "Nodes", icon: "account_tree" },
-      { page: "joiner", label: "Joiner", icon: "group_add" },
-      { page: "topology", label: "Topology", icon: "hub" },
+      { page: "status", label: "sidebar.item.status", icon: "speed" },
+      { page: "nodes", label: "sidebar.item.nodes", icon: "account_tree" },
+      { page: "joiner", label: "sidebar.item.joiner", icon: "group_add" },
+      { page: "topology", label: "sidebar.item.topology", icon: "hub" },
     ],
   },
   {
-    label: "Settings",
+    label: "sidebar.group.settings",
     items: [
-      { page: "settings-br", label: "BR Connection", icon: "lan" },
-      { page: "settings-openthread", label: "OpenThread", icon: "device_hub" },
-      { page: "settings-system", label: "System", icon: "warning" },
+      { page: "settings-br", label: "sidebar.item.settingsBr", icon: "lan" },
+      { page: "settings-openthread", label: "sidebar.item.settingsOpenThread", icon: "device_hub" },
+      { page: "settings-system", label: "sidebar.item.settingsSystem", icon: "warning" },
     ],
   },
 ];
@@ -51,6 +53,13 @@ export class SidebarComponent extends LitElement {
   }
 
   @property({ type: String }) currentPage: NavPage = "status";
+
+  private readonly locale = new LitStoreController(
+    this,
+    store,
+    (s) => selectLocale(s),
+    Object.is
+  );
 
   private readonly appState = new LitStoreController(
     this,
@@ -75,9 +84,9 @@ export class SidebarComponent extends LitElement {
   }
 
   private _statusTitle(): string {
-    if (!this.appState.value.brConnected) return "disconnected";
+    if (!this.appState.value.brConnected) return t("common.state.disconnected");
     if (this.appState.value.threadState) return this.appState.value.threadState;
-    return "disabled";
+    return t("sidebar.status.disabled");
   }
 
   private _handlePrimaryClick(page: NavPage) {
@@ -89,6 +98,7 @@ export class SidebarComponent extends LitElement {
   }
 
   render() {
+    void this.locale.value;
     const statusClass = this._statusClass();
     const statusTitle = this._statusTitle();
 
@@ -98,7 +108,7 @@ export class SidebarComponent extends LitElement {
           <div class="sidebar-logo">
             <span class="material-symbols-outlined">hub</span>
           </div>
-          <span class="sidebar-brand-text">OpenThread</span>
+          <span class="sidebar-brand-text">${t("sidebar.brand")}</span>
         </div>
       </div>
       <div class="sidebar-status">
@@ -107,11 +117,11 @@ export class SidebarComponent extends LitElement {
       <nav class="sidebar-nav">
         <div class="sidebar-nav-section">
           ${NAV_ITEMS.map(group => html`
-            <div class="sidebar-nav-section-title">${group.label}</div>
+            <div class="sidebar-nav-section-title">${t(group.label)}</div>
             ${group.items.map(item => html`
               <button class="sidebar-nav-item ${item.page === this.currentPage ? "active" : ""}" @click=${() => this._handlePrimaryClick(item.page)}>
                 <span class="material-symbols-outlined">${item.icon}</span>
-                ${item.label}
+                ${t(item.label)}
               </button>
             `)}
           `)}
@@ -123,8 +133,8 @@ export class SidebarComponent extends LitElement {
           <span class="material-symbols-outlined">account_circle</span>
         </div>
         <div class="sidebar-user-info">
-          <div class="sidebar-user-username">IzeroCs</div>
-          <div class="sidebar-user-name">Nguyen Danh Nam</div>
+          <div class="sidebar-user-username">${t("sidebar.user.username")}</div>
+          <div class="sidebar-user-name">${t("sidebar.user.name")}</div>
         </div>
       </div>
       </div>

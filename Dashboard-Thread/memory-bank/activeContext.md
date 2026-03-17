@@ -13,6 +13,11 @@ Giao tiếp BR ↔ backend theo hướng **notify-first**: Thread-Host push `CMD
 
 ## Recent Significant Changes
 
+### Frontend i18n (unreleased)
+- **Internationalization scaffold:** Thêm `frontend/src/shared/i18n/` với `t(key, params?)`, locale mặc định `en`, fallback `locale → en → key`. Locale lưu trong Redux store (`i18n` slice) và persist `localStorage` key `dashboard-thread.locale`.
+- **Full coverage (frontend/src):** Toàn bộ user-facing strings (UI text + aria/title + placeholders + FE fallback errors) đã chuyển sang `t("...")` và keys được tập trung trong `frontend/src/shared/i18n/locales/en.json`. `vi.json` để trống/partial cho bước dịch sau.
+- **i18n Ally:** Cấu hình locales path `frontend/src/shared/i18n/locales` và regex detect `t("...")` để highlight missing keys giữa `en.json`/`vi.json`.
+
 ### UI tokens + Joiner revamp (2.15.0)
 - **Joiner page UI:** Refactor `frontend/src/features/joiner/` theo layout “queue” (Joiner ID, EUI64, **PSKD**, timeout countdown, status badge, actions). Style **tonal** (ưu tiên surface + color-mix, hạn chế border), bỏ search/pagination và bỏ header trong card.
 - **Joiner data:** Frontend hiển thị **PSKD** từ Joiner Table (`headers["PSKD"]`) thay vì hardcode `"—"`. Nút copy ưu tiên PSKD (nếu có) và fallback copy EUI64.

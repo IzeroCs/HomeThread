@@ -4,6 +4,10 @@ import { DEFAULT_BR_CONFIG, type BrConnectionConfigForm } from "@settings/utils/
 import type { BrConnectionConfigFromBackend } from "@shared/types/websocket.type";
 import { BR_CONNECTION } from "shared/src/constants";
 import { validateBrConnectionConfig } from "shared/src/validation";
+import { LitStoreController } from "@/shared/store/lit-store-controller";
+import { store } from "@/shared/store/store";
+import { selectLocale } from "@/shared/store/selectors";
+import { t } from "@/shared/i18n/i18n";
 
 import "@settings/components/br-connection-form/br-connection-form.style.scss";
 
@@ -18,6 +22,13 @@ export class BrConnectionFormComponent extends LitElement {
   override createRenderRoot() {
     return this;
   }
+
+  private readonly locale = new LitStoreController(
+    this,
+    store,
+    (s) => selectLocale(s),
+    Object.is
+  );
 
   @property({ type: Object }) initialConfig: BrConnectionConfigFromBackend | null = null;
   @property({ attribute: false }) onSave: (config: BrConnectionConfigForm) => void = () => {};
@@ -60,7 +71,7 @@ export class BrConnectionFormComponent extends LitElement {
     this.errors = {};
     this.testStatus = { type: "idle" };
     this.onSave(this.formData);
-    this.showToast("success", "Đã lưu cấu hình BR.");
+    this.showToast("success", t("settings.brConnection.toast.saved"));
   }
 
   private async _handleTestConnect() {
@@ -73,19 +84,19 @@ export class BrConnectionFormComponent extends LitElement {
     }
     this.errors = {};
     if (!this.onTestConnect) {
-      this.showToast("error", "Test connect not available");
+      this.showToast("error", t("settings.brConnection.errors.testNotAvailable"));
       return;
     }
     this.testStatus = { type: "loading" };
     const result = await this.onTestConnect({ brHost: this.formData.brHost, brPort: this.formData.brPort });
     if (result.success) {
-      this.testStatus = { type: "success", message: "Connection successful" };
+      this.testStatus = { type: "success", message: t("settings.brConnection.testStatus.success") };
       this.testSucceeded = true;
-      this.showToast("success", "Kết nối BR thành công!");
+      this.showToast("success", t("settings.brConnection.toast.testSuccess"));
     } else {
-      this.testStatus = { type: "error", message: result.error ?? "Connection failed" };
+      this.testStatus = { type: "error", message: result.error ?? t("settings.brConnection.testStatus.failedFallback") };
       this.testSucceeded = false;
-      this.showToast("error", result.error ?? "Kết nối thất bại.");
+      this.showToast("error", result.error ?? t("settings.brConnection.toast.testFailedFallback"));
     }
   }
 
@@ -95,21 +106,20 @@ export class BrConnectionFormComponent extends LitElement {
 
   private get _alertMessage(): string | null {
     if (this.testStatus.type === "error") return this.testStatus.message ?? null;
-    if (Object.keys(this.errors).length > 0) return this.errors.brHost || this.errors.brPort || "Please check the fields below.";
+    if (Object.keys(this.errors).length > 0) return this.errors.brHost || this.errors.brPort || t("settings.brConnection.errors.checkFieldsFallback");
     return null;
   }
 
   render() {
+    void this.locale.value;
     const alertMessage = this._alertMessage;
     const canSave = this._canSave;
 
     return html`
       <div class="form-page">
         <div class="form-page-header">
-          <h2 class="form-page-title">BR Connection (TCP)</h2>
-          <p class="form-page-description">
-            Configure your Border Router TCP connection settings and network parameters.
-          </p>
+          <h2 class="form-page-title">${t("settings.brConnection.title")}</h2>
+          <p class="form-page-description">${t("settings.brConnection.description")}</p>
         </div>
 
         ${alertMessage
@@ -120,20 +130,20 @@ export class BrConnectionFormComponent extends LitElement {
           <form @submit=${this._handleSubmit} class="form-page-form">
             <div class="form-row-2 br-fields-row">
               <div class="form-group">
-                <label for="brHost">BR Host</label>
+                <label for="brHost">${t("settings.brConnection.fields.hostLabel")}</label>
                 <input
                   type="text"
                   id="brHost"
                   .value=${this.formData.brHost}
                   @input=${(e: Event) => this._handleFieldChange("brHost", (e.target as HTMLInputElement).value)}
-                  placeholder="Thread-Host.local"
+                  placeholder=${t("settings.brConnection.fields.hostPlaceholder")}
                   class=${this.errors.brHost ? "error" : ""}
                 />
                 ${this.errors.brHost ? html`<span class="error-message">${this.errors.brHost}</span>` : ""}
-                <small class="form-hint">DNS name or static IPv6 address of the Border Router.</small>
+                <small class="form-hint">${t("settings.brConnection.fields.hostHint")}</small>
               </div>
               <div class="form-group">
-                <label for="brPort">Port</label>
+                <label for="brPort">${t("settings.brConnection.fields.portLabel")}</label>
                 <input
                   type="number"
                   id="brPort"
@@ -145,7 +155,9 @@ export class BrConnectionFormComponent extends LitElement {
                   class=${this.errors.brPort ? "error" : ""}
                 />
                 ${this.errors.brPort ? html`<span class="error-message">${this.errors.brPort}</span>` : ""}
-                <small class="form-hint">Standard TCP port for OpenThread management (default: ${BR_CONNECTION.DEFAULT_PORT}).</small>
+                <small class="form-hint">
+                  ${t("settings.brConnection.fields.portHint", { defaultPort: BR_CONNECTION.DEFAULT_PORT })}
+                </small>
               </div>
             </div>
             <div class="br-divider"></div>
@@ -154,7 +166,7 @@ export class BrConnectionFormComponent extends LitElement {
                 <span class="material-symbols-outlined">info</span>
               </div>
               <p class="br-connection-note-text">
-                Changing these settings will restart the monitoring service. Ensure the Border Router is accessible from this network before saving.
+                ${t("settings.brConnection.note")}
               </p>
             </div>
             <div class="br-connection-actions">
@@ -167,12 +179,12 @@ export class BrConnectionFormComponent extends LitElement {
                       ?disabled=${this.testStatus.type === "loading"}
                     >
                       <span class="test-status-dot" aria-hidden="true"></span>
-                      ${this.testStatus.type === "loading" ? "Testing…" : "Test Connection"}
+                      ${this.testStatus.type === "loading" ? t("settings.brConnection.actions.testing") : t("settings.brConnection.actions.test")}
                     </button>
                   `
                 : ""}
               <button type="submit" class="form-btn form-btn--primary br-submit" ?disabled=${this.onTestConnect ? !canSave : false}>
-                Save Configuration
+                ${t("settings.brConnection.actions.save")}
               </button>
             </div>
           </form>

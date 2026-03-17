@@ -1,6 +1,10 @@
 import { LitElement, html } from "lit";
 import { customElement, property, state } from "lit/decorators.js";
 import "@shared/components/confirm-modal/confirm-modal.component";
+import { LitStoreController } from "@/shared/store/lit-store-controller";
+import { store } from "@/shared/store/store";
+import { selectLocale } from "@/shared/store/selectors";
+import { t } from "@/shared/i18n/i18n";
 
 import "@settings/components/system-tab/system-tab.style.scss";
 
@@ -11,6 +15,13 @@ export class SystemTabComponent extends LitElement {
   override createRenderRoot() {
     return this;
   }
+
+  private readonly locale = new LitStoreController(
+    this,
+    store,
+    (s) => selectLocale(s),
+    Object.is
+  );
 
   @property({ type: Boolean }) isConnected = false;
   @property({ attribute: false }) reset: () => Promise<{ success: boolean; error?: string }> = async () => ({ success: false });
@@ -28,9 +39,12 @@ export class SystemTabComponent extends LitElement {
     try {
       const result = action === "reset" ? await this.reset() : await this.factoryReset();
       if (result.success) {
-        this.showToast("success", action === "reset" ? "Đã gửi lệnh reset thiết bị." : "Đã gửi lệnh factory reset.");
+        this.showToast(
+          "success",
+          action === "reset" ? t("settings.system.toast.resetSent") : t("settings.system.toast.factorySent")
+        );
       } else {
-        this.showToast("error", result.error ?? "Thất bại.");
+        this.showToast("error", result.error ?? t("settings.system.toast.failedFallback"));
       }
     } finally {
       this.loading = false;
@@ -38,14 +52,13 @@ export class SystemTabComponent extends LitElement {
   }
 
   render() {
+    void this.locale.value;
     return html`
       <div class="form-page system-page">
         <div class="system-page-header">
-          <h2 class="system-page-title">Hệ thống</h2>
-          <p class="system-page-description">
-            Quản lý trạng thái vận hành và thiết lập gốc của thiết bị Border Router.
-          </p>
-          ${!this.isConnected ? html`<p class="system-page-hint">Chưa kết nối BR. Vào tab BR Connection để thiết lập kết nối.</p>` : ""}
+          <h2 class="system-page-title">${t("settings.system.title")}</h2>
+          <p class="system-page-description">${t("settings.system.description")}</p>
+          ${!this.isConnected ? html`<p class="system-page-hint">${t("settings.system.notConnectedHint")}</p>` : ""}
         </div>
         <div class="system-action-card system-card-restart">
           <div class="system-card-image">
@@ -64,17 +77,17 @@ export class SystemTabComponent extends LitElement {
           </div>
           <div class="system-card-content">
             <div class="system-card-info">
-              <h3>Khởi động lại</h3>
-              <p>Thực hiện khởi động lại phần mềm của thiết bị. Kết nối của tất cả các node sẽ bị gián đoạn tạm thời.</p>
+              <h3>${t("settings.system.restartTitle")}</h3>
+              <p>${t("settings.system.restartDescription")}</p>
             </div>
             <div class="system-card-action">
               <button type="button" class="system-btn system-btn-orange" ?disabled=${!this.isConnected || this.loading} @click=${() => (this.confirmAction = "reset")}>
-                Reset
+                ${t("settings.system.actions.reset")}
               </button>
             </div>
           </div>
         </div>
-        <div class="system-danger-divider"><span>Vùng nguy hiểm</span></div>
+        <div class="system-danger-divider"><span>${t("settings.system.dangerZone")}</span></div>
         <div class="system-action-card system-card-factory">
           <div class="system-card-image">
             <div class="bg-img"></div>
@@ -86,15 +99,15 @@ export class SystemTabComponent extends LitElement {
           </div>
           <div class="system-card-content">
             <div class="system-card-info">
-              <h3>Factory Reset</h3>
+              <h3>${t("settings.system.factoryTitle")}</h3>
               <p>
-                Xóa toàn bộ cấu hình, dữ liệu mạng, thông tin định danh và đưa thiết bị về trạng thái xuất xưởng.
-                <span class="warning-inline">Hành động này không thể hoàn tác.</span>
+                ${t("settings.system.factoryDescription")}
+                <span class="warning-inline">${t("settings.system.cannotUndo")}</span>
               </p>
             </div>
             <div class="system-card-action">
               <button type="button" class="system-btn system-btn-red" ?disabled=${!this.isConnected || this.loading} @click=${() => (this.confirmAction = "factory")}>
-                Factory Reset
+                ${t("settings.system.actions.factoryReset")}
               </button>
             </div>
           </div>
@@ -102,9 +115,9 @@ export class SystemTabComponent extends LitElement {
         <confirm-modal
           .open=${this.confirmAction === "reset"}
           .onClose=${() => !this.loading && (this.confirmAction = null)}
-          title="Khởi động lại thiết bị"
-          message="Thiết bị sẽ khởi động lại. Cấu hình Thread được giữ nguyên. Tiếp tục?"
-          confirmLabel="Reset"
+          title=${t("settings.system.confirmRestartTitle")}
+          message=${t("settings.system.confirmRestartMessage")}
+          confirmLabel=${t("settings.system.actions.reset")}
           variant="warning"
           .loading=${this.loading}
           .onConfirm=${this._handleConfirm}
@@ -112,9 +125,9 @@ export class SystemTabComponent extends LitElement {
         <confirm-modal
           .open=${this.confirmAction === "factory"}
           .onClose=${() => !this.loading && (this.confirmAction = null)}
-          title="Factory Reset"
-          message="Toàn bộ cấu hình Thread sẽ bị xoá và thiết bị khởi động lại. Hành động này không thể hoàn tác. Tiếp tục?"
-          confirmLabel="Factory Reset"
+          title=${t("settings.system.factoryTitle")}
+          message=${t("settings.system.confirmFactoryMessage")}
+          confirmLabel=${t("settings.system.actions.factoryReset")}
           variant="danger"
           .loading=${this.loading}
           .onConfirm=${this._handleConfirm}

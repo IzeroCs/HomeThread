@@ -1,6 +1,10 @@
 import { LitElement, html } from "lit";
 import { customElement, property, state } from "lit/decorators.js";
 import "@shared/components/modal/modal.component";
+import { LitStoreController } from "@/shared/store/lit-store-controller";
+import { store } from "@/shared/store/store";
+import { selectLocale } from "@/shared/store/selectors";
+import { t } from "@/shared/i18n/i18n";
 
 import "@shared/components/confirm-modal/confirm-modal.style.scss";
 
@@ -12,10 +16,17 @@ export class ConfirmModalComponent extends LitElement {
     return this;
   }
 
+  private readonly locale = new LitStoreController(
+    this,
+    store,
+    (s) => selectLocale(s),
+    Object.is
+  );
+
   @property({ type: Boolean }) open = false;
   @property({ type: String }) title = "";
   @property({ type: String }) message = "";
-  @property({ type: String }) confirmLabel = "Xác nhận";
+  @property({ type: String }) confirmLabel = "";
   @property({ type: String }) variant: "danger" | "warning" = "danger";
   @property({ type: Boolean }) loading = false;
   @property({ attribute: false }) onClose: () => void = () => {};
@@ -54,6 +65,8 @@ export class ConfirmModalComponent extends LitElement {
   }
 
   render() {
+    void this.locale.value;
+    const confirmLabel = this.confirmLabel || t("confirmModal.confirmDefaultLabel");
     return html`
       <modal-dialog
         .open=${this.open}
@@ -68,7 +81,7 @@ export class ConfirmModalComponent extends LitElement {
                 @click=${this.onClose}
                 ?disabled=${this.loading}
               >
-                Huỷ
+                ${t("confirmModal.cancelLabel")}
               </button>
               <button
                 type="button"
@@ -76,7 +89,11 @@ export class ConfirmModalComponent extends LitElement {
                 @click=${this.onConfirm}
                 ?disabled=${!this._canConfirm}
               >
-                ${this.loading ? "Đang xử lý…" : this.countdown > 0 ? `${this.confirmLabel} (${this.countdown}s)` : this.confirmLabel}
+                ${this.loading
+                  ? t("confirmModal.processing")
+                  : this.countdown > 0
+                    ? `${confirmLabel} (${this.countdown}s)`
+                    : confirmLabel}
               </button>
             </div>
           </div>

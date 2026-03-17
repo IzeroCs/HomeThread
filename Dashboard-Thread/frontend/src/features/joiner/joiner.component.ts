@@ -2,9 +2,10 @@ import { LitElement, html } from "lit";
 import { customElement, property, state } from "lit/decorators.js";
 import { store } from "@/shared/store/store";
 import { LitStoreController, shallowEqual } from "@/shared/store/lit-store-controller";
-import { selectBrStatus, selectJoinerTable, selectThreadState } from "@/shared/store/selectors";
+import { selectBrStatus, selectJoinerTable, selectLocale, selectThreadState } from "@/shared/store/selectors";
 import { wsCommissionerConnect } from "@/shared/store/thunks/ws.thunks";
 import { wsEmitGetJoinerTable } from "@/shared/store/thunks/ws.emit";
+import { t } from "@/shared/i18n/i18n";
 
 import "@shared/components/page-header/page-header.component";
 import "@shared/components/modal/modal.component";
@@ -59,6 +60,13 @@ export class JoinerViewComponent extends LitElement {
 
   @property({ attribute: false }) showToast: (type: "success" | "error", message: string) => void = () => {};
 
+  private readonly locale = new LitStoreController(
+    this,
+    store,
+    (s) => selectLocale(s),
+    Object.is
+  );
+
   private readonly appState = new LitStoreController(
     this,
     store,
@@ -111,7 +119,7 @@ export class JoinerViewComponent extends LitElement {
     const eui64 = this.commissionEui64.trim();
     const psk = this.commissionPsk.trim();
     if (!eui64 || !psk) {
-      this.showToast("error", "EUI64 và PSK không được để trống.");
+      this.showToast("error", t("joiner.errors.emptyEui64OrPsk"));
       return;
     }
     this.commissionConnecting = true;
@@ -127,10 +135,10 @@ export class JoinerViewComponent extends LitElement {
     if (!this.commissionConnecting) return;
     this.commissionConnecting = false;
     if (result.success) {
-      this.showToast("success", "Đã thêm joiner. Thiết bị có thể kết nối mạng.");
+      this.showToast("success", t("joiner.toast.addedJoiner"));
       this._closeCommissionModal();
     } else {
-      this.showToast("error", result.error ?? "Kết nối thất bại.");
+      this.showToast("error", result.error ?? t("joiner.errors.connectFailedFallback"));
     }
   }
 
@@ -208,9 +216,9 @@ export class JoinerViewComponent extends LitElement {
     if (!text || text === "—") return;
     try {
       await navigator.clipboard.writeText(text);
-      this.showToast("success", `Đã copy ${label}`);
+      this.showToast("success", t("joiner.toast.copied", { label }));
     } catch {
-      this.showToast("error", "Không thể copy");
+      this.showToast("error", t("joiner.errors.copyFailed"));
     }
   }
 
@@ -225,10 +233,10 @@ export class JoinerViewComponent extends LitElement {
         ${!this._canCommission
           ? html`
               <div class="modal-alert modal-alert--warn">
-                Commissioner chỉ khả dụng khi thiết bị đã attached (leader, router hoặc child).
+                ${t("joiner.commission.notAvailable")}
                 ${this.appState.value.threadState
-                  ? ` State hiện tại: ${this.appState.value.threadState}.`
-                  : " Đang lấy state…"}
+                  ? ` ${t("joiner.commission.currentState", { state: this.appState.value.threadState })}`
+                  : ` ${t("joiner.commission.fetchingState")}`}
               </div>
             `
           : ""}
@@ -245,7 +253,7 @@ export class JoinerViewComponent extends LitElement {
                 class="form-control form-control--mono form-control--with-icon"
                 .value=${this.commissionEui64}
                 @input=${(e: Event) => (this.commissionEui64 = (e.target as HTMLInputElement).value)}
-                placeholder="e.g. d431f4e1f7481234"
+                placeholder=${t("joiner.commissionModal.placeholders.eui64")}
                 autocomplete="off"
                 spellcheck="false"
                 ?disabled=${this.commissionConnecting || !this._canCommission}
@@ -265,7 +273,7 @@ export class JoinerViewComponent extends LitElement {
                 class="form-control form-control--with-icon"
                 .value=${this.commissionPsk}
                 @input=${(e: Event) => (this.commissionPsk = (e.target as HTMLInputElement).value)}
-                placeholder="e.g. J01NME"
+                placeholder=${t("joiner.commissionModal.placeholders.pin")}
                 autocomplete="off"
                 ?disabled=${this.commissionConnecting || !this._canCommission}
               />
@@ -273,8 +281,8 @@ export class JoinerViewComponent extends LitElement {
             <p class="form-helper">The commissioning credential provided with the device.</p>
           </div>
           <div class="form-field">
-            <label class="form-label">Commissioning Timeout</label>
-            <div class="form-radio-row" role="radiogroup" aria-label="Commissioning timeout">
+            <label class="form-label">${t("joiner.commissionModal.timeoutLabel")}</label>
+            <div class="form-radio-row" role="radiogroup" aria-label=${t("joiner.commissionModal.timeoutAriaLabel")}>
               ${TIMEOUT_OPTIONS.map((sec) => html`
                 <label class="form-radio">
                   <input
@@ -294,7 +302,7 @@ export class JoinerViewComponent extends LitElement {
           <div class="modal-info-box">
             <span class="material-symbols-outlined modal-info-box__icon" aria-hidden>info</span>
             <p class="modal-info-box__text">
-              Ensure the joining device is powered on and in range of a router.
+              ${t("joiner.commissionModal.ensurePoweredOn")}
             </p>
           </div>
         </div>
@@ -303,6 +311,7 @@ export class JoinerViewComponent extends LitElement {
   }
 
   render() {
+    void this.locale.value;
     const allRows = this._getRowsWithMeta();
     const hasRows = allRows.length > 0;
     const { isConnected, joinerTable, threadState } = this.appState.value;
@@ -312,13 +321,13 @@ export class JoinerViewComponent extends LitElement {
 
     return html`
       <page-header
-        heading="Joiner"
-        subtitle="Quản lý các thiết bị đang chờ join vào mạng Thread"
+        heading=${t("joiner.header.title")}
+        subtitle=${t("joiner.header.subtitle")}
         .actions=${[{
           id: "commission",
           icon: "add_circle",
           disabled: !this._canCommission,
-          label: "Add joiner",
+          label: t("joiner.actions.addJoiner"),
           style: "filled",
           tone: "info",
         }]}
@@ -329,25 +338,27 @@ export class JoinerViewComponent extends LitElement {
           ${isConnected ? html`
             <div class="joiner-status-cards">
               <div class="joiner-status-card">
-                <p class="joiner-status-card-label">Active Joiners</p>
+                <p class="joiner-status-card-label">${t("joiner.dashboard.activeJoiners")}</p>
                 <div class="joiner-status-card-value">${allRows.length}</div>
-                ${allRows.length > 0 ? html`<p class="joiner-status-card-sub">${allRows.length} in queue</p>` : ""}
+                ${allRows.length > 0 ? html`<p class="joiner-status-card-sub">${t("joiner.dashboard.inQueue", { count: allRows.length })}</p>` : ""}
               </div>
               <div class="joiner-status-card">
-                <p class="joiner-status-card-label">Pending Auth</p>
+                <p class="joiner-status-card-label">${t("joiner.dashboard.pendingAuth")}</p>
                 <div class="joiner-status-card-value">0</div>
                 <p class="joiner-status-card-sub">—</p>
               </div>
               <div class="joiner-status-card">
-                <p class="joiner-status-card-label">Failed Attempts</p>
+                <p class="joiner-status-card-label">${t("joiner.dashboard.failedAttempts")}</p>
                 <div class="joiner-status-card-value">0</div>
                 <p class="joiner-status-card-sub">—</p>
               </div>
               <div class="joiner-status-card">
-                <p class="joiner-status-card-label">Network Status</p>
+                <p class="joiner-status-card-label">${t("joiner.dashboard.networkStatus")}</p>
                 <div class="joiner-status-card-row">
                   <span class="joiner-status-dot ${isNetworkStable ? "joiner-status-dot--connected" : "joiner-status-dot--disconnected"}"></span>
-                  <span class="joiner-status-card-value" style="font-size: 0.875rem; margin: 0;">${isNetworkStable ? "Stable" : "Disconnected"}</span>
+                  <span class="joiner-status-card-value" style="font-size: 0.875rem; margin: 0;">
+                    ${isNetworkStable ? t("joiner.dashboard.networkStable") : t("joiner.dashboard.networkDisconnected")}
+                  </span>
                 </div>
               </div>
             </div>
@@ -359,19 +370,19 @@ export class JoinerViewComponent extends LitElement {
                 <table class="joiner-table">
                   <thead>
                     <tr>
-                      <th>Joiner ID</th>
-                      <th>EUI64</th>
-                      <th>Passphrase (PIN)</th>
-                      <th>Timeout Remaining</th>
-                      <th>Status</th>
-                      <th class="joiner-th-actions">Actions</th>
+                      <th>${t("joiner.table.columns.joinerId")}</th>
+                      <th>${t("joiner.table.columns.eui64")}</th>
+                      <th>${t("joiner.table.columns.passphrase")}</th>
+                      <th>${t("joiner.table.columns.timeoutRemaining")}</th>
+                      <th>${t("joiner.table.columns.status")}</th>
+                      <th class="joiner-th-actions">${t("joiner.table.columns.actions")}</th>
                     </tr>
                   </thead>
                   <tbody>
                     ${!isConnected ? html`
                       <tr class="joiner-row-empty">
                         <td class="joiner-cell-empty joiner-muted" colspan="6">
-                          Connect to the Border Router to view joiner queue.
+                          ${t("joiner.table.empty.connectToBr")}
                         </td>
                       </tr>
                     ` : joinerTable?.error ? html`
@@ -383,7 +394,7 @@ export class JoinerViewComponent extends LitElement {
                     ` : !hasRows ? html`
                       <tr class="joiner-row-empty">
                         <td class="joiner-cell-empty joiner-muted" colspan="6">
-                          Không có thiết bị nào đang chờ join.
+                          ${t("joiner.table.empty.none")}
                         </td>
                       </tr>
                     ` : allRows.map((row) => html`
@@ -396,7 +407,7 @@ export class JoinerViewComponent extends LitElement {
                             <button
                               type="button"
                               class="joiner-btn-copy"
-                              aria-label=${row.passphrase !== "—" ? "Copy passphrase" : "Copy EUI64"}
+                              aria-label=${row.passphrase !== "—" ? t("joiner.table.actions.copyPassphrase") : t("joiner.table.actions.copyEui64")}
                               @click=${() => this._copyToClipboard(row.passphrase !== "—" ? row.passphrase : row.eui64, row.passphrase !== "—" ? "Passphrase" : "EUI64")}
                             >
                               <span class="material-symbols-outlined" aria-hidden>content_copy</span>
@@ -412,14 +423,18 @@ export class JoinerViewComponent extends LitElement {
                         <td>
                           <span class="joiner-status-badge joiner-status-badge--${row.status}">
                             <span class="joiner-status-dot-badge"></span>
-                            ${row.status === "joining" ? "Joining" : row.status === "pending" ? "Pending" : "Expired"}
+                            ${row.status === "joining"
+                              ? t("joiner.table.status.joining")
+                              : row.status === "pending"
+                                ? t("joiner.table.status.pending")
+                                : t("joiner.table.status.expired")}
                           </span>
                         </td>
                         <td class="joiner-cell-actions">
                           <button
                             type="button"
                             class="joiner-btn-cancel"
-                            aria-label="Cancel joiner"
+                            aria-label=${t("joiner.table.actions.cancelJoiner")}
                             @click=${() => this._onCancelJoiner(row)}
                           >
                             <span class="material-symbols-outlined" style="font-size: 20px;" aria-hidden>cancel</span>
@@ -436,14 +451,14 @@ export class JoinerViewComponent extends LitElement {
           <modal-dialog
             .open=${this.isCommissionModalOpen}
             .shouldRender=${() => isConnected}
-            .title=${"Commission Node"}
-            .subtitle=${"Enter Joiner credentials to add a new device"}
+            .title=${t("joiner.commissionModal.title")}
+            .subtitle=${t("joiner.commissionModal.subtitle")}
             .body=${this._renderCommissionBody()}
             .cancelAction=${{
               onClick: () => this._closeCommissionModal(),
             }}
             .confirmAction=${{
-              label: "Start",
+              label: t("joiner.commissionModal.start"),
               style: "filled",
               tone: "warning",
               onClick: () => this._handleCommissionConnect(),

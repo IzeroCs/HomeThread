@@ -2,7 +2,8 @@ import { LitElement, html } from "lit";
 import { customElement, state } from "lit/decorators.js";
 import { store } from "@/shared/store/store";
 import { LitStoreController, shallowEqual } from "@/shared/store/lit-store-controller";
-import { selectBrStatus, selectChildTable, selectOtConfig, selectRouterTable, selectThreadState } from "@/shared/store/selectors";
+import { selectBrStatus, selectChildTable, selectLocale, selectOtConfig, selectRouterTable, selectThreadState } from "@/shared/store/selectors";
+import { t } from "@/shared/i18n/i18n";
 
 import "@shared/components/modal/modal.component";
 import "@nodes/nodes.style.scss";
@@ -36,6 +37,13 @@ export class NodesComponent extends LitElement {
   override createRenderRoot() {
     return this;
   }
+
+  private readonly locale = new LitStoreController(
+    this,
+    store,
+    (s) => selectLocale(s),
+    Object.is
+  );
 
   private readonly appState = new LitStoreController(
     this,
@@ -153,6 +161,7 @@ export class NodesComponent extends LitElement {
   }
 
   render() {
+    void this.locale.value;
     const { isConnected, routerTable, childTable, otConfig } = this.appState.value;
     const rH = routerTable?.headers ?? [];
     const cH = childTable?.headers ?? [];
@@ -182,7 +191,7 @@ export class NodesComponent extends LitElement {
         : null;
     const rloc16Index = tableForRow?.headers?.findIndex((h) => normCol(h) === "rloc16") ?? -1;
     const rloc16Value = selectedRowData && rloc16Index >= 0 ? selectedRowData[rloc16Index] ?? "" : "";
-    const tableLabel = this.selectedRow?.type === "router" ? "Router Table" : "Child Table";
+    const tableLabel = this.selectedRow?.type === "router" ? t("nodes.routerTable.title") : t("nodes.childTable.title");
     const modalTitle = this.selectedRow == null ? "" : `${tableLabel} - ${rloc16Value}`;
     const modalEntries: { key: string; value: string }[] = [];
     if (this.selectedRow != null && tableForRow?.headers?.length && selectedRowData) {
@@ -193,33 +202,33 @@ export class NodesComponent extends LitElement {
 
     return html`
       <page-header
-        heading="Nodes"
-        subtitle="Manage and monitor network topology and connectivity"
+        heading=${t("nodes.header.title")}
+        subtitle=${t("nodes.header.subtitle")}
       ></page-header>
       <div class="page-container">
         <div class="nodes-page">
           <section class="nodes-section">
             <h2 class="nodes-section-title">
               <span class="material-symbols-outlined nodes-section-icon">router</span>
-              Router Table
+              ${t("nodes.routerTable.title")}
             </h2>
             <div class="nodes-table-wrap">
               <table class="nodes-table">
                 <thead>
                   <tr>
-                    <th>Router ID</th>
-                    <th>RLOC16</th>
-                    <th>Ext Address</th>
-                    <th>Link Quality In</th>
-                    <th>Link Quality Out</th>
-                    <th>Age</th>
+                    <th>${t("nodes.routerTable.columns.routerId")}</th>
+                    <th>${t("nodes.common.columns.rloc16")}</th>
+                    <th>${t("nodes.common.columns.extAddress")}</th>
+                    <th>${t("nodes.routerTable.columns.linkQualityIn")}</th>
+                    <th>${t("nodes.routerTable.columns.linkQualityOut")}</th>
+                    <th>${t("nodes.common.columns.age")}</th>
                   </tr>
                 </thead>
                 <tbody>
                   ${!isConnected ? html `
                     <tr class="nodes-row-empty">
                       <td class="nodes-cell-empty nodes-muted" colspan="6">
-                        Connect to the Border Router to view network topology and node information
+                        ${t("nodes.common.empty.connectToBr")}
                       </td>
                     </tr>
                   ` : routerTable?.error ? html `
@@ -231,13 +240,13 @@ export class NodesComponent extends LitElement {
                   ` : routerTable == null ? html `
                     <tr class="nodes-row-empty">
                       <td class="nodes-cell-empty nodes-muted" colspan="6">
-                        Loading router table…
+                        ${t("nodes.routerTable.empty.loading")}
                       </td>
                     </tr>
                   ` : routerRows.length === 0 ? html `
                     <tr class="nodes-row-empty">
                       <td class="nodes-cell-empty nodes-muted" colspan="6">
-                        No routers found in the network
+                        ${t("nodes.routerTable.empty.none")}
                       </td>
                     </tr>
                   ` : routerRows.map((row, ri) => {
@@ -249,7 +258,7 @@ export class NodesComponent extends LitElement {
                       <tr class="${isLeader ? "nodes-table-row-leader" : ""}" @click=${() => (this.selectedRow = { type: "router", rowIndex: ri })}>
                         <td class="nodes-cell-id">
                           <span class="nodes-cell-id-main">${rRouterId >= 0 ? row[rRouterId] : ""}</span>
-                          ${isLeader ? html`<span class="nodes-leader-badge">LEADER</span>` : ""}
+                          ${isLeader ? html`<span class="nodes-leader-badge">${t("nodes.common.badges.leader")}</span>` : ""}
                         </td>
                         <td class="nodes-cell-mono">${rRloc16 >= 0 ? row[rRloc16] : ""}</td>
                         <td class="nodes-cell-mono">${rExtAddress >= 0 ? row[rExtAddress] : ""}</td>
@@ -267,27 +276,27 @@ export class NodesComponent extends LitElement {
           <section class="nodes-section">
             <h2 class="nodes-section-title">
               <span class="material-symbols-outlined nodes-section-icon">account_tree</span>
-              Child Table
+              ${t("nodes.childTable.title")}
             </h2>
             <div class="nodes-table-wrap">
               <table class="nodes-table">
                 <thead>
                   <tr>
-                    <th>Child ID</th>
-                    <th>RLOC16</th>
-                    <th>Ext Address</th>
-                    <th>LQ In</th>
-                    <th>Avg RSSI</th>
+                    <th>${t("nodes.childTable.columns.childId")}</th>
+                    <th>${t("nodes.common.columns.rloc16")}</th>
+                    <th>${t("nodes.common.columns.extAddress")}</th>
+                    <th>${t("nodes.childTable.columns.lqIn")}</th>
+                    <th>${t("nodes.childTable.columns.avgRssi")}</th>
                     <th class="nodes-th-center">FTD</th>
                     <th class="nodes-th-center">RxOnIdle</th>
-                    <th>Age</th>
+                    <th>${t("nodes.common.columns.age")}</th>
                   </tr>
                 </thead>
                 <tbody>
                   ${!isConnected ? html `
                     <tr class="nodes-row-empty">
                       <td class="nodes-cell-empty nodes-muted" colspan="8">
-                        Connect to the Border Router to view network topology and node information
+                        ${t("nodes.common.empty.connectToBr")}
                       </td>
                     </tr>
                   ` : childTable?.error ? html `
@@ -299,13 +308,13 @@ export class NodesComponent extends LitElement {
                   ` : childTable == null ? html `
                     <tr class="nodes-row-empty">
                       <td class="nodes-cell-empty nodes-muted" colspan="8">
-                        Loading child table…
+                        ${t("nodes.childTable.empty.loading")}
                       </td>
                     </tr>
                   ` : childRows.length === 0 ? html `
                     <tr class="nodes-row-empty">
                       <td class="nodes-cell-empty nodes-muted" colspan="8">\
-                        No child nodes connected
+                        ${t("nodes.childTable.empty.none")}
                       </td>
                     </tr>
                   ` : childRows.map((row, ri) => {

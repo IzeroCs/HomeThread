@@ -52,6 +52,8 @@ Transport: TCP (net.Socket) to BR; CoAP (UDP 5683, udp6 listen [::]) from Thread
 | SCSS (sass) | ^1.83.0 | Styling |
 | socket.io-client | ^4.7.5 | WebSocket client |
 
+Frontend i18n: `frontend/src/shared/i18n/i18n.ts` (`t(key, params?)`, interpolate `{name}`), locales JSON trong `frontend/src/shared/i18n/locales/{en,vi}.json`. Locale state nằm trong Redux store slice `i18n` và persist `localStorage` key `dashboard-thread.locale`.
+
 ### Shared Package (`shared/`)
 
 ```
