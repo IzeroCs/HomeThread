@@ -4,7 +4,7 @@
 
 .nodes-page {
   width: 100%;
-  max-width: $app-page-max-width;
+  max-width: var(--app-page-max-width);
   position: relative;
   z-index: 0;
 }
@@ -23,12 +23,12 @@
   align-items: center;
   gap: 8px;
   margin: 0 0 16px 0;
-  color: $on-surface;
+  color: var(--on-surface);
   font-size: 1.25rem;
   font-weight: 700;
 
   .nodes-section-icon {
-    color: $primary;
+    color: var(--primary);
     font-size: 1.5rem;
   }
 }
@@ -36,7 +36,7 @@
 .nodes-table-wrap {
   overflow: hidden;
   border-radius: 0.75rem;
-  background: $surface-container;
+  background: var(--surface-container);
 }
 
 .nodes-table {
@@ -51,11 +51,11 @@
   }
 
   thead tr {
-    background: color.adjust($surface-container, $lightness: 8%);
+    background: color-mix(in oklab, var(--surface-container-high), var(--primary) 10%);
   }
 
   thead th {
-    color: $on-surface-variant;
+    color: var(--on-surface);
     font-size: 0.75rem;
     font-weight: 700;
     text-transform: uppercase;
@@ -63,12 +63,12 @@
   }
 
   tbody td:not(.nodes-cell-empty) {
-    color: $on-surface;
-    background: $surface-container;
+    color: var(--on-surface);
+    background: var(--surface-container);
   }
 
   tbody tr:hover:not(.nodes-row-empty) td {
-    background: color.adjust($surface-container, $lightness: 4%);
+    background: color-mix(in oklab, var(--surface-container), var(--primary) 4%);
   }
 
   tbody tr {
@@ -101,8 +101,8 @@
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.08em;
-  background: color-mix(in oklab, $primary 80%, transparent);
-  color: $on-primary;
+  background: color-mix(in oklab, var(--primary) 80%, transparent);
+  color: var(--on-primary);
 }
 
 .nodes-cell-mono {
@@ -129,12 +129,12 @@
 }
 
 .nodes-icon-ok {
-  color: $green-700;
+  color: var(--green-700);
   font-size: 1.25rem;
 }
 
 .nodes-icon-no {
-  color: $on-surface-variant;
+  color: var(--on-surface-variant);
   font-size: 1.25rem;
 }
 
@@ -148,7 +148,7 @@
   width: 96px;
   height: 6px;
   border-radius: 9999px;
-  background: color.adjust($surface-container, $lightness: 15%);
+  background: color-mix(in oklab, var(--surface-container-highest), var(--primary) 10%);
   overflow: hidden;
 }
 
@@ -159,19 +159,19 @@
 }
 
 .nodes-link-quality-bar-fill--good {
-  background: $link-quality-good;
+  background: var(--link-quality-good);
 }
 
 .nodes-link-quality-bar-fill--mid {
-  background: $link-quality-mid;
+  background: var(--link-quality-mid);
 }
 
 .nodes-link-quality-bar-fill--warn {
-  background: $link-quality-warn;
+  background: var(--link-quality-warn);
 }
 
 .nodes-link-quality-bar-num {
-  color: $on-surface;
+  color: var(--on-surface);
   font-size: 0.75rem;
   font-weight: 600;
 }
@@ -191,30 +191,30 @@
   width: 6px;
   height: 12px;
   border-radius: 9999px;
-  background: color.adjust($surface-container, $lightness: 15%);
+  background: color-mix(in oklab, var(--surface-container-highest), var(--primary) 10%);
 
   &.nodes-link-quality-bar-v--filled {
-    background: color-mix(in oklab, $primary 70%, $surface-container);
+    background: color-mix(in oklab, var(--primary) 70%, var(--surface-container));
   }
 }
 
 .nodes-link-quality-bars-num {
   font-size: 0.75rem;
   font-weight: 700;
-  color: $on-surface;
+  color: var(--on-surface);
 }
 
 .nodes-muted {
   margin: 0;
   padding: 16px 24px;
-  color: $on-surface-variant;
+  color: var(--on-surface-variant);
   font-size: 0.875rem;
 }
 
 .nodes-error {
   margin: 0;
   padding: 16px 24px;
-  color: $red-500;
+  color: var(--red-500);
   font-size: 0.875rem;
 }
 
@@ -236,11 +236,11 @@
 }
 
 .nodes-modal-detail-key {
-  color: $on-surface;
+  color: var(--on-surface);
   font-weight: 500;
 }
 
 .nodes-modal-detail-value {
   font-family: ui-monospace, monospace;
-  color: $primary;
+  color: var(--primary);
 }

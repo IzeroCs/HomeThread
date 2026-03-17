@@ -28,6 +28,12 @@ export class StatusComponent extends LitElement {
     return this.brStatus?.isConnected ?? false;
   }
 
+  private _onHeaderAction(e: CustomEvent<{ id: string }>) {
+    if (e.detail.id === "refresh") {
+      // TODO: trigger status refresh if needed
+    }
+  }
+
   private get _ipaddr(): string | null {
     return this.otConfig?.ipaddr?.trim() || null;
   }
@@ -40,12 +46,9 @@ export class StatusComponent extends LitElement {
       <page-header
         heading="Status"
         subtitle="Network health and configuration overview"
-        .action=${html`
-          <button type="button" class="btn-icon">
-            <span class="material-symbols-outlined">refresh</span>
-          </button>
-        `}>
-      </page-header>
+        .actions=${[{ id: "refresh", icon: "refresh", label: "Refresh" }]}
+        @action-click=${this._onHeaderAction}
+      ></page-header>
 
       <div class="page-container">
         <div class="status-page">

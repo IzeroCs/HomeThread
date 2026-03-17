@@ -4,7 +4,7 @@
 
 .status-page {
   width: 100%;
-  max-width: $app-page-max-width;
+  max-width: var(--app-page-max-width);
   margin: 0 auto;
 }
 
@@ -19,7 +19,7 @@
 .status-card-br {
   display: flex;
   flex-direction: column;
-  background: $surface-container;
+  background: var(--surface-container);
   border-radius: 10px;
   overflow: hidden;
 }
@@ -38,22 +38,22 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba($primary, 0.15);
+  background: color-mix(in oklab, var(--primary) 15%, transparent);
   position: relative;
   overflow: hidden;
 
   .material-symbols-outlined {
     font-size: 60px;
-    color: rgba($primary, 0.5);
+    color: color-mix(in oklab, var(--primary) 50%, transparent);
     position: relative;
     z-index: 1;
   }
 
   &.disconnected {
-    background: rgba($red-900, 0.15);
+    background: color-mix(in oklab, var(--red-900) 15%, transparent);
 
     .material-symbols-outlined {
-      color: rgba($red-500, 0.5);
+      color: color-mix(in oklab, var(--red-500) 50%, transparent);
     }
   }
 }
@@ -87,7 +87,7 @@
   margin: 0;
   font-size: 20px;
   font-weight: 700;
-  color: $on-surface;
+  color: var(--on-surface);
 }
 
 .status-card-br-fields {
@@ -97,8 +97,8 @@
 }
 
 .status-badge {
-  background: color-mix(in oklab, $br-state-disconnected 15%, transparent);
-  color: $br-state-disconnected;
+  background: color-mix(in oklab, var(--br-state-disconnected) 15%, transparent);
+  color: var(--br-state-disconnected);
   display: inline-flex;
   align-items: center;
   gap: 8px;
@@ -111,8 +111,8 @@
   width: fit-content;
 
   &.connected {
-    background: color-mix(in oklab, $br-state-connected 15%, transparent);
-    color: $br-state-connected;
+    background: color-mix(in oklab, var(--br-state-connected) 15%, transparent);
+    color: var(--br-state-connected);
   }
 }
 
@@ -120,12 +120,12 @@
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background: $br-state-disconnected;
+  background: var(--br-state-disconnected);
   flex-shrink: 0;
   animation: status-badge-pulse 1.5s ease-in-out infinite;
 
   &.connected {
-    background: $br-state-connected;
+    background: var(--br-state-connected);
   }
 }
 
@@ -143,7 +143,7 @@
 .status-section {
   &.disconnected {
     .status-field-value {
-      color: $on-surface-variant;
+      color: var(--on-surface-variant);
     }
   }
 }
@@ -169,7 +169,7 @@
 .status-field-label {
   font-size: 11px;
   font-weight: 700;
-  color: $on-surface-variant;
+  color: var(--on-surface-variant);
   text-transform: uppercase;
   letter-spacing: 0.08em;
   line-height: 1.5;
@@ -177,11 +177,11 @@
 
 .status-field-value {
   font-size: 14px;
-  color: color-mix(in oklab, $primary 60%, $on-primary);
+  color: color-mix(in oklab, var(--primary) 60%, var(--on-primary));
   word-break: break-all;
 
   &.muted {
-    color: $on-surface-variant;
+    color: var(--on-surface-variant);
   }
 }
 
@@ -189,7 +189,7 @@
   padding: 4px;
   border: none;
   background: transparent;
-  color: $on-surface-variant;
+  color: var(--on-surface-variant);
   cursor: pointer;
   border-radius: 4px;
   display: flex;
@@ -201,8 +201,8 @@
   }
 
   &:hover {
-    color: $on-surface;
-    background: $surface-container-high;
+    color: var(--on-surface);
+    background: var(--surface-container-high);
   }
 }
 
@@ -219,19 +219,19 @@
   margin: 0;
   font-size: 20px;
   font-weight: 700;
-  color: $on-surface;
+  color: var(--on-surface);
   display: flex;
   align-items: center;
   gap: 8px;
 
   .material-symbols-outlined {
     font-size: 22px;
-    color: $primary;
+    color: var(--primary);
   }
 }
 
 .status-card-ot {
-  background: $surface-container;
+  background: var(--surface-container);
   border-radius: 10px;
   overflow: hidden;
   position: relative;
@@ -241,7 +241,7 @@
   display: grid;
   grid-template-columns: 1fr;
   grid-auto-rows: minmax(100px, auto);
-  border-top: 1px solid $outline-variant;
+  border-top: 1px solid var(--outline-variant);
 
   >.status-field {
     min-height: 100px;
@@ -250,7 +250,7 @@
     flex-direction: column;
     justify-content: center;
     gap: 8px;
-    border-top: 1px solid $outline-variant;
+    border-top: 1px solid var(--outline-variant);
 
     &:nth-child(-n+1) {
       border-top: none;
@@ -258,7 +258,7 @@
   }
 
   >.status-field:nth-child(n+2) {
-    border-top: 1px solid $outline-variant;
+    border-top: 1px solid var(--outline-variant);
   }
 }
 
@@ -270,8 +270,8 @@
     border-top: none;
 
     >.status-field {
-      border-top: 1px solid $outline-variant;
-      border-left: 1px solid $outline-variant;
+      border-top: 1px solid var(--outline-variant);
+      border-left: 1px solid var(--outline-variant);
 
       &:nth-child(-n+2) {
         border-top: none;
@@ -299,7 +299,7 @@
       }
 
       &:not(:nth-child(3n+1)) {
-        border-left: 1px solid $outline-variant;
+        border-left: 1px solid var(--outline-variant);
       }
     }
   }

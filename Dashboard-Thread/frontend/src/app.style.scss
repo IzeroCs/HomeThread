@@ -15,7 +15,7 @@ joiner-view {
   min-height: 100vh;
   display: flex;
   flex-direction: row;
-  background: $background;
+  background: var(--background);
 
   &--waiting {
     flex-direction: column;
@@ -29,7 +29,7 @@ joiner-view {
   min-width: 0;
   display: flex;
   flex-direction: column;
-  padding-left: $sidebar-width;
+  padding-left: var(--sidebar-width);
 
   &--topology {
     padding: 0;
@@ -45,7 +45,7 @@ joiner-view {
   align-items: flex-start;
   justify-content: center;
   min-height: 0;
-  padding: $app-main-padding;
+  padding: var(--app-main-padding);
 
   .app-layout--waiting & {
     min-height: auto;

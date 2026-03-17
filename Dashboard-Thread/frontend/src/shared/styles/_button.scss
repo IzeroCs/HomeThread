@@ -11,12 +11,12 @@
   font-weight: 600;
   border: none;
   cursor: pointer;
-  @include transition(background 0.2s, color 0.2s);
+  transition: background 0.2s, color 0.2s;
 }
 
 .btn-filled {
-  background: $primary;
-  color: $on-primary;
+  background: var(--primary);
+  color: var(--on-primary);
 
   &:hover {
     opacity: 0.88;
@@ -33,15 +33,15 @@
   justify-content: center;
   width: 36px;
   height: 36px;
-  @include border-radius(8px);
-  @include transition(background 0.2s, color 0.2s);
+  border-radius: 8px;
+  transition: background 0.2s, color 0.2s;
   border: none;
   background: transparent;
-  color: $on-surface-variant;
+  color: var(--on-surface-variant);
   cursor: pointer;
 
-  &:hover {
-    background: $surface-container;
-    color: $on-surface;
+  &:hover:not(:disabled) {
+    background: var(--surface-container);
+    color: var(--on-surface);
   }
 }

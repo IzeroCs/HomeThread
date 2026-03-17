@@ -22,15 +22,15 @@
   width: 6rem;
   height: 6rem;
   border-radius: 50%;
-  border: 4px solid $surface-container-low;
-  border-top-color: $primary;
+  border: 4px solid var(--surface-container-low);
+  border-top-color: var(--primary);
   animation: waiting-spin 2s linear infinite;
 }
 
 .waiting-for-backend__spinner-icon {
   position: absolute;
   font-size: 2.25rem;
-  color: $primary;
+  color: var(--primary);
   pointer-events: none;
 }
 
@@ -55,7 +55,7 @@
   font-size: 2.25rem;
   font-weight: 900;
   letter-spacing: -0.025em;
-  color: $on-surface;
+  color: var(--on-surface);
   line-height: 1.2;
 
   @media (min-width: 768px) {
@@ -67,13 +67,13 @@
   margin: 0;
   font-size: 1.125rem;
   font-weight: 400;
-  color: $on-surface-variant;
+  color: var(--on-surface-variant);
 }
 
 .waiting-for-backend__card {
   width: 100%;
   max-width: 28rem;
-  background: $surface-container;
+  background: var(--surface-container);
   padding: 1.5rem;
   border-radius: 0.75rem;
 }
@@ -95,7 +95,7 @@
   font-size: 0.625rem;
   text-transform: uppercase;
   letter-spacing: 0.1em;
-  color: $primary;
+  color: var(--primary);
   font-weight: 700;
   margin-bottom: 0.25rem;
 }
@@ -105,21 +105,21 @@
   font-size: 0.875rem;
   font-weight: 600;
   line-height: 1;
-  color: $on-surface;
+  color: var(--on-surface);
 }
 
 .waiting-for-backend__progress-track {
   width: 100%;
   height: 0.5rem;
   border-radius: 9999px;
-  background: $surface-container-low;
+  background: var(--surface-container-low);
   overflow: hidden;
 }
 
 .waiting-for-backend__progress-bar {
   height: 100%;
   border-radius: 9999px;
-  background: $primary;
+  background: var(--primary);
   width: 40%;
   animation: waiting-progress 1.5s ease-in-out infinite;
 }
@@ -142,7 +142,7 @@
 
 .waiting-for-backend__card-icon {
   font-size: 1rem;
-  color: $primary;
+  color: var(--primary);
 }
 
 .waiting-for-backend__card-hint {
@@ -150,7 +150,7 @@
   font-size: 0.75rem;
   font-weight: 500;
   line-height: 1.4;
-  color: $on-surface-variant;
+  color: var(--on-surface-variant);
 }
 
 .waiting-for-backend__info {
@@ -159,19 +159,19 @@
   gap: 0.5rem;
   padding: 0.5rem 1rem;
   border-radius: 9999px;
-  background: $surface-container-lowest;
+  background: var(--surface-container-lowest);
 }
 
 .waiting-for-backend__info-icon {
   font-size: 1rem;
-  color: $on-surface-variant;
+  color: var(--on-surface-variant);
 }
 
 .waiting-for-backend__info-text {
   margin: 0;
   font-size: 0.75rem;
   font-weight: 400;
-  color: $on-surface-variant;
+  color: var(--on-surface-variant);
 }
 
 .waiting-for-backend__bg {

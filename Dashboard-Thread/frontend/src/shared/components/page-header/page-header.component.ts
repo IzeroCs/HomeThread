@@ -3,18 +3,42 @@ import { customElement, property } from "lit/decorators.js";
 
 import "@shared/components/page-header/page-header.style.scss";
 
+export interface PageHeaderAction {
+  id: string;
+  /** Material symbol name */
+  icon: string;
+  /** Aria-label; when set, also shown as button text next to icon */
+  label?: string;
+  disabled?: boolean;
+  /** Visual style: text | filled | outlined */
+  style?: "text" | "filled" | "outlined";
+  /** Semantic tone: default | info | success | warning | danger */
+  tone?: "default" | "info" | "success" | "warning" | "danger";
+}
+
 @customElement("page-header")
 export class PageHeaderComponent extends LitElement {
   @property({ type: String }) heading: string | null = null;
   @property({ type: String }) subtitle: string | null = null;
   @property({ attribute: false }) content: TemplateResult | null = null;
-  @property({ attribute: false }) action: TemplateResult | null = null;
+  @property({ attribute: false }) actions: PageHeaderAction[] = [];
 
   override createRenderRoot() {
     return this;
   }
 
+  private _emitActionClick(id: string) {
+    this.dispatchEvent(
+      new CustomEvent("action-click", {
+        bubbles: true,
+        composed: true,
+        detail: { id },
+      })
+    );
+  }
+
   render() {
+    const hasActions = this.actions.length > 0;
     return html`
       <header class="page-header">
         <div class="page-header-heading">
@@ -24,8 +48,52 @@ export class PageHeaderComponent extends LitElement {
         <div class="page-header-content">
           ${this.content ? html`${this.content}` : ""}
         </div>
-        ${this.action ? html`<div class="page-header-action">${this.action}</div>` : ""}
+        ${hasActions
+          ? html`
+              <div class="page-header-action">
+                ${this.actions.map((action) => this._renderAction(action))}
+              </div>
+            `
+          : ""}
       </header>
+    `;
+  }
+
+  private _renderAction(action: PageHeaderAction) {
+    const showText = Boolean(action.label?.trim());
+    const style = action.style ?? "text";
+    const tone = action.tone ?? "default";
+
+    if (!showText && style === "text" && tone === "default") {
+      return html`
+        <button
+          type="button"
+          class="btn-icon"
+          ?disabled=${action.disabled}
+          aria-label=${action.label ?? action.id}
+          @click=${() => this._emitActionClick(action.id)}
+        >
+          <span class="material-symbols-outlined" aria-hidden>${action.icon}</span>
+        </button>
+      `;
+    }
+
+    const classes = [
+      "page-header-btn",
+      `page-header-btn--${style}`,
+      `page-header-tone--${tone}`,
+    ];
+    return html`
+      <button
+        type="button"
+        class=${classes.join(" ")}
+        ?disabled=${action.disabled}
+        aria-label=${action.label ?? action.id}
+        @click=${() => this._emitActionClick(action.id)}
+      >
+        <span class="material-symbols-outlined page-header-btn-icon" aria-hidden>${action.icon}</span>
+        ${showText ? html`<span class="page-header-btn-label">${action.label}</span>` : ""}
+      </button>
     `;
   }
 }

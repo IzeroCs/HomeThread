@@ -4,14 +4,14 @@
 @use "shared/styles/button" as *;
 
 .sidebar {
-  background: $surface-container-low;
+  background: var(--surface-container-low);
   display: flex;
   flex-direction: column;
   padding: 18px;
   position: fixed;
   top: 0;
   left: 0;
-  width: $sidebar-width;
+  width: var(--sidebar-width);
   height: 100vh;
   font-family: inherit;
   z-index: 1000;
@@ -39,11 +39,11 @@
   width: 40px;
   height: 40px;
   border-radius: 8px;
-  background: $primary;
+  background: var(--primary);
   display: flex;
   align-items: center;
   justify-content: center;
-  color: $on-surface;
+  color: var(--on-surface);
   flex-shrink: 0;
 
   .material-symbols-outlined {
@@ -54,7 +54,7 @@
 .sidebar-brand-text {
   font-size: 18px;
   font-weight: 600;
-  color: $on-surface;
+  color: var(--on-surface);
 }
 
 .sidebar-status {
@@ -64,34 +64,34 @@
 }
 
 .sidebar-status-text {
-  color: $on-surface;
+  color: var(--on-surface);
 
   font-size: 0.8rem;
   font-weight: bold;
   display: inline-block;
   padding: 4px 8px;
-  background-color: $primary;
-  @include border-radius(8px);
-  @include text-transform(uppercase);
+  background-color: var(--primary);
+  border-radius: 8px;
+  text-transform: uppercase;
 
   &.status-role-disconnected {
-    background-color: $role-disconnected
+    background-color: var(--role-disconnected)
   }
 
   &.status-role-disabled {
-    background-color: $role-disabled;
+    background-color: var(--role-disabled);
   }
 
   &.status-role-child {
-    background-color: $role-child;
+    background-color: var(--role-child);
   }
 
   &.status-role-router {
-    background-color: $role-router;
+    background-color: var(--role-router);
   }
 
   &.status-role-leader {
-    background-color: $role-leader;
+    background-color: var(--role-leader);
   }
 }
 
@@ -121,7 +121,7 @@
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.08em;
-  color: $on-surface-variant;
+  color: var(--on-surface-variant);
   margin-top: 30px;
 
   &:first-child {
@@ -136,28 +136,28 @@
   padding: 12px 18px;
   border: none;
   background: transparent;
-  color: $on-surface;
+  color: var(--on-surface);
   font-size: 14px;
   font-weight: 400;
   font-family: inherit;
   cursor: pointer;
-  @include transition(color 0.2s, background 0.2s);
-  @include border-radius(10px);
+  transition: color 0.2s, background 0.2s;
+  border-radius: 10px;
 
   .material-symbols-outlined {
     font-size: 18px;
   }
 
   &.active {
-    background: $primary;
-    color: $on-primary;
+    background: var(--primary);
+    color: var(--on-primary);
     font-weight: 600;
     cursor: auto;
   }
 
   &:hover:not(.active) {
-    background: $surface-container;
-    color: $on-surface;
+    background: var(--surface-container);
+    color: var(--on-surface);
   }
 }
 
@@ -167,20 +167,20 @@
   padding: 18px;
   padding-bottom: 0;
   flex-shrink: 0;
-  border-top: 1px solid $outline-variant;
+  border-top: 1px solid var(--outline-variant);
 }
 
 .sidebar-user-box {
   display: flex;
-  background: $surface-container;
-  @include border-radius(10px);
+  background: var(--surface-container);
+  border-radius: 10px;
   align-items: center;
   gap: 12px;
   padding: 12px 18px;
 
   &:hover {
-    background: $surface-container-high;
-    color: $on-surface;
+    background: var(--surface-container-high);
+    color: var(--on-surface);
     cursor: pointer;
   }
 }
@@ -189,11 +189,11 @@
   width: 40px;
   height: 40px;
   border-radius: 50%;
-  background: $surface-container-high;
+  background: var(--surface-container-high);
   display: flex;
   align-items: center;
   justify-content: center;
-  color: $on-surface;
+  color: var(--on-surface);
 }
 
 .sidebar-user-info {
@@ -205,11 +205,11 @@
 .sidebar-user-username {
   font-size: 14px;
   font-weight: 500;
-  color: $on-surface;
+  color: var(--on-surface);
   margin-bottom: 4px;
 }
 
 .sidebar-user-name {
   font-size: 12px;
-  color: $on-surface-variant;
+  color: var(--on-surface-variant);
 }

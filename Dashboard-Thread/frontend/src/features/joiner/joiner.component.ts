@@ -35,6 +35,18 @@ function formatEui64(sharedId: string): string {
   return sharedId.replace(/:/g, "").toUpperCase();
 }
 
+type JoinerStatus = "joining" | "pending" | "expired";
+
+interface JoinerRowWithMeta {
+  key: string;
+  joinerId: string;
+  eui64: string;
+  passphrase: string;
+  countdown: string;
+  countdownSeconds: number;
+  status: JoinerStatus;
+}
+
 @customElement("joiner-view")
 export class JoinerViewComponent extends LitElement {
   override createRenderRoot() {
@@ -65,6 +77,10 @@ export class JoinerViewComponent extends LitElement {
 
   private _openCommissionModal() {
     this.isCommissionModalOpen = true;
+  }
+
+  private _onHeaderAction(e: CustomEvent<{ id: string }>) {
+    if (e.detail.id === "commission") this._openCommissionModal();
   }
 
   private _resetCommissionForm() {
@@ -136,20 +152,47 @@ export class JoinerViewComponent extends LitElement {
     super.disconnectedCallback();
   }
 
-  private _getRowsWithMeta(): { key: string; eui64: string; countdown: string }[] {
+  private _getRowsWithMeta(): JoinerRowWithMeta[] {
     const rows = this.joinerTable?.rows ?? [];
     const headers = this.joinerTable?.headers ?? [];
     const iSharedId = colIndex(headers, "SharedId");
     const iExpiration = colIndex(headers, "Expiration");
+    const iPskd = colIndex(headers, "PSKD");
     const elapsedSec = (this.now - this.snapshot.receivedAt) / 1000;
     return rows.map((row, index) => {
       const sharedId = iSharedId >= 0 ? row[iSharedId] ?? "" : "";
       const expirationMs = iExpiration >= 0 ? parseInt(row[iExpiration] ?? "0", 10) : 0;
+      const passphrase = iPskd >= 0 ? (row[iPskd] ?? "").trim() || "—" : "—";
       const initialSec = this.snapshot.initialSeconds[index] ?? Math.max(0, expirationMs / 1000);
       const remainingSec = Math.max(0, initialSec - elapsedSec);
       const key = sharedId ? `joiner-${sharedId}-${expirationMs}` : `joiner-unknown-${expirationMs}-${index}`;
-      return { key, eui64: formatEui64(sharedId), countdown: formatCountdown(remainingSec) };
+      const eui64 = formatEui64(sharedId);
+      const status: JoinerStatus = remainingSec === 0 ? "expired" : remainingSec <= 60 ? "joining" : "pending";
+      return {
+        key,
+        joinerId: `J-${100 + index + 1}`,
+        eui64,
+        passphrase,
+        countdown: formatCountdown(remainingSec),
+        countdownSeconds: remainingSec,
+        status,
+      };
     });
+  }
+
+  private async _copyToClipboard(text: string, label: string) {
+    if (!text || text === "—") return;
+    try {
+      await navigator.clipboard.writeText(text);
+      this.showToast("success", `Đã copy ${label}`);
+    } catch {
+      this.showToast("error", "Không thể copy");
+    }
+  }
+
+  private _onCancelJoiner(_row: JoinerRowWithMeta) {
+    // TODO: call API to remove joiner when available
+    this.getJoinerTable();
   }
 
   private _renderCommissionBody() {
@@ -234,65 +277,132 @@ export class JoinerViewComponent extends LitElement {
   }
 
   render() {
-    const rowsWithMeta = this._getRowsWithMeta();
-    const hasRows = rowsWithMeta.length > 0;
+    const allRows = this._getRowsWithMeta();
+    const hasRows = allRows.length > 0;
+    const isNetworkStable =
+      this.threadState != null &&
+      ["leader", "router", "child"].includes(this.threadState.toLowerCase());
 
     return html`
       <page-header
         heading="Joiner"
         subtitle="Quản lý các thiết bị đang chờ join vào mạng Thread"
-        .action=${html`
-          <button
-            type="button"
-            class="btn-icon"
-            @click=${() => this._openCommissionModal()}
-          >
-            <span class="material-symbols-outlined">add_circle</span>
-          </button>
-        `}
+        .actions=${[{
+          id: "commission",
+          icon: "add_circle",
+          disabled: !this._canCommission,
+          label: "Add joiner",
+          style: "filled",
+          tone: "info",
+        }]}
+        @action-click=${this._onHeaderAction}
       ></page-header>
       <div class="page-container">
-        <div class="nodes-page">
-          <section class="nodes-section">
-            <h2 class="nodes-section-title">
-              <span class="material-symbols-outlined nodes-section-icon">group_add</span>
-              Joiner Table
-            </h2>
-            <div class="nodes-table-wrap">
-              <table class="nodes-table">
-                <thead>
-                  <tr>
-                    <th>EUI64</th>
-                    <th>Timeout</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  ${!this.isConnected ? html`
-                    <tr class="nodes-row-empty">
-                      <td class="nodes-cell-empty nodes-muted" colspan="2">
-                        Connect to the Border Router to view network topology and node information
-                      </td>
-                    </tr>
-                  ` : this.joinerTable?.error ? html`
-                    <tr class="nodes-row-empty">
-                      <td class="nodes-cell-empty nodes-error" colspan="2">
-                        ${this.joinerTable?.error}
-                      </td>
-                    </tr>
-                  ` : !hasRows ? html`
-                    <tr class="nodes-row-empty">
-                      <td class="nodes-cell-empty nodes-muted" colspan="2">
-                        Không có thiết bị nào đang chờ join.
-                      </td>
-                    </tr>
-                  ` : rowsWithMeta.map((row) => html`
+        <div class="joiner-page">
+          ${this.isConnected ? html`
+            <div class="joiner-status-cards">
+              <div class="joiner-status-card">
+                <p class="joiner-status-card-label">Active Joiners</p>
+                <div class="joiner-status-card-value">${allRows.length}</div>
+                ${allRows.length > 0 ? html`<p class="joiner-status-card-sub">${allRows.length} in queue</p>` : ""}
+              </div>
+              <div class="joiner-status-card">
+                <p class="joiner-status-card-label">Pending Auth</p>
+                <div class="joiner-status-card-value">0</div>
+                <p class="joiner-status-card-sub">—</p>
+              </div>
+              <div class="joiner-status-card">
+                <p class="joiner-status-card-label">Failed Attempts</p>
+                <div class="joiner-status-card-value">0</div>
+                <p class="joiner-status-card-sub">—</p>
+              </div>
+              <div class="joiner-status-card">
+                <p class="joiner-status-card-label">Network Status</p>
+                <div class="joiner-status-card-row">
+                  <span class="joiner-status-dot ${isNetworkStable ? "joiner-status-dot--connected" : "joiner-status-dot--disconnected"}"></span>
+                  <span class="joiner-status-card-value" style="font-size: 0.875rem; margin: 0;">${isNetworkStable ? "Stable" : "Disconnected"}</span>
+                </div>
+              </div>
+            </div>
+          ` : ""}
+
+          <section class="joiner-section">
+            <div class="joiner-queue-card">
+              <div class="joiner-table-wrap">
+                <table class="joiner-table">
+                  <thead>
                     <tr>
-                      <td class="nodes-cell-mono">${row.eui64}</td>
-                      <td class="nodes-cell-age">${row.countdown}</td>
+                      <th>Joiner ID</th>
+                      <th>EUI64</th>
+                      <th>Passphrase (PIN)</th>
+                      <th>Timeout Remaining</th>
+                      <th>Status</th>
+                      <th class="joiner-th-actions">Actions</th>
                     </tr>
-                  `)}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    ${!this.isConnected ? html`
+                      <tr class="joiner-row-empty">
+                        <td class="joiner-cell-empty joiner-muted" colspan="6">
+                          Connect to the Border Router to view joiner queue.
+                        </td>
+                      </tr>
+                    ` : this.joinerTable?.error ? html`
+                      <tr class="joiner-row-empty">
+                        <td class="joiner-cell-empty joiner-error" colspan="6">
+                          ${this.joinerTable?.error}
+                        </td>
+                      </tr>
+                    ` : !hasRows ? html`
+                      <tr class="joiner-row-empty">
+                        <td class="joiner-cell-empty joiner-muted" colspan="6">
+                          Không có thiết bị nào đang chờ join.
+                        </td>
+                      </tr>
+                    ` : allRows.map((row) => html`
+                      <tr>
+                        <td class="joiner-cell-id">${row.joinerId}</td>
+                        <td class="joiner-cell-mono">${row.eui64}</td>
+                        <td>
+                          <div class="joiner-cell-passphrase">
+                            <span class="joiner-passphrase-pill">${row.passphrase}</span>
+                            <button
+                              type="button"
+                              class="joiner-btn-copy"
+                              aria-label=${row.passphrase !== "—" ? "Copy passphrase" : "Copy EUI64"}
+                              @click=${() => this._copyToClipboard(row.passphrase !== "—" ? row.passphrase : row.eui64, row.passphrase !== "—" ? "Passphrase" : "EUI64")}
+                            >
+                              <span class="material-symbols-outlined" aria-hidden>content_copy</span>
+                            </button>
+                          </div>
+                        </td>
+                        <td>
+                          <div class="joiner-cell-timeout ${row.status === "expired" ? "joiner-timeout--expired" : ""}">
+                            <span class="material-symbols-outlined" style="font-size: 16px;" aria-hidden>timer</span>
+                            <span class="joiner-cell-mono">${row.countdown}</span>
+                          </div>
+                        </td>
+                        <td>
+                          <span class="joiner-status-badge joiner-status-badge--${row.status}">
+                            <span class="joiner-status-dot-badge"></span>
+                            ${row.status === "joining" ? "Joining" : row.status === "pending" ? "Pending" : "Expired"}
+                          </span>
+                        </td>
+                        <td class="joiner-cell-actions">
+                          <button
+                            type="button"
+                            class="joiner-btn-cancel"
+                            aria-label="Cancel joiner"
+                            @click=${() => this._onCancelJoiner(row)}
+                          >
+                            <span class="material-symbols-outlined" style="font-size: 20px;" aria-hidden>cancel</span>
+                          </button>
+                        </td>
+                      </tr>
+                    `)}
+                  </tbody>
+                </table>
+              </div>
             </div>
           </section>
 

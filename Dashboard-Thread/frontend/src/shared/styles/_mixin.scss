@@ -1,10 +1,6 @@
-/**
- * SCSS mixins dùng chung (no-select, truncate, flex-fill, …).
- */
-
 @mixin no-user-select {
-  user-select: none;
   -webkit-user-select: none;
+  user-select: none;
 }
 
 @mixin truncate {
@@ -18,87 +14,19 @@
   min-height: 0;
 }
 
-@mixin border-radius($radius) {
-  -webkit-border-radius: $radius;
-  -moz-border-radius: $radius;
-  -ms-border-radius: $radius;
-  border-radius: $radius;
-}
-
-// Individual sides
-@mixin border-top-radius($radius) {
-  -webkit-border-top-left-radius: $radius;
-  -moz-border-radius-topleft: $radius;
-  -webkit-border-top-right-radius: $radius;
-  -moz-border-radius-topright: $radius;
-  border-top-left-radius: $radius;
-  border-top-right-radius: $radius;
-}
-
-@mixin border-bottom-radius($radius) {
-  -webkit-border-bottom-left-radius: $radius;
-  -moz-border-radius-bottomleft: $radius;
-  -webkit-border-bottom-right-radius: $radius;
-  -moz-border-radius-bottomright: $radius;
-  border-bottom-left-radius: $radius;
-  border-bottom-right-radius: $radius;
-}
-
-@mixin transition($args...) {
-  -webkit-transition: $args;
-  -moz-transition: $args;
-  -o-transition: $args;
-  transition: $args;
-}
-
-@mixin transform($value) {
-  -webkit-transform: $value;
-  -ms-transform: $value;
-  transform: $value;
-}
-
-@mixin transform-rotate($angle) {
-  @include transform(rotate($angle));
-}
-
-@mixin text-transform($value) {
-  -webkit-text-transform: $value;
-  -moz-text-transform: $value;
-  -ms-text-transform: $value;
-  text-transform: $value;
-}
-
 @mixin scrollbar($width: 8px, $track-color: transparent, $thumb-color: #94a3b8, $thumb-radius: 8px) {
-  // Webkit (Chrome, Safari, Edge)
-  &::-webkit-scrollbar {
-    width: $width;
-    height: $width;
-  }
-  &::-webkit-scrollbar-track {
-    background: $track-color;
-  }
+  &::-webkit-scrollbar { width: $width; height: $width; }
+  &::-webkit-scrollbar-track { background: $track-color; }
   &::-webkit-scrollbar-thumb {
     background-color: $thumb-color;
     border-radius: $thumb-radius;
     border: 2px solid $track-color;
   }
-
-  // Firefox
   scrollbar-width: thin;
-  scrollbar-color: $thumb-color $track-color; // thumb track
-
-  // Microsoft Edge and IE
-  & {
-    -ms-overflow-style: -ms-autohiding-scrollbar;
-  }
+  scrollbar-color: $thumb-color $track-color;
 }
 
 @mixin backdrop-filter($value) {
   -webkit-backdrop-filter: $value;
   backdrop-filter: $value;
-  // Optional fallback for very old browsers (less relevant now)
-  @supports not ((-webkit-backdrop-filter: none) or (backdrop-filter: none)) {
-    // No backdrop-filter support
-    // Consider fallback styles here if needed
-  }
 }

@@ -1,20 +1,9 @@
 @use "sass:color";
-@use "shared/styles/variables" as *;
+@use "shared/styles/tokens" as *;
 @use "shared/styles/mixin" as *;
 
-// Functional color tokens (component-scoped)
-$modal-overlay-bg: rgba($navy-900, 0.78);
-$modal-box-bg: $card-dark;
-$modal-box-border: $brand-border;
-$modal-box-shadow: 0 26px 80px rgba($slate-850, 0.95);
-$modal-header-divider: rgba($text-dark-muted, 0.16);
-$modal-title-text: $text-dark;
-$modal-close-icon: $text-dark-subtle;
-$modal-close-hover-bg: rgba($slate-850, 0.85);
-$modal-close-hover-icon: $text-dark;
-$modal-detail-row-divider: $border-color;
-$modal-detail-key-text: $text-dark-subtle;
-$modal-detail-value-text: $text-dark;
+$modal-border-radius: 12px;
+$modal-border-radius-small: 8px;
 
 modal-dialog {
   display: contents;
@@ -28,7 +17,6 @@ modal-dialog {
   align-items: center;
   justify-content: center;
   padding: 24px;
-  background: $modal-overlay-bg;
   backdrop-filter: blur(6px);
   animation: modal-overlay-in 0.2s ease-out;
 }
@@ -43,15 +31,14 @@ modal-dialog {
 }
 
 .modal-box {
-  background: $modal-box-bg;
-  border-radius: $border-radius;
+  background: var(--surface-container-high);
+  border-radius: 8px;
   max-width: 480px;
   width: 100%;
   max-height: calc(100vh - 48px);
   display: flex;
   flex-direction: column;
   animation: modal-box-in 0.2s ease-out;
-  border: 1px solid $modal-box-border;
 }
 
 @keyframes modal-box-in {
@@ -71,7 +58,6 @@ modal-dialog {
   justify-content: space-between;
   gap: 16px;
   padding: 16px 20px 12px;
-  border-bottom: 1px solid $modal-header-divider;
 }
 
 .modal-header-text {
@@ -82,15 +68,16 @@ modal-dialog {
 
 .modal-title {
   margin: 0;
+  margin-bottom: 4px;
   font-size: 18px;
   font-weight: 600;
-  color: $modal-title-text;
+  color: var(--on-surface);
 }
 
 .modal-subtitle {
   margin: 0;
   font-size: 13px;
-  color: $text-dark-muted;
+  color: var(--on-surface-variant);
 }
 
 .modal-close {
@@ -101,13 +88,13 @@ modal-dialog {
   background: transparent;
   font-size: 24px;
   line-height: 1;
-  color: $modal-close-icon;
+  color: var(--on-surface-variant);
   cursor: pointer;
-  border-radius: $border-radius-small;
+  border-radius: 50%;
 
   &:hover {
-    background: $modal-close-hover-bg;
-    color: $modal-close-hover-icon;
+    background: var(--surface-container);
+    color: var(--on-surface);
   }
 }
 
@@ -115,43 +102,41 @@ modal-dialog {
   padding: 25px;
   overflow-y: auto;
   @include flex-fill;
-  @include scrollbar(4px, transparent, white, 4px);
+  @include scrollbar(4px, transparent, var(--on-surface-variant), 4px);
 }
 
 .modal-alert {
   margin: 0 0 16px;
   padding: 12px 14px;
-  border-radius: $border-radius-small;
+  border-radius: 8px;
   font-size: 13px;
   font-weight: 500;
   border: 1px solid transparent;
 }
 
 .modal-alert--warn {
-  background: rgba($amber-500, 0.12);
-  border-color: rgba($amber-500, 0.28);
-  color: $amber-300;
+  background: color-mix(in oklab, var(--link-quality-warn) 12%, transparent);
+  color: var(--link-quality-warn);
 }
 
 .modal-info-box {
   display: flex;
   gap: 12px;
   padding: 14px;
-  border-radius: $border-radius-small;
-  background: rgba($blue-500, 0.1);
-  border: 1px solid rgba($blue-500, 0.2);
+  border-radius: $modal-border-radius-small;
+  background: color-mix(in oklab, var(--primary) 10%, transparent);
 }
 
 .modal-info-box__icon {
   flex-shrink: 0;
   font-size: 1.25rem;
-  color: $blue-500;
+  color: var(--primary);
 }
 
 .modal-info-box__text {
   margin: 0;
   font-size: 13px;
-  color: $blue-300;
+  color: var(--on-primary-container);
 }
 
 .modal-footer {
@@ -159,7 +144,6 @@ modal-dialog {
   justify-content: flex-end;
   gap: 8px;
   padding: 12px 20px 16px;
-  border-top: 1px solid $modal-header-divider;
 }
 
 .modal-action-btn {
@@ -185,16 +169,15 @@ modal-dialog {
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.06em;
-  border-radius: $border-radius-small;
+  border-radius: $modal-border-radius-small;
   border: 1px solid transparent;
   cursor: pointer;
-  // Defaults (tone=info)
-  --modal-btn-fg: #{$primary-blue};
-  --modal-btn-fg-filled: #{$white};
-  --modal-btn-bg: #{$primary-blue};
-  --modal-btn-bg-hover: #{$primary-blue-hover};
-  --modal-btn-border: #{$primary-blue};
-  --modal-btn-shadow: 0 10px 15px -3px rgba(#{$primary-blue}, 0.3);
+  // Default (tone=info)
+  --modal-btn-fg: var(--primary);
+  --modal-btn-fg-filled: var(--on-primary);
+  --modal-btn-bg: var(--primary);
+  --modal-btn-bg-hover: color-mix(in oklab, var(--primary) 85%, var(--color-mix-darken));
+  --modal-btn-border: var(--primary);
   color: var(--modal-btn-fg);
 
   &:disabled {
@@ -207,50 +190,45 @@ modal-dialog {
   margin-right: auto;
 }
 
-// --- Semantic tones ---
+// --- Semantic tones (CSS vars for style variants) ---
 .modal-tone--default {
-  --modal-btn-fg: #{$text-dark-muted};
-  --modal-btn-fg-filled: #{$text-dark};
-  --modal-btn-bg: #{rgba($white, 0.06)};
-  --modal-btn-bg-hover: #{rgba($white, 0.1)};
-  --modal-btn-border: #{rgba($white, 0.14)};
-  --modal-btn-shadow: none;
+  --modal-btn-fg: var(--on-surface-variant);
+  --modal-btn-fg-filled: var(--on-surface);
+  --modal-btn-bg: color-mix(in oklab, var(--color-mix-lighten) 6%, transparent);
+  --modal-btn-bg-hover: color-mix(in oklab, var(--color-mix-lighten) 10%, transparent);
+  --modal-btn-border: var(--outline);
 }
 
 .modal-tone--info {
-  --modal-btn-fg: #{$primary-blue};
-  --modal-btn-fg-filled: #{$white};
-  --modal-btn-bg: #{$primary-blue};
-  --modal-btn-bg-hover: #{$primary-blue-hover};
-  --modal-btn-border: #{$primary-blue};
-  --modal-btn-shadow: 0 10px 15px -3px rgba(#{$primary-blue}, 0.3);
+  --modal-btn-fg: var(--primary);
+  --modal-btn-fg-filled: var(--on-primary);
+  --modal-btn-bg: var(--primary);
+  --modal-btn-bg-hover: color-mix(in oklab, var(--primary) 85%, var(--color-mix-darken));
+  --modal-btn-border: var(--primary);
 }
 
 .modal-tone--success {
-  --modal-btn-fg: #{$green-400};
-  --modal-btn-fg-filled: #{$white};
-  --modal-btn-bg: #{$green-500};
-  --modal-btn-bg-hover: #{color.adjust($green-500, $lightness: -6%)};
-  --modal-btn-border: #{$green-500};
-  --modal-btn-shadow: 0 10px 15px -3px rgba(#{$green-500}, 0.3);
+  --modal-btn-fg: var(--green-700);
+  --modal-btn-fg-filled: white;
+  --modal-btn-bg: var(--green-700);
+  --modal-btn-bg-hover: color-mix(in oklab, var(--green-700) 85%, var(--color-mix-darken));
+  --modal-btn-border: var(--green-700);
 }
 
 .modal-tone--warning {
-  --modal-btn-fg: #{$orange-500};
-  --modal-btn-fg-filled: #{$white};
-  --modal-btn-bg: #{$orange-500};
-  --modal-btn-bg-hover: #{color.adjust($orange-500, $lightness: -6%)};
-  --modal-btn-border: #{$orange-500};
-  --modal-btn-shadow: 0 10px 15px -3px rgba(#{$orange-500}, 0.3);
+  --modal-btn-fg: var(--link-quality-warn);
+  --modal-btn-fg-filled: white;
+  --modal-btn-bg: var(--link-quality-warn);
+  --modal-btn-bg-hover: color-mix(in oklab, var(--link-quality-warn) 85%, var(--color-mix-darken));
+  --modal-btn-border: var(--link-quality-warn);
 }
 
 .modal-tone--danger {
-  --modal-btn-fg: #{$red-300};
-  --modal-btn-fg-filled: #{$white};
-  --modal-btn-bg: #{$red-500};
-  --modal-btn-bg-hover: #{color.adjust($red-500, $lightness: -6%)};
-  --modal-btn-border: #{$red-500};
-  --modal-btn-shadow: 0 10px 15px -3px rgba(#{$red-500}, 0.3);
+  --modal-btn-fg: var(--red-500);
+  --modal-btn-fg-filled: white;
+  --modal-btn-bg: var(--red-500);
+  --modal-btn-bg-hover: color-mix(in oklab, var(--red-500) 85%, var(--color-mix-darken));
+  --modal-btn-border: var(--red-500);
 }
 
 // --- Visual styles ---
@@ -258,14 +236,13 @@ modal-dialog {
   background: transparent;
 
   &:hover:not(:disabled) {
-    background: rgba($white, 0.06);
+    background: color-mix(in oklab, var(--color-mix-lighten) 6%, transparent);
   }
 }
 
 .modal-btn--filled {
   background: var(--modal-btn-bg);
   color: var(--modal-btn-fg-filled);
-  box-shadow: var(--modal-btn-shadow);
 
   &:hover:not(:disabled) {
     background: var(--modal-btn-bg-hover);
@@ -277,11 +254,10 @@ modal-dialog {
   border-color: var(--modal-btn-border);
 
   &:hover:not(:disabled) {
-    background: rgba($white, 0.04);
+    background: color-mix(in oklab, var(--color-mix-lighten) 4%, transparent);
   }
 }
 
-// Backwards-compat aliases (deprecated)
 .modal-btn--ghost {
   @extend .modal-btn--text;
 }
@@ -290,7 +266,6 @@ modal-dialog {
   @extend .modal-btn--filled;
   @extend .modal-tone--info;
 }
-
 
 .modal-action-icon {
   display: inline-flex;
@@ -324,7 +299,7 @@ modal-dialog {
     align-items: flex-start;
     gap: 12px;
     padding: 10px 0;
-    border-bottom: 1px solid $modal-detail-row-divider;
+    border-bottom: 1px solid var(--outline-variant);
 
     &:last-child {
       border-bottom: none;
@@ -335,13 +310,13 @@ modal-dialog {
 .modal-detail-key {
   flex: 0 0 120px;
   font-weight: 600;
-  color: $modal-detail-key-text;
+  color: var(--on-surface-variant);
   font-size: 13px;
 }
 
 .modal-detail-value {
   flex: 1;
-  color: $modal-detail-value-text;
+  color: var(--on-surface);
   font-size: 14px;
   font-family: ui-monospace, monospace;
   word-break: break-all;
