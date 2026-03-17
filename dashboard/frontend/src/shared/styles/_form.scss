@@ -48,11 +48,9 @@ $form-error-message-text: $alert-error-text;
 }
 
 .form-card {
-  background: $form-card-bg;
-  border-radius: $border-radius;
+  background: var(--surface-container);
+  border-radius: 8px;
   padding: 32px;
-  box-shadow: $form-card-shadow;
-  border: 1px solid $form-card-border;
 }
 
 .form-page-title {
