@@ -3,12 +3,12 @@
  */
 
 import type { Socket } from "socket.io";
-import type { CommunicateManager } from "@communicate";
+import type { BrManager } from "@communicate";
 import { EVENTS } from "shared/src/events";
 import { WsOn } from "../ws.decorator";
 
 export class DeviceHandler {
-  constructor(private communicate: CommunicateManager) {}
+  constructor(private communicate: BrManager) {}
 
   @WsOn(EVENTS.DEVICE_RESET)
   async handleDeviceReset(socket: Socket): Promise<void> {

@@ -8,9 +8,9 @@ Dashboard-Thread/          # npm workspaces root
 ├── backend/               # Node.js + TypeScript server
 │   └── src/
 │       ├── coap/          # CoAP server (decorator), CoapStatus, coap.response, DeviceCoapController, device-coap.service, device.payload (DeviceInfoPayload, DeviceTopologyPayload, entity, state)
-│       ├── communicate/   # TransportTcp, CommandManager, CommunicateManager, frame (parser/builder/constants)
+│       ├── communicate/   # frame/, transport/, br/ (BrManager/BrSession/BrConnection/BrCommand)
 │       ├── settings/      # BrConnectionConfigService, AppSettingsService
-│       ├── thread/        # OtConfigManager, PollingManager, device-role, thread-data
+│       ├── thread/        # thread.config (OtConfigStore), thread.data, thread.polling, thread-role
 │       ├── websocket/     # WebSocketServer; handler/ (config, br, device, thread, commissioner, srp); ws.type, ws.decorator (@WsOn, getWsRoutes)
 │       ├── database/      # SQLite, Drizzle schema + migrations (data/migrations), repositories (device, app-settings)
 │       ├── cbor/          # CBOR decode (noi bo)
@@ -40,7 +40,7 @@ Dashboard-Thread/          # npm workspaces root
 | pino | ^9.5.0 | Structured logging |
 | pino-pretty | latest | Pretty console output |
 
-Transport: TCP (net.Socket) to BR; CoAP (UDP 5683, udp6 listen [::]) from Thread-Node. Dependencies: `coap`. CBOR decode/encode noi bo (`backend/src/cbor`). Thread-Node la **CoAP client**: GET /device/ping**?mac=** (16-char hex, heartbeat → last_seen_at); POST /device/register/info (keys 0–6, key 0 = mac), /device/update/topology (payload **role-based**: child 0–5 parent_*; router/leader 0,1,2,6 neighbors array), /device/register/entity, /device/update/entity, /device/update/state (key 0 = mac, **key 1** = array). ENTITY_KEYS 0–6 (disabled key 6); STATE_KEYS 0–6 (không available). Spec payload: HomeThread/Documents/coap/device_payload_spec.md; SRP: Documents/coap/backend_discovery_srp.md; BR/routing: Documents/architecture/real_br_integration.md. Backend luu **8 bảng** (device_info, device_topology, device_topology_neighbor, device_topology_history, device_entity, device_entity_state + history, **device_health_br** — 1 row per device, upsert via CMD_BR_HEALTH); upsertTopology parse theo role, replace neighbors; updateDeviceLastSeen, getDeviceStatus(30s/5m); **upsertBrHealth** (device-health.repository). Frame log: CMD STATE và ACK ẩn (command.manager.ts).
+Transport: TCP (net.Socket) to BR; CoAP (UDP 5683, udp6 listen [::]) from Thread-Node. Dependencies: `coap`. CBOR decode/encode noi bo (`backend/src/cbor`). Thread-Node la **CoAP client**: GET /device/ping**?mac=** (16-char hex, heartbeat → last_seen_at); POST /device/register/info (keys 0–6, key 0 = mac), /device/update/topology (payload **role-based**: child 0–5 parent_*; router/leader 0,1,2,6 neighbors array), /device/register/entity, /device/update/entity, /device/update/state (key 0 = mac, **key 1** = array). ENTITY_KEYS 0–6 (disabled key 6); STATE_KEYS 0–6 (không available). Spec payload: HomeThread/Documents/coap/device_payload_spec.md; SRP: Documents/coap/backend_discovery_srp.md; BR/routing: Documents/architecture/real_br_integration.md. Backend luu **8 bảng** (device_info, device_topology, device_topology_neighbor, device_topology_history, device_entity, device_entity_state + history, **device_health_br** — 1 row per device, upsert via CMD_BR_HEALTH); upsertTopology parse theo role, replace neighbors; updateDeviceLastSeen, getDeviceStatus(30s/5m); **upsertBrHealth** (device-health.repository). Frame log: CMD STATE và ACK ẩn (br.command.ts).
 
 ### Frontend
 

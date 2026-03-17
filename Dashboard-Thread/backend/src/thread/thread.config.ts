@@ -1,5 +1,5 @@
 /**
- * OtConfigManager - Quản lý và lưu dữ liệu OT config (panid, channel, networkName, ...).
+ * OtConfig - Quản lý và lưu dữ liệu OT config (panid, channel, networkName, ...).
  * Cập nhật qua set() (thay thế) hoặc update() (merge partial); không tự broadcast.
  */
 
@@ -14,7 +14,7 @@ export type OtConfig = ParsedDataset & {
   error?: string;
 };
 
-export class OtConfigManager {
+export class OtConfigStore {
   private config: OtConfig | null = null;
 
   get(): OtConfig | null {

@@ -1,6 +1,6 @@
 /**
  * Backend: WebSocket server cho OpenThread qua TCP (frame protocol).
- * Khởi tạo giao tiếp (CommunicateManager) ở đây; WebSocketServer chỉ emit dữ liệu tới frontend.
+ * Khởi tạo giao tiếp (BrManager) ở đây; WebSocketServer chỉ emit dữ liệu tới frontend.
  */
 
 import "dotenv/config";
@@ -8,7 +8,7 @@ import { createServer } from "http";
 import { Server } from "socket.io";
 import { getDatabase, closeDatabase } from "@database/database.db";
 import { runMigrations } from "@database/database.migrations";
-import { BrConnectionConfigService, CommunicateManager } from "@communicate";
+import { BrConnectionConfigService, BrManager } from "@communicate";
 import { AppSettingsService } from "@settings/app-settings.service";
 import { WebSocketServer } from "@websocket/websocket.server";
 import { startCoapDeviceServer as startDeviceCoapServer } from "@coap/device/device-coap.server";
@@ -39,7 +39,7 @@ const io = new Server(httpServer, {
   allowRequest: (_req, callback) => callback(null, true),
 });
 
-const communicateManager = new CommunicateManager(
+const communicateManager = new BrManager(
   brConnectionConfigService,
   appSettingsService,
   (event, data) => io.emit(event, data)

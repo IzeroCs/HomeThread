@@ -1,10 +1,10 @@
 /**
  * WebSocket Server - Chỉ emit dữ liệu tới frontend.
- * Dữ liệu và khởi tạo giao tiếp nằm ở CommunicateManager; handlers tách trong handler/.
+ * Dữ liệu và khởi tạo giao tiếp nằm ở BrManager; handlers tách trong handler/.
  */
 
 import { Server, Socket } from "socket.io";
-import type { BrConnectionConfigService, CommunicateManager } from "@communicate";
+import type { BrConnectionConfigService, BrManager } from "@communicate";
 import { AppSettingsService } from "@settings/app-settings.service";
 import { logger } from "@utils/logger.util";
 import { EVENTS } from "shared/src/events";
@@ -24,7 +24,7 @@ export class WebSocketServer {
   private io: Server;
   private brConnectionConfigService: BrConnectionConfigService;
   private appSettingsService: AppSettingsService;
-  private communicate: CommunicateManager;
+  private communicate: BrManager;
 
   private configHandler: ConfigHandler;
   private brHandler: BrHandler;
@@ -37,7 +37,7 @@ export class WebSocketServer {
     io: Server,
     brConnectionConfigService: BrConnectionConfigService,
     appSettingsService: AppSettingsService,
-    communicate: CommunicateManager
+    communicate: BrManager
   ) {
     this.io = io;
     this.brConnectionConfigService = brConnectionConfigService;
@@ -60,7 +60,7 @@ export class WebSocketServer {
   }
 
   async close(): Promise<void> {
-    await this.communicate.close();
+    await this.communicate.disconnect();
   }
 
   private setupEventHandlers(): void {

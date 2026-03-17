@@ -100,52 +100,99 @@ export class ModalComponent extends LitElement {
     }
   }
 
+  private _resolveLegacy(
+    action: ModalAction,
+    kind: "action" | "cancel" | "confirm",
+  ): "primary" | "ghost" | "text" {
+    if (action.variant) return action.variant;
+    if (kind === "confirm") return "primary";
+    if (kind === "cancel") return "ghost";
+    return "text";
+  }
+
+  private _resolveStyle(
+    action: ModalAction,
+    kind: "action" | "cancel" | "confirm",
+  ): "text" | "filled" | "outlined" {
+    if (action.style) return action.style;
+
+    if (action.variant) {
+      const legacy = this._resolveLegacy(action, kind);
+      return legacy === "primary" ? "filled" : "text";
+    }
+
+    return kind === "confirm" ? "filled" : "text";
+  }
+
+  private _resolveTone(
+    action: ModalAction,
+    kind: "action" | "cancel" | "confirm",
+  ): "default" | "info" | "success" | "warning" | "danger" {
+    if (action.tone) return action.tone;
+
+    if (action.variant) {
+      const legacy = this._resolveLegacy(action, kind);
+      return legacy === "primary" ? "info" : "default";
+    }
+
+    if (kind === "confirm") return "info";
+    if (kind === "cancel") return "danger";
+    return "default";
+  }
+
+  private _renderActionIcon(action: ModalAction): TemplateResult | string | null {
+    const isLoading = action.loading ?? false;
+    if (isLoading) return html`<spin-loader size="14" thickness="2"></spin-loader>`;
+    return action.icon ?? null;
+  }
+
+  private _renderActionIconSlot(icon: TemplateResult | string | null): TemplateResult {
+    if (!icon) return html``;
+
+    const iconEl =
+      typeof icon === "string"
+        ? html`<span class="material-symbols-outlined modal-action-icon--md" aria-hidden>${icon}</span>`
+        : icon;
+
+    return html`<span class="modal-action-icon">${iconEl}</span>`;
+  }
+
+  private _buildActionClassName(
+    kind: "action" | "cancel" | "confirm",
+    style: "text" | "filled" | "outlined",
+    tone: "default" | "info" | "success" | "warning" | "danger",
+    action: ModalAction,
+  ): string {
+    const isLoading = action.loading ?? false;
+
+    return [
+      "modal-action-btn",
+      `modal-action-btn--${kind}`,
+      `modal-btn--${style}`,
+      `modal-tone--${tone}`,
+      action.className,
+      isLoading ? "is-loading" : undefined,
+    ]
+      .filter(Boolean)
+      .join(" ");
+  }
+
   private _renderAction(kind: "action" | "cancel" | "confirm", action: ModalAction): TemplateResult {
     const isLoading = action.loading ?? false;
-    const classes = ["modal-action-btn", `modal-action-btn--${kind}`];
-    const legacy =
-      action.variant ??
-      (kind === "confirm" ? "primary" : kind === "cancel" ? "ghost" : "text");
-    const style =
-      action.style ??
-      (action.variant
-        ? legacy === "primary"
-          ? "filled"
-          : "text"
-        : kind === "confirm"
-          ? "filled"
-          : "text");
-    const tone =
-      action.tone ??
-      (action.variant
-        ? legacy === "primary"
-          ? "info"
-          : "default"
-        : kind === "confirm"
-          ? "info"
-          : kind === "cancel"
-            ? "danger"
-            : "default");
-
-    classes.push(`modal-btn--${style}`);
-    classes.push(`modal-tone--${tone}`);
-    if (action.className) classes.push(action.className);
-    if (isLoading) classes.push("is-loading");
-    const iconEl = isLoading
-      ? html`<spin-loader size="14" thickness="2"></spin-loader>`
-      : typeof action.icon === "string"
-        ? html`<span class="material-symbols-outlined modal-action-icon--md" aria-hidden>${action.icon}</span>`
-        : (action.icon ?? null);
+    const style = this._resolveStyle(action, kind);
+    const tone = this._resolveTone(action, kind);
+    const className = this._buildActionClassName(kind, style, tone, action);
+    const icon = this._renderActionIcon(action);
     return html`
       <button
         type="button"
-        class=${classes.join(" ")}
+        class=${className}
         @click=${action.onClick}
         ?disabled=${action.disabled ?? false}
         aria-label=${action.ariaLabel ?? action.label}
         aria-busy=${isLoading}
       >
-        ${iconEl ? html`<span class="modal-action-icon">${iconEl}</span>` : ""}
+        ${this._renderActionIconSlot(icon)}
         <span class="modal-action-label">${action.label}</span>
       </button>
     `;

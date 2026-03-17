@@ -3,7 +3,7 @@
  */
 
 import type { Socket } from "socket.io";
-import type { CommunicateManager } from "@communicate";
+import type { BrManager } from "@communicate";
 import { AppSettingsService } from "@settings/app-settings.service";
 import { EVENTS } from "shared/src/events";
 import { validateOtSetConfig } from "shared/src/validation";
@@ -11,7 +11,7 @@ import { WsOn } from "../ws.decorator";
 
 export class ThreadHandler {
   constructor(
-    private communicate: CommunicateManager,
+    private communicate: BrManager,
     private appSettingsService: AppSettingsService
   ) {}
 

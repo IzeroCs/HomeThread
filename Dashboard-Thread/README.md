@@ -38,9 +38,9 @@ Dashboard-Thread/
 ├── backend/               # Node.js + TypeScript (WebSocket, TCP frame protocol)
 │   └── src/
 │       ├── coap/         # CoAP server (decorator router), DeviceCoapController, path /device/
-│       ├── communicate/  # TransportTcp, CommandManager, CommunicateManager, frame (parser/builder/constants)
+│       ├── communicate/  # frame/, transport/, br/ (BrManager/BrSession/BrConnection/BrCommand)
 │       ├── settings/     # BrConnectionConfigService, AppSettingsService
-│       ├── thread/       # OtConfigManager, PollingManager, device-role
+│       ├── thread/       # thread.config (OtConfigStore), thread.data, thread.polling, thread-role
 │       ├── websocket/     # WebSocketServer; handler/ (config, br, device, thread, commissioner, srp); @WsOn, getWsRoutes
 │       ├── database/     # SQLite, migrations
 │       ├── cbor/         # CBOR decode nội bộ
@@ -97,7 +97,7 @@ Dashboard-Thread/
 ## Backend – TCP & frame protocol
 
 - **Giao tiếp:** Frame protocol qua **TCP** tới BR (host:port, mặc định Thread-Host.local:5000). Cấu trúc frame: SOF, Frame ID, CMD, LEN, DATA, CRC8, EOF (xem `Documents/protocol/usb_cdc_frame_structure.md` ở thư mục gốc HomeThread).
-- **Kiến trúc:** `CommunicateManager` điều phối TransportTcp + frame; `CommandManager` gửi/nhận frame, quản lý pending theo Frame ID + timeout; `BrConnectionConfigService` lưu cấu hình BR; `PollingManager` poll table định kỳ. `WebSocketServer` chỉ relay event.
+- **Kiến trúc:** `BrManager` là facade; `BrSession` xử lý poll/notify/baseline/SRP/health/topology; `BrConnection` wrap TCP raw stream; `BrCommand` gửi/nhận frame và quản lý pending theo Frame ID + timeout. `BrConnectionConfigService` lưu cấu hình BR; `WebSocketServer` chỉ relay event.
 - **Backend path alias:** tsconfig có `baseUrl` + `paths` (`@utils/*`, `@database`, `@communicate`, `@coap/*`, …). Dev dùng `tsx watch` (tự resolve alias); build: `tsc` rồi `tsc-alias` để thay alias trong dist bằng relative path.
 - **Khi kết nối BR:** Pull state định kỳ (CMD_STATE, 5s). Dataset active + IP chỉ fetch khi state thay đổi hoặc lần đầu. Thread version (CMD_THREAD_VERSION) fetch một lần sau lần đầu nhận ACK state. Nếu `thread_run_on_connect` bật và state = disabled → tự gửi CMD_THREAD_START.
 - **Polling tables:** Router/Child/Joiner table poll mỗi 6s (child delay 1.5s) — chỉ khi có frontend kết nối và state là leader/router/child.

@@ -4,8 +4,8 @@
 
 export { TransportTcp, type TransportTcpConfig } from "./transport/tcp.transport";
 export { BrConnectionConfigService, type BrConnectionConfig } from "@settings/br-connection.service";
-export { CommunicateManager } from "./manager/communicate.manager";
-export type { ConnectionStatus, OtConfig, ThreadState, TableData, OnBroadcast } from "./manager/communicate.manager";
+export { BrManager } from "./br/br";
+export type { ConnectionStatus, OtConfig, ThreadState, TableData, OnBroadcast } from "./br/br";
 export { EVENTS, type EventName } from "shared/src/events";
 export {
   buildFrame,

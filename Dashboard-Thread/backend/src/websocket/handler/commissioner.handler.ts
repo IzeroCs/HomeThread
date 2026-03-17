@@ -3,12 +3,12 @@
  */
 
 import type { Socket } from "socket.io";
-import type { CommunicateManager } from "@communicate";
+import type { BrManager } from "@communicate";
 import { EVENTS } from "shared/src/events";
 import { WsOn } from "../ws.decorator";
 
 export class CommissionerHandler {
-  constructor(private communicate: CommunicateManager) {}
+  constructor(private communicate: BrManager) {}
 
   @WsOn(EVENTS.COMMISSIONER_GET_JOINER_TABLE)
   async handleCommissionerGetJoinerTable(socket: Socket): Promise<void> {

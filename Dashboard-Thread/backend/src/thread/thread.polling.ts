@@ -1,17 +1,17 @@
 /**
- * PollingManager - Quản lý các interval poll (router table, child table, joiner list).
- * Thread state và OT config (dataset, ipaddr) do CommunicateManager xử lý (pullState / khi state đổi).
+ * ThreadPolling - Quản lý các interval poll (router table, child table, joiner list).
+ * Thread state và OT config (dataset, ipaddr) do BR layer xử lý (pullState / khi state đổi).
  */
 
 import type { RouterEntry, ChildEntry } from "@communicate/frame";
 
-export interface PollingManagerCallbacks {
+export interface ThreadPollingCallbacks {
   fetchRouterTable: () => Promise<void | RouterEntry[] | null>;
   fetchChildTable: () => Promise<void | ChildEntry[] | null>;
   fetchJoinerTable: () => Promise<void>;
 }
 
-export class PollingManager {
+export class ThreadPolling {
   private routerTableIntervalId: ReturnType<typeof setInterval> | null = null;
   private childTableDelayTimeoutId: ReturnType<typeof setTimeout> | null = null;
   private childTableIntervalId: ReturnType<typeof setInterval> | null = null;
@@ -25,7 +25,7 @@ export class PollingManager {
   /** Fallback polling only (notify-first). */
   static readonly JOINER_TABLE_POLL_MS = 30000;
 
-  constructor(private callbacks: PollingManagerCallbacks) {}
+  constructor(private callbacks: ThreadPollingCallbacks) {}
 
   /**
    * Bật polling các table khi state là child/router/leader và có frontend kết nối.
@@ -42,7 +42,7 @@ export class PollingManager {
       this.callbacks.fetchRouterTable().catch(() => {});
       this.routerTableIntervalId = setInterval(() => {
         this.callbacks.fetchRouterTable().catch(() => {});
-      }, PollingManager.ROUTER_TABLE_POLL_MS);
+      }, ThreadPolling.ROUTER_TABLE_POLL_MS);
     }
 
     // Child Table: delay một chút rồi poll định kỳ
@@ -54,9 +54,9 @@ export class PollingManager {
         if (this.childTableIntervalId == null) {
           this.childTableIntervalId = setInterval(() => {
             this.callbacks.fetchChildTable().catch(() => {});
-          }, PollingManager.CHILD_TABLE_POLL_MS);
+          }, ThreadPolling.CHILD_TABLE_POLL_MS);
         }
-      }, PollingManager.CHILD_TABLE_DELAY_MS);
+      }, ThreadPolling.CHILD_TABLE_DELAY_MS);
     }
 
     // Joiner Table: poll định kỳ (chỉ khi leader)
@@ -65,7 +65,7 @@ export class PollingManager {
       this.callbacks.fetchJoinerTable().catch(() => {});
       this.joinerTableIntervalId = setInterval(() => {
         this.callbacks.fetchJoinerTable().catch(() => {});
-      }, PollingManager.JOINER_TABLE_POLL_MS);
+      }, ThreadPolling.JOINER_TABLE_POLL_MS);
     }
   }
 

@@ -4,7 +4,7 @@
 
 import type { Server } from "socket.io";
 import type { Socket } from "socket.io";
-import type { CommunicateManager } from "@communicate";
+import type { BrManager } from "@communicate";
 import { EVENTS } from "shared/src/events";
 import { validateBrConnectionConfig } from "shared/src/validation";
 import { WsOn } from "../ws.decorator";
@@ -12,7 +12,7 @@ import { WsOn } from "../ws.decorator";
 export class BrHandler {
   constructor(
     private io: Server,
-    private communicate: CommunicateManager
+    private communicate: BrManager
   ) {}
 
   @WsOn(EVENTS.BR_STATUS)

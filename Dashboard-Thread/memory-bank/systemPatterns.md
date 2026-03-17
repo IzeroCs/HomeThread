@@ -5,14 +5,14 @@
 ```
 BR (Thread-Host)   listen TCP port 5000
     ↓ TCP (binary frame protocol)
-TransportTcp       (backend/src/communicate/transport-tcp.transport.ts)
+TransportTcp       (backend/src/communicate/transport/tcp.transport.ts)
     ↓ raw bytes stream
 FrameParser        (backend/src/communicate/frame/frame.parser.ts)
     ↓ parsed Frame { frameId, cmd, data }
-CommandManager     (backend/src/communicate/command.manager.ts)
+BrCommand          (backend/src/communicate/br/br.command.ts)
     ↓ ACK/NACK resolved via pending map (frameId → Promise)
-CommunicateManager (backend/src/communicate/communicate.manager.ts)
-    ↓ OtConfigManager.update() + onBroadcast(event, data)
+BrSession/BrManager (backend/src/communicate/br/br.session.ts, br.ts)
+    ↓ OtConfigStore.update() + onBroadcast(event, data)
 WebSocketServer    (backend/src/websocket/websocket.server.ts)
     ↓ io.emit(EVENTS.xxx, payload)
 WebSocketController (frontend/src/shared/controllers/websocket.controller.ts)
@@ -46,12 +46,14 @@ Backend (khi BR = leader) → log "SRP register: IPv6=... hostname=... port=..."
 | Module | File | Vai tro — TUYET DOI KHONG vi pham |
 |---|---|---|
 | `WebSocketServer` | `backend/src/websocket/websocket.server.ts` | CHỈ wire: tạo handler instances (handler/), on connection gọi sendCurrentConfig/sendBrStatus + emit last* data, đăng ký socket.on(event) từ getWsRoutes(handler.constructor). Không gọi CommunicateManager khi client connect/disconnect (đã bỏ frontend connection count). Business logic trong handler/*. |
-| `CommunicateManager` | `backend/src/communicate/communicate.manager.ts` | Owner cua toan bo transport + frame. Dieu phoi TransportTcp, polling, broadcast |
-| `TransportTcp` | `backend/src/communicate/transport-tcp.transport.ts` | TCP client: open(host, port), writeRaw, onRawData, setOnDisconnect |
+| `BrManager` | `backend/src/communicate/br/br.ts` | Facade BR: cửa vào duy nhất; delegate xuống BrConnection/BrSession/BrCommand |
+| `BrSession` | `backend/src/communicate/br/br.session.ts` | “Cuộc hội thoại”: state poll 5s, notify debounce, baseline pull, SRP register, BR health poll, topology persist |
+| `BrConnection` | `backend/src/communicate/br/br.connection.ts` | Wrap TCP client + raw stream listener |
+| `TransportTcp` | `backend/src/communicate/transport/tcp.transport.ts` | TCP client: open(host, port), writeRaw, onRawData, setOnDisconnect |
 | `BrConnectionService` | `backend/src/settings/br-connection.service.ts` | Cau hinh BR (brHost, brPort, useMdns) qua app-settings.repository (key-value trong app_settings) |
-| `CommandManager` | `backend/src/communicate/command.manager.ts` | Frame TX/RX. Pending map (frameId → resolve/reject). ACK/NACK routing. Timeout; replyAck cho IP_ADDR. Log ẩn CMD STATE và ACK (RX + TX). |
-| `OtConfigManager` | `backend/src/thread/ot-config.manager.ts` | In-memory store. `.update(partial)` de merge, `.get()` de doc, `.clear()` khi disconnect |
-| `PollingManager` | `backend/src/thread/thread-polling.manager.ts` | Fallback table polling (notify-first); state poll 5s do CommunicateManager, tables theo CMD_NOTIFY + baseline on connect. Không gating theo số client frontend. |
+| `BrCommand` | `backend/src/communicate/br/br.command.ts` | Frame TX/RX. Pending map (frameId → resolve/reject). ACK/NACK routing. Timeout; reply ACK cho IP_ADDR. Log ẩn CMD STATE và ACK (RX + TX). |
+| `OtConfigStore` | `backend/src/thread/thread.config.ts` | In-memory store cho `OtConfig` (data). `.update(partial)` merge, `.get()` đọc, `.clear()` khi disconnect |
+| `ThreadPolling` | `backend/src/thread/thread.polling.ts` | Fallback table polling (notify-first); tables theo CMD_NOTIFY + baseline on connect. |
 | `AppSettingsService` | `backend/src/settings/app-settings.service.ts` | SQLite key-value cho app settings (thread_run_on_connect) |
 | CoAP server | `backend/src/coap/coap-device.server.ts` + `device-coap.controller.ts` + `device-coap.service.ts` + `database/repositories/device.repository.ts` + `coap.response.ts` | CoAP UDP 5683 (udp6, [::]). Paths: /device/ping, register/info, register/entity, update/info, update/entity, update/topology, update/state. CoapStatus (coap.type.ts); sendCoapResponse/echoCoapToken (coap.response.ts); parseCborOrRespond (controller). GET ping → 2.05 + timestamp. POST register/info: upsert device_info (mac_address), slug (generateSlug); soft-delete; topology optional. POST register/entity: merge device_entity, tra restore CBOR (key 10). POST update/*: update info, entity def, topology (role-based; device_topology_neighbor), state. DB: device.repository, app-settings.repository, **device-health.repository** (upsertBrHealth — 1 row per BR, frame CMD_BR_HEALTH). SQLite 8 bang. Khong emit qua io |
 

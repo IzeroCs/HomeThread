@@ -1,6 +1,6 @@
 /**
- * CommandManager - Xử lý frame protocol (RX: DATA, ACK, NACK; TX: STATE, ACK, pull request).
- * Tách riêng khỏi CommunicateManager để quản lý logic lệnh và pending request/response.
+ * BrCommand - Xử lý frame protocol (RX: DATA, ACK, NACK; TX: STATE, ACK, pull request).
+ * Tách riêng khỏi BR facade để quản lý logic lệnh và pending request/response.
  */
 
 import { buildFrame, CMD, type ParsedFrame } from "../frame";
@@ -43,7 +43,7 @@ export type AckDataConfig = ParsedDataset & {
   datasetActive?: string; // Hex string gốc (để giữ lại cho compatibility)
 };
 
-export interface CommandManagerCallbacks {
+export interface BrCommandCallbacks {
   writeRaw(buffer: Buffer): Promise<void>;
   broadcast(event: EventName, data?: unknown): void;
   /** Gọi khi nhận ACK data để merge vào config và broadcast ot:config. */
@@ -63,7 +63,7 @@ function isMostlyPrintable(buf: Buffer): boolean {
   return printable / buf.length >= 0.8;
 }
 
-export class CommandManager {
+export class BrCommand {
   private nextFrameId = 0;
   private pendingFrames = new Map<
     number,
@@ -77,7 +77,7 @@ export class CommandManager {
   /** Track frameId của IP_ADDR commands để thu gọn log ACK. */
   private ipAddrFrameIds = new Set<number>();
 
-  constructor(private callbacks: CommandManagerCallbacks) {}
+  constructor(private callbacks: BrCommandCallbacks) {}
 
   /**
    * Xử lý frame nhận từ leader. Chỉ có DATA (broadcast) và ACK/NACK (resolve pending + merge config).
@@ -463,7 +463,7 @@ export class CommandManager {
       return null;
     }
     // Dataset active: parse hex-encoded TLVs thành các field riêng lẻ
-    // Chỉ lưu datasetActive (hex string TLV) vào OtConfigManager khi parse thành công
+    // Chỉ lưu datasetActive (hex string TLV) vào OtConfig khi parse thành công
     if (data.length > 0) {
       const hexString = data.toString("hex");
       const parsed = parseDatasetActive(hexString);
@@ -480,13 +480,13 @@ export class CommandManager {
         if (parsed.panid) frameLogger.log(`  PAN ID: 0x${parsed.panid}`);
         if (parsed.pskc) frameLogger.log(`  PSKc: ${parsed.pskc}`);
         if (parsed.securityPolicy) frameLogger.log(`  Security Policy: ${parsed.securityPolicy}`);
-        // Trả về cả hex string TLV gốc (datasetActive) và các field đã parse để lưu vào OtConfigManager
+        // Trả về cả hex string TLV gốc (datasetActive) và các field đã parse để lưu vào OtConfig
         return {
           datasetActive: hexString, // Hex string TLV gốc - chỉ lưu khi parse thành công
           ...parsed,
         };
       }
-      // Nếu parse không thành công, không lưu vào OtConfigManager
+      // Nếu parse không thành công, không lưu vào OtConfig
       frameLogger.log(`Dataset Active: parse failed, raw hex (${hexString.length / 2} bytes) - not saved`);
       return null; // Không lưu khi parse không thành công
     }

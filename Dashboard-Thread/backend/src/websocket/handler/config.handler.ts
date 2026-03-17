@@ -4,7 +4,7 @@
 
 import type { Server } from "socket.io";
 import type { Socket } from "socket.io";
-import type { BrConnectionConfigService, CommunicateManager } from "@communicate";
+import type { BrConnectionConfigService, BrManager } from "@communicate";
 import { getBackendAddresses } from "@utils/ipv6.util";
 import { EVENTS } from "shared/src/events";
 import { validateBrConnectionConfig } from "shared/src/validation";
@@ -14,7 +14,7 @@ export class ConfigHandler {
   constructor(
     private io: Server,
     private brConnectionConfigService: BrConnectionConfigService,
-    private communicate: CommunicateManager
+    private communicate: BrManager
   ) {}
 
   @WsOn(EVENTS.CONFIG_GET)

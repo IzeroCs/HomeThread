@@ -1,12 +1,12 @@
 /**
- * ThreadDataManager - Quản lý và lưu dữ liệu runtime OT/Thread: thread state, router/child/joiner table.
+ * ThreadData - Quản lý và lưu dữ liệu runtime OT/Thread: thread state, router/child/joiner table.
  */
 
 export type ThreadState = { running: boolean; state?: string } | null;
 
 export type TableData = { headers?: string[]; rows?: string[][]; error?: string } | null;
 
-export class ThreadDataManager {
+export class ThreadData {
   private threadState: ThreadState = null;
   private routerTable: TableData = null;
   private childTable: TableData = null;

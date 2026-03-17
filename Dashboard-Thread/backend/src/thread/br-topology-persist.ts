@@ -1,6 +1,6 @@
 /**
  * Persist BR topology snapshot: device_topology + device_topology_neighbor for the Border Router.
- * Called from CommunicateManager after fetchRouterTable + fetchChildTable in pullAllOnReconnect.
+ * Called from BR session after fetchRouterTable + fetchChildTable in pullAllOnReconnect.
  */
 
 import type { RouterEntry, ChildEntry } from "@communicate/frame";
