@@ -1,6 +1,8 @@
 import { LitElement, html } from "lit";
-import { customElement, property, state } from "lit/decorators.js";
-import type { OtConfig } from "@shared/types/websocket.type";
+import { customElement, state } from "lit/decorators.js";
+import { store } from "@/shared/store/store";
+import { LitStoreController, shallowEqual } from "@/shared/store/lit-store-controller";
+import { selectBrStatus, selectConfig, selectOtConfig, selectSystemInfo } from "@/shared/store/selectors";
 
 import "@shared/components/page-header/page-header.component";
 import "@status/status.style.scss";
@@ -16,16 +18,22 @@ export class StatusComponent extends LitElement {
     return this;
   }
 
-  @property({ type: Object }) brStatus: { isConnected: boolean; host?: string; port?: number } | null = null;
-  @property({ type: Object }) otConfig: OtConfig | null = null;
-  @property({ type: Object }) brConfig: { brHost: string; brPort: number } | null = null;
-  @property({ type: Object }) systemInfo: { ipv4: string[]; ipv6: string[] } | null = null;
-  @property({ attribute: false }) testBrConnect: (config: { brHost: string; brPort: number }) => Promise<{ success: boolean; error?: string }> = async () => ({ success: false });
+  private readonly appState = new LitStoreController(
+    this,
+    store,
+    (s) => ({
+      brStatus: selectBrStatus(s),
+      brConfig: selectConfig(s),
+      otConfig: selectOtConfig(s),
+      systemInfo: selectSystemInfo(s),
+    }),
+    shallowEqual
+  );
 
   @state() private networkKeyVisible = false;
 
   private get _isConnected(): boolean {
-    return this.brStatus?.isConnected ?? false;
+    return this.appState.value.brStatus?.isConnected ?? false;
   }
 
   private _onHeaderAction(e: CustomEvent<{ id: string }>) {
@@ -35,18 +43,25 @@ export class StatusComponent extends LitElement {
   }
 
   private get _ipaddr(): string | null {
-    return this.otConfig?.ipaddr?.trim() || null;
+    return this.appState.value.otConfig?.ipaddr?.trim() || null;
   }
 
   render() {
     const isConnected = this._isConnected;
     const ipaddr = this._ipaddr;
+    const { brStatus, otConfig, systemInfo } = this.appState.value;
 
     return html`
       <page-header
         heading="Status"
         subtitle="Network health and configuration overview"
-        .actions=${[{ id: "refresh", icon: "refresh", label: "Refresh" }]}
+        .actions=${[{
+          id: "refresh",
+          icon: "refresh",
+          label: "Refresh",
+          tone: "success",
+          style: "filled",
+        }]}
         @action-click=${this._onHeaderAction}
       ></page-header>
 
@@ -69,7 +84,7 @@ export class StatusComponent extends LitElement {
                   <div class="status-field">
                     <span class="status-field-label">Host Address</span>
                     <span class="status-field-value status-field-value ${!isConnected ? "muted" : ""}">
-                      ${this.brStatus?.host != null ? `${this.brStatus.host}:${this.brStatus.port ?? "—"}` : "—"}
+                      ${brStatus?.host != null ? `${brStatus.host}:${brStatus.port ?? "—"}` : "—"}
                     </span>
                   </div>
                   <div class="status-field">
@@ -92,7 +107,7 @@ export class StatusComponent extends LitElement {
               <div class="status-ot-grid">
                 <div class="status-field">
                   <span class="status-field-label">Network Name</span>
-                  <span class="status-field-value">${!isConnected ? "—" : this.otConfig?.networkName ?? "—"}</span>
+                  <span class="status-field-value">${!isConnected ? "—" : otConfig?.networkName ?? "—"}</span>
                 </div>
                 <div class="status-field">
                   <span class="status-field-label">IP Address</span>
@@ -101,7 +116,7 @@ export class StatusComponent extends LitElement {
                 <div class="status-field ${isConnected ? "status-field-with-action" : ""}">
                   <span class="status-field-label">Network Key</span>
                   <span class="status-field-value">
-                    ${!isConnected ? "—" : this.networkKeyVisible ? (this.otConfig?.networkKey ?? "—") : "••••••••••••••••"}
+                    ${!isConnected ? "—" : this.networkKeyVisible ? (otConfig?.networkKey ?? "—") : "••••••••••••••••"}
                   </span>
                   ${isConnected ? html`
                     <button
@@ -116,39 +131,39 @@ export class StatusComponent extends LitElement {
                 </div>
                 <div class="status-field">
                   <span class="status-field-label">PAN ID</span>
-                  <span class="status-field-value">${!isConnected ? "—" : formatPanId(this.otConfig?.panid)}</span>
+                  <span class="status-field-value">${!isConnected ? "—" : formatPanId(otConfig?.panid)}</span>
                 </div>
                 <div class="status-field">
                   <span class="status-field-label">Mesh Local Prefix</span>
-                  <span class="status-field-value">${!isConnected ? "—" : this.otConfig?.meshLocalPrefix ?? "—"}</span>
+                  <span class="status-field-value">${!isConnected ? "—" : otConfig?.meshLocalPrefix ?? "—"}</span>
                 </div>
                 <div class="status-field">
                   <span class="status-field-label">PSKc</span>
-                  <span class="status-field-value">${!isConnected ? "—" : this.otConfig?.pskc ?? "—"}</span>
+                  <span class="status-field-value">${!isConnected ? "—" : otConfig?.pskc ?? "—"}</span>
                 </div>
                 <div class="status-field">
                   <span class="status-field-label">Channel</span>
-                  <span class="status-field-value">${!isConnected ? "—" : this.otConfig?.channel ?? "—"}</span>
+                  <span class="status-field-value">${!isConnected ? "—" : otConfig?.channel ?? "—"}</span>
                 </div>
                 <div class="status-field">
                   <span class="status-field-label">Channel Mask</span>
-                  <span class="status-field-value">${!isConnected ? "—" : this.otConfig?.channelMask ?? "—"}</span>
+                  <span class="status-field-value">${!isConnected ? "—" : otConfig?.channelMask ?? "—"}</span>
                 </div>
                 <div class="status-field">
                   <span class="status-field-label">Security Policy</span>
-                  <span class="status-field-value">${!isConnected ? "—" : this.otConfig?.securityPolicy ?? "—"}</span>
+                  <span class="status-field-value">${!isConnected ? "—" : otConfig?.securityPolicy ?? "—"}</span>
                 </div>
                 <div class="status-field">
                   <span class="status-field-label">Extended PAN ID</span>
-                  <span class="status-field-value">${!isConnected ? "—" : this.otConfig?.extendedPanId ?? "—"}</span>
+                  <span class="status-field-value">${!isConnected ? "—" : otConfig?.extendedPanId ?? "—"}</span>
                 </div>
                 <div class="status-field">
                   <span class="status-field-label">Active Timestamp</span>
-                  <span class="status-field-value">${!isConnected ? "—" : this.otConfig?.activeTimestamp ?? "—"}</span>
+                  <span class="status-field-value">${!isConnected ? "—" : otConfig?.activeTimestamp ?? "—"}</span>
                 </div>
                 <div class="status-field status-field-version">
                   <span class="status-field-label">Thread Version</span>
-                  <span class="status-field-value">${!isConnected ? "—" : this.otConfig?.threadVersion ?? "—"}</span>
+                  <span class="status-field-value">${!isConnected ? "—" : otConfig?.threadVersion ?? "—"}</span>
                 </div>
               </div>
             </div>
@@ -166,13 +181,13 @@ export class StatusComponent extends LitElement {
                 <div class="status-field">
                   <span class="status-field-label">IPv4 (backend)</span>
                   <span class="status-field-value">
-                    ${this.systemInfo?.ipv4?.length ? this.systemInfo.ipv4.join(", ") : "—"}
+                    ${systemInfo?.ipv4?.length ? systemInfo.ipv4.join(", ") : "—"}
                   </span>
                 </div>
                 <div class="status-field">
                   <span class="status-field-label">IPv6 (backend)</span>
                   <span class="status-field-value status-field-value-wrap">
-                    ${this.systemInfo?.ipv6?.length ? this.systemInfo.ipv6.join(", ") : "—"}
+                    ${systemInfo?.ipv6?.length ? systemInfo.ipv6.join(", ") : "—"}
                   </span>
                 </div>
               </div>

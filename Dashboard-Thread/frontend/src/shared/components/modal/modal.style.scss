@@ -2,9 +2,6 @@
 @use "shared/styles/tokens" as *;
 @use "shared/styles/mixin" as *;
 
-$modal-border-radius: 12px;
-$modal-border-radius-small: 8px;
-
 modal-dialog {
   display: contents;
 }
@@ -123,7 +120,7 @@ modal-dialog {
   display: flex;
   gap: 12px;
   padding: 14px;
-  border-radius: $modal-border-radius-small;
+  border-radius: 8px;
   background: color-mix(in oklab, var(--primary) 10%, transparent);
 }
 
@@ -169,7 +166,7 @@ modal-dialog {
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.06em;
-  border-radius: $modal-border-radius-small;
+  border-radius: 8px;
   border: 1px solid transparent;
   cursor: pointer;
   // Default (tone=info)

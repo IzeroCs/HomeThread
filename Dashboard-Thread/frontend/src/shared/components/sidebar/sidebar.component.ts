@@ -1,6 +1,15 @@
 import { LitElement, html } from "lit";
 import { customElement, property } from "lit/decorators.js";
 import type { NavPage } from "@shared/types/nav.type";
+import { store } from "@/shared/store/store";
+import { LitStoreController, shallowEqual } from "@/shared/store/lit-store-controller";
+import {
+  selectBrStatus,
+  selectChildTable,
+  selectRouterTable,
+  selectThreadRunOnConnect,
+  selectThreadState,
+} from "@/shared/store/selectors";
 
 import "@shared/components/sidebar/sidebar.style.scss";
 
@@ -41,15 +50,24 @@ export class SidebarComponent extends LitElement {
     return this;
   }
 
-  @property({ type: Boolean }) brConnected = false;
-  @property({ type: String }) threadState: string | null = null;
-  @property({ type: Boolean }) threadRunOnConnect = false;
-  @property({ type: Number }) nodesCount: number | null = null;
   @property({ type: String }) currentPage: NavPage = "status";
 
+  private readonly appState = new LitStoreController(
+    this,
+    store,
+    (s) => ({
+      brConnected: selectBrStatus(s)?.isConnected ?? false,
+      threadState: selectThreadState(s),
+      threadRunOnConnect: selectThreadRunOnConnect(s),
+      nodesCount:
+        (selectRouterTable(s)?.rows?.length ?? 0) + (selectChildTable(s)?.rows?.length ?? 0),
+    }),
+    shallowEqual
+  );
+
   private _statusClass(): string {
-    if (!this.brConnected) return "status-role-disconnected";
-    const s = this.threadState?.toLowerCase();
+    if (!this.appState.value.brConnected) return "status-role-disconnected";
+    const s = this.appState.value.threadState?.toLowerCase();
     if (s === "child") return "status-role-child";
     if (s === "router") return "status-role-router";
     if (s === "leader") return "status-role-leader";
@@ -57,8 +75,8 @@ export class SidebarComponent extends LitElement {
   }
 
   private _statusTitle(): string {
-    if (!this.brConnected) return "disconnected";
-    if (this.threadState) return this.threadState;
+    if (!this.appState.value.brConnected) return "disconnected";
+    if (this.appState.value.threadState) return this.appState.value.threadState;
     return "disabled";
   }
 

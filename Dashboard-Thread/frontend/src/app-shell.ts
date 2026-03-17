@@ -2,11 +2,13 @@ import { LitElement, html } from "lit";
 import { customElement, state } from "lit/decorators.js";
 import type { NavPage } from "@shared/types/nav.type";
 import type { Toast } from "@shared/types/toast.type";
-import { WebSocketController } from "@shared/controllers/websocket.controller";
+import { store } from "@/shared/store/store";
+import { selectWsConnected } from "@/shared/store/selectors";
+import { startWsBridge } from "@/shared/ws/ws-bridge";
+import { LitStoreController } from "@/shared/store/lit-store-controller";
 import "@shared/components/sidebar/sidebar.component";
 import "@shared/components/toast-container/toast-container.component";
 import "@shared/components/waiting-for-backend/waiting-for-backend.component";
-import "@settings/components/br-connection-form/br-connection-form.component";
 import "@status/status.component";
 import "@nodes/nodes.component";
 import "@joiner/joiner.component";
@@ -24,7 +26,12 @@ export class AppShell extends LitElement {
     return this;
   }
 
-  private ws = new WebSocketController(this);
+  private readonly wsConnected = new LitStoreController(
+    this,
+    store,
+    (s) => selectWsConnected(s),
+    Object.is
+  );
 
   @state() private page!: NavPage;
   @state() private toasts!: Toast[];
@@ -33,6 +40,7 @@ export class AppShell extends LitElement {
     super();
     this.page = "joiner";
     this.toasts = [];
+    startWsBridge(store);
   }
 
   private _showToast(type: Toast["type"], message: string, duration = 3000) {
@@ -52,21 +60,6 @@ export class AppShell extends LitElement {
     this.page = e.detail;
   }
 
-  private _handleConfigSave(newConfig: { brHost: string; brPort: number; useMdns?: boolean }) {
-    this.ws.saveConfig({
-      brHost: newConfig.brHost,
-      brPort: newConfig.brPort,
-      useMdns: newConfig.useMdns,
-    });
-    this.page = "nodes";
-  }
-
-  get _nodesCount(): number {
-    const r = this.ws.routerTable?.rows?.length ?? 0;
-    const c = this.ws.childTable?.rows?.length ?? 0;
-    return r + c;
-  }
-
   get _isSettingsPage(): boolean {
     return (
       this.page === "settings-br" ||
@@ -80,8 +73,7 @@ export class AppShell extends LitElement {
   }
 
   render() {
-    const wsConnected = this.ws.connected;
-    const config = this.ws.config ?? null;
+    const wsConnected = this.wsConnected.value;
 
     if (!wsConnected) {
       return html`
@@ -91,90 +83,32 @@ export class AppShell extends LitElement {
       `;
     }
 
-    if (!config) {
-      return html`
-        <div class="app-layout">
-          <sidebar-nav></sidebar-nav>
-          <main class="app-main">
-            <div class="app-container">
-              <br-connection-form
-                .initialConfig=${null}
-                .onSave=${this._handleConfigSave}
-                .onTestConnect=${this.ws.testBrConnect.bind(this.ws)}
-                .showToast=${this._showToast.bind(this)}
-              ></br-connection-form>
-            </div>
-          </main>
-        </div>
-      `;
-    }
-
     return html`
       <div class="app-layout">
         <sidebar-nav
           .currentPage=${this.page}
           @navigate=${this._handleNavigate}
-          .brConnected=${this.ws.brStatus?.isConnected ?? false}
-          .threadState=${this.ws.threadState}
-          .threadRunOnConnect=${this.ws.threadRunOnConnect}
-          .nodesCount=${this._nodesCount}
         ></sidebar-nav>
         <toast-container .toasts=${this.toasts} .removeToast=${this._removeToast.bind(this)}></toast-container>
 
         <main class="app-main ${this.page === "topology" ? "app-main--topology" : ""}">
-          ${this.page === "status" ? html`
-            <status-view
-              .brStatus=${this.ws.brStatus}
-              .otConfig=${this.ws.otConfig}
-              .brConfig=${config}
-              .systemInfo=${this.ws.systemInfo}
-              .testBrConnect=${this.ws.testBrConnect.bind(this.ws)}
-            ></status-view>
-          ` : ""}
+          ${this.page === "status" ? html`<status-view></status-view>` : ""}
 
           ${this._isSettingsPage ? html`
             <div class="app-container">
               <settings-view
-                .brConfig=${config}
-                .onSaveBrConfig=${this._handleConfigSave}
-                .onTestBrConnect=${this.ws.testBrConnect.bind(this.ws)}
                 .activeSection=${this._settingsSection}
                 .showToast=${this._showToast.bind(this)}
-                .isConnected=${this.ws.brStatus?.isConnected ?? false}
-                .otConfig=${this.ws.otConfig}
-                .threadRunOnConnect=${this.ws.threadRunOnConnect}
-                .getOtConfig=${this.ws.getOtConfig.bind(this.ws)}
-                .setOtConfig=${this.ws.setOtConfig.bind(this.ws)}
-                .startThread=${this.ws.startThread.bind(this.ws)}
-                .stopThread=${this.ws.stopThread.bind(this.ws)}
-                .getThreadRunOnConnect=${this.ws.getThreadRunOnConnect.bind(this.ws)}
-                .setThreadRunOnConnect=${this.ws.setThreadRunOnConnect.bind(this.ws)}
-                .reset=${this.ws.reset.bind(this.ws)}
-                .factoryReset=${this.ws.factoryReset.bind(this.ws)}
               ></settings-view>
             </div>
           ` : ""}
 
-          ${this.page === "topology" ? html`
-              <topology-map
-                class="app-topology"
-                .routerTable=${this.ws.routerTable}
-                .childTable=${this.ws.childTable}
-                .otConfig=${this.ws.otConfig}
-                .brStatus=${this.ws.brStatus}
-              ></topology-map>
-            ` : ""}
+          ${this.page === "topology" ? html`<topology-map class="app-topology"></topology-map>` : ""}
 
           ${this.page === "nodes"
             ? html`
                 <div class="app-container">
-                  <nodes-view
-                    .isConnected=${this.ws.brStatus?.isConnected ?? false}
-                    .routerTable=${this.ws.routerTable}
-                    .childTable=${this.ws.childTable}
-                    .otConfig=${this.ws.otConfig}
-                    .threadState=${this.ws.threadState}
-                  ></nodes-view>
+                  <nodes-view></nodes-view>
                 </div>
               `
             : ""}
@@ -183,11 +117,6 @@ export class AppShell extends LitElement {
             ? html`
                 <div class="app-container">
                   <joiner-view
-                    .isConnected=${this.ws.brStatus?.isConnected ?? false}
-                    .joinerTable=${this.ws.joinerTable}
-                    .getJoinerTable=${this.ws.getJoinerTable.bind(this.ws)}
-                    .threadState=${this.ws.threadState}
-                    .commissionerConnect=${this.ws.commissionerConnect.bind(this.ws)}
                     .showToast=${this._showToast.bind(this)}
                   ></joiner-view>
                 </div>

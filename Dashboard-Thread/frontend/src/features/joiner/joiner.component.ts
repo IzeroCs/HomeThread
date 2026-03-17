@@ -1,6 +1,10 @@
 import { LitElement, html } from "lit";
 import { customElement, property, state } from "lit/decorators.js";
-import type { OtTableData } from "@shared/types/websocket.type";
+import { store } from "@/shared/store/store";
+import { LitStoreController, shallowEqual } from "@/shared/store/lit-store-controller";
+import { selectBrStatus, selectJoinerTable, selectThreadState } from "@/shared/store/selectors";
+import { wsCommissionerConnect } from "@/shared/store/thunks/ws.thunks";
+import { wsEmitGetJoinerTable } from "@/shared/store/thunks/ws.emit";
 
 import "@shared/components/page-header/page-header.component";
 import "@shared/components/modal/modal.component";
@@ -53,12 +57,18 @@ export class JoinerViewComponent extends LitElement {
     return this;
   }
 
-  @property({ type: Boolean }) isConnected = false;
-  @property({ type: Object }) joinerTable: OtTableData | null = null;
-  @property({ attribute: false }) getJoinerTable: () => void = () => {};
-  @property({ type: String }) threadState: string | null = null;
-  @property({ attribute: false }) commissionerConnect: (eui64: string, psk: string, timeoutSeconds?: number) => Promise<{ success: boolean; error?: string }> = async () => ({ success: false });
   @property({ attribute: false }) showToast: (type: "success" | "error", message: string) => void = () => {};
+
+  private readonly appState = new LitStoreController(
+    this,
+    store,
+    (s) => ({
+      isConnected: selectBrStatus(s)?.isConnected ?? false,
+      joinerTable: selectJoinerTable(s),
+      threadState: selectThreadState(s),
+    }),
+    shallowEqual
+  );
 
   @state() private now = Date.now();
   @state() private snapshot: { receivedAt: number; initialSeconds: number[] } = { receivedAt: 0, initialSeconds: [] };
@@ -68,10 +78,12 @@ export class JoinerViewComponent extends LitElement {
   @state() private commissionTimeoutSeconds: (typeof TIMEOUT_OPTIONS)[number] = DEFAULT_TIMEOUT;
   @state() private commissionConnecting = false;
   private _intervalId: ReturnType<typeof setInterval> | null = null;
+  private _prevConnected = false;
+  private _joinerRowsRef: string[][] | null = null;
 
   /** Commissioner allowed when attached as leader, router, or child. */
   private get _canCommission(): boolean {
-    const s = this.threadState?.toLowerCase();
+    const s = this.appState.value.threadState?.toLowerCase();
     return s === "leader" || s === "router" || s === "child";
   }
 
@@ -103,7 +115,15 @@ export class JoinerViewComponent extends LitElement {
       return;
     }
     this.commissionConnecting = true;
-    const result = await this.commissionerConnect(eui64, psk, this.commissionTimeoutSeconds);
+    const result = await store
+      .dispatch(
+        wsCommissionerConnect({
+          eui64,
+          psk,
+          timeoutSeconds: this.commissionTimeoutSeconds,
+        })
+      )
+      .unwrap();
     if (!this.commissionConnecting) return;
     this.commissionConnecting = false;
     if (result.success) {
@@ -116,14 +136,20 @@ export class JoinerViewComponent extends LitElement {
 
   override connectedCallback() {
     super.connectedCallback();
-    if (this.isConnected) this.getJoinerTable();
+    if (this.appState.value.isConnected) wsEmitGetJoinerTable();
+    this._prevConnected = this.appState.value.isConnected;
   }
 
-  override willUpdate(changed: Map<string, unknown>) {
-    if (changed.has("isConnected") && this.isConnected) this.getJoinerTable();
-    if (changed.has("joinerTable") && this.joinerTable?.rows?.length) {
-      const rows = this.joinerTable.rows;
-      const headers = this.joinerTable.headers ?? [];
+  override willUpdate(_changed: Map<string, unknown>) {
+    const { joinerTable, isConnected } = this.appState.value;
+    if (isConnected && !this._prevConnected) wsEmitGetJoinerTable();
+    this._prevConnected = isConnected;
+
+    const rowsRef = joinerTable?.rows ?? null;
+    if (rowsRef && rowsRef !== this._joinerRowsRef && joinerTable) {
+      this._joinerRowsRef = rowsRef;
+      const rows = joinerTable.rows ?? [];
+      const headers = joinerTable.headers ?? [];
       const iExpiration = colIndex(headers, "Expiration");
       const initialSeconds = rows.map((row) => {
         const expirationMs = iExpiration >= 0 ? parseInt(row[iExpiration] ?? "0", 10) : 0;
@@ -133,17 +159,15 @@ export class JoinerViewComponent extends LitElement {
     }
   }
 
-  override updated(changed: Map<string, unknown>) {
-    if (changed.has("joinerTable")) {
-      const rows = this.joinerTable?.rows ?? [];
-      if (rows.length > 0 && !this._intervalId) {
-        this._intervalId = setInterval(() => {
-          this.now = Date.now();
-        }, 1000);
-      } else if (rows.length === 0 && this._intervalId) {
-        clearInterval(this._intervalId);
-        this._intervalId = null;
-      }
+  override updated(_changed: Map<string, unknown>) {
+    const rows = this.appState.value.joinerTable?.rows ?? [];
+    if (rows.length > 0 && !this._intervalId) {
+      this._intervalId = setInterval(() => {
+        this.now = Date.now();
+      }, 1000);
+    } else if (rows.length === 0 && this._intervalId) {
+      clearInterval(this._intervalId);
+      this._intervalId = null;
     }
   }
 
@@ -153,8 +177,8 @@ export class JoinerViewComponent extends LitElement {
   }
 
   private _getRowsWithMeta(): JoinerRowWithMeta[] {
-    const rows = this.joinerTable?.rows ?? [];
-    const headers = this.joinerTable?.headers ?? [];
+    const rows = this.appState.value.joinerTable?.rows ?? [];
+    const headers = this.appState.value.joinerTable?.headers ?? [];
     const iSharedId = colIndex(headers, "SharedId");
     const iExpiration = colIndex(headers, "Expiration");
     const iPskd = colIndex(headers, "PSKD");
@@ -192,7 +216,7 @@ export class JoinerViewComponent extends LitElement {
 
   private _onCancelJoiner(_row: JoinerRowWithMeta) {
     // TODO: call API to remove joiner when available
-    this.getJoinerTable();
+    wsEmitGetJoinerTable();
   }
 
   private _renderCommissionBody() {
@@ -202,7 +226,9 @@ export class JoinerViewComponent extends LitElement {
           ? html`
               <div class="modal-alert modal-alert--warn">
                 Commissioner chỉ khả dụng khi thiết bị đã attached (leader, router hoặc child).
-                ${this.threadState ? ` State hiện tại: ${this.threadState}.` : " Đang lấy state…"}
+                ${this.appState.value.threadState
+                  ? ` State hiện tại: ${this.appState.value.threadState}.`
+                  : " Đang lấy state…"}
               </div>
             `
           : ""}
@@ -279,9 +305,10 @@ export class JoinerViewComponent extends LitElement {
   render() {
     const allRows = this._getRowsWithMeta();
     const hasRows = allRows.length > 0;
+    const { isConnected, joinerTable, threadState } = this.appState.value;
     const isNetworkStable =
-      this.threadState != null &&
-      ["leader", "router", "child"].includes(this.threadState.toLowerCase());
+      threadState != null &&
+      ["leader", "router", "child"].includes(threadState.toLowerCase());
 
     return html`
       <page-header
@@ -299,7 +326,7 @@ export class JoinerViewComponent extends LitElement {
       ></page-header>
       <div class="page-container">
         <div class="joiner-page">
-          ${this.isConnected ? html`
+          ${isConnected ? html`
             <div class="joiner-status-cards">
               <div class="joiner-status-card">
                 <p class="joiner-status-card-label">Active Joiners</p>
@@ -341,16 +368,16 @@ export class JoinerViewComponent extends LitElement {
                     </tr>
                   </thead>
                   <tbody>
-                    ${!this.isConnected ? html`
+                    ${!isConnected ? html`
                       <tr class="joiner-row-empty">
                         <td class="joiner-cell-empty joiner-muted" colspan="6">
                           Connect to the Border Router to view joiner queue.
                         </td>
                       </tr>
-                    ` : this.joinerTable?.error ? html`
+                    ` : joinerTable?.error ? html`
                       <tr class="joiner-row-empty">
                         <td class="joiner-cell-empty joiner-error" colspan="6">
-                          ${this.joinerTable?.error}
+                          ${joinerTable?.error}
                         </td>
                       </tr>
                     ` : !hasRows ? html`
@@ -408,7 +435,7 @@ export class JoinerViewComponent extends LitElement {
 
           <modal-dialog
             .open=${this.isCommissionModalOpen}
-            .shouldRender=${() => this.isConnected}
+            .shouldRender=${() => isConnected}
             .title=${"Commission Node"}
             .subtitle=${"Enter Joiner credentials to add a new device"}
             .body=${this._renderCommissionBody()}

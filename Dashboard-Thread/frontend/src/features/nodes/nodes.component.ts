@@ -1,6 +1,8 @@
 import { LitElement, html } from "lit";
-import { customElement, property, state } from "lit/decorators.js";
-import type { OtConfig, OtTableData } from "@shared/types/websocket.type";
+import { customElement, state } from "lit/decorators.js";
+import { store } from "@/shared/store/store";
+import { LitStoreController, shallowEqual } from "@/shared/store/lit-store-controller";
+import { selectBrStatus, selectChildTable, selectOtConfig, selectRouterTable, selectThreadState } from "@/shared/store/selectors";
 
 import "@shared/components/modal/modal.component";
 import "@nodes/nodes.style.scss";
@@ -35,11 +37,18 @@ export class NodesComponent extends LitElement {
     return this;
   }
 
-  @property({ type: Boolean }) isConnected = false;
-  @property({ type: Object }) routerTable: OtTableData | null = null;
-  @property({ type: Object }) childTable: OtTableData | null = null;
-  @property({ type: Object }) otConfig: OtConfig | null = null;
-  @property({ type: String }) threadState: string | null = null;
+  private readonly appState = new LitStoreController(
+    this,
+    store,
+    (s) => ({
+      isConnected: selectBrStatus(s)?.isConnected ?? false,
+      routerTable: selectRouterTable(s),
+      childTable: selectChildTable(s),
+      otConfig: selectOtConfig(s),
+      threadState: selectThreadState(s),
+    }),
+    shallowEqual
+  );
 
   @state() private selectedRow: SelectedRow | null = null;
   @state() private routerAgeOffsets: number[] = [];
@@ -50,15 +59,16 @@ export class NodesComponent extends LitElement {
   private _routerTick: ReturnType<typeof setInterval> | null = null;
   private _childTick: ReturnType<typeof setInterval> | null = null;
 
-  override willUpdate(changed: Map<string, unknown>) {
-    const routerRows = this.routerTable?.rows ?? [];
-    const childRows = this.childTable?.rows ?? [];
-    const rH = this.routerTable?.headers ?? [];
-    const cH = this.childTable?.headers ?? [];
+  override willUpdate(_changed: Map<string, unknown>) {
+    const { routerTable, childTable } = this.appState.value;
+    const routerRows = routerTable?.rows ?? [];
+    const childRows = childTable?.rows ?? [];
+    const rH = routerTable?.headers ?? [];
+    const cH = childTable?.headers ?? [];
     const rAge = colIndex(rH, "Age");
     const cAge = colIndex(cH, "Age");
 
-    if (changed.has("routerTable") && rAge >= 0 && routerRows.length > 0) {
+    if (rAge >= 0 && routerRows.length > 0) {
       if (this._routerRowsRef !== routerRows) {
         this._routerRowsRef = routerRows;
         this.routerAgeOffsets = new Array(routerRows.length).fill(0);
@@ -68,7 +78,7 @@ export class NodesComponent extends LitElement {
       this._routerRowsRef = null;
     }
 
-    if (changed.has("childTable") && cAge >= 0 && childRows.length > 0) {
+    if (cAge >= 0 && childRows.length > 0) {
       if (this._childRowsRef !== childRows) {
         this._childRowsRef = childRows;
         this.childAgeOffsets = new Array(childRows.length).fill(0);
@@ -79,29 +89,35 @@ export class NodesComponent extends LitElement {
     }
   }
 
-  override updated(changed: Map<string, unknown>) {
-    const rH = this.routerTable?.headers ?? [];
-    const cH = this.childTable?.headers ?? [];
+  override updated(_changed: Map<string, unknown>) {
+    const { routerTable, childTable } = this.appState.value;
+    const rH = routerTable?.headers ?? [];
+    const cH = childTable?.headers ?? [];
     const rAge = colIndex(rH, "Age");
     const cAge = colIndex(cH, "Age");
-    const routerRows = this.routerTable?.rows ?? [];
-    const childRows = this.childTable?.rows ?? [];
+    const routerRows = routerTable?.rows ?? [];
+    const childRows = childTable?.rows ?? [];
 
-    if (changed.has("routerTable") || changed.has("routerAgeOffsets")) {
-      if (this._routerTick) clearInterval(this._routerTick);
-      if (rAge >= 0 && routerRows.length > 0) {
+    if (rAge >= 0 && routerRows.length > 0) {
+      if (!this._routerTick) {
         this._routerTick = setInterval(() => {
           this.routerAgeOffsets = this.routerAgeOffsets.map((v) => v + 1);
         }, 1000);
-      } else this._routerTick = null;
+      }
+    } else if (this._routerTick) {
+      clearInterval(this._routerTick);
+      this._routerTick = null;
     }
-    if (changed.has("childTable") || changed.has("childAgeOffsets")) {
-      if (this._childTick) clearInterval(this._childTick);
-      if (cAge >= 0 && childRows.length > 0) {
+
+    if (cAge >= 0 && childRows.length > 0) {
+      if (!this._childTick) {
         this._childTick = setInterval(() => {
           this.childAgeOffsets = this.childAgeOffsets.map((v) => v + 1);
         }, 1000);
-      } else this._childTick = null;
+      }
+    } else if (this._childTick) {
+      clearInterval(this._childTick);
+      this._childTick = null;
     }
   }
 
@@ -137,8 +153,9 @@ export class NodesComponent extends LitElement {
   }
 
   render() {
-    const rH = this.routerTable?.headers ?? [];
-    const cH = this.childTable?.headers ?? [];
+    const { isConnected, routerTable, childTable, otConfig } = this.appState.value;
+    const rH = routerTable?.headers ?? [];
+    const cH = childTable?.headers ?? [];
     const rRouterId = colIndex(rH, "RouterId");
     const rRloc16 = colIndex(rH, "RLOC16");
     const rExtAddress = colIndex(rH, "ExtAddress");
@@ -154,13 +171,11 @@ export class NodesComponent extends LitElement {
     const cRxOnIdle = colIndex(cH, "RxOnWhenIdle");
     const cAge = colIndex(cH, "Age");
 
-    const routerRows = this.routerTable?.rows ?? [];
-    const childRows = this.childTable?.rows ?? [];
-    const leaderRloc16 = this.otConfig?.leaderRloc16 ?? null;
-    const hasRouterData = this.routerTable && !this.routerTable.error && (rH.length > 0 || routerRows.length > 0);
-    const hasChildData = this.childTable && !this.childTable.error && (cH.length > 0 || childRows.length > 0);
+    const routerRows = routerTable?.rows ?? [];
+    const childRows = childTable?.rows ?? [];
+    const leaderRloc16 = otConfig?.leaderRloc16 ?? null;
 
-    const tableForRow = this.selectedRow?.type === "router" ? this.routerTable : this.childTable;
+    const tableForRow = this.selectedRow?.type === "router" ? routerTable : childTable;
     const selectedRowData =
       this.selectedRow != null && tableForRow?.headers?.length && tableForRow.rows?.[this.selectedRow.rowIndex]
         ? tableForRow.rows[this.selectedRow.rowIndex]
@@ -201,19 +216,25 @@ export class NodesComponent extends LitElement {
                   </tr>
                 </thead>
                 <tbody>
-                  ${!this.isConnected ? html `
+                  ${!isConnected ? html `
                     <tr class="nodes-row-empty">
                       <td class="nodes-cell-empty nodes-muted" colspan="6">
                         Connect to the Border Router to view network topology and node information
                       </td>
                     </tr>
-                  ` : this.routerTable?.error ? html `
+                  ` : routerTable?.error ? html `
                     <tr class="nodes-row-empty">
                       <td class="nodes-cell-empty nodes-error" colspan="6">
-                        ${this.routerTable.error}
+                        ${routerTable.error}
                       </td>
                     </tr>
-                  ` : !hasRouterData ? html `
+                  ` : routerTable == null ? html `
+                    <tr class="nodes-row-empty">
+                      <td class="nodes-cell-empty nodes-muted" colspan="6">
+                        Loading router table…
+                      </td>
+                    </tr>
+                  ` : routerRows.length === 0 ? html `
                     <tr class="nodes-row-empty">
                       <td class="nodes-cell-empty nodes-muted" colspan="6">
                         No routers found in the network
@@ -263,19 +284,25 @@ export class NodesComponent extends LitElement {
                   </tr>
                 </thead>
                 <tbody>
-                  ${!this.isConnected ? html `
+                  ${!isConnected ? html `
                     <tr class="nodes-row-empty">
                       <td class="nodes-cell-empty nodes-muted" colspan="8">
                         Connect to the Border Router to view network topology and node information
                       </td>
                     </tr>
-                  ` : this.childTable?.error ? html `
+                  ` : childTable?.error ? html `
                     <tr class="nodes-row-empty">
                       <td class="nodes-cell-empty nodes-error" colspan="8">
-                        ${this.childTable.error}
+                        ${childTable.error}
                       </td>
                     </tr>
-                  ` : !hasChildData ? html `
+                  ` : childTable == null ? html `
+                    <tr class="nodes-row-empty">
+                      <td class="nodes-cell-empty nodes-muted" colspan="8">
+                        Loading child table…
+                      </td>
+                    </tr>
+                  ` : childRows.length === 0 ? html `
                     <tr class="nodes-row-empty">
                       <td class="nodes-cell-empty nodes-muted" colspan="8">\
                         No child nodes connected

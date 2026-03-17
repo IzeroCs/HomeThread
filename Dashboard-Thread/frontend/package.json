@@ -9,6 +9,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@reduxjs/toolkit": "^2.9.0",
     "lit": "^3.2.0",
     "shared": "file:../shared",
     "socket.io-client": "^4.7.5"

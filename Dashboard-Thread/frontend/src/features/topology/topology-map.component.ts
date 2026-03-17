@@ -2,6 +2,9 @@ import { LitElement, html, svg } from "lit";
 import { customElement, property, state } from "lit/decorators.js";
 import type { OtTableData, OtConfig } from "@shared/types/websocket.type";
 import type { ConnectionStatus } from "shared/src/types";
+import { store } from "@/shared/store/store";
+import { LitStoreController, shallowEqual } from "@/shared/store/lit-store-controller";
+import { selectBrStatus, selectChildTable, selectOtConfig, selectRouterTable } from "@/shared/store/selectors";
 
 import "@features/topology/topology-map.style.scss";
 
@@ -364,10 +367,17 @@ export class TopologyMapComponent extends LitElement {
     return this;
   }
 
-  @property({ type: Object }) routerTable: OtTableData | null = null;
-  @property({ type: Object }) childTable: OtTableData | null = null;
-  @property({ type: Object }) otConfig: OtConfig | null = null;
-  @property({ type: Object }) brStatus: ConnectionStatus | null = null;
+  private readonly appState = new LitStoreController(
+    this,
+    store,
+    (s) => ({
+      routerTable: selectRouterTable(s),
+      childTable: selectChildTable(s),
+      otConfig: selectOtConfig(s),
+      brStatus: selectBrStatus(s) as ConnectionStatus | null,
+    }),
+    shallowEqual
+  );
 
   /** true = luôn dùng sample (6 node, có offline, nhánh router→child). false = dùng dữ liệu thật từ BR. */
   @property({ type: Boolean }) useSampleData = true;
@@ -427,8 +437,8 @@ export class TopologyMapComponent extends LitElement {
 
     this._animateLoop();
     const hasReal =
-      (this.routerTable?.rows?.length ?? 0) > 0 ||
-      (this.childTable?.rows?.length ?? 0) > 0;
+      (this.appState.value.routerTable?.rows?.length ?? 0) > 0 ||
+      (this.appState.value.childTable?.rows?.length ?? 0) > 0;
     if (!hasReal) setTimeout(() => this._fitView(), 120);
   }
 
@@ -559,15 +569,16 @@ export class TopologyMapComponent extends LitElement {
   }
 
   private _getLayout(): { nodes: LayoutNode[]; edges: Edge[] } {
+    const { routerTable, childTable } = this.appState.value;
     const hasRealData =
       !this.useSampleData &&
-      ((this.routerTable?.rows?.length ?? 0) > 0 ||
-        (this.childTable?.rows?.length ?? 0) > 0);
+      ((routerTable?.rows?.length ?? 0) > 0 ||
+        (childTable?.rows?.length ?? 0) > 0);
     const rCount = hasRealData
-      ? (this.routerTable?.rows?.length ?? 0)
+      ? (routerTable?.rows?.length ?? 0)
       : (SAMPLE_ROUTER_TABLE.rows?.length ?? 0);
     const cCount = hasRealData
-      ? (this.childTable?.rows?.length ?? 0)
+      ? (childTable?.rows?.length ?? 0)
       : (SAMPLE_CHILD_TABLE.rows?.length ?? 0);
     const key = JSON.stringify([
       rCount,
@@ -626,16 +637,17 @@ export class TopologyMapComponent extends LitElement {
   };
 
   private _computeLayout(): { nodes: LayoutNode[]; edges: Edge[] } {
+    const { routerTable: rt, childTable: ct, brStatus } = this.appState.value;
     const { w: W, h: H } = this.containerSize;
     const cx = W / 2;
     const cy = H / 2;
 
     const hasRealData =
       !this.useSampleData &&
-      ((this.routerTable?.rows?.length ?? 0) > 0 ||
-        (this.childTable?.rows?.length ?? 0) > 0);
-    const routerTable = hasRealData ? this.routerTable : SAMPLE_ROUTER_TABLE;
-    const childTable = hasRealData ? this.childTable : SAMPLE_CHILD_TABLE;
+      ((rt?.rows?.length ?? 0) > 0 ||
+        (ct?.rows?.length ?? 0) > 0);
+    const routerTable = hasRealData ? rt : SAMPLE_ROUTER_TABLE;
+    const childTable = hasRealData ? ct : SAMPLE_CHILD_TABLE;
 
     const rHeaders = routerTable?.headers ?? [];
     const cHeaders = childTable?.headers ?? [];
@@ -647,7 +659,7 @@ export class TopologyMapComponent extends LitElement {
     const cLqiCol = colIndex(cHeaders, "LQI");
     const routerRows = routerTable?.rows ?? [];
     const childRows = childTable?.rows ?? [];
-    const brConnected = this.brStatus?.isConnected ?? false;
+    const brConnected = brStatus?.isConnected ?? false;
 
     const resolveLabel = (id: string, rlocFallback: string, nameFromRow?: string): string => {
       const fromRow = nameFromRow?.trim();
