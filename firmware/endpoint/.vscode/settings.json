@@ -1,0 +1,58 @@
+{
+  "idf.openOcdConfigs": [
+    "board/esp32c6-bridge.cfg"
+  ],
+  "idf.customExtraVars": {
+    "OPENOCD_SCRIPTS": "/home/izerocs/.espressif/tools/openocd-esp32/v0.12.0-esp32-20240318/openocd-esp32/share/openocd/scripts",
+    "ESP_ROM_ELF_DIR": "/home/izerocs/.espressif/tools/esp-rom-elfs/20240305/",
+    "IDF_TARGET": "esp32c6"
+  },
+  "clangd.path": "/home/izerocs/esp/.espressif/tools/esp-clang/esp-19.1.2_20250312/esp-clang/bin/clangd",
+  "clangd.arguments": [
+    "--background-index",
+    "--query-driver=**",
+    "--compile-commands-dir=/home/izerocs/Documents/GitHub/namorix-thread/firmware/endpoint/examples/light_on_off/build"
+],
+"idf.port": "/dev/ttyACM1",
+"idf.flashType": "UART",
+"idf.pythonInstallPath": "/usr/bin/python3",
+"workbench.colorCustomizations": {
+    "activityBar.activeBackground": "#ab307e",
+    "activityBar.background": "#ab307e",
+    "activityBar.foreground": "#e7e7e7",
+    "activityBar.inactiveForeground": "#e7e7e799",
+    "activityBarBadge.background": "#25320e",
+    "activityBarBadge.foreground": "#e7e7e7",
+    "commandCenter.border": "#e7e7e799",
+    "sash.hoverBorder": "#ab307e",
+    "statusBar.background": "#832561",
+    "statusBar.foreground": "#e7e7e7",
+    "statusBarItem.hoverBackground": "#ab307e",
+    "statusBarItem.remoteBackground": "#832561",
+    "statusBarItem.remoteForeground": "#e7e7e7",
+    "titleBar.activeBackground": "#832561",
+    "titleBar.activeForeground": "#e7e7e7",
+    "titleBar.inactiveBackground": "#83256199",
+    "titleBar.inactiveForeground": "#e7e7e799"
+},
+"peacock.color": "#832561",
+"idf.espIdfPath": "/home/izerocs/esp/v5.5.3/esp-idf",
+"idf.toolsPath": "/home/izerocs/esp/.espressif",
+"files.exclude": {
+    "**/.git": true,
+    "**/.gitignore": true,
+    "**/.cache": true,
+    "**/.cursor": true,
+    "**/.svn": true,
+    "**/.hg": true,
+    "**/.DS_Store": true,
+    "**/Thumbs.db": true,
+    "**/.clangd": true,
+    "**/memory-bank": true,
+    "**/endpoint.code-workspace": true,
+    "**/examples/**/.cache": true,
+    "**/examples/**/.vscode": true,
+    "**/examples/**/dependencies.lock": true,
+},
+"idf.currentSetup": "/home/izerocs/esp/v5.5.3/esp-idf"
+}

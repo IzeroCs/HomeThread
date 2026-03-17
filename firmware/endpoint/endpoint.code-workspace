@@ -1,0 +1,47 @@
+{
+  "folders": [
+    {
+      "name": "endpoint",
+      "path": "."
+    },
+    {
+      "name": "light_on_off (build)",
+      "path": "examples/light_on_off"
+    }
+  ],
+  "settings": {
+    "idf.port": "/dev/ttyACM2",
+    "idf.flashType": "UART",
+    "idf.espIdfPath": "/home/izerocs/esp/v5.5.3/esp-idf",
+    "idf.toolsPath": "/home/izerocs/esp/.espressif",
+    "idf.pythonInstallPath": "/usr/bin/python3",
+    "idf.openOcdConfigs": ["board/esp32c6-bridge.cfg"],
+    "idf.customExtraVars": {
+      "OPENOCD_SCRIPTS": "/home/izerocs/.espressif/tools/openocd-esp32/v0.12.0-esp32-20240318/openocd-esp32/share/openocd/scripts",
+      "ESP_ROM_ELF_DIR": "/home/izerocs/.espressif/tools/esp-rom-elfs/20240305/",
+      "IDF_TARGET": "esp32c6"
+    },
+    "workbench.colorCustomizations": {
+      "activityBar.activeBackground": "#fbed80",
+      "activityBar.background": "#fbed80",
+      "activityBar.foreground": "#15202b",
+      "activityBar.inactiveForeground": "#15202b99",
+      "activityBarBadge.background": "#06b9a5",
+      "activityBarBadge.foreground": "#15202b",
+      "commandCenter.border": "#15202b99",
+      "sash.hoverBorder": "#fbed80",
+      "statusBar.background": "#f9e64f",
+      "statusBar.foreground": "#15202b",
+      "statusBarItem.hoverBackground": "#f7df1e",
+      "statusBarItem.remoteBackground": "#f9e64f",
+      "statusBarItem.remoteForeground": "#15202b",
+      "titleBar.activeBackground": "#f9e64f",
+      "titleBar.activeForeground": "#15202b",
+      "titleBar.inactiveBackground": "#f9e64f99",
+      "titleBar.inactiveForeground": "#15202b99"
+    },
+    "peacock.color": "#f9e64f",
+    "git.ignoreLimitWarning": true
+  }
+}
+

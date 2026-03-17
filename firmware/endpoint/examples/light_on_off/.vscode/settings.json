@@ -1,0 +1,10 @@
+{
+  "clangd.path": "/home/izerocs/esp/.espressif/tools/esp-clang/esp-19.1.2_20250312/esp-clang/bin/clangd",
+  "clangd.arguments": [
+    "--background-index",
+    "--query-driver=**",
+    "--compile-commands-dir=/home/izerocs/Documents/GitHub/namorix-thread/firmware/endpoint/examples/light_on_off/build"
+],
+"idf.flashType": "UART",
+"idf.port": "/dev/ttyACM1"
+}
