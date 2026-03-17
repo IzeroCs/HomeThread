@@ -3,6 +3,8 @@
  * Dùng cho Commissioner, Settings (BrConnectionForm, OpenThreadConfigForm), v.v.
  */
 @use "variables" as *;
+@use "tokens" as *;
+@use "spacing" as *;
 
 // Functional color tokens (form component-scoped)
 $form-card-bg: $card-dark;
@@ -37,7 +39,7 @@ $form-error-message-text: $alert-error-text;
 // --- Container & card (thống nhất config-container, ot-config-container, commissioner-page) ---
 .form-page {
   width: 100%;
-  max-width: 860px;
+  max-width: var(--form-page-max-width);
   margin: 0 auto;
 }
 

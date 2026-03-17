@@ -120,6 +120,11 @@ CMD_STATE that bai **5 lan lien tiep** → dong transport + bat dau reconnect.
 - **i18n locale state:** Locale nằm trong Redux store slice `i18n` (`frontend/src/shared/store/slices/i18n.slice.ts`), persist `localStorage` key `dashboard-thread.locale`. UI components dùng `LitStoreController` subscribe `selectLocale` để re-render khi đổi locale.
 - **Path alias:** Import dùng `@shared/*`, `@nodes/*`, `@settings/*`, `@status/*`, `@/` (tsconfig + Vite alias). SCSS: `loadPaths: [src]` → `@use "shared/styles/variables"` / `shared/styles/form`.
 
+### Navigation (Sidebar)
+
+- Sidebar chia 2 group: **Monitor** (`status`, `nodes`, `joiner`, `topology`) và **Settings** (`settings-connection`, `settings-thread`, `settings-device`).
+- Settings không dùng “expand/collapse” và không còn trang trung gian `settings-view`; mỗi item Settings map trực tiếp tới 1 page component.
+
 ### Backend path aliases
 
 - Backend dung **path alias** trong tsconfig (`baseUrl` + `paths`): `@utils/*`, `@cbor`, `@database`, `@communicate`, `@coap/*`, `@settings/*`, `@thread/*`, `@websocket/*` → `src/...`. Dev: **tsx** tu resolve; build: **tsc** compile roi **tsc-alias** thay alias bang relative path trong dist/.

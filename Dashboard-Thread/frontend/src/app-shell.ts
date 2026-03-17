@@ -9,38 +9,42 @@ import { LitStoreController } from "@/shared/store/lit-store-controller";
 import "@shared/components/sidebar/sidebar.component";
 import "@shared/components/toast-container/toast-container.component";
 import "@shared/components/waiting-for-backend/waiting-for-backend.component";
-import "@status/status.component";
-import "@nodes/nodes.component";
-import "@joiner/joiner.component";
-import "@topology/topology-map.component";
-import "@settings/settings.component";
+import "@monitor/status/status.component";
+import "@monitor/nodes/nodes.component";
+import "@monitor/joiner/joiner.component";
+import "@monitor/topology/topology-map.component";
+import "@settings/connection/connection.component";
+import "@settings/thread/thread.component";
+import "@settings/device/device.component";
 
 import "@/app.style.scss";
 
-type SettingsSection = "br" | "openthread" | "system";
-
 @customElement("app-shell")
 export class AppShell extends LitElement {
+  private static _wsBridgeStarted = false;
 
   override createRenderRoot() {
     return this;
   }
 
-  private readonly wsConnected = new LitStoreController(
-    this,
-    store,
-    (s) => selectWsConnected(s),
-    Object.is
-  );
+  private readonly wsConnected = new LitStoreController(this, store,
+    (s) => selectWsConnected(s), Object.is);
 
   @state() private page!: NavPage;
   @state() private toasts!: Toast[];
 
   constructor() {
     super();
-    this.page = "joiner";
+    this.page = "settings-connection";
     this.toasts = [];
-    startWsBridge(store);
+  }
+
+  override connectedCallback(): void {
+    super.connectedCallback();
+    if (!AppShell._wsBridgeStarted) {
+      AppShell._wsBridgeStarted = true;
+      startWsBridge(store);
+    }
   }
 
   private _showToast(type: Toast["type"], message: string, duration = 3000) {
@@ -60,16 +64,49 @@ export class AppShell extends LitElement {
     this.page = e.detail;
   }
 
-  get _isSettingsPage(): boolean {
-    return (
-      this.page === "settings-br" ||
-      this.page === "settings-openthread" ||
-      this.page === "settings-system"
-    );
-  }
+  private _renderPage() {
+    switch (this.page) {
+      case "monitor-status":
+        return html`<status-view></status-view>`;
 
-  get _settingsSection(): SettingsSection {
-    return this.page === "settings-openthread" ? "openthread" : this.page === "settings-system" ? "system" : "br";
+      case "monitor-nodes":
+        return html`
+          <div class="app-container">
+            <nodes-view></nodes-view>
+          </div>
+        `;
+
+      case "monitor-joiner":
+        return html`
+          <div class="app-container">
+            <joiner-view .showToast=${this._showToast.bind(this)}></joiner-view>
+          </div>
+        `;
+
+      case "monitor-topology":
+        return html`<topology-map class="app-topology"></topology-map>`;
+
+      case "settings-connection":
+        return html`
+          <div class="app-container">
+            <settings-connection-view .showToast=${this._showToast.bind(this)}></settings-connection-view>
+          </div>
+        `;
+
+      case "settings-thread":
+        return html`
+          <div class="app-container">
+            <settings-thread-view .showToast=${this._showToast.bind(this)}></settings-thread-view>
+          </div>
+        `;
+
+      case "settings-device":
+        return html`
+          <div class="app-container">
+            <settings-device-view .showToast=${this._showToast.bind(this)}></settings-device-view>
+          </div>
+        `;
+    }
   }
 
   render() {
@@ -91,37 +128,8 @@ export class AppShell extends LitElement {
         ></sidebar-nav>
         <toast-container .toasts=${this.toasts} .removeToast=${this._removeToast.bind(this)}></toast-container>
 
-        <main class="app-main ${this.page === "topology" ? "app-main--topology" : ""}">
-          ${this.page === "status" ? html`<status-view></status-view>` : ""}
-
-          ${this._isSettingsPage ? html`
-            <div class="app-container">
-              <settings-view
-                .activeSection=${this._settingsSection}
-                .showToast=${this._showToast.bind(this)}
-              ></settings-view>
-            </div>
-          ` : ""}
-
-          ${this.page === "topology" ? html`<topology-map class="app-topology"></topology-map>` : ""}
-
-          ${this.page === "nodes"
-            ? html`
-                <div class="app-container">
-                  <nodes-view></nodes-view>
-                </div>
-              `
-            : ""}
-
-          ${this.page === "joiner"
-            ? html`
-                <div class="app-container">
-                  <joiner-view
-                    .showToast=${this._showToast.bind(this)}
-                  ></joiner-view>
-                </div>
-              `
-            : ""}
+        <main class="app-main ${this.page === "monitor-topology" ? "app-main--topology" : ""}">
+          ${this._renderPage()}
         </main>
       </div>
     `;

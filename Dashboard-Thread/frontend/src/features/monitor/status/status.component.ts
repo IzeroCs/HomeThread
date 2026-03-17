@@ -6,7 +6,7 @@ import { selectBrStatus, selectConfig, selectLocale, selectOtConfig, selectSyste
 import { t } from "@/shared/i18n/i18n";
 
 import "@shared/components/page-header/page-header.component";
-import "@status/status.style.scss";
+import "@monitor/status/status.style.scss";
 
 function formatPanId(panid: string | null | undefined): string {
   if (!panid) return "—";

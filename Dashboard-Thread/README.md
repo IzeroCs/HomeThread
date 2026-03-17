@@ -17,11 +17,11 @@ Backend + Frontend điều khiển **OpenThread Border Router** qua **TCP** (fra
 - **Nodes**: Router Table & Child Table. Click một dòng bảng → Modal chi tiết theo RLOC16. Dòng leader có badge "LEADER". Cột Age đếm lên realtime.
 - **Joiner**: Trang Joiner (queue) hiển thị danh sách joiner pending với EUI64, **PSKD**, timeout countdown và trạng thái; nút action mở modal thêm joiner (EUI64, PSKd, timeout).
 - **Settings**:
-  - *BR Connection*: Cấu hình host (IPv4 khuyến nghị, vd. 192.168.31.3; hoặc Thread-Host.local khi mDNS có; IPv6 link-local cần zone ID %interface), port (5000), test connect trước khi lưu.
-  - *OpenThread*: PAN ID, Channel, Network Name, Extended PAN ID, Network Key; toggle khởi động/dừng Thread; nút "Lấy lại" fetch config từ thiết bị.
-  - *System*: Hai action cards (Khởi động lại, Factory Reset) với image panel và nút Reset/Factory Reset; divider "Vùng nguy hiểm"; modal xác nhận + đếm ngược 5 giây.
+  - *Connection*: Cấu hình host (IPv4 khuyến nghị, vd. 192.168.31.3; hoặc Thread-Host.local khi mDNS có; IPv6 link-local cần zone ID %interface), port (5000), test connect trước khi lưu.
+  - *Thread*: PAN ID, Channel, Network Name, Extended PAN ID, Network Key; toggle khởi động/dừng Thread; nút "Lấy lại" fetch config từ thiết bị.
+  - *Device*: Hai action cards (Khởi động lại, Factory Reset) với image panel và nút Reset/Factory Reset; divider "Vùng nguy hiểm"; modal xác nhận + đếm ngược 5 giây.
 
-Giao diện: **dark navy** theme, SCSS only (không Tailwind). Sidebar trái brand **OpenThread** với chấm trạng thái BR/Thread. Nav: Status, Nodes, Settings (icon `speed`, `account_tree`, `settings`); dropdown Settings có 3 mục con với icon: BR Connection `lan`, OpenThread `device_hub`, System `warning`. Toast: dark card, thanh dọc trái màu theo type. **Modal / ConfirmModal**: dark navy (overlay blur, nền card-dark, nút Cancel ghost, Confirm danger/warning với hover glow). Component dùng chung: **Modal**, **ConfirmModal**, **Sidebar**, **ToastContainer** trong `frontend/src/shared/components/`. Frontend dùng **path alias** (`@/`, `@shared/`, `@nodes/`, `@settings/`, `@status/`) — cấu hình trong `tsconfig.json` và `vite.config.ts`.
+Giao diện: **dark navy** theme, SCSS only (không Tailwind). Sidebar trái brand **OpenThread** với chấm trạng thái BR/Thread. Nav group: Monitor (Status, Nodes, Joiner, Topology) và Settings (Connection, Thread, Device) với icon: Connection `lan`, Thread `device_hub`, Device `warning`. Toast: dark card, thanh dọc trái màu theo type. **Modal / ConfirmModal**: dark navy (overlay blur, nền card-dark, nút Cancel ghost, Confirm danger/warning với hover glow). Component dùng chung: **Modal**, **ConfirmModal**, **Sidebar**, **ToastContainer** trong `frontend/src/shared/components/`. Frontend dùng **path alias** (`@/`, `@shared/`, `@nodes/`, `@settings/`, `@status/`) — cấu hình trong `tsconfig.json` và `vite.config.ts`.
 
 **Sidebar status dot màu sắc**: Chấm trạng thái trên Sidebar đổi màu theo thread state:
 - 🟢 **Xanh lá** — leader

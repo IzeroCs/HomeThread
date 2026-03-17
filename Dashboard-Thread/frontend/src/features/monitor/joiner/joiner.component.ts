@@ -9,7 +9,7 @@ import { t } from "@/shared/i18n/i18n";
 
 import "@shared/components/page-header/page-header.component";
 import "@shared/components/modal/modal.component";
-import "@joiner/joiner.style.scss";
+import "@monitor/joiner/joiner.style.scss";
 
 const DEFAULT_EUI64 = "f0f5bdfffe104b24";
 const DEFAULT_PSK = "H01THREAD";

@@ -40,6 +40,7 @@ Version notation in this file uses Semantic Versioning `MAJOR.MINOR.PATCH` (no l
 | 2.15.0  | **UI tokens + Joiner revamp.** Joiner page UI redesigned (queue layout, tonal styles, no search/pagination) và hiển thị PSKD từ Joiner Table. `page-header` actions hỗ trợ label + style/tone (label auto-show), tonal rules (filled/text no border, outlined keeps border). `modal.style.scss` migrate sang CSS `--tokens` và scrollbar neutral (thumb `--on-surface-variant`). |
 | 2.15.1  | **BR refactor (naming + split).** Chuẩn hoá `backend/src/communicate/` theo domain `br/` và tách `BrConnection`/`BrSession`/`BrCommand` + facade `BrManager`. `thread/thread.config.ts` dùng `OtConfigStore` cho store và `OtConfig` cho data type. |
 | 2.16.0  | **Frontend i18n (full coverage).** Thêm `t(key, params?)` + locales JSON (`en.json` source-of-truth, `vi.json` để dịch sau), slice `i18n` trong store và persist locale (`dashboard-thread.locale`). Sweep toàn `frontend/src` để chuyển user-facing strings sang `t("...")` và gom keys vào `en.json`. Cấu hình i18n Ally (custom framework + regex) để detect `t("...")`. |
+| 2.16.1  | **Settings navigation + form CSS normalization.** Đổi Settings pages sang `settings-connection/thread/device`, bỏ `settings-view` trung gian. Chuẩn hoá form styles: import `_form.scss` global (app.style.scss), dùng `.form-actions` cho footer, dọn các feature scss và xoá settings.style.scss. |
 
 
 ## What Works (Completed)

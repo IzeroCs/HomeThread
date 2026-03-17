@@ -1,8 +1,8 @@
 export type NavPage =
-  | "nodes"
-  | "status"
-  | "topology"
-  | "joiner"
-  | "settings-br"
-  | "settings-openthread"
-  | "settings-system";
+  | "monitor-nodes"
+  | "monitor-status"
+  | "monitor-topology"
+  | "monitor-joiner"
+  | "settings-connection"
+  | "settings-thread"
+  | "settings-device";

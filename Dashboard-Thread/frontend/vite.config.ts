@@ -19,6 +19,7 @@ export default defineConfig({
       "@features": resolve(__dirname, "src/features"),
       "@shared": resolve(__dirname, "src/shared"),
       "@components": resolve(__dirname, "src/features/components"),
+      "@monitor": resolve(__dirname, "src/features/monitor"),
       "@nodes": resolve(__dirname, "src/features/nodes"),
       "@joiner": resolve(__dirname, "src/features/joiner"),
       "@settings": resolve(__dirname, "src/features/settings"),

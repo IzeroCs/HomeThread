@@ -5,10 +5,10 @@ import { store } from "@/shared/store/store";
 import { selectLocale } from "@/shared/store/selectors";
 import { t } from "@/shared/i18n/i18n";
 
-import "@settings/components/openthread-config-form/openthread-config-form.style.scss";
+import "@settings/thread/thread.style.scss";
 
-@customElement("openthread-config-form")
-export class OpenThreadConfigFormComponent extends LitElement {
+@customElement("settings-thread-view")
+export class SettingsThreadViewComponent extends LitElement {
   override createRenderRoot() {
     return this;
   }
@@ -234,6 +234,6 @@ export class OpenThreadConfigFormComponent extends LitElement {
 
 declare global {
   interface HTMLElementTagNameMap {
-    "openthread-config-form": OpenThreadConfigFormComponent;
+    "settings-thread-view": SettingsThreadViewComponent;
   }
 }

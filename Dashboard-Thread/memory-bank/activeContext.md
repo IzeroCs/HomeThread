@@ -18,6 +18,10 @@ Giao tiếp BR ↔ backend theo hướng **notify-first**: Thread-Host push `CMD
 - **Full coverage (frontend/src):** Toàn bộ user-facing strings (UI text + aria/title + placeholders + FE fallback errors) đã chuyển sang `t("...")` và keys được tập trung trong `frontend/src/shared/i18n/locales/en.json`. `vi.json` để trống/partial cho bước dịch sau.
 - **i18n Ally:** Cấu hình locales path `frontend/src/shared/i18n/locales` và regex detect `t("...")` để highlight missing keys giữa `en.json`/`vi.json`.
 
+### Settings navigation + form styling (unreleased)
+- **Settings pages:** Bỏ `settings-view` trung gian (không còn `activeSection`). Nav pages đổi sang `settings-connection`, `settings-thread`, `settings-device` và sidebar Settings group hiển thị tương ứng **Connection / Thread / Device**.
+- **Form CSS normalization:** Chuẩn hoá import form system: `shared/styles/_form.scss` được import global từ `frontend/src/app.style.scss`; các feature scss không còn tự `@use "shared/styles/form"`. Footer actions dùng `.form-actions` thay vì panel custom; `frontend/src/features/settings/settings.style.scss` đã được xoá.
+
 ### UI tokens + Joiner revamp (2.15.0)
 - **Joiner page UI:** Refactor `frontend/src/features/joiner/` theo layout “queue” (Joiner ID, EUI64, **PSKD**, timeout countdown, status badge, actions). Style **tonal** (ưu tiên surface + color-mix, hạn chế border), bỏ search/pagination và bỏ header trong card.
 - **Joiner data:** Frontend hiển thị **PSKD** từ Joiner Table (`headers["PSKD"]`) thay vì hardcode `"—"`. Nút copy ưu tiên PSKD (nếu có) và fallback copy EUI64.

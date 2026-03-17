@@ -6,11 +6,12 @@
       "@features/*": ["src/features/*"],
       "@shared/*": ["src/shared/*"],
       "@components/*": ["src/features/components/*"],
-      "@nodes/*": ["src/features/nodes/*"],
-      "@joiner/*": ["src/features/joiner/*"],
+      "@monitor/*": ["src/features/monitor/*"],
+      "@nodes/*": ["src/features/monitor/nodes/*"],
+      "@joiner/*": ["src/features/monitor/joiner/*"],
       "@settings/*": ["src/features/settings/*"],
-      "@status/*": ["src/features/status/*"],
-      "@topology/*": ["src/features/topology/*"]
+      "@status/*": ["src/features/monitor/status/*"],
+      "@topology/*": ["src/features/monitor/topology/*"]
     },
     "target": "ES2020",
     "useDefineForClassFields": false,

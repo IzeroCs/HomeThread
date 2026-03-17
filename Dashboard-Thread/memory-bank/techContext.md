@@ -155,6 +155,7 @@ SQLite (`better-sqlite3`, WAL mode). Migrations:
 - **vite.config.ts** `resolve.alias`: cùng mapping (resolve(__dirname, "src/...")).
 - **SCSS:** `css.preprocessorOptions.scss.loadPaths: [resolve(__dirname, "src")]` — trong .scss dùng `@use "shared/styles/variables"` hoặc `@use "shared/styles/form"` (đường dẫn từ `src/`).
 - Toàn bộ import TS/TSX dùng alias; không dùng relative `../../` qua nhiều cấp.
+- **Form styles:** `shared/styles/_form.scss` là bộ class chuẩn cho form (`.form-page`, `.form-card`, `.form-actions`, `.form-btn...`) và được import global từ `frontend/src/app.style.scss` để dùng nhất quán toàn app.
 
 ### Backend
 

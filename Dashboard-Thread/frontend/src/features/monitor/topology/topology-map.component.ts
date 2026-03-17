@@ -7,7 +7,7 @@ import { LitStoreController, shallowEqual } from "@/shared/store/lit-store-contr
 import { selectBrStatus, selectChildTable, selectLocale, selectOtConfig, selectRouterTable } from "@/shared/store/selectors";
 import { t } from "@/shared/i18n/i18n";
 
-import "@features/topology/topology-map.style.scss";
+import "@monitor/topology/topology-map.style.scss";
 
 // ─── Có thể chỉnh tay: pan/zoom và layout ─────────────────────────────────────
 const LERP = 0.12;

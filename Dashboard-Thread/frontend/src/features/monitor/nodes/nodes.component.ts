@@ -6,7 +6,7 @@ import { selectBrStatus, selectChildTable, selectLocale, selectOtConfig, selectR
 import { t } from "@/shared/i18n/i18n";
 
 import "@shared/components/modal/modal.component";
-import "@nodes/nodes.style.scss";
+import "@monitor/nodes/nodes.style.scss";
 
 function normCol(name: string): string {
   return String(name).trim().toLowerCase();
@@ -237,13 +237,7 @@ export class NodesComponent extends LitElement {
                         ${routerTable.error}
                       </td>
                     </tr>
-                  ` : routerTable == null ? html `
-                    <tr class="nodes-row-empty">
-                      <td class="nodes-cell-empty nodes-muted" colspan="6">
-                        ${t("nodes.routerTable.empty.loading")}
-                      </td>
-                    </tr>
-                  ` : routerRows.length === 0 ? html `
+                  ` : routerTable == null || routerRows.length === 0 ? html `
                     <tr class="nodes-row-empty">
                       <td class="nodes-cell-empty nodes-muted" colspan="6">
                         ${t("nodes.routerTable.empty.none")}
@@ -305,14 +299,8 @@ export class NodesComponent extends LitElement {
                         ${childTable.error}
                       </td>
                     </tr>
-                  ` : childTable == null ? html `
-                    <tr class="nodes-row-empty">
-                      <td class="nodes-cell-empty nodes-muted" colspan="8">
-                        ${t("nodes.childTable.empty.loading")}
-                      </td>
-                    </tr>
-                  ` : childRows.length === 0 ? html `
-                    <tr class="nodes-row-empty">
+                  ` : childTable == null || childRows.length === 0 ? html `
+                  <tr class="nodes-row-empty">
                       <td class="nodes-cell-empty nodes-muted" colspan="8">\
                         ${t("nodes.childTable.empty.none")}
                       </td>

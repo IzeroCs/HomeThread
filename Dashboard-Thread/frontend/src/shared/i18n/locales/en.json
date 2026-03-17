@@ -49,9 +49,9 @@
       "nodes": "Nodes",
       "joiner": "Joiner",
       "topology": "Topology",
-      "settingsBr": "BR Connection",
-      "settingsOpenThread": "OpenThread",
-      "settingsSystem": "System"
+      "settingsConnection": "Connection",
+      "settingsThread": "Thread",
+      "settingsDevice": "Device"
     },
     "status": {
       "disabled": "disabled"
@@ -292,7 +292,6 @@
         "linkQualityOut": "Link Quality Out"
       },
       "empty": {
-        "loading": "Loading router table…",
         "none": "No routers found in the network"
       }
     },
@@ -304,7 +303,6 @@
         "avgRssi": "Avg RSSI"
       },
       "empty": {
-        "loading": "Loading child table…",
         "none": "No child nodes connected"
       }
     }

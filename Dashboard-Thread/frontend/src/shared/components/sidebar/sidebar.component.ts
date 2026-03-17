@@ -30,18 +30,18 @@ const NAV_ITEMS: NavGroup[] = [
   {
     label: "sidebar.group.monitor",
     items: [
-      { page: "status", label: "sidebar.item.status", icon: "speed" },
-      { page: "nodes", label: "sidebar.item.nodes", icon: "account_tree" },
-      { page: "joiner", label: "sidebar.item.joiner", icon: "group_add" },
-      { page: "topology", label: "sidebar.item.topology", icon: "hub" },
+      { page: "monitor-status", label: "sidebar.item.status", icon: "speed" },
+      { page: "monitor-nodes", label: "sidebar.item.nodes", icon: "account_tree" },
+      { page: "monitor-joiner", label: "sidebar.item.joiner", icon: "group_add" },
+      { page: "monitor-topology", label: "sidebar.item.topology", icon: "hub" },
     ],
   },
   {
     label: "sidebar.group.settings",
     items: [
-      { page: "settings-br", label: "sidebar.item.settingsBr", icon: "lan" },
-      { page: "settings-openthread", label: "sidebar.item.settingsOpenThread", icon: "device_hub" },
-      { page: "settings-system", label: "sidebar.item.settingsSystem", icon: "warning" },
+      { page: "settings-connection", label: "sidebar.item.settingsConnection", icon: "lan" },
+      { page: "settings-thread", label: "sidebar.item.settingsThread", icon: "device_hub" },
+      { page: "settings-device", label: "sidebar.item.settingsDevice", icon: "warning" },
     ],
   },
 ];
@@ -52,7 +52,7 @@ export class SidebarComponent extends LitElement {
     return this;
   }
 
-  @property({ type: String }) currentPage: NavPage = "status";
+  @property({ type: String }) currentPage: NavPage = "monitor-status";
 
   private readonly locale = new LitStoreController(
     this,

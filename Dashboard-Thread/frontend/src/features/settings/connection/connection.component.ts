@@ -1,6 +1,5 @@
 import { LitElement, html } from "lit";
 import { customElement, property, state } from "lit/decorators.js";
-import { DEFAULT_BR_CONFIG, type BrConnectionConfigForm } from "@settings/utils/br-connection-config.util";
 import type { BrConnectionConfigFromBackend } from "@shared/types/websocket.type";
 import { BR_CONNECTION } from "shared/src/constants";
 import { validateBrConnectionConfig } from "shared/src/validation";
@@ -9,16 +8,29 @@ import { store } from "@/shared/store/store";
 import { selectLocale } from "@/shared/store/selectors";
 import { t } from "@/shared/i18n/i18n";
 
-import "@settings/components/br-connection-form/br-connection-form.style.scss";
+import "@settings/connection/connection.style.scss";
 
-function getFormErrors(formData: BrConnectionConfigForm): Partial<Record<keyof BrConnectionConfigForm, string>> {
+interface SettingsConnectionConfigForm {
+  brHost: string;
+  brPort: number;
+  useMdns?: boolean;
+}
+
+const DEFAULT_CONNECTION_CONFIG: SettingsConnectionConfigForm = {
+  brHost: "Thread-Host.local",
+  brPort: BR_CONNECTION.DEFAULT_PORT,
+  useMdns: true,
+};
+
+
+function getFormErrors(formData: SettingsConnectionConfigForm): Partial<Record<keyof SettingsConnectionConfigForm, string>> {
   const err = validateBrConnectionConfig(formData);
   if (!err) return {};
   return { brHost: err, brPort: err };
 }
 
-@customElement("br-connection-form")
-export class BrConnectionFormComponent extends LitElement {
+@customElement("settings-connection-view")
+export class SettingsConnectionViewComponent extends LitElement {
   override createRenderRoot() {
     return this;
   }
@@ -31,12 +43,12 @@ export class BrConnectionFormComponent extends LitElement {
   );
 
   @property({ type: Object }) initialConfig: BrConnectionConfigFromBackend | null = null;
-  @property({ attribute: false }) onSave: (config: BrConnectionConfigForm) => void = () => {};
+  @property({ attribute: false }) onSave: (config: SettingsConnectionConfigForm) => void = () => {};
   @property({ attribute: false }) onTestConnect: (config: { brHost: string; brPort: number }) => Promise<{ success: boolean; error?: string }> = async () => ({ success: false });
   @property({ attribute: false }) showToast: (type: "success" | "error" | "warning" | "info", message: string, duration?: number) => void = () => {};
 
-  @state() private formData: BrConnectionConfigForm = DEFAULT_BR_CONFIG;
-  @state() private errors: Partial<Record<keyof BrConnectionConfigForm, string>> = {};
+  @state() private formData: SettingsConnectionConfigForm = DEFAULT_CONNECTION_CONFIG;
+  @state() private errors: Partial<Record<keyof SettingsConnectionConfigForm, string>> = {};
   @state() private testStatus: { type: "idle" | "loading" | "success" | "error"; message?: string } = { type: "idle" };
   @state() private testSucceeded = false;
 
@@ -49,12 +61,12 @@ export class BrConnectionFormComponent extends LitElement {
           useMdns: this.initialConfig.useMdns,
         };
       } else {
-        this.formData = DEFAULT_BR_CONFIG;
+        this.formData = DEFAULT_CONNECTION_CONFIG;
       }
     }
   }
 
-  private _handleFieldChange<K extends keyof BrConnectionConfigForm>(field: K, value: BrConnectionConfigForm[K]) {
+  private _handleFieldChange<K extends keyof SettingsConnectionConfigForm>(field: K, value: SettingsConnectionConfigForm[K]) {
     this.formData = { ...this.formData, [field]: value };
     this.testSucceeded = false;
   }
@@ -101,7 +113,7 @@ export class BrConnectionFormComponent extends LitElement {
   }
 
   private get _canSave(): boolean {
-    return !this.onTestConnect || this.testSucceeded;
+    return this.testSucceeded;
   }
 
   private get _alertMessage(): string | null {
@@ -160,7 +172,6 @@ export class BrConnectionFormComponent extends LitElement {
                 </small>
               </div>
             </div>
-            <div class="br-divider"></div>
             <div class="br-connection-note">
               <div class="br-connection-note-icon" aria-hidden="true">
                 <span class="material-symbols-outlined">info</span>
@@ -169,21 +180,17 @@ export class BrConnectionFormComponent extends LitElement {
                 ${t("settings.brConnection.note")}
               </p>
             </div>
-            <div class="br-connection-actions">
-              ${this.onTestConnect
-                ? html`
-                    <button
-                      type="button"
-                      class="form-btn form-btn--ghost br-test-connect"
-                      @click=${this._handleTestConnect}
-                      ?disabled=${this.testStatus.type === "loading"}
-                    >
-                      <span class="test-status-dot" aria-hidden="true"></span>
-                      ${this.testStatus.type === "loading" ? t("settings.brConnection.actions.testing") : t("settings.brConnection.actions.test")}
-                    </button>
-                  `
-                : ""}
-              <button type="submit" class="form-btn form-btn--primary br-submit" ?disabled=${this.onTestConnect ? !canSave : false}>
+            <div class="form-actions">
+              <button
+                type="button"
+                class="form-btn form-btn--ghost br-test-connect"
+                @click=${this._handleTestConnect}
+                ?disabled=${this.testStatus.type === "loading"}
+              >
+                <span class="test-status-dot" aria-hidden="true"></span>
+                ${this.testStatus.type === "loading" ? t("settings.brConnection.actions.testing") : t("settings.brConnection.actions.test")}
+              </button>
+              <button type="submit" class="form-btn form-btn--primary br-submit" ?disabled=${!canSave}>
                 ${t("settings.brConnection.actions.save")}
               </button>
             </div>
@@ -196,6 +203,6 @@ export class BrConnectionFormComponent extends LitElement {
 
 declare global {
   interface HTMLElementTagNameMap {
-    "br-connection-form": BrConnectionFormComponent;
+    "settings-connection-view": SettingsConnectionViewComponent;
   }
 }
