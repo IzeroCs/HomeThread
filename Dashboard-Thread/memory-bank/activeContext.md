@@ -8,6 +8,12 @@ Giao tiếp BR ↔ backend theo hướng **notify-first**: Thread-Host push `CMD
 
 ## Recent Significant Changes
 
+### UI tokens + Joiner revamp (2.15.0)
+- **Joiner page UI:** Refactor `frontend/src/features/joiner/` theo layout “queue” (Joiner ID, EUI64, **PSKD**, timeout countdown, status badge, actions). Style **tonal** (ưu tiên surface + color-mix, hạn chế border), bỏ search/pagination và bỏ header trong card.
+- **Joiner data:** Frontend hiển thị **PSKD** từ Joiner Table (`headers["PSKD"]`) thay vì hardcode `"—"`. Nút copy ưu tiên PSKD (nếu có) và fallback copy EUI64.
+- **page-header actions:** `page-header` hỗ trợ action **label + style + tone** (text/filled/outlined + default/info/success/warning/danger). **Label auto-show** (không cần `text: true`). Tonal rule: **filled/text không viền**, **outlined giữ viền**. Hover dùng `--color-mix-darken/lighten`.
+- **modal tokens:** `modal.style.scss` migrate từ `_variables.scss` sang **CSS tokens** (`_tokens.scss`) để đồng bộ palette. Scrollbar trong `.modal-body` chuyển sang **neutral**: thumb `--on-surface-variant`, track `transparent`.
+
 ### Joiner / Modal / Form polish (2.14.0)
 - **Joiner feature:** Trang Joiner tách riêng (`src/features/joiner/`); commission modal gộp vào `joiner.component.ts` (không còn component commission-node-modal riêng). **Commissioner** cho phép khi BR **attached** (leader, router hoặc child) — `_canCommission` thay `_isLeader`; alert và disable form khi state khác.
 - **modal-dialog:** Render qua **portal** (Lit `render(template, node)` vào `document.body` trong `updated()`; node tạo/remove trong `connectedCallback`/`disconnectedCallback`) để overlay phủ cả sidebar/header. **ModalAction** có `tone` (default|info|success|warning|danger), `style` (text|filled|outlined), `icon` (string = Material Symbol name hoặc TemplateResult), `loading` (spinner thay icon); mặc định Confirm = filled + info, Cancel = text + danger; `className` vẫn dùng khi cần custom. Nút footer cố định chiều cao; icon wrapper `.modal-action-icon` 20×20px, line-height 0 để không nhích khi font load.

@@ -14,7 +14,8 @@ Backend + Frontend điều khiển **OpenThread Border Router** qua **TCP** (fra
 
 - **Status**: Trạng thái kết nối BR (host:port), OpenThread (PAN ID, Channel, Network Name, Version, IP Address, dataset đầy đủ), thread state; **System**: IPv4 và IPv6 của backend (từ backend, dùng cho SRP/Thread-Node). Khi chưa kết nối BR: card compact (icon đỏ + DISCONNECTED), OpenThread ghost grid + overlay "No Network Data Available" và nút "Configure Border Router". Phiên bản hiển thị lấy từ `frontend/package.json`. Backend tự gửi SRP register (CMD 0x44) khi BR là leader để Thread-Node có thể discovery `_dashboard._udp`; khi gửi, backend log IPv6/hostname/port ra console (transportLogger).
 - **Topology**: Bản đồ topology (pan/zoom, spotlight, node select, label box động, edge ẩn khi offline).
-- **Nodes**: Router Table & Child Table; **Joiner List** (thiết bị đang chờ join, bên dưới Child Table) với TIMEOUT đếm ngược MM:SS (local countdown từ dữ liệu mới). Nút "Commission Node" mở modal thêm joiner (EUI64, PSKd, timeout). Click một dòng bảng → Modal chi tiết theo RLOC16. Dòng leader có badge "LEADER". Cột Age đếm lên realtime.
+- **Nodes**: Router Table & Child Table. Click một dòng bảng → Modal chi tiết theo RLOC16. Dòng leader có badge "LEADER". Cột Age đếm lên realtime.
+- **Joiner**: Trang Joiner (queue) hiển thị danh sách joiner pending với EUI64, **PSKD**, timeout countdown và trạng thái; nút action mở modal thêm joiner (EUI64, PSKd, timeout).
 - **Settings**:
   - *BR Connection*: Cấu hình host (IPv4 khuyến nghị, vd. 192.168.31.3; hoặc Thread-Host.local khi mDNS có; IPv6 link-local cần zone ID %interface), port (5000), test connect trước khi lưu.
   - *OpenThread*: PAN ID, Channel, Network Name, Extended PAN ID, Network Key; toggle khởi động/dừng Thread; nút "Lấy lại" fetch config từ thiết bị.
@@ -46,7 +47,7 @@ Dashboard-Thread/
 │       └── utils/        # logger, ipv6 (getPreferredBackendIPv6, getBackendAddresses)
 ├── frontend/
 │   └── src/
-│       ├── features/     # nodes, settings, status, topology (page + components)
+│       ├── features/     # joiner, nodes, settings, status, topology (page + components)
 │       ├── shared/       # components (Modal, ConfirmModal, Sidebar, ToastContainer), controllers, types, styles
 │       ├── app-shell.ts
 │       └── main.ts
@@ -113,6 +114,6 @@ Dashboard-Thread/
 
 - **Database:** SQLite (BR connection config, app settings `thread_run_on_connect`). Migration 006 đã xóa bảng legacy `serial_config`.
 
-**Thread-Node gửi dữ liệu:** CoAP UDP port 5683 (IPv6 [::]), path `/device/ping`, `/device/register/info`, `/device/register/entity`, `/device/update/info`, `/device/update/entity`, `/device/update/topology`, `/device/update/state`; payload CBOR (key 0 = mac mọi payload; device_info keys 0–6; topology key 8; entity/state key 9). Backend parse CBOR, lưu DB; không gửi lên frontend. Spec payload: [docs/coap/device_payload_spec.md](./docs/coap/device_payload_spec.md). Flow: [docs/coap/thread_node_coap.md](./docs/coap/thread_node_coap.md).
+**Thread-Node gửi dữ liệu:** CoAP UDP port 5683 (IPv6 [::]), path `/device/ping`, `/device/register/info`, `/device/register/entity`, `/device/update/info`, `/device/update/entity`, `/device/update/topology`, `/device/update/state`; payload CBOR (key 0 = mac mọi payload; **entity/state array dùng key 1**). Backend parse CBOR, lưu DB; không gửi lên frontend. Spec payload: [docs/coap/device_payload_spec.md](./docs/coap/device_payload_spec.md). Flow: [docs/coap/thread_node_coap.md](./docs/coap/thread_node_coap.md).
 
 Chi tiết: [Documents/protocol/usb_cdc_frame_structure.md](../Documents/protocol/usb_cdc_frame_structure.md) · [Documents/dashboard/migration_to_frame_protocol.md](../Documents/dashboard/migration_to_frame_protocol.md) · Việc còn lại: [TODO.md](./TODO.md).

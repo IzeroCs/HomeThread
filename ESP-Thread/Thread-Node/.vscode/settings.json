@@ -53,5 +53,6 @@
     "**/examples/**/.cache": true,
     "**/examples/**/.vscode": true,
     "**/examples/**/dependencies.lock": true,
-}
+},
+"idf.currentSetup": "/home/izerocs/esp/v5.5.3/esp-idf"
 }
