@@ -1,73 +1,25 @@
-@use "shared/styles/variables" as *;
+@use "styles/variables" as *;
+@use "styles/tokens" as *;
+@use "styles/spacing" as *;
 
-// Functional color tokens (component-scoped)
-$br-divider-line: $brand-border;
-$br-note-box-bg: rgba($slate-850, 0.9);
-$br-note-box-border: rgba($text-dark-muted, 0.4);
-$br-note-icon-border: rgba($text-dark-muted, 0.8);
-$br-note-icon-color: $text-dark-muted;
-$br-note-text: $text-dark-subtle;
-$br-test-dot-default: $text-dark-muted;
-$br-test-dot-success: $green-500;
+$settings-connection-test-dot-default: $text-dark-muted;
+$settings-connection-test-dot-success: $green-500;
 
-settings-connection-view {
-  display: contents;
-}   
-
-.br-connection-card {
+.settings-connection-card {
   padding-bottom: 0;
 }
 
-.br-divider {
-  height: 1px;
-  background: $br-divider-line;
-  margin: 1.5rem 0 0;
-}
-
-.br-connection-note {
-  margin-top: 8px;
-  padding: 14px 16px;
-  border-radius: $border-radius-small;
-  background: $br-note-box-bg;
-  border: 1px solid $br-note-box-border;
-  display: flex;
-  gap: 12px;
-  align-items: flex-start;
-}
-
-.br-connection-note-icon {
-  width: 24px;
-  height: 24px;
-  border-radius: 999px;
-  border: 1px solid $br-note-icon-border;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: $br-note-icon-color;
-  flex-shrink: 0;
-
-  .material-symbols-outlined {
-    font-size: 16px;
-  }
-}
-
-.br-connection-note-text {
-  margin: 0;
-  font-size: 13px;
-  color: $text-dark-subtle;
-}
-
-.test-status-dot {
+.settings-connection-test-dot {
   width: 7px;
   height: 7px;
   border-radius: 999px;
-  background: $br-test-dot-default;
+  background: $settings-connection-test-dot-default;
   transition:
     background 0.3s,
     box-shadow 0.3s;
 }
 
-.br-test-connect:hover:not(:disabled) .test-status-dot {
-  background: $br-test-dot-success;
-  box-shadow: 0 0 6px $br-test-dot-success;
+.settings-connection-test-btn:hover:not(:disabled) .settings-connection-test-dot {
+  background: $settings-connection-test-dot-success;
+  box-shadow: 0 0 6px $settings-connection-test-dot-success;
 }

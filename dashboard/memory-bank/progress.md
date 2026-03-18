@@ -41,6 +41,7 @@ Version notation in this file uses Semantic Versioning `MAJOR.MINOR.PATCH` (no l
 | 2.15.1  | **BR refactor (naming + split).** Chuẩn hoá `backend/src/communicate/` theo domain `br/` và tách `BrConnection`/`BrSession`/`BrCommand` + facade `BrManager`. `thread/thread.config.ts` dùng `OtConfigStore` cho store và `OtConfig` cho data type. |
 | 2.16.0  | **Frontend i18n (full coverage).** Thêm `t(key, params?)` + locales JSON (`en.json` source-of-truth, `vi.json` để dịch sau), slice `i18n` trong store và persist locale (`dashboard-thread.locale`). Sweep toàn `frontend/src` để chuyển user-facing strings sang `t("...")` và gom keys vào `en.json`. Cấu hình i18n Ally (custom framework + regex) để detect `t("...")`. |
 | 2.16.1  | **Settings navigation + form CSS normalization.** Đổi Settings pages sang `settings-connection/thread/device`, bỏ `settings-view` trung gian. Chuẩn hoá form styles: import `_form.scss` global (app.style.scss), dùng `.form-actions` cho footer, dọn các feature scss và xoá settings.style.scss. |
+| 2.16.2  | **Frontend: AppLitElement base, app-layout, AppBar Redux, confirm-modal removal.** Base class `AppLitElement` (core/app-lit-element.ts): optional locale (`static useLocale`), `useLocale()`, `createStoreSlice()`, `createRenderRoot() { return this }`. Root component đổi tên `app-shell` → `app-layout` (AppLayout); index.html mount `<app-layout></app-layout>`. AppBar cấu hình qua Redux (slice appBar, setAppBar/clearAppBar); AppLayout đọc store và render `<page-header>`; status/nodes dispatch setAppBar và clearAppBar khi unmount. Xóa confirm-modal; Settings Device dùng trực tiếp modal-dialog với countdown trong component. page-header (appbar) extend AppLitElement. |
 
 
 ## What Works (Completed)
@@ -116,9 +117,12 @@ Console da bo. Commissioner gop vao Nodes (modal + Joiner List).
 ### Frontend — Common Components
 
 - **SCSS RGB tokens:** `_variables.scss` định nghĩa RGB (hex 6) cho mọi màu dùng trong `rgba()`; component dùng `rgba($var, opacity)` và có thể có functional naming local (vd. `$modal-overlay-bg`).
-- Toast: dark theme (shared/components/toast-container); thanh doc trai theo type, title (Thanh cong/Loi/Canh bao/Tro giup), message muted, nut dong; slide-in phai, fade-out exit
-- Modal / ConfirmModal (shared/components/modal, confirm-modal): dark navy (overlay blur, card-dark, border brand-border; Cancel ghost, Confirm danger/warning voi hover glow); ConfirmModal countdown 5s. **modal-dialog** render qua portal (Lit render to body) nên overlay phủ cả sidebar/header; ModalAction có tone (default|info|success|warning|danger), style (text|filled|outlined), icon (string = Material Symbol hoặc TemplateResult), loading (spinner); mặc định Confirm filled+info, Cancel text+danger. **spin-loader** (shared/components/spinner) dùng khi confirm loading. Form controls chung trong _form.scss (form-field, form-control, form-radio-row, form-select); modal alert/info trong modal.style.scss.
-- Sidebar (shared/components/sidebar): brand "OpenThread", nav Status / Nodes / Settings (icon `speed` / `account_tree` / `settings`); Settings dropdown sub-items voi icon `lan` (BR Connection), `device_hub` (OpenThread), `warning` (System); status dot mau theo thread state + BR connection
+- **AppLitElement** (core/app-lit-element.ts): Base cho Lit components; `useLocale` (opt-out `static override useLocale = false`), `useLocale()`, `createStoreSlice(selector, equals?)`, `createRenderRoot() { return this }`. AppLayout và page-header extend AppLitElement.
+- **Root layout:** `app-layout` (AppLayout trong app.ts); index.html mount `<app-layout></app-layout>`. AppLayout subscribe wsConnected + appBar qua createStoreSlice; render sidebar, toast, page-header (từ appBar store), main content.
+- **AppBar (Redux):** Slice appBar (heading, subtitle, actions, visible). Pages dispatch setAppBar/clearAppBar; AppLayout render `<page-header>` khi appBar.visible.
+- Toast: dark theme (core/components/toast, toast-view); thanh doc trai theo type, title, message muted, nut dong; slide-in phai, fade-out exit.
+- Modal: **confirm-modal đã xóa**; confirm flows dùng trực tiếp **modal-dialog** (vd. Settings Device với countdown trong component). modal-dialog render qua portal; ModalAction tone/style/icon/loading. spin-loader (core/components/spinner). Form controls trong _form.scss; modal alert/info trong modal.style.scss.
+- Sidebar (core/components/sidebar): brand "OpenThread", nav Monitor/Settings; Settings sub-items `lan`, `device_hub`, `warning`; status dot theo thread state + BR connection.
 - Toggle switch custom
 
 ### Documentation

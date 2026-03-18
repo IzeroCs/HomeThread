@@ -1,14 +1,16 @@
 import { LitElement, html } from "lit";
 import { customElement, property, state } from "lit/decorators.js";
-import { store } from "@/shared/store/store";
-import { LitStoreController, shallowEqual } from "@/shared/store/lit-store-controller";
-import { selectBrStatus, selectJoinerTable, selectLocale, selectThreadState } from "@/shared/store/selectors";
-import { wsCommissionerConnect } from "@/shared/store/thunks/ws.thunks";
-import { wsEmitGetJoinerTable } from "@/shared/store/thunks/ws.emit";
-import { t } from "@/shared/i18n/i18n";
+import { store } from "@/core/store/store";
+import { createLocaleController } from "@/core/store/locale-controller";
+import { LitStoreController, shallowEqual } from "@/core/store/lit-store-controller";
+import { selectBrStatus, selectJoinerTable, selectThreadState } from "@/core/store/selectors";
+import { wsCommissionerConnect } from "@/core/store/thunks/ws.thunks";
+import { wsEmitGetJoinerTable } from "@/core/store/thunks/ws.emit";
+import { showToast } from "@/core/store/toast";
+import { t } from "@/core/i18n/i18n";
 
-import "@shared/components/page-header/page-header.component";
-import "@shared/components/modal/modal.component";
+import "@/core/components/appbar/appbar";
+import "@/core/components/modal/modal.component";
 import "@monitor/joiner/joiner.style.scss";
 
 const DEFAULT_EUI64 = "f0f5bdfffe104b24";
@@ -60,12 +62,7 @@ export class JoinerViewComponent extends LitElement {
 
   @property({ attribute: false }) showToast: (type: "success" | "error", message: string) => void = () => {};
 
-  private readonly locale = new LitStoreController(
-    this,
-    store,
-    (s) => selectLocale(s),
-    Object.is
-  );
+  private readonly locale = createLocaleController(this);
 
   private readonly appState = new LitStoreController(
     this,
@@ -119,7 +116,7 @@ export class JoinerViewComponent extends LitElement {
     const eui64 = this.commissionEui64.trim();
     const psk = this.commissionPsk.trim();
     if (!eui64 || !psk) {
-      this.showToast("error", t("joiner.errors.emptyEui64OrPsk"));
+      showToast("error", t("joiner.errors.emptyEui64OrPsk"));
       return;
     }
     this.commissionConnecting = true;
@@ -135,10 +132,10 @@ export class JoinerViewComponent extends LitElement {
     if (!this.commissionConnecting) return;
     this.commissionConnecting = false;
     if (result.success) {
-      this.showToast("success", t("joiner.toast.addedJoiner"));
+      showToast("success", t("joiner.toast.addedJoiner"));
       this._closeCommissionModal();
     } else {
-      this.showToast("error", result.error ?? t("joiner.errors.connectFailedFallback"));
+      showToast("error", result.error ?? t("joiner.errors.connectFailedFallback"));
     }
   }
 
@@ -216,9 +213,9 @@ export class JoinerViewComponent extends LitElement {
     if (!text || text === "—") return;
     try {
       await navigator.clipboard.writeText(text);
-      this.showToast("success", t("joiner.toast.copied", { label }));
+      showToast("success", t("joiner.toast.copied", { label }));
     } catch {
-      this.showToast("error", t("joiner.errors.copyFailed"));
+      showToast("error", t("joiner.errors.copyFailed"));
     }
   }
 

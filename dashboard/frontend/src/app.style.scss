@@ -1,14 +1,17 @@
-@use "shared/styles/tokens" as *;
-@use "shared/styles/spacing" as *;
-@use "shared/styles/form";
+@use "styles/tokens" as *;
+@use "styles/spacing" as *;
+@use "styles/form";
 
-app-shell,
-waiting-for-backend,
+app-layout,
+waiting-page,
 sidebar-nav,
-page-header,
+appbar-nav,
 status-view,
 nodes-view,
-joiner-view {
+joiner-view,
+settings-connection,
+settings-thread,
+settings-device {
   display: contents;
 }
 

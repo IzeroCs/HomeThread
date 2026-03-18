@@ -1,11 +1,12 @@
 import { LitElement, html } from "lit";
 import { customElement, state } from "lit/decorators.js";
-import { store } from "@/shared/store/store";
-import { LitStoreController, shallowEqual } from "@/shared/store/lit-store-controller";
-import { selectBrStatus, selectConfig, selectLocale, selectOtConfig, selectSystemInfo } from "@/shared/store/selectors";
-import { t } from "@/shared/i18n/i18n";
+import { store } from "@/core/store/store";
+import { createLocaleController } from "@/core/store/locale-controller";
+import { LitStoreController, shallowEqual } from "@/core/store/lit-store-controller";
+import { selectBrStatus, selectConfig, selectOtConfig, selectSystemInfo } from "@/core/store/selectors";
+import { appBarActions } from "@/core/store/slices/appbar.slice";
+import { t } from "@/core/i18n/i18n";
 
-import "@shared/components/page-header/page-header.component";
 import "@monitor/status/status.style.scss";
 
 function formatPanId(panid: string | null | undefined): string {
@@ -19,12 +20,7 @@ export class StatusComponent extends LitElement {
     return this;
   }
 
-  private readonly locale = new LitStoreController(
-    this,
-    store,
-    (s) => selectLocale(s),
-    Object.is
-  );
+  private readonly locale = createLocaleController(this);
 
   private readonly appState = new LitStoreController(
     this,
@@ -39,15 +35,10 @@ export class StatusComponent extends LitElement {
   );
 
   @state() private networkKeyVisible = false;
+  private _lastAppBarSig = "";
 
   private get _isConnected(): boolean {
     return this.appState.value.brStatus?.isConnected ?? false;
-  }
-
-  private _onHeaderAction(e: CustomEvent<{ id: string }>) {
-    if (e.detail.id === "refresh") {
-      // TODO: trigger status refresh if needed
-    }
   }
 
   private get _ipaddr(): string | null {
@@ -56,24 +47,21 @@ export class StatusComponent extends LitElement {
 
   render() {
     void this.locale.value;
+    const appBar = {
+      heading: t("status.header.title"),
+      subtitle: t("status.header.subtitle"),
+      actions: [],
+    };
+    const sig = JSON.stringify(appBar);
+    if (sig !== this._lastAppBarSig) {
+      this._lastAppBarSig = sig;
+      store.dispatch(appBarActions.setAppBar(appBar));
+    }
     const isConnected = this._isConnected;
     const ipaddr = this._ipaddr;
     const { brStatus, otConfig, systemInfo } = this.appState.value;
 
     return html`
-      <page-header
-        heading=${t("status.header.title")}
-        subtitle=${t("status.header.subtitle")}
-        .actions=${[{
-          id: "refresh",
-          icon: "refresh",
-          label: t("common.actions.refresh"),
-          tone: "success",
-          style: "filled",
-        }]}
-        @action-click=${this._onHeaderAction}
-      ></page-header>
-
       <div class="page-container">
         <div class="status-page">
           <section class="status-section status-section-br">
@@ -205,6 +193,11 @@ export class StatusComponent extends LitElement {
         </div>
       </div>
     `;
+  }
+
+  override disconnectedCallback(): void {
+    store.dispatch(appBarActions.clearAppBar());
+    super.disconnectedCallback();
   }
 }
 

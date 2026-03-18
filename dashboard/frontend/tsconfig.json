@@ -3,8 +3,9 @@
     "baseUrl": ".",
     "paths": {
       "@/*": ["src/*"],
+      "@core/*": ["src/core/*"],
       "@features/*": ["src/features/*"],
-      "@shared/*": ["src/shared/*"],
+      "@shared/*": ["src/core/*"],
       "@components/*": ["src/features/components/*"],
       "@monitor/*": ["src/features/monitor/*"],
       "@nodes/*": ["src/features/monitor/nodes/*"],

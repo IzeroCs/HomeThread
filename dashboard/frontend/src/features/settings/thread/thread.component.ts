@@ -1,9 +1,8 @@
 import { LitElement, html } from "lit";
 import { customElement, property, state } from "lit/decorators.js";
-import { LitStoreController } from "@/shared/store/lit-store-controller";
-import { store } from "@/shared/store/store";
-import { selectLocale } from "@/shared/store/selectors";
-import { t } from "@/shared/i18n/i18n";
+import { createLocaleController } from "@/core/store/locale-controller";
+import { showToast } from "@/core/store/toast";
+import { t } from "@/core/i18n/i18n";
 
 import "@settings/thread/thread.style.scss";
 
@@ -13,12 +12,7 @@ export class SettingsThreadViewComponent extends LitElement {
     return this;
   }
 
-  private readonly locale = new LitStoreController(
-    this,
-    store,
-    (s) => selectLocale(s),
-    Object.is
-  );
+  private readonly locale = createLocaleController(this);
 
   @property({ type: Boolean }) isConnected = false;
   @property({ type: Object }) otConfig: { panid?: string; channel?: number; networkName?: string; extendedPanId?: string; networkKey?: string; error?: string } | null = null;
@@ -29,7 +23,6 @@ export class SettingsThreadViewComponent extends LitElement {
   @property({ attribute: false }) stopThread: () => Promise<{ success: boolean; error?: string }> = async () => ({ success: false });
   @property({ attribute: false }) getThreadRunOnConnect: () => void = () => {};
   @property({ attribute: false }) setThreadRunOnConnect: (run: boolean) => void = () => {};
-  @property({ attribute: false }) showToast: (type: "success" | "error", message: string) => void = () => {};
 
   @state() private panid = "";
   @state() private channel = 11;
@@ -81,8 +74,8 @@ export class SettingsThreadViewComponent extends LitElement {
       networkKey: this.networkKey.trim() || undefined,
     });
     this.applying = false;
-    if (result.success) this.showToast("success", t("settings.openthread.toast.applySuccess"));
-    else this.showToast("error", result.error ?? t("settings.openthread.toast.applyFailedFallback"));
+    if (result.success) showToast("success", t("settings.thread.toast.applySuccess"));
+    else showToast("error", result.error ?? t("settings.thread.toast.applyFailedFallback"));
   }
 
   private async _handleThreadToggle(e: Event) {
@@ -90,16 +83,16 @@ export class SettingsThreadViewComponent extends LitElement {
     this.setThreadRunOnConnect(newValue);
     if (newValue) {
       const result = await this.startThread();
-      if (result.success) this.showToast("success", t("settings.openthread.toast.threadStarted"));
+      if (result.success) showToast("success", t("settings.thread.toast.threadStarted"));
       else {
-        this.showToast("error", result.error ?? t("settings.openthread.toast.threadStartFailedFallback"));
+        showToast("error", result.error ?? t("settings.thread.toast.threadStartFailedFallback"));
         this.setThreadRunOnConnect(false);
       }
     } else {
       const result = await this.stopThread();
-      if (result.success) this.showToast("success", t("settings.openthread.toast.threadStopped"));
+      if (result.success) showToast("success", t("settings.thread.toast.threadStopped"));
       else {
-        this.showToast("error", result.error ?? t("settings.openthread.toast.threadStopFailedFallback"));
+        showToast("error", result.error ?? t("settings.thread.toast.threadStopFailedFallback"));
         this.setThreadRunOnConnect(true);
       }
     }
@@ -110,120 +103,118 @@ export class SettingsThreadViewComponent extends LitElement {
     return html`
       <div class="form-page">
         <div class="form-page-header">
-          <h2 class="form-page-title">${t("settings.openthread.title")}</h2>
-          <p class="form-page-description">${t("settings.openthread.description")}</p>
+          <h2 class="form-page-title">${t("settings.thread.title")}</h2>
+          <p class="form-page-description">${t("settings.thread.description")}</p>
         </div>
         ${!this.isConnected
-          ? html`<div class="form-page-alert form-page-alert-warn">${t("settings.openthread.notConnected")}</div>`
+          ? html`<div class="form-page-alert form-page-alert-warn">${t("settings.thread.notConnected")}</div>`
           : ""}
         ${this.message ? html`<div class="form-page-alert form-page-alert-${this.message.type}">${this.message.text}</div>` : ""}
-        <div class="form-card ot-card">
-          <div class="ot-card-header">
-            <div class="ot-card-title">
-              <span class="ot-card-title-icon" aria-hidden="true">
+        <div class="form-card settings-thread-card">
+          <div class="settings-thread-card-header">
+            <div class="settings-thread-card-title">
+              <span class="settings-thread-card-title-icon" aria-hidden="true">
                 <span class="material-symbols-outlined">device_hub</span>
               </span>
-              <span>${t("settings.openthread.networkParameters")}</span>
+              <span>${t("settings.thread.networkParameters")}</span>
             </div>
-            <div class="ot-toggle-group">
-              <span class="ot-toggle-label">${t("settings.openthread.threadToggleLabel")}</span>
-              <label class="ot-toggle">
+            <div class="settings-thread-toggle-group">
+              <span class="settings-thread-toggle-label">${t("settings.thread.threadToggleLabel")}</span>
+              <label class="settings-thread-toggle">
                 <input
                   type="checkbox"
                   ?checked=${this.threadRunOnConnect}
                   @change=${this._handleThreadToggle}
                   ?disabled=${!this.isConnected}
                 />
-                <span class="ot-toggle-track"></span>
-                <span class="ot-toggle-thumb"></span>
+                <span class="settings-thread-toggle-track"></span>
+                <span class="settings-thread-toggle-thumb"></span>
               </label>
             </div>
           </div>
-          <div class="ot-card-body form-page-form">
+          <div class="settings-thread-card-body form-page-form">
             <div class="form-row-2">
-              <div class="form-group ot-field-group">
-                <label for="ot-panid">${t("settings.openthread.panIdLabel")}</label>
-                <div class="ot-input-wrap">
-                  <input
-                    id="ot-panid"
-                    type="text"
-                    .value=${this.panid}
-                    @input=${(e: Event) => (this.panid = (e.target as HTMLInputElement).value)}
-                    placeholder=${t("settings.openthread.placeholders.panId")}
-                    ?disabled=${!this.isConnected}
-                  />
-                </div>
-              </div>
-              <div class="form-group ot-field-group">
-                <label for="ot-channel">${t("settings.openthread.channelLabel")}</label>
-                <div class="ot-input-wrap">
-                  <input
-                    id="ot-channel"
-                    type="number"
-                    min="11"
-                    max="26"
-                    .value=${this.channel}
-                    @input=${(e: Event) => (this.channel = parseInt((e.target as HTMLInputElement).value, 10) || 11)}
-                    ?disabled=${!this.isConnected}
-                  />
-                </div>
-              </div>
-            </div>
-            <div class="form-group ot-field-group">
-              <label for="ot-networkname">${t("settings.openthread.networkNameLabel")}</label>
-              <div class="ot-input-wrap">
+              <div class="form-field">
+                <label class="form-label" for="settings-thread-panid">${t("settings.thread.panIdLabel")}</label>
                 <input
-                  id="ot-networkname"
+                  id="settings-thread-panid"
                   type="text"
-                  .value=${this.networkName}
-                  @input=${(e: Event) => (this.networkName = (e.target as HTMLInputElement).value)}
-                  placeholder=${t("settings.openthread.placeholders.networkName")}
+                  class="form-control form-control--mono"
+                  .value=${this.panid}
+                  @input=${(e: Event) => (this.panid = (e.target as HTMLInputElement).value)}
+                  placeholder=${t("settings.thread.placeholders.panId")}
+                  ?disabled=${!this.isConnected}
+                />
+              </div>
+              <div class="form-field">
+                <label class="form-label" for="settings-thread-channel">${t("settings.thread.channelLabel")}</label>
+                <input
+                  id="settings-thread-channel"
+                  type="number"
+                  min="11"
+                  max="26"
+                  class="form-control form-control--mono"
+                  .value=${this.channel}
+                  @input=${(e: Event) => (this.channel = parseInt((e.target as HTMLInputElement).value, 10) || 11)}
                   ?disabled=${!this.isConnected}
                 />
               </div>
             </div>
-            <div class="form-group ot-field-group">
-              <label for="ot-extendedpanid">${t("settings.openthread.extendedPanIdLabel")}</label>
-              <div class="ot-input-wrap">
-                <input
-                  id="ot-extendedpanid"
-                  type="text"
-                  .value=${this.extendedPanId}
-                  @input=${(e: Event) => (this.extendedPanId = (e.target as HTMLInputElement).value)}
-                  placeholder=${t("settings.openthread.placeholders.extendedPanId")}
-                  ?disabled=${!this.isConnected}
-                />
-              </div>
+            <div class="form-field">
+              <label class="form-label" for="settings-thread-networkname">${t("settings.thread.networkNameLabel")}</label>
+              <input
+                id="settings-thread-networkname"
+                type="text"
+                class="form-control"
+                .value=${this.networkName}
+                @input=${(e: Event) => (this.networkName = (e.target as HTMLInputElement).value)}
+                placeholder=${t("settings.thread.placeholders.networkName")}
+                ?disabled=${!this.isConnected}
+              />
             </div>
-            <div class="form-group ot-field-group">
-              <label for="ot-networkkey">${t("settings.openthread.networkKeyLabel")}</label>
-              <div class="ot-input-wrap">
+            <div class="form-field">
+              <label class="form-label" for="settings-thread-extendedpanid">${t("settings.thread.extendedPanIdLabel")}</label>
+              <input
+                id="settings-thread-extendedpanid"
+                type="text"
+                class="form-control form-control--mono"
+                .value=${this.extendedPanId}
+                @input=${(e: Event) => (this.extendedPanId = (e.target as HTMLInputElement).value)}
+                placeholder=${t("settings.thread.placeholders.extendedPanId")}
+                ?disabled=${!this.isConnected}
+              />
+            </div>
+            <div class="form-field">
+              <label class="form-label" for="settings-thread-networkkey">${t("settings.thread.networkKeyLabel")}</label>
+              <div class="form-control-wrap form-control-wrap--trailing">
                 <input
-                  id="ot-networkkey"
+                  id="settings-thread-networkkey"
                   type=${this.showNetworkKey ? "text" : "password"}
+                  class="form-control form-control--mono"
                   .value=${this.networkKey}
                   @input=${(e: Event) => (this.networkKey = (e.target as HTMLInputElement).value)}
-                  placeholder=${t("settings.openthread.placeholders.networkKey")}
+                  placeholder=${t("settings.thread.placeholders.networkKey")}
                   ?disabled=${!this.isConnected}
                 />
                 <button
                   type="button"
-                  class="ot-eye-btn"
+                  class="settings-thread-eye-btn"
                   @click=${() => (this.showNetworkKey = !this.showNetworkKey)}
-                  title=${this.showNetworkKey ? t("settings.openthread.hideKey") : t("settings.openthread.showKey")}
+                  title=${this.showNetworkKey ? t("settings.thread.hideKey") : t("settings.thread.showKey")}
+                  aria-label=${this.showNetworkKey ? t("settings.thread.hideKey") : t("settings.thread.showKey")}
                 >
-                  <span class="material-symbols-outlined">${this.showNetworkKey ? "visibility_off" : "visibility"}</span>
+                  <span class="material-symbols-outlined" aria-hidden>${this.showNetworkKey ? "visibility_off" : "visibility"}</span>
                 </button>
               </div>
-              <span class="ot-field-hint">${t("settings.openthread.networkKeyHint")}</span>
+              <p class="form-helper">${t("settings.thread.networkKeyHint")}</p>
             </div>
           </div>
-          <div class="ot-card-footer">
+          <div class="settings-thread-card-footer">
             <button type="button" class="form-btn form-btn--ghost" @click=${this._handleLoad} ?disabled=${!this.isConnected || this.loading}>
-              ${this.loading ? t("settings.openthread.loading") : t("settings.openthread.reload")}
+              ${this.loading ? t("settings.thread.loading") : t("settings.thread.reload")}
             </button>
             <button type="button" class="form-btn form-btn--primary" @click=${this._handleApply} ?disabled=${!this.isConnected || this.applying}>
-              ${this.applying ? t("settings.openthread.applying") : t("settings.openthread.apply")}
+              ${this.applying ? t("settings.thread.applying") : t("settings.thread.apply")}
             </button>
           </div>
         </div>

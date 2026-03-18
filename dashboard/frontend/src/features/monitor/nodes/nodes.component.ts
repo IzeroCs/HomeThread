@@ -1,11 +1,13 @@
 import { LitElement, html } from "lit";
 import { customElement, state } from "lit/decorators.js";
-import { store } from "@/shared/store/store";
-import { LitStoreController, shallowEqual } from "@/shared/store/lit-store-controller";
-import { selectBrStatus, selectChildTable, selectLocale, selectOtConfig, selectRouterTable, selectThreadState } from "@/shared/store/selectors";
-import { t } from "@/shared/i18n/i18n";
+import { store } from "@/core/store/store";
+import { createLocaleController } from "@/core/store/locale-controller";
+import { LitStoreController, shallowEqual } from "@/core/store/lit-store-controller";
+import { selectBrStatus, selectChildTable, selectOtConfig, selectRouterTable, selectThreadState } from "@/core/store/selectors";
+import { appBarActions } from "@/core/store/slices/appbar.slice";
+import { t } from "@/core/i18n/i18n";
 
-import "@shared/components/modal/modal.component";
+import "@/core/components/modal/modal.component";
 import "@monitor/nodes/nodes.style.scss";
 
 function normCol(name: string): string {
@@ -38,12 +40,7 @@ export class NodesComponent extends LitElement {
     return this;
   }
 
-  private readonly locale = new LitStoreController(
-    this,
-    store,
-    (s) => selectLocale(s),
-    Object.is
-  );
+  private readonly locale = createLocaleController(this);
 
   private readonly appState = new LitStoreController(
     this,
@@ -61,6 +58,7 @@ export class NodesComponent extends LitElement {
   @state() private selectedRow: SelectedRow | null = null;
   @state() private routerAgeOffsets: number[] = [];
   @state() private childAgeOffsets: number[] = [];
+  private _lastAppBarSig = "";
 
   private _routerRowsRef: string[][] | null = null;
   private _childRowsRef: string[][] | null = null;
@@ -132,6 +130,7 @@ export class NodesComponent extends LitElement {
   override disconnectedCallback() {
     if (this._routerTick) clearInterval(this._routerTick);
     if (this._childTick) clearInterval(this._childTick);
+    store.dispatch(appBarActions.clearAppBar());
     super.disconnectedCallback();
   }
 
@@ -162,6 +161,16 @@ export class NodesComponent extends LitElement {
 
   render() {
     void this.locale.value;
+    const appBar = {
+      heading: t("nodes.header.title"),
+      subtitle: t("nodes.header.subtitle"),
+      actions: [],
+    };
+    const sig = JSON.stringify(appBar);
+    if (sig !== this._lastAppBarSig) {
+      this._lastAppBarSig = sig;
+      store.dispatch(appBarActions.setAppBar(appBar));
+    }
     const { isConnected, routerTable, childTable, otConfig } = this.appState.value;
     const rH = routerTable?.headers ?? [];
     const cH = childTable?.headers ?? [];
@@ -201,10 +210,6 @@ export class NodesComponent extends LitElement {
     }
 
     return html`
-      <page-header
-        heading=${t("nodes.header.title")}
-        subtitle=${t("nodes.header.subtitle")}
-      ></page-header>
       <div class="page-container">
         <div class="nodes-page">
           <section class="nodes-section">
@@ -355,6 +360,7 @@ export class NodesComponent extends LitElement {
       </div>
     `;
   }
+
 }
 
 declare global {

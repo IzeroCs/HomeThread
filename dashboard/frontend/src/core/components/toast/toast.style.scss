@@ -1,0 +1,168 @@
+@use "styles/variables" as *;
+
+// Functional color tokens (component-scoped)
+$toast-panel-bg: $card-dark;
+$toast-panel-border: $brand-border;
+$toast-panel-shadow: $shadow-toast;
+$toast-panel-shadow-hover: $shadow-toast-hover;
+$toast-bar-success: $lq-good;
+$toast-bar-error: $error-color;
+$toast-bar-warning: $lq-warn;
+$toast-bar-info: $primary-blue;
+$toast-title-default: $text-dark;
+$toast-title-success: $lq-good;
+$toast-title-error: $error-color;
+$toast-title-warning: $lq-warn;
+$toast-title-info: $primary-blue;
+$toast-message-text: $text-dark-muted;
+$toast-close-icon: $text-dark-muted;
+$toast-close-icon-hover: $text-dark;
+
+toast-view {
+  display: contents;
+}
+
+.toast-list {
+  position: fixed;
+  top: 70px;
+  right: 20px;
+  z-index: 5000;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  pointer-events: none;
+  max-width: 380px;
+  width: auto;
+  align-items: flex-end;
+}
+
+.toast {
+  display: flex;
+  flex-direction: row;
+  background: $toast-panel-bg;
+  border: 1px solid $toast-panel-border;
+  border-radius: $border-radius-small;
+  box-shadow: $toast-panel-shadow;
+  padding: 0;
+  pointer-events: auto;
+  cursor: pointer;
+  animation: toast-slide-in 0.3s ease-out;
+  transition: transform 0.2s ease, opacity 0.2s ease, box-shadow 0.2s ease;
+  max-width: 100%;
+  overflow: hidden;
+
+  &.toast--exiting {
+    animation: toast-fade-out 0.3s ease-out forwards;
+  }
+
+  &:hover {
+    transform: translateX(-4px);
+    box-shadow: $toast-panel-shadow-hover;
+  }
+}
+
+.toast-bar {
+  width: 5px;
+  flex-shrink: 0;
+  border-radius: $border-radius-small 0 0 $border-radius-small;
+}
+
+.toast--success .toast-bar {
+  background: $toast-bar-success;
+}
+
+.toast--error .toast-bar {
+  background: $toast-bar-error;
+}
+
+.toast--warning .toast-bar {
+  background: $toast-bar-warning;
+}
+
+.toast--info .toast-bar {
+  background: $toast-bar-info;
+}
+
+.toast-body {
+  flex: 1;
+  position: relative;
+  padding: 14px 36px 14px 16px;
+  min-width: 0;
+}
+
+.toast-title {
+  margin: 0 0 4px 0;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.3;
+  color: $toast-title-default;
+}
+
+.toast--success .toast-title {
+  color: $toast-title-success;
+}
+
+.toast--error .toast-title {
+  color: $toast-title-error;
+}
+
+.toast--warning .toast-title {
+  color: $toast-title-warning;
+}
+
+.toast--info .toast-title {
+  color: $toast-title-info;
+}
+
+.toast-message {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 1.4;
+  color: $toast-message-text;
+}
+
+.toast-close {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  background: none;
+  border: none;
+  font-size: 22px;
+  line-height: 1;
+  color: $toast-close-icon;
+  cursor: pointer;
+  padding: 0;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.2s;
+
+  &:hover {
+    color: $toast-close-icon-hover;
+  }
+}
+
+@keyframes toast-slide-in {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes toast-fade-out {
+  from {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+}

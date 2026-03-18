@@ -1,5 +1,5 @@
-@use "shared/styles/variables" as *;
-@use "shared/styles/mixin" as *;
+@use "styles/variables" as *;
+@use "styles/mixin" as *;
 
 // Functional color tokens (component-scoped) — tên biến = vai trò trong topology map
 $t-grid: rgba($topology-accent, 0.07);

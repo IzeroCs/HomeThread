@@ -13,6 +13,13 @@ Giao tiếp BR ↔ backend theo hướng **notify-first**: Thread-Host push `CMD
 
 ## Recent Significant Changes
 
+### Frontend: AppLitElement base, app-layout, AppBar Redux, confirm-modal removal (unreleased)
+- **AppLitElement** (`frontend/src/core/app-lit-element.ts`): Base class extends LitElement; `static useLocale = true` (subclass set `static override useLocale = false` để tắt locale); `protected useLocale()`, `protected createStoreSlice(selector, equals?)`, `override createRenderRoot() { return this; }`. Component có i18n gọi `this.useLocale()` đầu render(); component không i18n (vd. AppShell) extend AppLitElement với `useLocale = false`.
+- **app-shell → app-layout**: Root component đổi tên thành **AppLayout** (`@customElement("app-layout")`); `frontend/index.html` mount `<app-layout></app-layout>`. AppLayout extend AppLitElement, `useLocale = false`, dùng `this.createStoreSlice(selectWsConnected)` và `this.createStoreSlice(selectAppBar)`.
+- **AppBar qua Redux**: Slice `appBar` (store) với `setAppBar({ heading, subtitle, actions, visible })`, `clearAppBar()`. Selector `selectAppBar`. AppLayout đọc `appBar` từ store và render `<page-header>` khi `appBar.visible`. Các page (status, nodes) dispatch `setAppBar(...)` khi render và `clearAppBar()` trong `disconnectedCallback`.
+- **confirm-modal bỏ (Option B)**: Xóa component `confirm-modal`; Settings Device dùng trực tiếp `<modal-dialog>` với `cancelAction`/`confirmAction`, logic countdown 5s giữ trong device.component.
+- **page-header (appbar)**: Component trong `core/components/appbar/` extend AppLitElement; tag vẫn `page-header`. Export `PageHeaderAction` dùng cho appBar slice.
+
 ### Frontend i18n (unreleased)
 - **Internationalization scaffold:** Thêm `frontend/src/shared/i18n/` với `t(key, params?)`, locale mặc định `en`, fallback `locale → en → key`. Locale lưu trong Redux store (`i18n` slice) và persist `localStorage` key `dashboard-thread.locale`.
 - **Full coverage (frontend/src):** Toàn bộ user-facing strings (UI text + aria/title + placeholders + FE fallback errors) đã chuyển sang `t("...")` và keys được tập trung trong `frontend/src/shared/i18n/locales/en.json`. `vi.json` để trống/partial cho bước dịch sau.
@@ -188,8 +195,13 @@ ROUTER_TABLE, CHILD_TABLE, JOINER_TABLE TX va ACK bi filter ra khoi console log 
 - `frontend/src/shared/components/modal/modal.component.ts` — portal render, ModalAction tone/style/icon/loading
 - `frontend/src/shared/components/spinner/spinner.component.ts` — spin-loader (global)
 - `frontend/src/shared/styles/_form.scss` — form-radio-row, form-field, form-control, form-select
-- `frontend/src/shared/components/toast-container/` — toast dark
-- `frontend/src/shared/components/modal/`, `confirm-modal/` — dark navy theme
+- `frontend/src/core/app-lit-element.ts` — base class (useLocale, createStoreSlice, createRenderRoot)
+- `frontend/src/app.ts` — AppLayout (app-layout), wsConnected + appBar từ createStoreSlice
+- `frontend/index.html` — mount `<app-layout></app-layout>`
+- `frontend/src/core/store/slices/appbar.slice.ts` — setAppBar, clearAppBar
+- `frontend/src/core/components/appbar/` — page-header (extends AppLitElement)
+- `frontend/src/core/components/toast/` — toast dark (element: toast-view)
+- `frontend/src/core/components/modal/` — modal-dialog (confirm-modal đã xóa; dùng modal-dialog + props)
 - `frontend/src/shared/components/sidebar/` — nav, Settings sub-items icons
 - `frontend/src/features/settings/components/system-tab/` — action cards, danger divider
 - `frontend/src/features/settings/components/openthread-config-form/` — ot-card, footer layout

@@ -1,81 +1,46 @@
-@use "shared/styles/variables" as *;
+@use "styles/variables" as *;
 
 // Functional color tokens (component-scoped)
-$system-page-title-text: $text-dark;
-$system-page-description-text: $text-dark-muted;
-$system-page-hint-text: $system-hint;
-$system-action-card-border: $brand-border;
-$system-action-card-shadow: $shadow-card-stronger;
-$system-card-restart-bg: $system-card-restart-bg;
-$system-card-factory-bg: $system-card-factory-bg;
-$system-card-factory-border: $red-divider;
-$system-restart-icon: $action-warn;
-$system-restart-icon-glow: $system-icon-warn-shadow;
-$system-factory-icon: $action-danger;
-$system-factory-icon-glow: $system-icon-danger-shadow;
-$system-card-info-title: $text-dark;
-$system-card-info-title-danger: $red-300;
-$system-card-info-text: $text-dark-muted;
-$system-card-info-warning-inline: $system-warning-inline;
-$system-btn-restart-bg: $action-warn;
-$system-btn-restart-text: $white;
-$system-btn-restart-hover-bg: $action-warn-hover;
-$system-btn-restart-glow: 0 0 20px rgba($action-warn, 0.45);
-$system-btn-factory-bg: $action-danger;
-$system-btn-factory-text: $white;
-$system-btn-factory-hover-bg: $action-danger-hover;
-$system-btn-factory-glow: 0 0 20px rgba($action-danger, 0.5);
-$system-danger-divider-line: $red-divider;
-$system-danger-divider-label: $system-danger-divider-text;
-$system-dot-inactive: $system-dot-bg;
-$system-dot-active: $action-warn;
-$system-dot-active-glow: $system-dot-active-shadow;
+$settings-device-action-card-border: $brand-border;
+$settings-device-action-card-shadow: $shadow-card-stronger;
+$settings-device-restart-icon: $action-warn;
+$settings-device-restart-icon-glow: drop-shadow(0 0 10px rgba($orange-500, 0.7));
+$settings-device-factory-icon: $action-danger;
+$settings-device-factory-icon-glow: drop-shadow(0 0 10px rgba($red-500, 0.7));
+$settings-device-card-info-title: $text-dark;
+$settings-device-card-info-title-danger: $red-300;
+$settings-device-card-info-text: $text-dark-muted;
+$settings-device-card-info-warning-inline: $red-300;
+$settings-device-btn-restart-glow: 0 0 20px rgba($action-warn, 0.45);
+$settings-device-btn-factory-glow: 0 0 20px rgba($action-danger, 0.5);
+$settings-device-danger-divider-line: $red-divider;
+$settings-device-danger-divider-label: $red-label;
+$settings-device-dot-inactive: rgba($white, 0.25);
+$settings-device-dot-active: $action-warn;
+$settings-device-dot-active-glow: 0 0 6px rgba($orange-500, 0.9);
+$settings-device-card-restart-bg: #111827;
+$settings-device-card-factory-bg: #111116;
 
 settings-device-view {
   display: contents;
 }
 
-.system-page {
-  // form-page container đã set max-width; chỉ tinh chỉnh thêm spacing cho System
+.settings-device-page {
   padding-top: 0.5rem;
 
-  .system-page-header {
-    margin-bottom: 2rem;
-  }
-
-  .system-page-title {
-    font-size: 1.8rem;
-    font-weight: 700;
-    color: $system-page-title-text;
-    letter-spacing: -0.02em;
-    margin-bottom: 0.45rem;
-  }
-
-  .system-page-description {
-    font-size: 0.875rem;
-    color: $system-page-description-text;
-  }
-
-  .system-page-hint {
-    margin-top: 0.6rem;
-    font-size: 0.8rem;
-    color: $system-page-hint-text;
-  }
-
-  // --- Card layout ---
-  .system-action-card {
+  .settings-device-action-card {
     border-radius: $border-radius;
     overflow: hidden;
     display: flex;
     align-items: stretch;
     min-height: 150px;
     position: relative;
-    box-shadow: $system-action-card-shadow;
-    border: 1px solid $system-action-card-border;
+    box-shadow: $settings-device-action-card-shadow;
+    border: 1px solid $settings-device-action-card-border;
     margin-bottom: 1.75rem;
   }
 
-  .system-card-image {
+  .settings-device-card-image {
     width: 260px;
     flex-shrink: 0;
     position: relative;
@@ -84,7 +49,7 @@ settings-device-view {
     justify-content: center;
     overflow: hidden;
 
-    .bg-img {
+    .settings-device-card-bg {
       position: absolute;
       inset: 0;
       background-image: url("https://images.unsplash.com/photo-1518770660439-4636190af475?w=900&q=80");
@@ -93,7 +58,7 @@ settings-device-view {
       filter: brightness(0.4) saturate(0.8);
     }
 
-    .icon {
+    .settings-device-card-icon {
       position: relative;
       z-index: 1;
       display: flex;
@@ -102,43 +67,42 @@ settings-device-view {
     }
   }
 
-  .system-card-restart {
-    background: $system-card-restart-bg;
+  .settings-device-card-restart {
+    background: $settings-device-card-restart-bg;
 
-    .system-card-image {
-      .bg-img {
+    .settings-device-card-image {
+      .settings-device-card-bg {
         filter: brightness(0.45) saturate(0.7);
       }
 
-      .icon svg {
-        color: $system-restart-icon;
-        filter: $system-restart-icon-glow;
+      .settings-device-card-icon svg {
+        color: $settings-device-restart-icon;
+        filter: $settings-device-restart-icon-glow;
       }
     }
   }
 
-  .system-card-factory {
-    background: $system-card-factory-bg;
-    border-color: $system-card-factory-border;
+  .settings-device-card-factory {
+    background: $settings-device-card-factory-bg;
+    border-color: $red-divider;
 
-    .system-card-image {
-      .bg-img {
+    .settings-device-card-image {
+      .settings-device-card-bg {
         filter: brightness(0.35) saturate(1.2) hue-rotate(-20deg);
       }
 
-      .icon svg {
-        color: $system-factory-icon;
-        filter: $system-factory-icon-glow;
+      .settings-device-card-icon svg {
+        color: $settings-device-factory-icon;
+        filter: $settings-device-factory-icon-glow;
       }
     }
 
-    .system-card-info h3 {
-      color: $system-card-info-title-danger;
+    .settings-device-card-info h3 {
+      color: $settings-device-card-info-title-danger;
     }
   }
 
-  // dot indicator
-  .dot-indicator {
+  .settings-device-dot-indicator {
     position: absolute;
     bottom: 12px;
     left: 16px;
@@ -147,19 +111,19 @@ settings-device-view {
     gap: 5px;
   }
 
-  .dot {
+  .settings-device-dot {
     width: 7px;
     height: 7px;
     border-radius: 50%;
-    background: $system-dot-inactive;
+    background: $settings-device-dot-inactive;
 
-    &.active {
-      background: $system-dot-active;
-      box-shadow: $system-dot-active-glow;
+    &.settings-device-dot--active {
+      background: $settings-device-dot-active;
+      box-shadow: $settings-device-dot-active-glow;
     }
   }
 
-  .system-card-content {
+  .settings-device-card-content {
     flex: 1;
     padding: 1.75rem 2rem 1.5rem;
     display: flex;
@@ -168,33 +132,32 @@ settings-device-view {
     gap: 1rem;
   }
 
-  .system-card-info {
+  .settings-device-card-info {
     h3 {
       font-size: 1.1rem;
       font-weight: 600;
-      color: $system-card-info-title;
+      color: $settings-device-card-info-title;
       margin-bottom: 0.5rem;
     }
 
     p {
       font-size: 0.85rem;
-      color: $system-card-info-text;
+      color: $settings-device-card-info-text;
       line-height: 1.6;
 
-      .warning-inline {
-        color: $system-card-info-warning-inline;
+      .settings-device-warning-inline {
+        color: $settings-device-card-info-warning-inline;
         font-weight: 600;
       }
     }
   }
 
-  .system-card-action {
+  .settings-device-card-action {
     display: flex;
     justify-content: flex-end;
   }
 
-  // Buttons
-  .system-btn {
+  .settings-device-btn {
     font-family: "IBM Plex Sans", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
     font-size: 0.875rem;
     font-weight: 600;
@@ -220,28 +183,27 @@ settings-device-view {
     }
   }
 
-  .system-btn-orange {
+  .settings-device-btn-orange {
     background: $action-warn;
     color: $white;
 
     &:hover:not(:disabled) {
       background: $action-warn-hover;
-      box-shadow: $system-btn-restart-glow;
+      box-shadow: $settings-device-btn-restart-glow;
     }
   }
 
-  .system-btn-red {
+  .settings-device-btn-red {
     background: $action-danger;
     color: $white;
 
     &:hover:not(:disabled) {
       background: $action-danger-hover;
-      box-shadow: $system-btn-factory-glow;
+      box-shadow: $settings-device-btn-factory-glow;
     }
   }
 
-  // Danger divider
-  .system-danger-divider {
+  .settings-device-danger-divider {
     display: flex;
     align-items: center;
     gap: 1rem;
@@ -252,7 +214,7 @@ settings-device-view {
       content: "";
       flex: 1;
       height: 1px;
-      background: $system-danger-divider-line;
+      background: $settings-device-danger-divider-line;
     }
 
     span {
@@ -260,24 +222,24 @@ settings-device-view {
       font-weight: 700;
       letter-spacing: 0.15em;
       text-transform: uppercase;
-      color: $system-danger-divider-label;
+      color: $settings-device-danger-divider-label;
     }
   }
 
   @media (max-width: 720px) {
-    .system-action-card {
+    .settings-device-action-card {
       flex-direction: row;
     }
 
-    .system-card-image {
+    .settings-device-card-image {
       width: 120px;
     }
 
-    .system-card-content {
+    .settings-device-card-content {
       padding: 1.25rem 1.5rem 1.25rem;
     }
 
-    .system-page-title {
+    .form-page-title {
       font-size: 1.5rem;
     }
   }

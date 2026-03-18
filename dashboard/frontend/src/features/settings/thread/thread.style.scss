@@ -1,56 +1,48 @@
-@use "shared/styles/variables" as *;
+@use "styles/variables" as *;
 
 // Functional color tokens (component-scoped)
-$ot-card-title-text: $text-dark;
-$ot-card-title-icon: $primary-blue;
-$ot-card-header-divider: $brand-border;
-$ot-toggle-label-text: $text-dark-muted;
-$ot-toggle-track-off-bg: $ot-toggle-track-bg;
-$ot-toggle-thumb-bg: $ot-toggle-thumb-bg;
-$ot-toggle-thumb-shadow: 0 1px 4px rgba($black, 0.4);
-$ot-toggle-track-on-bg: $primary-blue;
-$ot-toggle-track-on-glow: 0 0 10px rgba($primary-blue, 0.5);
-$ot-field-input-bg: $ot-input-bg;
-$ot-field-input-border: $ot-input-border;
-$ot-field-input-focus-border: $ot-input-focus-border;
-$ot-field-input-focus-ring: $ot-input-focus-ring;
-$ot-field-label-text: $text-dark-muted;
-$ot-eye-btn-icon: $text-dark-subtle;
-$ot-eye-btn-hover-icon: $text-dark-muted;
-$ot-field-hint-text: $ot-field-hint;
-$ot-card-footer-bg: $panel-footer-bg;
-$ot-card-footer-divider: $brand-border;
+$settings-thread-card-title-text: $text-dark;
+$settings-thread-card-title-icon: $primary-blue;
+$settings-thread-card-header-divider: $brand-border;
+$settings-thread-toggle-label-text: $text-dark-muted;
+$settings-thread-toggle-track-off-bg: $btn-ghost-border;
+$settings-thread-toggle-thumb-bg: $white;
+$settings-thread-toggle-thumb-shadow: 0 1px 4px rgba($black, 0.4);
+$settings-thread-toggle-track-on-bg: $primary-blue;
+$settings-thread-toggle-track-on-glow: 0 0 10px rgba($primary-blue, 0.5);
+$settings-thread-eye-btn-icon: $text-dark-subtle;
+$settings-thread-eye-btn-hover-icon: $text-dark-muted;
+$settings-thread-card-footer-bg: $panel-footer-bg;
+$settings-thread-card-footer-divider: $brand-border;
 
 settings-thread-view {
   display: contents;
 }
 
-// Card OpenThread không dùng padding của form-card → header/footer full-bleed
-.form-card.ot-card {
+.form-card.settings-thread-card {
   padding: 0;
-  overflow: hidden; // clip nội dung theo border-radius, footer không lồi góc
+  overflow: hidden;
 }
 
-.ot-card-header {
+.settings-thread-card-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding: 1.1rem 1.75rem;
-  border-bottom: 1px solid $ot-card-header-divider;
-  // Nội dung header có padding riêng, không bị padding form-card
+  border-bottom: 1px solid $settings-thread-card-header-divider;
 }
 
-.ot-card-title {
+.settings-thread-card-title {
   display: flex;
   align-items: center;
   gap: 0.65rem;
   font-size: 0.95rem;
   font-weight: 600;
-  color: $ot-card-title-text;
+  color: $settings-thread-card-title-text;
 }
 
-.ot-card-title-icon {
-  color: $ot-card-title-icon;
+.settings-thread-card-title-icon {
+  color: $settings-thread-card-title-icon;
   display: flex;
   align-items: center;
 
@@ -59,18 +51,18 @@ settings-thread-view {
   }
 }
 
-.ot-toggle-group {
+.settings-thread-toggle-group {
   display: flex;
   align-items: center;
   gap: 0.7rem;
 }
 
-.ot-toggle-label {
+.settings-thread-toggle-label {
   font-size: 0.85rem;
-  color: $ot-toggle-label-text;
+  color: $settings-thread-toggle-label-text;
 }
 
-.ot-toggle {
+.settings-thread-toggle {
   position: relative;
   width: 44px;
   height: 24px;
@@ -81,74 +73,47 @@ settings-thread-view {
   }
 }
 
-.ot-toggle-track {
+.settings-thread-toggle-track {
   position: absolute;
   inset: 0;
-  background: $ot-toggle-track-off-bg;
+  background: $settings-thread-toggle-track-off-bg;
   border-radius: 999px;
   transition: background 0.25s;
 }
 
-.ot-toggle-thumb {
+.settings-thread-toggle-thumb {
   position: absolute;
   top: 3px;
   left: 3px;
   width: 18px;
   height: 18px;
-  background: $ot-toggle-thumb-bg;
+  background: $settings-thread-toggle-thumb-bg;
   border-radius: 50%;
   transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-  box-shadow: $ot-toggle-thumb-shadow;
+  box-shadow: $settings-thread-toggle-thumb-shadow;
 }
 
-.ot-toggle input:checked + .ot-toggle-track {
-  background: $ot-toggle-track-on-bg;
-  box-shadow: $ot-toggle-track-on-glow;
+.settings-thread-toggle input:checked + .settings-thread-toggle-track {
+  background: $settings-thread-toggle-track-on-bg;
+  box-shadow: $settings-thread-toggle-track-on-glow;
 }
 
-.ot-toggle input:checked ~ .ot-toggle-thumb {
+.settings-thread-toggle input:checked ~ .settings-thread-toggle-thumb {
   transform: translateX(20px);
 }
 
-.ot-card-body {
+.settings-thread-card-body {
   padding: 1.75rem;
-  // khoảng cách giữa các group đã do .form-page-form xử lý
 }
 
-.ot-field-group {
-  label {
-    font-size: 0.78rem;
-    font-weight: 500;
-    color: $ot-field-label-text;
-    letter-spacing: 0.01em;
-  }
-}
-
-.ot-input-wrap {
-  position: relative;
-
-  input {
-    background: $ot-field-input-bg;
-    border-color: $ot-field-input-border;
-    font-family: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono",
-      "Courier New", monospace;
-    font-size: 0.9rem;
-
-    &:focus {
-      border-color: $ot-field-input-focus-border;
-      box-shadow: $ot-field-input-focus-ring;
-    }
-  }
-}
-
-.ot-eye-btn {
+.settings-thread-eye-btn {
   position: absolute;
-  right: 0.85rem;
+  right: 0.75rem;
   top: 50%;
   transform: translateY(-50%);
   background: none;
   border: none;
-  color: $ot-eye-btn-icon;
+  color: $settings-thread-eye-btn-icon;
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -156,26 +121,19 @@ settings-thread-view {
   transition: color 0.2s;
 
   .material-symbols-outlined {
-    font-size: 18px;
+    font-size: 1.25rem;
   }
 
   &:hover {
-    color: $ot-eye-btn-hover-icon;
+    color: $settings-thread-eye-btn-hover-icon;
   }
 }
 
-.ot-field-hint {
-  font-size: 0.75rem;
-  color: $ot-field-hint-text;
-  font-style: italic;
-}
-
-// Footer cùng chiều ngang với body (1.75rem), không full-bleed → không lồi hai bên
-.ot-card-footer {
+.settings-thread-card-footer {
   margin: 0;
   padding: 1.75rem;
-  border-top: 1px solid $ot-card-footer-divider;
-  background: $ot-card-footer-bg;
+  border-top: 1px solid $settings-thread-card-footer-divider;
+  background: $settings-thread-card-footer-bg;
   display: flex;
   justify-content: flex-end;
   gap: 0.75rem;

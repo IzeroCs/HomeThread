@@ -1,32 +1,34 @@
 import { LitElement, html } from "lit";
-import { customElement, property, state } from "lit/decorators.js";
-import type { BrConnectionConfigFromBackend } from "@shared/types/websocket.type";
+import { customElement, state } from "lit/decorators.js";
 import { BR_CONNECTION } from "shared/src/constants";
 import { validateBrConnectionConfig } from "shared/src/validation";
-import { LitStoreController } from "@/shared/store/lit-store-controller";
-import { store } from "@/shared/store/store";
-import { selectLocale } from "@/shared/store/selectors";
-import { t } from "@/shared/i18n/i18n";
+import { createLocaleController } from "@/core/store/locale-controller";
+import { store } from "@/core/store/store";
+import { showToast } from "@/core/store/toast";
+import { wsEmitConfigSave } from "@/core/store/thunks/ws.emit";
+import { wsTestBrConnect } from "@/core/store/thunks/ws.thunks";
+import { t } from "@/core/i18n/i18n";
 
 import "@settings/connection/connection.style.scss";
+import { LitStoreController } from "@/core/store/lit-store-controller"
+import { selectConfig } from "@/core/store/selectors";
 
 interface SettingsConnectionConfigForm {
-  brHost: string;
-  brPort: number;
+  host: string;
+  port: number;
   useMdns?: boolean;
 }
 
 const DEFAULT_CONNECTION_CONFIG: SettingsConnectionConfigForm = {
-  brHost: "Thread-Host.local",
-  brPort: BR_CONNECTION.DEFAULT_PORT,
+  host: "Thread-Host.local",
+  port: BR_CONNECTION.DEFAULT_PORT,
   useMdns: true,
 };
 
-
 function getFormErrors(formData: SettingsConnectionConfigForm): Partial<Record<keyof SettingsConnectionConfigForm, string>> {
-  const err = validateBrConnectionConfig(formData);
+  const err = validateBrConnectionConfig({ brHost: formData.host, brPort: formData.port });
   if (!err) return {};
-  return { brHost: err, brPort: err };
+  return { host: err, port: err };
 }
 
 @customElement("settings-connection-view")
@@ -35,34 +37,28 @@ export class SettingsConnectionViewComponent extends LitElement {
     return this;
   }
 
-  private readonly locale = new LitStoreController(
-    this,
-    store,
-    (s) => selectLocale(s),
-    Object.is
-  );
-
-  @property({ type: Object }) initialConfig: BrConnectionConfigFromBackend | null = null;
-  @property({ attribute: false }) onSave: (config: SettingsConnectionConfigForm) => void = () => {};
-  @property({ attribute: false }) onTestConnect: (config: { brHost: string; brPort: number }) => Promise<{ success: boolean; error?: string }> = async () => ({ success: false });
-  @property({ attribute: false }) showToast: (type: "success" | "error" | "warning" | "info", message: string, duration?: number) => void = () => {};
+  private readonly locale = createLocaleController(this);
+  private readonly configController = new LitStoreController(this, store, (s) => selectConfig(s), Object.is);
 
   @state() private formData: SettingsConnectionConfigForm = DEFAULT_CONNECTION_CONFIG;
   @state() private errors: Partial<Record<keyof SettingsConnectionConfigForm, string>> = {};
   @state() private testStatus: { type: "idle" | "loading" | "success" | "error"; message?: string } = { type: "idle" };
   @state() private testSucceeded = false;
+  private _configSynced = false;
 
-  override willUpdate(changed: Map<string, unknown>) {
-    if (changed.has("initialConfig")) {
-      if (this.initialConfig) {
+  override willUpdate() {
+    const config = this.configController.value;
+    if (config) {
+      if (!this._configSynced) {
         this.formData = {
-          brHost: this.initialConfig.brHost,
-          brPort: this.initialConfig.brPort,
-          useMdns: this.initialConfig.useMdns,
+          host: config.brHost,
+          port: config.brPort,
+          useMdns: config.useMdns,
         };
-      } else {
-        this.formData = DEFAULT_CONNECTION_CONFIG;
+        this._configSynced = true;
       }
+    } else {
+      this._configSynced = false;
     }
   }
 
@@ -77,13 +73,17 @@ export class SettingsConnectionViewComponent extends LitElement {
     if (Object.keys(newErrors).length > 0) {
       this.errors = newErrors;
       const firstError = Object.values(newErrors)[0];
-      if (firstError) this.showToast("error", firstError);
+      if (firstError) showToast("error", firstError);
       return;
     }
     this.errors = {};
     this.testStatus = { type: "idle" };
-    this.onSave(this.formData);
-    this.showToast("success", t("settings.brConnection.toast.saved"));
+    wsEmitConfigSave({
+      brHost: this.formData.host,
+      brPort: this.formData.port,
+      useMdns: this.formData.useMdns,
+    });
+    showToast("success", t("settings.connection.toast.saved"));
   }
 
   private async _handleTestConnect() {
@@ -91,24 +91,28 @@ export class SettingsConnectionViewComponent extends LitElement {
     if (Object.keys(newErrors).length > 0) {
       this.errors = newErrors;
       const firstError = Object.values(newErrors)[0];
-      if (firstError) this.showToast("error", firstError);
+      if (firstError) showToast("error", firstError);
       return;
     }
     this.errors = {};
-    if (!this.onTestConnect) {
-      this.showToast("error", t("settings.brConnection.errors.testNotAvailable"));
-      return;
-    }
     this.testStatus = { type: "loading" };
-    const result = await this.onTestConnect({ brHost: this.formData.brHost, brPort: this.formData.brPort });
-    if (result.success) {
-      this.testStatus = { type: "success", message: t("settings.brConnection.testStatus.success") };
-      this.testSucceeded = true;
-      this.showToast("success", t("settings.brConnection.toast.testSuccess"));
-    } else {
-      this.testStatus = { type: "error", message: result.error ?? t("settings.brConnection.testStatus.failedFallback") };
+    try {
+      const result = await store.dispatch(
+        wsTestBrConnect({ brHost: this.formData.host, brPort: this.formData.port })
+      ).unwrap();
+      if (result.success) {
+        this.testStatus = { type: "success", message: t("settings.connection.testStatus.success") };
+        this.testSucceeded = true;
+        showToast("success", t("settings.connection.toast.testSuccess"));
+      } else {
+        this.testStatus = { type: "error", message: result.error ?? t("settings.connection.testStatus.failedFallback") };
+        this.testSucceeded = false;
+        showToast("error", result.error ?? t("settings.connection.toast.testFailedFallback"));
+      }
+    } catch {
+      this.testStatus = { type: "error", message: t("settings.connection.testStatus.failedFallback") };
       this.testSucceeded = false;
-      this.showToast("error", result.error ?? t("settings.brConnection.toast.testFailedFallback"));
+      showToast("error", t("settings.connection.errors.testNotAvailable"));
     }
   }
 
@@ -118,7 +122,7 @@ export class SettingsConnectionViewComponent extends LitElement {
 
   private get _alertMessage(): string | null {
     if (this.testStatus.type === "error") return this.testStatus.message ?? null;
-    if (Object.keys(this.errors).length > 0) return this.errors.brHost || this.errors.brPort || t("settings.brConnection.errors.checkFieldsFallback");
+    if (Object.keys(this.errors).length > 0) return this.errors.host || this.errors.port || t("settings.connection.errors.checkFieldsFallback");
     return null;
   }
 
@@ -130,68 +134,62 @@ export class SettingsConnectionViewComponent extends LitElement {
     return html`
       <div class="form-page">
         <div class="form-page-header">
-          <h2 class="form-page-title">${t("settings.brConnection.title")}</h2>
-          <p class="form-page-description">${t("settings.brConnection.description")}</p>
+          <h2 class="form-page-title">${t("settings.connection.title")}</h2>
+          <p class="form-page-description">${t("settings.connection.description")}</p>
         </div>
 
         ${alertMessage
           ? html`<div class="form-page-alert form-page-alert-error" role="alert">${alertMessage}</div>`
           : ""}
 
-        <div class="form-card br-connection-card">
+        <div class="form-card settings-connection-card">
           <form @submit=${this._handleSubmit} class="form-page-form">
-            <div class="form-row-2 br-fields-row">
-              <div class="form-group">
-                <label for="brHost">${t("settings.brConnection.fields.hostLabel")}</label>
+            <div class="form-row-2">
+              <div class="form-field">
+                <label class="form-label" for="settings-connection-host">${t("settings.connection.fields.hostLabel")}</label>
                 <input
                   type="text"
-                  id="brHost"
-                  .value=${this.formData.brHost}
-                  @input=${(e: Event) => this._handleFieldChange("brHost", (e.target as HTMLInputElement).value)}
-                  placeholder=${t("settings.brConnection.fields.hostPlaceholder")}
-                  class=${this.errors.brHost ? "error" : ""}
+                  id="settings-connection-host"
+                  class="form-control ${this.errors.host ? "error" : ""}"
+                  .value=${this.formData.host}
+                  @input=${(e: Event) => this._handleFieldChange("host", (e.target as HTMLInputElement).value)}
+                  placeholder=${t("settings.connection.fields.hostPlaceholder")}
                 />
-                ${this.errors.brHost ? html`<span class="error-message">${this.errors.brHost}</span>` : ""}
-                <small class="form-hint">${t("settings.brConnection.fields.hostHint")}</small>
+                ${this.errors.host ? html`<p class="error-message">${this.errors.host}</p>` : ""}
+                <p class="form-helper">${t("settings.connection.fields.hostHint")}</p>
               </div>
-              <div class="form-group">
-                <label for="brPort">${t("settings.brConnection.fields.portLabel")}</label>
+              <div class="form-field">
+                <label class="form-label" for="settings-connection-port">${t("settings.connection.fields.portLabel")}</label>
                 <input
                   type="number"
-                  id="brPort"
-                  .value=${this.formData.brPort}
+                  id="settings-connection-port"
+                  class="form-control ${this.errors.port ? "error" : ""}"
+                  .value=${this.formData.port}
                   @input=${(e: Event) =>
-                    this._handleFieldChange("brPort", parseInt((e.target as HTMLInputElement).value, 10) || BR_CONNECTION.DEFAULT_PORT)}
+                    this._handleFieldChange("port", parseInt((e.target as HTMLInputElement).value, 10) || BR_CONNECTION.DEFAULT_PORT)}
                   min=${BR_CONNECTION.MIN_PORT}
                   max=${BR_CONNECTION.MAX_PORT}
-                  class=${this.errors.brPort ? "error" : ""}
                 />
-                ${this.errors.brPort ? html`<span class="error-message">${this.errors.brPort}</span>` : ""}
-                <small class="form-hint">
-                  ${t("settings.brConnection.fields.portHint", { defaultPort: BR_CONNECTION.DEFAULT_PORT })}
-                </small>
+                ${this.errors.port ? html`<p class="error-message">${this.errors.port}</p>` : ""}
+                <p class="form-helper">${t("settings.connection.fields.portHint", { defaultPort: BR_CONNECTION.DEFAULT_PORT })}</p>
               </div>
             </div>
-            <div class="br-connection-note">
-              <div class="br-connection-note-icon" aria-hidden="true">
-                <span class="material-symbols-outlined">info</span>
-              </div>
-              <p class="br-connection-note-text">
-                ${t("settings.brConnection.note")}
-              </p>
+            <div class="form-info-box">
+              <span class="material-symbols-outlined form-info-box__icon" aria-hidden="true">info</span>
+              <p class="form-info-box__text">${t("settings.connection.note")}</p>
             </div>
             <div class="form-actions">
               <button
                 type="button"
-                class="form-btn form-btn--ghost br-test-connect"
+                class="form-btn form-btn--ghost settings-connection-test-btn"
                 @click=${this._handleTestConnect}
                 ?disabled=${this.testStatus.type === "loading"}
               >
-                <span class="test-status-dot" aria-hidden="true"></span>
-                ${this.testStatus.type === "loading" ? t("settings.brConnection.actions.testing") : t("settings.brConnection.actions.test")}
+                <span class="settings-connection-test-dot" aria-hidden="true"></span>
+                ${this.testStatus.type === "loading" ? t("settings.connection.actions.testing") : t("settings.connection.actions.test")}
               </button>
-              <button type="submit" class="form-btn form-btn--primary br-submit" ?disabled=${!canSave}>
-                ${t("settings.brConnection.actions.save")}
+              <button type="submit" class="form-btn form-btn--primary" ?disabled=${!canSave}>
+                ${t("settings.connection.actions.save")}
               </button>
             </div>
           </form>

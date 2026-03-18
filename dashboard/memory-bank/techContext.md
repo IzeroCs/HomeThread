@@ -17,10 +17,11 @@ dashboard/                # npm workspaces root
 │       └── utils/         # logger, ipv6
 ├── frontend/              # Lit + Vite + SCSS
 │   └── src/
-│       ├── features/      # nodes, settings, status, topology (page + components)
-│       ├── shared/        # components, controllers, types, styles
-│       ├── app-shell.ts
-│       └── main.ts
+│       ├── app.ts         # AppLayout (custom element app-layout), entry component
+│       ├── main.ts        # imports index.scss + app
+│       ├── core/          # app-lit-element (base), store, components, i18n, styles, types, ws
+│       ├── features/      # monitor (nodes, status, joiner, topology), settings (connection, thread, device)
+│       └── index.html     # mount <app-layout></app-layout>
 ├── shared/                # Pure TypeScript package (types, events, constants, validation)
 └── memory-bank/           # Cursor Memory Bank files
 ```
@@ -52,7 +53,7 @@ Transport: TCP (net.Socket) to BR; CoAP (UDP 5683, udp6 listen [::]) from Thread
 | SCSS (sass) | ^1.83.0 | Styling |
 | socket.io-client | ^4.7.5 | WebSocket client |
 
-Frontend i18n: `frontend/src/shared/i18n/i18n.ts` (`t(key, params?)`, interpolate `{name}`), locales JSON trong `frontend/src/shared/i18n/locales/{en,vi}.json`. Locale state nằm trong Redux store slice `i18n` và persist `localStorage` key `dashboard-thread.locale`.
+Frontend: **AppLitElement** base (`core/app-lit-element.ts`): optional locale, `useLocale()`, `createStoreSlice()`, light DOM. Root component **app-layout** (AppLayout) trong `app.ts`; mount trong `index.html` là `<app-layout></app-layout>`. **AppBar** cấu hình qua Redux slice `appBar`; pages dispatch setAppBar/clearAppBar. i18n: `t(key, params?)` từ `core/i18n/`, locales trong `core/i18n/locales/`; locale trong store slice `i18n`, persist `dashboard-thread.locale`.
 
 ### Shared Package (`shared/`)
 
@@ -190,6 +191,6 @@ Frontend dev server: `host: true` → lang nghe `0.0.0.0:5173`. Tu may khac: `ht
 
 ## Known Technical Constraints
 
-- Frontend đang render **light DOM** (tắt Shadow DOM) bằng `createRenderRoot() { return this; }` trong các Lit components để CSS global áp trực tiếp.
+- Frontend **light DOM**: Base `AppLitElement` có `createRenderRoot() { return this; }`; components extend AppLitElement hoặc LitElement và override tương tự để CSS global áp trực tiếp.
 - TCP socket KHONG duoc dong khi server shutdown — BR van chay
 - FrameID tu dong tang, wrap 0-0xFF; pending map giu Promise cho moi frameId

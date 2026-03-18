@@ -1,11 +1,12 @@
 import { LitElement, html, svg } from "lit";
 import { customElement, property, state } from "lit/decorators.js";
-import type { OtTableData } from "@shared/types/websocket.type";
+import type { OtTableData } from "@/core/types/websocket.type";
 import type { ConnectionStatus } from "shared/src/types";
-import { store } from "@/shared/store/store";
-import { LitStoreController, shallowEqual } from "@/shared/store/lit-store-controller";
-import { selectBrStatus, selectChildTable, selectLocale, selectOtConfig, selectRouterTable } from "@/shared/store/selectors";
-import { t } from "@/shared/i18n/i18n";
+import { store } from "@/core/store/store";
+import { createLocaleController } from "@/core/store/locale-controller";
+import { LitStoreController, shallowEqual } from "@/core/store/lit-store-controller";
+import { selectBrStatus, selectChildTable, selectOtConfig, selectRouterTable } from "@/core/store/selectors";
+import { t } from "@/core/i18n/i18n";
 
 import "@monitor/topology/topology-map.style.scss";
 
@@ -368,12 +369,7 @@ export class TopologyMapComponent extends LitElement {
     return this;
   }
 
-  private readonly locale = new LitStoreController(
-    this,
-    store,
-    (s) => selectLocale(s),
-    Object.is
-  );
+  private readonly locale = createLocaleController(this);
 
   private readonly appState = new LitStoreController(
     this,
