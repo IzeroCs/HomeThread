@@ -1,6 +1,6 @@
-import type { ToastType } from "@/core/types/toast.type";
-import { store } from "@/core/store/store";
-import { toastActions } from "@/core/store/slices/toast.slice";
+import type { ToastType } from "@/shared/types/toast.type";
+import { store } from "@/store/store";
+import { toastActions } from "@/store/slices/toast.slice";
 
 /**
  * Hiển thị toast toàn cục (dispatch vào store). Component gọi showToast(...) thay vì nhận prop.

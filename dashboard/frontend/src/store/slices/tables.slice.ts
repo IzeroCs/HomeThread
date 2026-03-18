@@ -1,5 +1,5 @@
 import { createSlice, type PayloadAction } from "@reduxjs/toolkit";
-import type { OtTableData } from "@/core/types/websocket.type";
+import type { OtTableData } from "@/shared/types/websocket.type";
 
 export interface TablesState {
   routerTable: OtTableData | null;

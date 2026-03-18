@@ -1,11 +1,11 @@
 import { LitElement, html, svg } from "lit";
 import { customElement, property, state } from "lit/decorators.js";
-import type { OtTableData } from "@/core/types/websocket.type";
+import type { OtTableData } from "@/shared/types/websocket.type";
 import type { ConnectionStatus } from "shared/src/types";
-import { store } from "@/core/store/store";
-import { createLocaleController } from "@/core/store/locale-controller";
+import { store } from "@/store/store";
+import { createLocaleController } from "@/store/locale-controller";
 import { LitStoreController, shallowEqual } from "@namorix/core/store";
-import { selectBrStatus, selectChildTable, selectOtConfig, selectRouterTable } from "@/core/store/selectors";
+import { selectBrStatus, selectChildTable, selectOtConfig, selectRouterTable } from "@/store/selectors";
 import { t } from "@/core/i18n/i18n";
 
 import "@monitor/topology/topology-map.style.scss";

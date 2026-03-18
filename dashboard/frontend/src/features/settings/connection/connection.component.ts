@@ -2,16 +2,16 @@ import { LitElement, html } from "lit";
 import { customElement, state } from "lit/decorators.js";
 import { BR_CONNECTION } from "shared/src/constants";
 import { validateBrConnectionConfig } from "shared/src/validation";
-import { createLocaleController } from "@/core/store/locale-controller";
-import { store } from "@/core/store/store";
-import { showToast } from "@/core/store/toast";
-import { wsEmitConfigSave } from "@/core/store/thunks/ws.emit";
-import { wsTestBrConnect } from "@/core/store/thunks/ws.thunks";
+import { createLocaleController } from "@/store/locale-controller";
+import { store } from "@/store/store";
+import { showToast } from "@/store/toast";
+import { wsEmitConfigSave } from "@/store/thunks/ws.emit";
+import { wsTestBrConnect } from "@/store/thunks/ws.thunks";
 import { t } from "@/core/i18n/i18n";
 
 import "@settings/connection/connection.style.scss";
 import { LitStoreController } from "@namorix/core/store";
-import { selectConfig } from "@/core/store/selectors";
+import { selectConfig } from "@/store/selectors";
 
 interface SettingsConnectionConfigForm {
   host: string;

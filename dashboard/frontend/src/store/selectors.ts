@@ -1,4 +1,4 @@
-import type { RootState } from "@/core/store/store";
+import type { RootState } from "@/store/store";
 import type { Locale } from "@namorix/core/i18n";
 
 export const selectWsConnected = (s: RootState) => s.ws.connected;

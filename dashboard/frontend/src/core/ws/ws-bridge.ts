@@ -1,13 +1,13 @@
 import { io, type Socket } from "socket.io-client";
 import type { Store } from "@reduxjs/toolkit";
 import { EVENTS } from "shared/src/events";
-import type { RootState } from "@/core/store/store";
-import { wsConnectionActions } from "@/core/store/slices/ws-connection.slice";
-import { configActions } from "@/core/store/slices/config.slice";
-import { brActions } from "@/core/store/slices/br.slice";
-import { otActions } from "@/core/store/slices/ot.slice";
-import { tablesActions } from "@/core/store/slices/tables.slice";
-import { systemActions, type SystemInfo } from "@/core/store/slices/system.slice";
+import type { RootState } from "@/store/store";
+import { wsConnectionActions } from "@/store/slices/ws-connection.slice";
+import { configActions } from "@/store/slices/config.slice";
+import { brActions } from "@/store/slices/br.slice";
+import { otActions } from "@/store/slices/ot.slice";
+import { tablesActions } from "@/store/slices/tables.slice";
+import { systemActions, type SystemInfo } from "@/store/slices/system.slice";
 
 import type {
   BrConnectionConfigFromBackend,
@@ -15,7 +15,7 @@ import type {
   OtConfig,
   OtTableData,
   OtThreadState,
-} from "@/core/types/websocket.type";
+} from "@/shared/types/websocket.type";
 
 const WS_URL =
   import.meta.env?.VITE_WS_URL ??

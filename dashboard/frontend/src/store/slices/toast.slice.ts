@@ -1,5 +1,5 @@
 import { createSlice, type PayloadAction } from "@reduxjs/toolkit";
-import type { Toast, ToastType } from "@/core/types/toast.type";
+import type { Toast, ToastType } from "@/shared/types/toast.type";
 
 export interface ToastState {
   toasts: Toast[];

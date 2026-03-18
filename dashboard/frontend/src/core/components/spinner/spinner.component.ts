@@ -1,6 +1,6 @@
 import { LitElement, html } from "lit";
 import { customElement, property } from "lit/decorators.js";
-import { createLocaleController } from "@/core/store/locale-controller";
+import { createLocaleController } from "@/store/locale-controller";
 import { t } from "@/core/i18n/i18n";
 
 import "@core/components/spinner/spinner.style.scss";

@@ -1,7 +1,7 @@
 import { LitElement, html } from "lit";
 import { customElement, property, state } from "lit/decorators.js";
-import { createLocaleController } from "@/core/store/locale-controller";
-import { showToast } from "@/core/store/toast";
+import { createLocaleController } from "@/store/locale-controller";
+import { showToast } from "@/store/toast";
 import { t } from "@/core/i18n/i18n";
 
 import "@settings/thread/thread.style.scss";

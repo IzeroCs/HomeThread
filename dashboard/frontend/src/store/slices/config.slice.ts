@@ -1,5 +1,5 @@
 import { createSlice, type PayloadAction } from "@reduxjs/toolkit";
-import type { BrConnectionConfigFromBackend } from "@/core/types/websocket.type";
+import type { BrConnectionConfigFromBackend } from "@/shared/types/websocket.type";
 
 export interface ConfigState {
   config: BrConnectionConfigFromBackend | null;

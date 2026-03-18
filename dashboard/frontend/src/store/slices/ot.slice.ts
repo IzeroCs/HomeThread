@@ -1,5 +1,5 @@
 import { createSlice, type PayloadAction } from "@reduxjs/toolkit";
-import type { OtConfig, OtThreadState } from "@/core/types/websocket.type";
+import type { OtConfig, OtThreadState } from "@/shared/types/websocket.type";
 
 export interface OtState {
   otConfig: OtConfig | null;

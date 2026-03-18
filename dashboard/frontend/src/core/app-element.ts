@@ -1,9 +1,9 @@
 import type { ReactiveControllerHost } from "lit";
 import { LitElement } from "lit";
 import { LitStoreController } from "@namorix/core/store";
-import { store } from "@/core/store/store";
-import type { RootState } from "@/core/store/store";
-import { selectLocale } from "@/core/store/selectors";
+import { store } from "@/store/store";
+import type { RootState } from "@/store/store";
+import { selectLocale } from "@/store/selectors";
 
 type EqualityFn<T> = (a: T, b: T) => boolean;
 

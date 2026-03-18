@@ -1,8 +1,8 @@
 import { createAsyncThunk } from "@reduxjs/toolkit";
 import { EVENTS } from "shared/src/events";
-import type { RootState } from "@/core/store/store";
+import type { RootState } from "@/store/store";
 import { getSocket } from "@/core/ws/ws-bridge";
-import type { OtConfig } from "@/core/types/websocket.type";
+import type { OtConfig } from "@/shared/types/websocket.type";
 
 function onceWithTimeout<T>(
   event: string,

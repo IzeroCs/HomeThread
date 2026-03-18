@@ -80,10 +80,8 @@ export class NmxAppThread extends AppElement {
   render() {
     this.useLocale();
     return html`
-      <nmx-app-container>
-        <div class="tests">${t("common.loading")}</div>
-        <div class="test">Test</div>
-      </nmx-app-container>
+      <div class="tests">${t("common.loading")}</div>
+      <div class="test">xxxxTesssssst</div>
     `;
   }
 }
