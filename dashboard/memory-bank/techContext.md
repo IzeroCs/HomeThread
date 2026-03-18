@@ -53,11 +53,15 @@ Transport: TCP (net.Socket) to BR; CoAP (UDP 5683, udp6 listen [::]) from Thread
 | SCSS (sass) | ^1.83.0 | Styling |
 | socket.io-client | ^4.7.5 | WebSocket client |
 
-Frontend: Lit (light DOM). Styling đang migrate sang hệ token `--nmx-*` thông qua submodule `vendor/namorix-core` (bundle SCSS sources). Store/i18n dùng utilities từ `@namorix/core`:
-- Store: `createPluginStore` (`@namorix/core/store`)
-- Lit store controller: `LitStoreController`, `shallowEqual` (`@namorix/core/store`)
-- i18n runtime: `createStoreBoundTranslator`, `createLocaleStorage` (`@namorix/core/i18n`)
-- Locale storage (app-specific key) tách ở `frontend/src/core/i18n/locale-storage.ts` để tránh circular import.
+Frontend: **AppLitElement** base (`core/app-lit-element.ts`): optional locale, `useLocale()`, `createStoreSlice()`, light DOM. Root component **app-layout** (AppLayout) trong `app.ts`; mount trong `index.html` là `<app-layout></app-layout>`. **AppBar** cấu hình qua Redux slice `appBar`; pages dispatch setAppBar/clearAppBar. i18n: `t(key, params?)` từ `core/i18n/`, locales trong `core/i18n/locales/`; locale trong store slice `i18n`, persist `dashboard-thread.locale`.
+
+Core/shared integration (frontend):
+- `@namorix/core` is consumed via submodule `vendor/namorix-core` (dashboard/vendor/namorix-core).
+- When `dist/` is not built, Vite aliases `@namorix/core` → `vendor/namorix-core/src` and the app imports SCSS sources:
+  - `@namorix/core/styles/_tokens.scss`
+  - `@namorix/core/styles/nmx-base.scss`
+- Redux store uses `createPluginStore` from `@namorix/core/store`.
+- i18n runtime uses `@namorix/core/i18n` (`createStoreBoundTranslator`, `createLocaleStorage`, `normalizeLocale`). Locale persistence for the app uses storage key `dashboard-thread.locale` defined in `frontend/src/core/i18n/locale-storage.ts` to avoid circular imports with the store module.
 
 ### Shared Package (`shared/`)
 
@@ -158,7 +162,7 @@ SQLite (`better-sqlite3`, WAL mode). Migrations:
 
 - **tsconfig.json** `baseUrl` + `paths`: `@/*` → src, `@shared/*`, `@features/*`, `@nodes/*`, `@settings/*`, `@status/*`.
 - **vite.config.ts** `resolve.alias`: cùng mapping (resolve(__dirname, "src/...")).
-- **Core alias**: `@namorix/core` được alias về `../vendor/namorix-core/src` trong Vite khi dùng submodule source (chưa build `dist/`).
+- **Core alias (dev/submodule)**: Vite alias `@namorix/core` → `../vendor/namorix-core/src` để import từ source khi `dist/` chưa build.
 - **SCSS:** `css.preprocessorOptions.scss.loadPaths: [resolve(__dirname, "src")]` — trong .scss dùng `@use "shared/styles/variables"` hoặc `@use "shared/styles/form"` (đường dẫn từ `src/`).
 - Toàn bộ import TS/TSX dùng alias; không dùng relative `../../` qua nhiều cấp.
 - **Form styles:** `shared/styles/_form.scss` là bộ class chuẩn cho form (`.form-page`, `.form-card`, `.form-actions`, `.form-btn...`) và được import global từ `frontend/src/app.style.scss` để dùng nhất quán toàn app.
@@ -171,10 +175,7 @@ SQLite (`better-sqlite3`, WAL mode). Migrations:
 
 ## Styling Convention
 
-- **SCSS only** — không dùng Tailwind. Theme **dark navy**; palette thống nhất: $bg-app, $bg-sidebar, $bg-card, $bg-input; topology: $topology-accent, $bg-topology, $topology-offline; semantic: $action-primary/ghost/warn/danger, $danger-bg, $danger-border.
-- **RGB tokens (hex 6):** Màu dùng trong `rgba()` được định nghĩa trong `_variables.scss` là **hex 6 ký tự** (vd. `$black`, `$slate-850`, `$navy-900`, `$white`). Trong code luôn dùng `rgba($var, opacity)` — không chuyển opacity sang hex 8 ký tự. Cùng RGB → một biến, nhiều opacity.
-- **Functional naming (component):** File style từng component có thể khai báo biến local theo vai trò (vd. `$modal-overlay-bg`, `$sidebar-panel-shadow`) gán từ token: `rgba($navy-900, 0.78)`, `rgba($black, 0.45)`.
-- SCSS co-located (VD: `features/topology/topology-map.style.scss`); biến chung `shared/styles/_variables.scss`. Import: `@use "shared/styles/variables" as *`.
+- **Token-driven**: ưu tiên CSS variables (tokens) từ `@namorix/core` và base primitives trong `nmx-base.scss`. Các feature styles dùng `var(--nmx-*)` (hoặc legacy vars mapped từ tokens) thay vì Sass global tokens. Sass-only vẫn dùng cho layout rules và component-local styling.
 - **Modal/ConfirmModal:** Dark navy — overlay/blur, box $card-dark, nút Cancel ghost, Confirm danger/warning với hover glow; màu qua RGB tokens + rgba($var, opacity). **modal-dialog** dùng portal (render overlay vào body); **spin-loader** (shared/components/spinner) cho trạng thái loading; ModalAction tone/style/icon/loading. **Form:** _form.scss có form-radio-row (horizontal segmented control), form-field, form-control, form-select; modal alert/info trong modal.style.scss.
 - **Icons:** Material Symbols (Google Fonts); Sidebar nav dùng `speed`, `account_tree`, `settings`; Settings sub-items `lan`, `device_hub`, `warning`.
 - Font: Inter hoặc IBM Plex Sans (Google Fonts link trong index.html); `_fonts.scss` nếu dùng local.

@@ -121,12 +121,6 @@ CMD_STATE that bai **5 lan lien tiep** → dong transport + bat dau reconnect.
 - **i18n locale state:** Slice `i18n`, persist `dashboard-thread.locale`. Components dùng locale qua `createLocaleController` (hoặc AppLitElement.useLocale()).
 - **Path alias:** `@/`, `@core/*`, `@settings/*`, … (tsconfig + Vite). SCSS: `loadPaths: [src]` → `@use "styles/..."` / `shared/styles/...` tùy cấu trúc.
 
-### Core/shared adoption (Namorix Core submodule)
-- `vendor/namorix-core` is used as a shared library source during development.
-- Vite aliases `@namorix/core` → `vendor/namorix-core/src` so consumers can import from source without requiring `dist/`.
-- Store uses `createPluginStore` from `@namorix/core/store` with app-specific reducers.
-- i18n runtime uses `@namorix/core/i18n` (`createStoreBoundTranslator`, `createLocaleStorage`); locale storage is split into `frontend/src/core/i18n/locale-storage.ts` to avoid circular imports.
-
 ### Navigation (Sidebar)
 
 - Sidebar chia 2 group: **Monitor** (`status`, `nodes`, `joiner`, `topology`) và **Settings** (`settings-connection`, `settings-thread`, `settings-device`).
@@ -158,9 +152,12 @@ socket.emit("ot:setConfig", payload); // string literal
 
 ### Internationalization (i18n)
 
-- **Translation lookup:** `frontend/src/shared/i18n/i18n.ts` export `t(key, params?)` đọc locale từ store, lookup nested JSON dict theo dot-path, interpolate `{name}` placeholders, fallback `current locale → en → key`.
-- **Source of truth:** `frontend/src/shared/i18n/locales/en.json` là dictionary chính cho UI text. `vi.json` được dùng cho dịch sau (có thể trống/partial).
+- **Translation lookup:** `frontend/src/core/i18n/i18n.ts` export `t(key, params?)` dựa trên `@namorix/core/i18n` runtime (`createStoreBoundTranslator`, `getByPath`, `interpolate`) và locale trong store.
+- **Source of truth:** `frontend/src/core/i18n/locales/en.json` là dictionary chính cho UI text. `vi.json` được dùng cho dịch sau (có thể trống/partial).
 - **Scope:** Chỉ i18n **user-facing strings** do frontend render. Không i18n technical tokens (icon names, CSS classes, ids, event names, protocol/table column keys) và không dịch raw error string/data từ backend; chỉ dịch fallback messages do frontend tự tạo.
+
+#### Circular import guard (store ↔ i18n)
+- `detectInitialLocale/persistLocale` (locale storage) nằm trong `frontend/src/core/i18n/locale-storage.ts` để `frontend/src/core/store/store.ts` có thể import mà không tạo vòng lặp với `i18n.ts` (vốn bind translator vào store).
 
 ### Age Counter Pattern (Nodes)
 
@@ -210,8 +207,7 @@ Version hiển thị trên Status subtitle lấy từ `frontend/package.json`: V
 
 ### SCSS color tokens (RGB + functional naming)
 
-- **RGB tokens (hex 6):** Trong `_variables.scss`, màu dùng trong `rgba()` được định nghĩa là **hex 6 ký tự** (không hex 8). Opacity luôn là tham số thứ hai: `rgba($var, opacity)`. Cùng bộ RGB → một biến, nhiều chỗ dùng với opacity khác nhau (vd. `$slate-850` cho shadow 0.8, 0.85, 0.9, 0.95).
-- **Functional naming (component):** Mỗi file style component có thể định nghĩa biến local mô tả **vai trò** màu (vd. `$modal-overlay-bg`, `$confirm-cancel-hover-bg`) gán từ token global: `rgba($navy-900, 0.78)`, `rgba($slate-850, 0.85)`.
+- **Token-driven:** ưu tiên dùng CSS variables từ `@namorix/core` (tokens) và base primitives. Tránh Sass global tokens; chỉ dùng Sass variables khi thật sự cần trong phạm vi component.
 
 ### Sidebar Settings sub-items
 

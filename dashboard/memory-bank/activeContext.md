@@ -4,12 +4,11 @@
 
 Backend ổn định với BR qua TCP + frame protocol, CoAP device ingest, SRP register, WebSocket handlers theo decorator. Frontend đã **migrate React → Lit** (Web Components), **light DOM**. **Topology map** (feature `src/features/topology/`): pan/zoom, spotlight canvas, manual layout khi ≤10 node, node select (toggle, persistent), label box width động, edge ẩn khi offline, focus tabindex + :focus-visible; accent cyan `$topology-accent`, nền `$bg-topology`. **Settings UI:** palette thống nhất (bg-app/sidebar/card/input), button semantics (primary/ghost/warn/danger), danger zone subtle, Connected badge + sidebar dot cyan. **Cấu trúc:** feature-based (`nodes|settings|status|topology`, `src/shared`); path alias frontend/backend như trước. Tiếp theo: bảo trì, optional mDNS/scan BR, security nếu cần.
 
-Frontend đang được refactor theo hướng **core/shared** với submodule `vendor/namorix-core`:
-- Bundle core design tokens + base styles (SCSS sources) qua Vite, dùng hệ token `--nmx-*` làm nền.
-- Vite alias `@namorix/core` trỏ vào `vendor/namorix-core/src` để dùng source khi chưa build `dist/`.
-- Store chuyển sang `createPluginStore` từ `@namorix/core/store`.
-- i18n runtime chuyển sang `@namorix/core/i18n` (translator + store-bound translator). Đã tách `locale-storage.ts` để tránh circular import giữa store và i18n.
-- Dọn legacy Sass tokens: bỏ phụ thuộc `styles/_variables.scss` (đã xoá), chuyển dần sang CSS variables.
+Frontend đang được refactor để align với hệ “core/shared”:
+- `namorix-core` được thêm dưới dạng submodule `dashboard/vendor/namorix-core`
+- Bundle core tokens/base styles vào frontend qua Vite (import SCSS source khi `dist/` chưa build)
+- Store chuyển sang dùng `createPluginStore` từ `@namorix/core/store`
+- i18n runtime chuyển sang dùng `@namorix/core/i18n` (translator + locale storage + store-bound translator)
 
 Giao tiếp BR ↔ backend theo hướng **notify-first**: Thread-Host push `CMD_NOTIFY (0x45)` mask thay đổi; backend debounce + gộp mask rồi pull đúng phần cần (dataset/ip/tables). Backend vẫn **poll STATE mỗi 5s** để health-check và phát hiện role transitions; khi TCP connect thành công sẽ pull baseline để UI không stale nếu missed notify. **Không** theo dõi số client frontend (đã bỏ `frontendConnectionCount`, `onFrontendConnected`/`onFrontendDisconnected`); websocket.server.ts trên connection chỉ gửi config + last* data, không gọi communicate.
 
@@ -28,9 +27,8 @@ Giao tiếp BR ↔ backend theo hướng **notify-first**: Thread-Host push `CMD
 - **page-header (appbar)**: Component trong `core/components/appbar/` extend AppLitElement; tag vẫn `page-header`. Export `PageHeaderAction` dùng cho appBar slice.
 
 ### Frontend i18n (unreleased)
-- **Internationalization scaffold:** Thêm `frontend/src/shared/i18n/` với `t(key, params?)`, locale mặc định `en`, fallback `locale → en → key`. Locale lưu trong Redux store (`i18n` slice) và persist `localStorage` key `dashboard-thread.locale`.
-- **Full coverage (frontend/src):** Toàn bộ user-facing strings (UI text + aria/title + placeholders + FE fallback errors) đã chuyển sang `t("...")` và keys được tập trung trong `frontend/src/shared/i18n/locales/en.json`. `vi.json` để trống/partial cho bước dịch sau.
-- **i18n Ally:** Cấu hình locales path `frontend/src/shared/i18n/locales` và regex detect `t("...")` để highlight missing keys giữa `en.json`/`vi.json`.
+- **Internationalization scaffold:** `frontend/src/core/i18n/` với `t(key, params?)`, locale `"en"|"vi"`, fallback `locale → en → key`. Locale nằm trong store (`@namorix/core/store` i18n slice) và persist `localStorage` key `dashboard-thread.locale` qua module `core/i18n/locale-storage.ts`.
+- **Runtime**: sử dụng `@namorix/core/i18n` (`createStoreBoundTranslator`, `createLocaleStorage`, `normalizeLocale`).
 
 ### Settings navigation + form styling (unreleased)
 - **Settings pages:** Bỏ `settings-view` trung gian (không còn `activeSection`). Nav pages đổi sang `settings-connection`, `settings-thread`, `settings-device` và sidebar Settings group hiển thị tương ứng **Connection / Thread / Device**.
