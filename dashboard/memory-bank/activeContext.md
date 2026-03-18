@@ -4,6 +4,13 @@
 
 Backend ổn định với BR qua TCP + frame protocol, CoAP device ingest, SRP register, WebSocket handlers theo decorator. Frontend đã **migrate React → Lit** (Web Components), **light DOM**. **Topology map** (feature `src/features/topology/`): pan/zoom, spotlight canvas, manual layout khi ≤10 node, node select (toggle, persistent), label box width động, edge ẩn khi offline, focus tabindex + :focus-visible; accent cyan `$topology-accent`, nền `$bg-topology`. **Settings UI:** palette thống nhất (bg-app/sidebar/card/input), button semantics (primary/ghost/warn/danger), danger zone subtle, Connected badge + sidebar dot cyan. **Cấu trúc:** feature-based (`nodes|settings|status|topology`, `src/shared`); path alias frontend/backend như trước. Tiếp theo: bảo trì, optional mDNS/scan BR, security nếu cần.
 
+Frontend đang được refactor theo hướng **core/shared** với submodule `vendor/namorix-core`:
+- Bundle core design tokens + base styles (SCSS sources) qua Vite, dùng hệ token `--nmx-*` làm nền.
+- Vite alias `@namorix/core` trỏ vào `vendor/namorix-core/src` để dùng source khi chưa build `dist/`.
+- Store chuyển sang `createPluginStore` từ `@namorix/core/store`.
+- i18n runtime chuyển sang `@namorix/core/i18n` (translator + store-bound translator). Đã tách `locale-storage.ts` để tránh circular import giữa store và i18n.
+- Dọn legacy Sass tokens: bỏ phụ thuộc `styles/_variables.scss` (đã xoá), chuyển dần sang CSS variables.
+
 Giao tiếp BR ↔ backend theo hướng **notify-first**: Thread-Host push `CMD_NOTIFY (0x45)` mask thay đổi; backend debounce + gộp mask rồi pull đúng phần cần (dataset/ip/tables). Backend vẫn **poll STATE mỗi 5s** để health-check và phát hiện role transitions; khi TCP connect thành công sẽ pull baseline để UI không stale nếu missed notify. **Không** theo dõi số client frontend (đã bỏ `frontendConnectionCount`, `onFrontendConnected`/`onFrontendDisconnected`); websocket.server.ts trên connection chỉ gửi config + last* data, không gọi communicate.
 
 ### BR module naming/refactor (unreleased)

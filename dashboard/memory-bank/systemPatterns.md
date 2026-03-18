@@ -121,6 +121,12 @@ CMD_STATE that bai **5 lan lien tiep** → dong transport + bat dau reconnect.
 - **i18n locale state:** Slice `i18n`, persist `dashboard-thread.locale`. Components dùng locale qua `createLocaleController` (hoặc AppLitElement.useLocale()).
 - **Path alias:** `@/`, `@core/*`, `@settings/*`, … (tsconfig + Vite). SCSS: `loadPaths: [src]` → `@use "styles/..."` / `shared/styles/...` tùy cấu trúc.
 
+### Core/shared adoption (Namorix Core submodule)
+- `vendor/namorix-core` is used as a shared library source during development.
+- Vite aliases `@namorix/core` → `vendor/namorix-core/src` so consumers can import from source without requiring `dist/`.
+- Store uses `createPluginStore` from `@namorix/core/store` with app-specific reducers.
+- i18n runtime uses `@namorix/core/i18n` (`createStoreBoundTranslator`, `createLocaleStorage`); locale storage is split into `frontend/src/core/i18n/locale-storage.ts` to avoid circular imports.
+
 ### Navigation (Sidebar)
 
 - Sidebar chia 2 group: **Monitor** (`status`, `nodes`, `joiner`, `topology`) và **Settings** (`settings-connection`, `settings-thread`, `settings-device`).

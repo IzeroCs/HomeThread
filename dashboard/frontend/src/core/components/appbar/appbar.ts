@@ -1,4 +1,4 @@
-import { AppLitElement } from "@/core/app-lit-element";
+import { AppElement } from "@/core/app-element";
 import { html, type TemplateResult } from "lit";
 import { customElement, property } from "lit/decorators.js";
 
@@ -18,7 +18,7 @@ export interface PageHeaderAction {
 }
 
 @customElement("appbar-nav")
-export class PageHeaderComponent extends AppLitElement {
+export class PageHeaderComponent extends AppElement {
   @property({ type: String }) heading: string | null = null;
   @property({ type: String }) subtitle: string | null = null;
   @property({ attribute: false }) content: TemplateResult | null = null;

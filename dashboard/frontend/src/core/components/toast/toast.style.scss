@@ -1,23 +1,3 @@
-@use "styles/variables" as *;
-
-// Functional color tokens (component-scoped)
-$toast-panel-bg: $card-dark;
-$toast-panel-border: $brand-border;
-$toast-panel-shadow: $shadow-toast;
-$toast-panel-shadow-hover: $shadow-toast-hover;
-$toast-bar-success: $lq-good;
-$toast-bar-error: $error-color;
-$toast-bar-warning: $lq-warn;
-$toast-bar-info: $primary-blue;
-$toast-title-default: $text-dark;
-$toast-title-success: $lq-good;
-$toast-title-error: $error-color;
-$toast-title-warning: $lq-warn;
-$toast-title-info: $primary-blue;
-$toast-message-text: $text-dark-muted;
-$toast-close-icon: $text-dark-muted;
-$toast-close-icon-hover: $text-dark;
-
 toast-view {
   display: contents;
 }
@@ -39,10 +19,10 @@ toast-view {
 .toast {
   display: flex;
   flex-direction: row;
-  background: $toast-panel-bg;
-  border: 1px solid $toast-panel-border;
-  border-radius: $border-radius-small;
-  box-shadow: $toast-panel-shadow;
+  background: var(--surface-container-low, var(--surface-container));
+  border: 1px solid var(--outline-variant);
+  border-radius: 8px;
+  box-shadow: 0 4px 12px color-mix(in oklab, black 40%, transparent);
   padding: 0;
   pointer-events: auto;
   cursor: pointer;
@@ -57,30 +37,30 @@ toast-view {
 
   &:hover {
     transform: translateX(-4px);
-    box-shadow: $toast-panel-shadow-hover;
+    box-shadow: 0 6px 16px color-mix(in oklab, black 50%, transparent);
   }
 }
 
 .toast-bar {
   width: 5px;
   flex-shrink: 0;
-  border-radius: $border-radius-small 0 0 $border-radius-small;
+  border-radius: 8px 0 0 8px;
 }
 
 .toast--success .toast-bar {
-  background: $toast-bar-success;
+  background: var(--link-quality-good, var(--green-700, #22c55e));
 }
 
 .toast--error .toast-bar {
-  background: $toast-bar-error;
+  background: var(--red-500, #ef4444);
 }
 
 .toast--warning .toast-bar {
-  background: $toast-bar-warning;
+  background: var(--link-quality-warn, #f59e0b);
 }
 
 .toast--info .toast-bar {
-  background: $toast-bar-info;
+  background: var(--primary);
 }
 
 .toast-body {
@@ -95,23 +75,23 @@ toast-view {
   font-size: 14px;
   font-weight: 600;
   line-height: 1.3;
-  color: $toast-title-default;
+  color: var(--on-surface);
 }
 
 .toast--success .toast-title {
-  color: $toast-title-success;
+  color: var(--link-quality-good, var(--green-700, #22c55e));
 }
 
 .toast--error .toast-title {
-  color: $toast-title-error;
+  color: var(--red-500, #ef4444);
 }
 
 .toast--warning .toast-title {
-  color: $toast-title-warning;
+  color: var(--link-quality-warn, #f59e0b);
 }
 
 .toast--info .toast-title {
-  color: $toast-title-info;
+  color: var(--primary);
 }
 
 .toast-message {
@@ -119,7 +99,7 @@ toast-view {
   font-size: 14px;
   font-weight: 400;
   line-height: 1.4;
-  color: $toast-message-text;
+  color: var(--on-surface-variant);
 }
 
 .toast-close {
@@ -130,7 +110,7 @@ toast-view {
   border: none;
   font-size: 22px;
   line-height: 1;
-  color: $toast-close-icon;
+  color: var(--on-surface-variant);
   cursor: pointer;
   padding: 0;
   width: 24px;
@@ -141,7 +121,7 @@ toast-view {
   transition: color 0.2s;
 
   &:hover {
-    color: $toast-close-icon-hover;
+    color: var(--on-surface);
   }
 }
 

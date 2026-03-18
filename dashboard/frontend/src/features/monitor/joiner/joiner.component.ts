@@ -2,7 +2,7 @@ import { LitElement, html } from "lit";
 import { customElement, property, state } from "lit/decorators.js";
 import { store } from "@/core/store/store";
 import { createLocaleController } from "@/core/store/locale-controller";
-import { LitStoreController, shallowEqual } from "@/core/store/lit-store-controller";
+import { LitStoreController, shallowEqual } from "@namorix/core/store";
 import { selectBrStatus, selectJoinerTable, selectThreadState } from "@/core/store/selectors";
 import { wsCommissionerConnect } from "@/core/store/thunks/ws.thunks";
 import { wsEmitGetJoinerTable } from "@/core/store/thunks/ws.emit";

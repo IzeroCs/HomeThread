@@ -1,8 +1,5 @@
 @use "sass:color";
-@use "styles/tokens" as *;
 @use "styles/mixin" as *;
-@use "styles/spacing" as *;
-@use "styles/button" as *;
 
 .page-header {
   background: color-mix(in oklab, var(--background) 85%, transparent);

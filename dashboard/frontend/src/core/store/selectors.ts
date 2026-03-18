@@ -1,9 +1,10 @@
 import type { RootState } from "@/core/store/store";
+import type { Locale } from "@namorix/core/i18n";
 
 export const selectWsConnected = (s: RootState) => s.ws.connected;
 export const selectWsConnectError = (s: RootState) => s.ws.connectError;
 
-export const selectLocale = (s: RootState) => s.i18n.locale;
+export const selectLocale = (s: RootState): Locale => s.i18n.locale as Locale;
 
 export const selectBrStatus = (s: RootState) => s.br.brStatus;
 export const selectBrError = (s: RootState) => s.br.brError;

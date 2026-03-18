@@ -44,4 +44,3 @@ export const appBarSlice = createSlice({
 
 export const appBarReducer = appBarSlice.reducer;
 export const appBarActions = appBarSlice.actions;
-

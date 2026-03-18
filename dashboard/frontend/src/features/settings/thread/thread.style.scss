@@ -1,20 +1,3 @@
-@use "styles/variables" as *;
-
-// Functional color tokens (component-scoped)
-$settings-thread-card-title-text: $text-dark;
-$settings-thread-card-title-icon: $primary-blue;
-$settings-thread-card-header-divider: $brand-border;
-$settings-thread-toggle-label-text: $text-dark-muted;
-$settings-thread-toggle-track-off-bg: $btn-ghost-border;
-$settings-thread-toggle-thumb-bg: $white;
-$settings-thread-toggle-thumb-shadow: 0 1px 4px rgba($black, 0.4);
-$settings-thread-toggle-track-on-bg: $primary-blue;
-$settings-thread-toggle-track-on-glow: 0 0 10px rgba($primary-blue, 0.5);
-$settings-thread-eye-btn-icon: $text-dark-subtle;
-$settings-thread-eye-btn-hover-icon: $text-dark-muted;
-$settings-thread-card-footer-bg: $panel-footer-bg;
-$settings-thread-card-footer-divider: $brand-border;
-
 settings-thread-view {
   display: contents;
 }
@@ -29,7 +12,7 @@ settings-thread-view {
   align-items: center;
   justify-content: space-between;
   padding: 1.1rem 1.75rem;
-  border-bottom: 1px solid $settings-thread-card-header-divider;
+  border-bottom: 1px solid var(--outline-variant);
 }
 
 .settings-thread-card-title {
@@ -38,11 +21,11 @@ settings-thread-view {
   gap: 0.65rem;
   font-size: 0.95rem;
   font-weight: 600;
-  color: $settings-thread-card-title-text;
+  color: var(--on-surface);
 }
 
 .settings-thread-card-title-icon {
-  color: $settings-thread-card-title-icon;
+  color: var(--primary);
   display: flex;
   align-items: center;
 
@@ -59,7 +42,7 @@ settings-thread-view {
 
 .settings-thread-toggle-label {
   font-size: 0.85rem;
-  color: $settings-thread-toggle-label-text;
+  color: var(--on-surface-variant);
 }
 
 .settings-thread-toggle {
@@ -76,7 +59,7 @@ settings-thread-view {
 .settings-thread-toggle-track {
   position: absolute;
   inset: 0;
-  background: $settings-thread-toggle-track-off-bg;
+  background: var(--outline);
   border-radius: 999px;
   transition: background 0.25s;
 }
@@ -87,15 +70,15 @@ settings-thread-view {
   left: 3px;
   width: 18px;
   height: 18px;
-  background: $settings-thread-toggle-thumb-bg;
+  background: white;
   border-radius: 50%;
   transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-  box-shadow: $settings-thread-toggle-thumb-shadow;
+  box-shadow: 0 1px 4px color-mix(in oklab, black 40%, transparent);
 }
 
 .settings-thread-toggle input:checked + .settings-thread-toggle-track {
-  background: $settings-thread-toggle-track-on-bg;
-  box-shadow: $settings-thread-toggle-track-on-glow;
+  background: var(--primary);
+  box-shadow: 0 0 10px color-mix(in oklab, var(--primary) 50%, transparent);
 }
 
 .settings-thread-toggle input:checked ~ .settings-thread-toggle-thumb {
@@ -113,7 +96,7 @@ settings-thread-view {
   transform: translateY(-50%);
   background: none;
   border: none;
-  color: $settings-thread-eye-btn-icon;
+  color: var(--on-surface-variant);
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -125,18 +108,18 @@ settings-thread-view {
   }
 
   &:hover {
-    color: $settings-thread-eye-btn-hover-icon;
+    color: var(--on-surface);
   }
 }
 
 .settings-thread-card-footer {
   margin: 0;
   padding: 1.75rem;
-  border-top: 1px solid $settings-thread-card-footer-divider;
-  background: $settings-thread-card-footer-bg;
+  border-top: 1px solid var(--outline-variant);
+  background: var(--surface-container-low, var(--surface-container));
   display: flex;
   justify-content: flex-end;
   gap: 0.75rem;
-  border-bottom-left-radius: $border-radius;
-  border-bottom-right-radius: $border-radius;
+  border-bottom-left-radius: 12px;
+  border-bottom-right-radius: 12px;
 }

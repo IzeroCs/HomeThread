@@ -4,7 +4,7 @@ import { createLocaleController } from "@/core/store/locale-controller";
 import { showToast } from "@/core/store/toast";
 import { t } from "@/core/i18n/i18n";
 
-import "@core/components/modal/modal.component";
+import "@/core/components/modal/modal.component";
 import "@settings/device/device.style.scss";
 
 type ConfirmAction = "reset" | "factory" | null;

@@ -1,7 +1,4 @@
-@use "styles/tokens" as *;
 @use "styles/mixin" as *;
-@use "styles/spacing" as *;
-@use "styles/button" as *;
 
 .sidebar {
   background: var(--surface-container-low);

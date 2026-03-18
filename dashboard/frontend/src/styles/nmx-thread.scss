@@ -1,0 +1,23 @@
+:root {
+  // ---- Thread Role ----
+  --role-disconnected: #64748b; // disconnected/disabled indicator (legacy)
+  --role-disabled: #ed6c02; // disabled node
+  --role-child: #2563eb; // child node
+  --role-router: #7b1fa2; // router node
+  --role-leader: #10b981; // leader node
+
+  // ---- Link Quality ----
+  --link-quality-good: #22c55e; // good link quality
+  --link-quality-mid: #0ba3f5; // medium link quality
+  --link-quality-warn: #f59e0b; // warning link quality
+
+  // ---- BR State ----
+  --br-state-connected: #4ade80; // connected state
+  --br-state-disconnected: #f87171; // disconnected state
+
+  // ---- Topology ----
+  --nmx-th-topology-accent: #00c8ff;
+  --nmx-th-topology-bg: #081420;
+  --nmx-th-topology-ink: #050d1b;
+  --nmx-th-topology-offline: color-mix(in oklab, var(--on-surface-variant) 35%, transparent);
+}

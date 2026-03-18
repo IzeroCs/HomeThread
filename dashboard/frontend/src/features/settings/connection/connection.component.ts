@@ -10,7 +10,7 @@ import { wsTestBrConnect } from "@/core/store/thunks/ws.thunks";
 import { t } from "@/core/i18n/i18n";
 
 import "@settings/connection/connection.style.scss";
-import { LitStoreController } from "@/core/store/lit-store-controller"
+import { LitStoreController } from "@namorix/core/store";
 import { selectConfig } from "@/core/store/selectors";
 
 interface SettingsConnectionConfigForm {

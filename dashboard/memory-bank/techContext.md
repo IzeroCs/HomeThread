@@ -53,7 +53,11 @@ Transport: TCP (net.Socket) to BR; CoAP (UDP 5683, udp6 listen [::]) from Thread
 | SCSS (sass) | ^1.83.0 | Styling |
 | socket.io-client | ^4.7.5 | WebSocket client |
 
-Frontend: **AppLitElement** base (`core/app-lit-element.ts`): optional locale, `useLocale()`, `createStoreSlice()`, light DOM. Root component **app-layout** (AppLayout) trong `app.ts`; mount trong `index.html` là `<app-layout></app-layout>`. **AppBar** cấu hình qua Redux slice `appBar`; pages dispatch setAppBar/clearAppBar. i18n: `t(key, params?)` từ `core/i18n/`, locales trong `core/i18n/locales/`; locale trong store slice `i18n`, persist `dashboard-thread.locale`.
+Frontend: Lit (light DOM). Styling đang migrate sang hệ token `--nmx-*` thông qua submodule `vendor/namorix-core` (bundle SCSS sources). Store/i18n dùng utilities từ `@namorix/core`:
+- Store: `createPluginStore` (`@namorix/core/store`)
+- Lit store controller: `LitStoreController`, `shallowEqual` (`@namorix/core/store`)
+- i18n runtime: `createStoreBoundTranslator`, `createLocaleStorage` (`@namorix/core/i18n`)
+- Locale storage (app-specific key) tách ở `frontend/src/core/i18n/locale-storage.ts` để tránh circular import.
 
 ### Shared Package (`shared/`)
 
@@ -154,6 +158,7 @@ SQLite (`better-sqlite3`, WAL mode). Migrations:
 
 - **tsconfig.json** `baseUrl` + `paths`: `@/*` → src, `@shared/*`, `@features/*`, `@nodes/*`, `@settings/*`, `@status/*`.
 - **vite.config.ts** `resolve.alias`: cùng mapping (resolve(__dirname, "src/...")).
+- **Core alias**: `@namorix/core` được alias về `../vendor/namorix-core/src` trong Vite khi dùng submodule source (chưa build `dist/`).
 - **SCSS:** `css.preprocessorOptions.scss.loadPaths: [resolve(__dirname, "src")]` — trong .scss dùng `@use "shared/styles/variables"` hoặc `@use "shared/styles/form"` (đường dẫn từ `src/`).
 - Toàn bộ import TS/TSX dùng alias; không dùng relative `../../` qua nhiều cấp.
 - **Form styles:** `shared/styles/_form.scss` là bộ class chuẩn cho form (`.form-page`, `.form-card`, `.form-actions`, `.form-btn...`) và được import global từ `frontend/src/app.style.scss` để dùng nhất quán toàn app.

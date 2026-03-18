@@ -1,6 +1,6 @@
-import { LitElement } from "lit";
 import type { ReactiveControllerHost } from "lit";
-import { LitStoreController } from "@/core/store/lit-store-controller";
+import { LitElement } from "lit";
+import { LitStoreController } from "@namorix/core/store";
 import { store } from "@/core/store/store";
 import type { RootState } from "@/core/store/store";
 import { selectLocale } from "@/core/store/selectors";
@@ -12,16 +12,20 @@ type EqualityFn<T> = (a: T, b: T) => boolean;
  * createStoreSlice helper, and light DOM by default.
  * Set static override useLocale = false on subclasses that don't need i18n.
  */
-export abstract class AppLitElement extends LitElement {
+export abstract class AppElement extends LitElement {
   static useLocale = true;
 
+  override createRenderRoot() {
+    return this;
+  }
+
   protected readonly locale =
-    (this.constructor as typeof AppLitElement).useLocale
+    (this.constructor as typeof AppElement).useLocale
       ? this._createLocaleController()
       : null;
 
   private _createLocaleController() {
-    return new LitStoreController(this as ReactiveControllerHost,
+    return new LitStoreController(this as unknown as ReactiveControllerHost,
       store, (s) => selectLocale(s), Object.is);
   }
 
@@ -39,14 +43,10 @@ export abstract class AppLitElement extends LitElement {
     equals: EqualityFn<T> = Object.is
   ): LitStoreController<RootState, T> {
     return new LitStoreController(
-      this as ReactiveControllerHost,
+      this as unknown as ReactiveControllerHost,
       store,
       selector,
       equals
     );
-  }
-
-  override createRenderRoot() {
-    return this;
   }
 }

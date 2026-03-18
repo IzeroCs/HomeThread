@@ -1,61 +1,29 @@
-import en from "@/core/i18n/locales/en.json";
-import vi from "@/core/i18n/locales/vi.json";
-import type { Locale } from "@/core/i18n/i18n.types";
-import { store } from "@/core/store/store";
+import en from "@/core/i18n/locales/en.json"
+import vi from "@/core/i18n/locales/vi.json"
+import { store } from "@/core/store/store"
+import {
+  createStoreBoundTranslator,
+  type Locale,
+} from "@namorix/core/i18n"
+import { selectLocale } from "@/core/store/selectors"
 
-const STORAGE_KEY = "dashboard-thread.locale";
-
-type Dict = Record<string, unknown>;
+type Dict = Record<string, unknown>
 
 const DICTS: Record<Locale, Dict> = {
   en: en as Dict,
   vi: vi as Dict,
-};
-
-function getByPath(dict: Dict, key: string): unknown {
-  const parts = key.split(".").filter(Boolean);
-  let cur: unknown = dict;
-  for (const p of parts) {
-    if (cur && typeof cur === "object" && p in (cur as Record<string, unknown>)) {
-      cur = (cur as Record<string, unknown>)[p];
-    } else {
-      return undefined;
-    }
-  }
-  return cur;
 }
 
-function interpolate(template: string, params?: Record<string, string | number>): string {
-  if (!params) return template;
-  return template.replace(/\{(\w+)\}/g, (_m, name: string) => {
-    const v = params[name];
-    return v == null ? "" : String(v);
-  });
-}
+const translate = createStoreBoundTranslator({
+  store,
+  selectLocale,
+  dicts: DICTS,
+  fallbackLocale: "en",
+})
 
-export function detectInitialLocale(): Locale {
-  if (typeof window === "undefined") return "en";
-  const fromStorage = window.localStorage.getItem(STORAGE_KEY);
-  if (fromStorage === "en" || fromStorage === "vi") return fromStorage;
-  const nav = (navigator.language || "").toLowerCase();
-  if (nav.startsWith("vi")) return "vi";
-  return "en";
-}
-
-export function persistLocale(locale: Locale): void {
-  if (typeof window === "undefined") return;
-  window.localStorage.setItem(STORAGE_KEY, locale);
-}
-
-export function t(key: string, params?: Record<string, string | number>): string {
-  const state = store.getState() as unknown as { i18n?: { locale?: Locale } };
-  const locale: Locale = state.i18n?.locale ?? "en";
-
-  const primary = DICTS[locale];
-  const fallback = DICTS.en;
-
-  const v1 = getByPath(primary, key);
-  const v2 = getByPath(fallback, key);
-  const raw = typeof v1 === "string" ? v1 : typeof v2 === "string" ? v2 : key;
-  return interpolate(raw, params);
+export function t(
+  key: string,
+  params?: Record<string, string | number>,
+): string {
+  return translate(key, params)
 }

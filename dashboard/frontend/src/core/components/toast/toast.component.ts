@@ -2,7 +2,7 @@ import { LitElement, html } from "lit";
 import { customElement, state } from "lit/decorators.js";
 import type { ToastType } from "@/core/types/toast.type";
 import { createLocaleController } from "@/core/store/locale-controller";
-import { LitStoreController, shallowEqual } from "@/core/store/lit-store-controller";
+import { LitStoreController, shallowEqual } from "@namorix/core/store";
 import { store } from "@/core/store/store";
 import { selectToasts } from "@/core/store/selectors";
 import { toastActions } from "@/core/store/slices/toast.slice";

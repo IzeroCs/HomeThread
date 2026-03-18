@@ -3,7 +3,7 @@ import { customElement, property } from "lit/decorators.js";
 import type { NavPage } from "@/core/types/nav.type";
 import { store } from "@/core/store/store";
 import { createLocaleController } from "@/core/store/locale-controller";
-import { LitStoreController, shallowEqual } from "@/core/store/lit-store-controller";
+import { LitStoreController, shallowEqual } from "@namorix/core/store";
 import {
   selectBrStatus,
   selectChildTable,

@@ -1,15 +1,26 @@
-import { configureStore } from "@reduxjs/toolkit";
-import { wsConnectionReducer } from "./slices/ws-connection.slice";
-import { brReducer } from "./slices/br.slice";
-import { configReducer } from "./slices/config.slice";
-import { otReducer } from "./slices/ot.slice";
-import { tablesReducer } from "./slices/tables.slice";
-import { systemReducer } from "./slices/system.slice";
-import { i18nReducer } from "./slices/i18n.slice";
-import { toastReducer } from "./slices/toast.slice";
-import { appBarReducer } from "./slices/appbar.slice";
+import { createPluginStore, type BaseRootState } from "@namorix/core/store";
+import { wsConnectionReducer, type WsConnectionState } from "./slices/ws-connection.slice";
+import { brReducer, type BrState } from "./slices/br.slice";
+import { configReducer, type ConfigState } from "./slices/config.slice";
+import { otReducer, type OtState } from "./slices/ot.slice";
+import { tablesReducer, type TablesState } from "./slices/tables.slice";
+import { systemReducer, type SystemState } from "./slices/system.slice";
+import { toastReducer, type ToastState } from "./slices/toast.slice";
+import { appBarReducer, type AppBarState } from "./slices/appbar.slice";
+import { detectInitialLocale, persistLocale } from "@/core/i18n/locale-storage";
 
-export const store = configureStore({
+export type RootState = BaseRootState & {
+  ws: WsConnectionState;
+  br: BrState;
+  config: ConfigState;
+  ot: OtState;
+  tables: TablesState;
+  system: SystemState;
+  toast: ToastState;
+  appBar: AppBarState;
+};
+
+export const store = createPluginStore<RootState>({
   reducer: {
     ws: wsConnectionReducer,
     br: brReducer,
@@ -17,12 +28,14 @@ export const store = configureStore({
     ot: otReducer,
     tables: tablesReducer,
     system: systemReducer,
-    i18n: i18nReducer,
     toast: toastReducer,
     appBar: appBarReducer,
+  } as any,
+  i18n: {
+    detectLocale: detectInitialLocale,
+    persistLocale: (l) => persistLocale(l as any),
   },
 });
 
-export type RootState = ReturnType<typeof store.getState>;
 export type AppDispatch = typeof store.dispatch;
 

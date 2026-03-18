@@ -2,7 +2,7 @@ import { LitElement, html } from "lit";
 import { customElement, state } from "lit/decorators.js";
 import { store } from "@/core/store/store";
 import { createLocaleController } from "@/core/store/locale-controller";
-import { LitStoreController, shallowEqual } from "@/core/store/lit-store-controller";
+import { LitStoreController, shallowEqual } from "@namorix/core/store";
 import { selectBrStatus, selectChildTable, selectOtConfig, selectRouterTable, selectThreadState } from "@/core/store/selectors";
 import { appBarActions } from "@/core/store/slices/appbar.slice";
 import { t } from "@/core/i18n/i18n";

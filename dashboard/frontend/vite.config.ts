@@ -15,6 +15,7 @@ export default defineConfig({
   },
   resolve: {
     alias: {
+      "@namorix/core": resolve(__dirname, "../vendor/namorix-core/src"),
       "@": resolve(__dirname, "src"),
       "@core": resolve(__dirname, "src/core"),
       "@features": resolve(__dirname, "src/features"),
@@ -31,7 +32,7 @@ export default defineConfig({
   css: {
     preprocessorOptions: {
       scss: {
-        loadPaths: [resolve(__dirname, "src")],
+        loadPaths: [resolve(__dirname, "src"), resolve(__dirname, "../shared/src")],
       },
     },
   },
@@ -41,6 +42,9 @@ export default defineConfig({
   server: {
     port: 5173,
     host: true, // Lắng nghe trên 0.0.0.0 để truy cập từ LAN (vd. http://<IP-máy>:5173)
+    fs: {
+      allow: [resolve(__dirname, ".."), resolve(__dirname, "../shared")],
+    },
     proxy: {
       "/api": {
         target: "http://localhost:3000",
