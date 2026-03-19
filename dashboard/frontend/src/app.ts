@@ -5,7 +5,7 @@ import { NAV_ITEMS } from "./shared/constants/nav.constants";
 import { t } from "./core/i18n/i18n";
 import { AppBaseElement } from "@/core/AppBaseElement";
 
-import namorixLogo from "@namorix/assets/logo/namorix-logo-dark.svg?url";
+import namorixLogo from "@namorix/assets/logo/namorix-logo-symbol-light.svg?url";
 import "@namorix/core/components/layout/nmx-sidebar";
 
 @customElement("nmx-thread-app")
