@@ -8,6 +8,8 @@ import { brActions } from "@/store/slices/br.slice";
 import { otActions } from "@/store/slices/ot.slice";
 import { tablesActions } from "@/store/slices/tables.slice";
 import { systemActions, type SystemInfo } from "@/store/slices/system.slice";
+import { setLocale } from "@namorix/core/store";
+import { normalizeLocale } from "@namorix/core/i18n";
 
 import type {
   BrConnectionConfigFromBackend,
@@ -63,14 +65,26 @@ export function startWsBridge(store: Store<RootState>): void {
 
   socket.on(EVENTS.CONFIG_CURRENT, (data: BrConnectionConfigFromBackend | null) => {
     store.dispatch(configActions.configReceived(data));
+    const locale = (data as any)?.locale;
+    if (typeof locale === "string") {
+      store.dispatch(setLocale(normalizeLocale(locale)));
+    }
   });
 
   socket.on(EVENTS.CONFIG_SAVED, (data: BrConnectionConfigFromBackend) => {
     store.dispatch(configActions.configSaved(data));
+    const locale = (data as any)?.locale;
+    if (typeof locale === "string") {
+      store.dispatch(setLocale(normalizeLocale(locale)));
+    }
   });
 
   socket.on(EVENTS.CONFIG_UPDATED, (data: BrConnectionConfigFromBackend) => {
     store.dispatch(configActions.configUpdated(data));
+    const locale = (data as any)?.locale;
+    if (typeof locale === "string") {
+      store.dispatch(setLocale(normalizeLocale(locale)));
+    }
   });
 
   socket.on(EVENTS.CONFIG_ERROR, (data: { error?: string }) => {

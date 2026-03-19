@@ -1,6 +1,6 @@
 import { customElement } from "lit/decorators.js";
 import type { NavPage } from "@/shared/types/nav.type";
-import { createLocaleController } from "@/store/locale-controller";
+import { createLocaleController } from "@/core/i18n/locale-controller";
 import { t } from "@/core/i18n/i18n";
 import { NmxSidebar, type NmxSidebarNavGroup } from "@namorix/core/components";
 

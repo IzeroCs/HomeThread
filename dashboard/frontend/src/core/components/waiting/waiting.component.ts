@@ -1,6 +1,6 @@
 import { LitElement, html } from "lit";
 import { customElement } from "lit/decorators.js";
-import { createLocaleController } from "@/store/locale-controller";
+import { createLocaleController } from "@/core/i18n/locale-controller";
 import { t } from "@/core/i18n/i18n";
 
 import "@core/components/waiting/waiting.style.scss";

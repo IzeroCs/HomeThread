@@ -12,7 +12,7 @@ export class NmxMain extends LitElement {
   render() {
     return html`
       <nmx-app-container>
-        <nmx-app-thread></nmx-app-thread>
+        <nmx-thread-app></nmx-thread-app>
       </nmx-app-container>
     `;
   }

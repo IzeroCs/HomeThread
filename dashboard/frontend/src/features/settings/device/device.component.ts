@@ -1,6 +1,6 @@
 import { LitElement, html } from "lit";
 import { customElement, property, state } from "lit/decorators.js";
-import { createLocaleController } from "@/store/locale-controller";
+import { createLocaleController } from "@/core/i18n/locale-controller";
 import { showToast } from "@/store/toast";
 import { t } from "@/core/i18n/i18n";
 

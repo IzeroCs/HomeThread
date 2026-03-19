@@ -1,6 +1,6 @@
 import { LitElement, html, render, type TemplateResult } from "lit";
 import { customElement, property } from "lit/decorators.js";
-import { createLocaleController } from "@/store/locale-controller";
+import { createLocaleController } from "@/core/i18n/locale-controller";
 import { t } from "@/core/i18n/i18n";
 
 import "@core/components/modal/modal.style.scss";

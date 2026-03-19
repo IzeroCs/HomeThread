@@ -2,7 +2,7 @@ import { LitElement, html } from "lit";
 import { customElement, state } from "lit/decorators.js";
 import { BR_CONNECTION } from "shared/src/constants";
 import { validateBrConnectionConfig } from "shared/src/validation";
-import { createLocaleController } from "@/store/locale-controller";
+import { createLocaleController } from "@/core/i18n/locale-controller";
 import { store } from "@/store/store";
 import { showToast } from "@/store/toast";
 import { wsEmitConfigSave } from "@/store/thunks/ws.emit";

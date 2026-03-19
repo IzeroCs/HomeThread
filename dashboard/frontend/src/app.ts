@@ -1,12 +1,11 @@
 import { AppElement } from "@/core/app-element";
 import { html } from "lit";
 import { customElement } from "lit/decorators.js";
-import { t } from "@/core/i18n/i18n";
 
 import "@/app.style.scss";
 
-@customElement("nmx-app-thread")
-export class NmxAppThread extends AppElement {
+@customElement("nmx-thread-app")
+export class NmxThreadApp extends AppElement {
   // static override useLocale = false;
 
   // private static _wsBridgeStarted = false;
@@ -78,16 +77,20 @@ export class NmxAppThread extends AppElement {
   // }
 
   render() {
-    this.useLocale();
     return html`
-      <div class="tests">${t("common.loading")}</div>
-      <div class="test">xxxxTesssssst</div>
+      <div class="nmx-thread-app">
+        <nmx-sidebar
+          brand="OpenThread"
+          logo="https://namorix.com/logo.svg"
+          navGroups=${[]}
+        ></nmx-sidebar>
+      </div>
     `;
   }
 }
 
 declare global {
   interface HTMLElementTagNameMap {
-    "nmx-app-thread": NmxAppThread;
+    "nmx-thread-app": NmxThreadApp;
   }
 }

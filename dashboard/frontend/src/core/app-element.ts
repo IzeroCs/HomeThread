@@ -1,11 +1,8 @@
 import type { ReactiveControllerHost } from "lit";
 import { LitElement } from "lit";
-import { LitStoreController } from "@namorix/core/store";
-import { store } from "@/store/store";
-import type { RootState } from "@/store/store";
+import { subscribeStoreSelector } from "@namorix/core/store";
 import { selectLocale } from "@/store/selectors";
-
-type EqualityFn<T> = (a: T, b: T) => boolean;
+import { store } from "@/store/store";
 
 /**
  * Base element for app components: optional locale subscription,
@@ -25,28 +22,12 @@ export abstract class AppElement extends LitElement {
       : null;
 
   private _createLocaleController() {
-    return new LitStoreController(this as unknown as ReactiveControllerHost,
-      store, (s) => selectLocale(s), Object.is);
+    return subscribeStoreSelector(this as unknown as ReactiveControllerHost,
+      store, selectLocale, Object.is);
   }
 
-  /** Call at start of render() so the component re-renders when locale changes. */
-  protected useLocale(): void {
+  override willUpdate(_changed: Map<string, unknown>) {
+    super.willUpdate(_changed);
     if (this.locale) void this.locale.value;
-  }
-
-  /**
-   * Create a store slice controller. Use in field initializer, e.g.:
-   * private readonly items = this.createStoreSlice(selectItems, shallowEqual);
-   */
-  protected createStoreSlice<T>(
-    selector: (state: RootState) => T,
-    equals: EqualityFn<T> = Object.is
-  ): LitStoreController<RootState, T> {
-    return new LitStoreController(
-      this as unknown as ReactiveControllerHost,
-      store,
-      selector,
-      equals
-    );
   }
 }

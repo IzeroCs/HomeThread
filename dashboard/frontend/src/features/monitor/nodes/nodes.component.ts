@@ -1,7 +1,7 @@
 import { LitElement, html } from "lit";
 import { customElement, state } from "lit/decorators.js";
 import { store } from "@/store/store";
-import { createLocaleController } from "@/store/locale-controller";
+import { createLocaleController } from "@/core/i18n/locale-controller";
 import { LitStoreController, shallowEqual } from "@namorix/core/store";
 import { selectBrStatus, selectChildTable, selectOtConfig, selectRouterTable, selectThreadState } from "@/store/selectors";
 import { appBarActions } from "@/store/slices/appbar.slice";

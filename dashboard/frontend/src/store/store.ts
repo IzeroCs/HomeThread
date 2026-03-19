@@ -7,7 +7,6 @@ import { tablesReducer, type TablesState } from "./slices/tables.slice";
 import { systemReducer, type SystemState } from "./slices/system.slice";
 import { toastReducer, type ToastState } from "./slices/toast.slice";
 import { appBarReducer, type AppBarState } from "./slices/appbar.slice";
-import { detectInitialLocale, persistLocale } from "@/core/i18n/locale-storage";
 
 export type RootState = BaseRootState & {
   ws: WsConnectionState;
@@ -31,10 +30,6 @@ export const store = createPluginStore<RootState>({
     toast: toastReducer,
     appBar: appBarReducer,
   } as any,
-  i18n: {
-    detectLocale: detectInitialLocale,
-    persistLocale: (l) => persistLocale(l as any),
-  },
 });
 
 export type AppDispatch = typeof store.dispatch;
