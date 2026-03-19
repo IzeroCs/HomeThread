@@ -9,6 +9,10 @@ import "./app";
 
 @customElement("nmx-main")
 export class NmxMain extends LitElement {
+  protected override createRenderRoot() {
+    return this;
+  }
+
   render() {
     return html`
       <nmx-app-container>

@@ -1,11 +1,15 @@
 import { AppElement } from "@/core/app-element";
 import { html } from "lit";
 import { customElement } from "lit/decorators.js";
+import { NAV_ITEMS } from "./shared/constants/nav.constants";
+import { t } from "./core/i18n/i18n";
 
 import "@/app.style.scss";
+import namorixLogo from "@namorix/assets/logo/namorix-logo-dark.svg?url";
 
 @customElement("nmx-thread-app")
 export class NmxThreadApp extends AppElement {
+
   // static override useLocale = false;
 
   // private static _wsBridgeStarted = false;
@@ -76,13 +80,26 @@ export class NmxThreadApp extends AppElement {
   //   }
   // }
 
+  private buildNavGroups() {
+    return NAV_ITEMS.map((group) => ({
+      label: t(group.label),
+      items: group.items.map((item) => ({
+        page: item.page,
+        label: t(item.label),
+        icon: item.icon,
+      })),
+    }));
+  }
+
   render() {
+    const navGroups = this.buildNavGroups();
+
     return html`
       <div class="nmx-thread-app">
         <nmx-sidebar
           brand="OpenThread"
-          logo="https://namorix.com/logo.svg"
-          navGroups=${[]}
+          .logo=${namorixLogo}
+          .navGroups=${navGroups}
         ></nmx-sidebar>
       </div>
     `;

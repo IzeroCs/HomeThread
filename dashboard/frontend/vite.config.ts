@@ -16,7 +16,7 @@ export default defineConfig({
   resolve: {
     alias: {
       "@namorix/core": resolve(__dirname, "../vendor/namorix-core/src"),
-      "@namorix/assets": resolve(__dirname, "../vendor/namorix-assets/src"),
+      "@namorix/assets": resolve(__dirname, "../vendor/namorix-assets"),
       "@": resolve(__dirname, "src"),
       "@core": resolve(__dirname, "src/core"),
       "@features": resolve(__dirname, "src/features"),
