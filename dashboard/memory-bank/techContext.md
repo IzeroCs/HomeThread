@@ -53,7 +53,7 @@ Transport: TCP (net.Socket) to BR; CoAP (UDP 5683, udp6 listen [::]) from Thread
 | SCSS (sass) | ^1.83.0 | Styling |
 | socket.io-client | ^4.7.5 | WebSocket client |
 
-Frontend: **AppLitElement** base (`core/app-lit-element.ts`): optional locale, `useLocale()`, `createStoreSlice()`, light DOM. Root component **app-layout** (AppLayout) trong `app.ts`; mount trong `index.html` là `<app-layout></app-layout>`. **AppBar** cấu hình qua Redux slice `appBar`; pages dispatch setAppBar/clearAppBar. i18n: `t(key, params?)` từ `core/i18n/`, locales trong `core/i18n/locales/`; locale trong store slice `i18n`, persist `dashboard-thread.locale`.
+Frontend: **AppBaseElement** (`core/AppBaseElement.ts`) extends **NmxStoreElement** (core): store qua `getStore()`, optional locale, `createStoreSlice()`, light DOM (kế thừa từ NmxBaseElement). Root: `index.html` mount `<nmx-main>` → nmx-app-container → **nmx-thread-app** (NmxThreadApp trong app.ts). **AppBar** qua Redux slice `appBar`; pages dispatch setAppBar/clearAppBar. i18n: `t(key, params?)` từ `core/i18n/`, locales trong `core/i18n/locales/`; locale trong store slice `i18n` (default `"en"`), set từ user settings bằng `setLocale` (không persist localStorage).
 
 Core/shared integration (frontend):
 - `@namorix/core` is consumed via submodule `vendor/namorix-core` (dashboard/vendor/namorix-core).
@@ -61,7 +61,13 @@ Core/shared integration (frontend):
   - `@namorix/core/styles/_tokens.scss`
   - `@namorix/core/styles/nmx-base.scss`
 - Redux store uses `createPluginStore` from `@namorix/core/store`.
-- i18n runtime uses `@namorix/core/i18n` (`createStoreBoundTranslator`, `createLocaleStorage`, `normalizeLocale`). Locale persistence for the app uses storage key `dashboard-thread.locale` defined in `frontend/src/core/i18n/locale-storage.ts` to avoid circular imports with the store module.
+- i18n: `initI18n({ store, dicts, fallbackLocale })` từ `@namorix/core/i18n`; locale mặc định `"en"`, set từ user settings bằng `store.dispatch(setLocale(...))` (không detect/persist localStorage). Component cần locale: extend AppBaseElement (có sẵn locale subscription) hoặc dùng `createLocaleController` từ `@/core/i18n/locale-controller`.
+- Base elements: **NmxBaseElement** (core, font + light DOM only), **NmxStoreElement** (core, abstract `getStore()`, locale subscription, `createStoreSlice`), **AppBaseElement** (frontend, extends NmxStoreElement, `getStore() { return store }`).
+- `@namorix/assets` is consumed via submodule `vendor/namorix-assets` for shared branding assets (e.g. logo SVG imported with `?url`).
+
+Assets usage (frontend):
+- Ensure Vite alias `@namorix/assets` points to the assets submodule root (or its `src/` if it uses that layout).
+- Import SVG as URL: `import logoUrl from "@namorix/assets/logo/namorix-logo-dark.svg?url"` and pass it to components as a string (e.g. `<img src=${logoUrl}>`).
 
 ### Shared Package (`shared/`)
 

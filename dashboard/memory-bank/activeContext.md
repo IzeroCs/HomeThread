@@ -4,11 +4,12 @@
 
 Backend ổn định với BR qua TCP + frame protocol, CoAP device ingest, SRP register, WebSocket handlers theo decorator. Frontend đã **migrate React → Lit** (Web Components), **light DOM**. **Topology map** (feature `src/features/topology/`): pan/zoom, spotlight canvas, manual layout khi ≤10 node, node select (toggle, persistent), label box width động, edge ẩn khi offline, focus tabindex + :focus-visible; accent cyan `$topology-accent`, nền `$bg-topology`. **Settings UI:** palette thống nhất (bg-app/sidebar/card/input), button semantics (primary/ghost/warn/danger), danger zone subtle, Connected badge + sidebar dot cyan. **Cấu trúc:** feature-based (`nodes|settings|status|topology`, `src/shared`); path alias frontend/backend như trước. Tiếp theo: bảo trì, optional mDNS/scan BR, security nếu cần.
 
-Frontend đang được refactor để align với hệ “core/shared”:
-- `namorix-core` được thêm dưới dạng submodule `dashboard/vendor/namorix-core`
-- Bundle core tokens/base styles vào frontend qua Vite (import SCSS source khi `dist/` chưa build)
-- Store chuyển sang dùng `createPluginStore` từ `@namorix/core/store`
-- i18n runtime chuyển sang dùng `@namorix/core/i18n` (translator + locale storage + store-bound translator)
+Frontend align với hệ “core/shared”:
+- `namorix-core` submodule tại `dashboard/vendor/namorix-core`
+- Bundle core tokens/base styles qua Vite (alias `@namorix/core` → source khi `dist/` chưa build)
+- Store: `createPluginStore` từ `@namorix/core/store`; locale mặc định `"en"`, set từ user settings qua `setLocale`
+- i18n: `initI18n({ store, dicts, fallbackLocale })` từ `@namorix/core/i18n`; không còn locale-storage/detect
+- Base classes: **NmxBaseElement** (core, font + light DOM), **NmxStoreElement** (core, store + locale + createStoreSlice), **AppBaseElement** (frontend, extends NmxStoreElement, `getStore()` → app store)
 
 Giao tiếp BR ↔ backend theo hướng **notify-first**: Thread-Host push `CMD_NOTIFY (0x45)` mask thay đổi; backend debounce + gộp mask rồi pull đúng phần cần (dataset/ip/tables). Backend vẫn **poll STATE mỗi 5s** để health-check và phát hiện role transitions; khi TCP connect thành công sẽ pull baseline để UI không stale nếu missed notify. **Không** theo dõi số client frontend (đã bỏ `frontendConnectionCount`, `onFrontendConnected`/`onFrontendDisconnected`); websocket.server.ts trên connection chỉ gửi config + last* data, không gọi communicate.
 
@@ -19,16 +20,18 @@ Giao tiếp BR ↔ backend theo hướng **notify-first**: Thread-Host push `CMD
 
 ## Recent Significant Changes
 
-### Frontend: AppLitElement base, app-layout, AppBar Redux, confirm-modal removal (unreleased)
-- **AppLitElement** (`frontend/src/core/app-lit-element.ts`): Base class extends LitElement; `static useLocale = true` (subclass set `static override useLocale = false` để tắt locale); `protected useLocale()`, `protected createStoreSlice(selector, equals?)`, `override createRenderRoot() { return this; }`. Component có i18n gọi `this.useLocale()` đầu render(); component không i18n (vd. AppShell) extend AppLitElement với `useLocale = false`.
-- **app-shell → app-layout**: Root component đổi tên thành **AppLayout** (`@customElement("app-layout")`); `frontend/index.html` mount `<app-layout></app-layout>`. AppLayout extend AppLitElement, `useLocale = false`, dùng `this.createStoreSlice(selectWsConnected)` và `this.createStoreSlice(selectAppBar)`.
-- **AppBar qua Redux**: Slice `appBar` (store) với `setAppBar({ heading, subtitle, actions, visible })`, `clearAppBar()`. Selector `selectAppBar`. AppLayout đọc `appBar` từ store và render `<page-header>` khi `appBar.visible`. Các page (status, nodes) dispatch `setAppBar(...)` khi render và `clearAppBar()` trong `disconnectedCallback`.
-- **confirm-modal bỏ (Option B)**: Xóa component `confirm-modal`; Settings Device dùng trực tiếp `<modal-dialog>` với `cancelAction`/`confirmAction`, logic countdown 5s giữ trong device.component.
-- **page-header (appbar)**: Component trong `core/components/appbar/` extend AppLitElement; tag vẫn `page-header`. Export `PageHeaderAction` dùng cho appBar slice.
+### Frontend: base elements, root, AppBar, confirm-modal removal (unreleased)
+- **Core base (namorix-core):** **NmxBaseElement** — font injection + light DOM (`createRenderRoot() { return this }`). **NmxStoreElement** extends NmxBaseElement: abstract `getStore()`, optional locale subscription (`static useLocale`), `createStoreSlice(selector, equals?)`; dùng `subscribeStoreSelector` + `selectLocale` từ core.
+- **AppBaseElement** (`frontend/src/core/AppBaseElement.ts`): extends `NmxStoreElement<RootState>`, implements `getStore() { return store }`. Component app extend AppBaseElement khi cần store/locale.
+- **Root:** `index.html` mount `<nmx-main>`; NmxMain render `<nmx-app-container>` với slot `<nmx-thread-app></nmx-thread-app>`. **NmxThreadApp** (app.ts) extends AppBaseElement, tag `nmx-thread-app`.
+- **AppBar qua Redux**: Slice `appBar` với `setAppBar`, `clearAppBar`; selector `selectAppBar`. Layout đọc store và render `<page-header>` khi `appBar.visible`; pages dispatch setAppBar/clearAppBar.
+- **confirm-modal bỏ**: Settings Device dùng trực tiếp `<modal-dialog>` với countdown trong component.
+- **page-header**: Component appbar extend base; tag `page-header`, export `PageHeaderAction`.
 
 ### Frontend i18n (unreleased)
-- **Internationalization scaffold:** `frontend/src/core/i18n/` với `t(key, params?)`, locale `"en"|"vi"`, fallback `locale → en → key`. Locale nằm trong store (`@namorix/core/store` i18n slice) và persist `localStorage` key `dashboard-thread.locale` qua module `core/i18n/locale-storage.ts`.
+- **Internationalization scaffold:** `frontend/src/core/i18n/` với `t(key, params?)`, locale `"en"|"vi"`, fallback `locale → en → key`. Locale nằm trong store (`@namorix/core/store` i18n slice) với mặc định `"en"`, và được set từ user settings/config bằng `setLocale`.
 - **Runtime**: sử dụng `@namorix/core/i18n` (`createStoreBoundTranslator`, `createLocaleStorage`, `normalizeLocale`).
+  - **Update**: Locale mặc định `"en"` và được set từ user settings/config bằng `store.dispatch(setLocale(...))`. Không còn detect/persist locale bằng localStorage và không còn module `core/i18n/locale-storage.ts`. `t()` được tạo qua `initI18n({ store, dicts, fallbackLocale })`.
 
 ### Settings navigation + form styling (unreleased)
 - **Settings pages:** Bỏ `settings-view` trung gian (không còn `activeSection`). Nav pages đổi sang `settings-connection`, `settings-thread`, `settings-device` và sidebar Settings group hiển thị tương ứng **Connection / Thread / Device**.
@@ -200,9 +203,9 @@ ROUTER_TABLE, CHILD_TABLE, JOINER_TABLE TX va ACK bi filter ra khoi console log 
 - `frontend/src/shared/components/modal/modal.component.ts` — portal render, ModalAction tone/style/icon/loading
 - `frontend/src/shared/components/spinner/spinner.component.ts` — spin-loader (global)
 - `frontend/src/shared/styles/_form.scss` — form-radio-row, form-field, form-control, form-select
-- `frontend/src/core/app-lit-element.ts` — base class (useLocale, createStoreSlice, createRenderRoot)
-- `frontend/src/app.ts` — AppLayout (app-layout), wsConnected + appBar từ createStoreSlice
-- `frontend/index.html` — mount `<app-layout></app-layout>`
+- `frontend/src/core/AppBaseElement.ts` — app base (extends NmxStoreElement, getStore → store)
+- `frontend/src/app.ts` — NmxThreadApp (nmx-thread-app), extends AppBaseElement
+- `frontend/index.html` — mount `<nmx-main>`; main.ts → nmx-app-container → nmx-thread-app
 - `frontend/src/core/store/slices/appbar.slice.ts` — setAppBar, clearAppBar
 - `frontend/src/core/components/appbar/` — page-header (extends AppLitElement)
 - `frontend/src/core/components/toast/` — toast dark (element: toast-view)

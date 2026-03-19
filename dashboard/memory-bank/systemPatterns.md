@@ -18,7 +18,7 @@ WebSocketServer    (backend/src/websocket/websocket.server.ts)
 WebSocketController (frontend/src/shared/controllers/websocket.controller.ts)
     ↓ Lit reactive state update
 UI Components (Lit custom elements)
-  (frontend/src/features/*, frontend/src/core/components/, app-layout)
+  (frontend/src/features/*, frontend/src/core/components/, nmx-thread-app)
 
 Thread-Node  -- CoAP UDP 5683 (IPv6 [::]), path /device/
     ↓ GET /device/ping; POST /device/register/info (keys 0–6, key 0 = mac); POST /device/register/entity (key 0 = mac + key 1 array, ENTITY_KEYS 0–6, disabled); POST /device/update/topology (role-based: child 3,4,5; router/leader key 6 neighbors), /device/update/state (key 1 array, STATE_KEYS 0–6, không available)
@@ -114,12 +114,13 @@ CMD_STATE that bai **5 lan lien tiep** → dong transport + bat dau reconnect.
 
 ### State Management
 
-- **AppLitElement** (`frontend/src/core/app-lit-element.ts`): Base class cho Lit components. Cung cấp optional locale (`static useLocale = true`; subclass set `false` để tắt), `useLocale()`, `createStoreSlice(selector, equals?)`, `createRenderRoot() { return this }`. Component có i18n gọi `this.useLocale()` đầu render(); component không i18n (vd. app-layout) extend với `static override useLocale = false`.
-- **Root layout:** `app-layout` (AppLayout trong `app.ts`) thay `app-shell`; mount trong `index.html` là `<app-layout></app-layout>`. AppLayout dùng `createStoreSlice(selectWsConnected)` và `createStoreSlice(selectAppBar)`; render sidebar, toast, page-header (theo appBar store), main.
-- **AppBar (Redux):** Slice `appBar` (heading, subtitle, actions, visible). Pages (status, nodes) dispatch `setAppBar(...)` khi render và `clearAppBar()` trong `disconnectedCallback`. Chỉ AppLayout đọc appBar và render `<page-header>`.
+- **Base elements (core):** **NmxBaseElement** — font injection + light DOM only. **NmxStoreElement** extends NmxBaseElement: abstract `getStore()`, optional locale subscription (`static useLocale`), `createStoreSlice(selector, equals?)`; dùng `subscribeStoreSelector` + `selectLocale` từ `@namorix/core/store`.
+- **AppBaseElement** (`frontend/src/core/AppBaseElement.ts`): extends `NmxStoreElement<RootState>`, implements `getStore() { return store }`. Component cần store/locale extend AppBaseElement.
+- **Root:** `index.html` mount `<nmx-main>`; NmxMain → `<nmx-app-container>` slot `<nmx-thread-app>`. **NmxThreadApp** (app.ts) extends AppBaseElement. Layout có thể dùng `createStoreSlice(selectWsConnected)`, `createStoreSlice(selectAppBar)`; render sidebar, toast, page-header, main.
+- **AppBar (Redux):** Slice `appBar` (heading, subtitle, actions, visible). Pages dispatch setAppBar/clearAppBar; layout đọc store và render `<page-header>`.
 - `WebSocketController` / Redux store: WS state + actions; socket URL `window.location.origin` (Vite proxy).
-- **i18n locale state:** Slice `i18n`, persist `dashboard-thread.locale`. Components dùng locale qua `createLocaleController` (hoặc AppLitElement.useLocale()).
-- **Path alias:** `@/`, `@core/*`, `@settings/*`, … (tsconfig + Vite). SCSS: `loadPaths: [src]` → `@use "styles/..."` / `shared/styles/...` tùy cấu trúc.
+- **i18n:** Slice `i18n` trong store, mặc định `"en"`; set từ user settings bằng `store.dispatch(setLocale(...))`. Components re-render khi locale đổi nhờ subscribe `selectLocale` (NmxStoreElement locale hoặc `createLocaleController` từ `@/core/i18n/locale-controller`).
+- **Path alias:** `@/`, `@core/*`, `@settings/*`, … (tsconfig + Vite). SCSS: `loadPaths: [src]` → `@use "styles/..."` / `shared/styles/...`.
 
 ### Navigation (Sidebar)
 
@@ -156,8 +157,8 @@ socket.emit("ot:setConfig", payload); // string literal
 - **Source of truth:** `frontend/src/core/i18n/locales/en.json` là dictionary chính cho UI text. `vi.json` được dùng cho dịch sau (có thể trống/partial).
 - **Scope:** Chỉ i18n **user-facing strings** do frontend render. Không i18n technical tokens (icon names, CSS classes, ids, event names, protocol/table column keys) và không dịch raw error string/data từ backend; chỉ dịch fallback messages do frontend tự tạo.
 
-#### Circular import guard (store ↔ i18n)
-- `detectInitialLocale/persistLocale` (locale storage) nằm trong `frontend/src/core/i18n/locale-storage.ts` để `frontend/src/core/store/store.ts` có thể import mà không tạo vòng lặp với `i18n.ts` (vốn bind translator vào store).
+#### Locale flow (store ↔ i18n)
+- Không còn detect/persist locale (localStorage). `t()` từ `initI18n({ store, dicts, fallbackLocale })`; locale set bằng `store.dispatch(setLocale(...))` sau khi load user settings (vd. từ WebSocket config).
 
 ### Age Counter Pattern (Nodes)
 

@@ -91,17 +91,18 @@ dashboard/
 
 ## i18n (đa ngôn ngữ)
 
-- **Runtime**: `frontend/src/shared/i18n/i18n.ts` export `t(key, params?)` (lookup theo dot-path trong JSON) + interpolate `{name}`. Locale lấy từ Redux store (`i18n` slice) và được persist ở `localStorage` key `dashboard-thread.locale`.
-- **Locales**: `frontend/src/shared/i18n/locales/en.json` (source-of-truth, đầy đủ UI text), `frontend/src/shared/i18n/locales/vi.json` (dịch sau; có thể trống/partial).
+- **Runtime**: `frontend/src/core/i18n/i18n.ts` export `t(key, params?)` qua `initI18n()` từ `@namorix/core/i18n` (store-bound translator + interpolate `{name}`).
+- **Locale source**: Locale nằm trong Redux store (`i18n` slice) với mặc định `"en"`. Sau khi load user settings/config từ backend, frontend dispatch `setLocale(...)` để đổi ngôn ngữ (không còn detect/persist locale bằng localStorage).
+- **Locales**: `frontend/src/core/i18n/locales/en.json` (source-of-truth, đầy đủ UI text), `frontend/src/core/i18n/locales/vi.json` (dịch sau; có thể trống/partial).
 - **Scope**: Chỉ dịch **user-facing strings** do frontend render. Không dịch technical tokens (icon names, CSS classes, ids, event names, protocol/table column keys) và không dịch raw error string/data từ backend; chỉ dịch fallback messages do frontend tự tạo.
 
 ### i18n Ally (VSCode)
 
 Nếu dùng i18n Ally để highlight/auto-detect keys cho custom `t()`:
 
-- `i18n-ally.localesPaths`: `["frontend/src/shared/i18n/locales"]`
 - `i18n-ally.enabledFrameworks`: `["custom"]`
 - `i18n-ally.pathMatcher`: `"{locale}.json"`
+- `i18n-ally.localesPaths`: `["frontend/src/core/i18n/locales"]`
 - `i18n-ally.regex.key`: `t\\(\\s*['\"`]([^'\"`]+)['\"`]\\s*(?:,|\\))`
 
 ## Cấu hình

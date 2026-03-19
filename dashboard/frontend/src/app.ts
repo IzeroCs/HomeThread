@@ -1,17 +1,15 @@
-import { AppElement } from "@/core/app-element";
+
 import { html } from "lit";
 import { customElement } from "lit/decorators.js";
 import { NAV_ITEMS } from "./shared/constants/nav.constants";
 import { t } from "./core/i18n/i18n";
+import { AppBaseElement } from "@/core/AppBaseElement";
 
-import "@/app.style.scss";
 import namorixLogo from "@namorix/assets/logo/namorix-logo-dark.svg?url";
+import "@namorix/core/components/layout/nmx-sidebar";
 
 @customElement("nmx-thread-app")
-export class NmxThreadApp extends AppElement {
-
-  // static override useLocale = false;
-
+export class NmxThreadApp extends AppBaseElement {
   // private static _wsBridgeStarted = false;
 
   // private readonly wsConnected = this.createStoreSlice((s) => selectWsConnected(s), Object.is);
