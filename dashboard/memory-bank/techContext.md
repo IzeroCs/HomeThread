@@ -63,6 +63,7 @@ Core/shared integration (frontend):
 - Redux store uses `createPluginStore` from `@namorix/core/store`.
 - i18n: `initI18n({ store, dicts, fallbackLocale })` từ `@namorix/core/i18n`; locale mặc định `"en"`, set từ user settings bằng `store.dispatch(setLocale(...))` (không detect/persist localStorage). Component cần locale: extend AppBaseElement (có sẵn locale subscription) hoặc dùng `createLocaleController` từ `@/core/i18n/locale-controller`.
 - Base elements: **NmxBaseElement** (core, font + light DOM only), **NmxStoreElement** (core, abstract `getStore()`, locale subscription, `createStoreSlice`), **AppBaseElement** (frontend, extends NmxStoreElement, `getStore() { return store }`).
+- WebSocket: **createWsBridge** từ `@namorix/core/ws` — builder `onConnect`/`onDisconnect`/`onConnectError`/`on(event, handler)`/`start()`/`stop()`/`getSocket()`; **onceWithTimeout** cùng package. Toast: **initToast**, **showToast** từ `@namorix/core`; dual mode (standalone → store, desktop → CustomEvent "nmx-action"). Chi tiết: `documents/namorix-core-usage.md`.
 - `@namorix/assets` is consumed via submodule `vendor/namorix-assets` for shared branding assets (e.g. logo SVG imported with `?url`).
 
 Assets usage (frontend):
@@ -171,7 +172,7 @@ SQLite (`better-sqlite3`, WAL mode). Migrations:
 - **Core alias (dev/submodule)**: Vite alias `@namorix/core` → `../vendor/namorix-core/src` để import từ source khi `dist/` chưa build.
 - **SCSS:** `css.preprocessorOptions.scss.loadPaths: [resolve(__dirname, "src")]` — trong .scss dùng `@use "shared/styles/variables"` hoặc `@use "shared/styles/form"` (đường dẫn từ `src/`).
 - Toàn bộ import TS/TSX dùng alias; không dùng relative `../../` qua nhiều cấp.
-- **Form styles:** `shared/styles/_form.scss` là bộ class chuẩn cho form (`.form-page`, `.form-card`, `.form-actions`, `.form-btn...`) và được import global từ `frontend/src/app.style.scss` để dùng nhất quán toàn app.
+- **Form/button styles:** Core cung cấp `.nmx-form-*` và `.nmx-btn*` / `.nmx-form-btn*` trong `vendor/namorix-core/src/styles/base/_form.scss` và `_button.scss`; import qua `@namorix/core/styles/nmx-base.scss`. Plugin dùng class `nmx-form-page`, `nmx-form-card`, `nmx-form-field`, `nmx-form-control`, `nmx-form-actions`, `nmx-form-btn`, v.v. Xem `documents/namorix-core-usage.md`.
 
 ### Backend
 
@@ -182,7 +183,7 @@ SQLite (`better-sqlite3`, WAL mode). Migrations:
 ## Styling Convention
 
 - **Token-driven**: ưu tiên CSS variables (tokens) từ `@namorix/core` và base primitives trong `nmx-base.scss`. Các feature styles dùng `var(--nmx-*)` (hoặc legacy vars mapped từ tokens) thay vì Sass global tokens. Sass-only vẫn dùng cho layout rules và component-local styling.
-- **Modal/ConfirmModal:** Dark navy — overlay/blur, box $card-dark, nút Cancel ghost, Confirm danger/warning với hover glow; màu qua RGB tokens + rgba($var, opacity). **modal-dialog** dùng portal (render overlay vào body); **spin-loader** (shared/components/spinner) cho trạng thái loading; ModalAction tone/style/icon/loading. **Form:** _form.scss có form-radio-row (horizontal segmented control), form-field, form-control, form-select; modal alert/info trong modal.style.scss.
+- **Modal/ConfirmModal:** Dark navy — overlay/blur, box $card-dark, nút Cancel ghost, Confirm danger/warning với hover glow; màu qua RGB tokens + rgba($var, opacity). **modal-dialog** dùng portal (render overlay vào body); **spin-loader** (shared/components/spinner) cho trạng thái loading; ModalAction tone/style/icon/loading. **Form/button:** Core `.nmx-form-*` (nmx-form-page, nmx-form-card, nmx-form-field, nmx-form-control, nmx-form-radio-row, nmx-form-btn, …), `.nmx-btn*`; modal alert/info trong modal.style.scss.
 - **Icons:** Material Symbols (Google Fonts); Sidebar nav dùng `speed`, `account_tree`, `settings`; Settings sub-items `lan`, `device_hub`, `warning`.
 - Font: Inter hoặc IBM Plex Sans (Google Fonts link trong index.html); `_fonts.scss` nếu dùng local.
 - Version: `frontend/package.json` → Vite `__APP_VERSION__`; hiển thị Status subtitle; khi release cập nhật package.json và progress.md.

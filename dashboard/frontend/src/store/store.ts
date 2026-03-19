@@ -1,11 +1,9 @@
-import { createPluginStore, type BaseRootState } from "@namorix/core/store";
-import { wsConnectionReducer, type WsConnectionState } from "./slices/ws-connection.slice";
+import { createPluginStore, type BaseRootState, wsConnectionReducer, type WsConnectionState, toastReducer, type ToastState } from "@namorix/core/store";
 import { brReducer, type BrState } from "./slices/br.slice";
 import { configReducer, type ConfigState } from "./slices/config.slice";
 import { otReducer, type OtState } from "./slices/ot.slice";
 import { tablesReducer, type TablesState } from "./slices/tables.slice";
 import { systemReducer, type SystemState } from "./slices/system.slice";
-import { toastReducer, type ToastState } from "./slices/toast.slice";
 import { appBarReducer, type AppBarState } from "./slices/appbar.slice";
 
 export type RootState = BaseRootState & {

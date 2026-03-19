@@ -20,6 +20,12 @@ Giao tiếp BR ↔ backend theo hướng **notify-first**: Thread-Host push `CMD
 
 ## Recent Significant Changes
 
+### Namorix Core: Toast dual mode + createWsBridge + form/button nmx- prefix (unreleased)
+- **Toast (core):** Slice `toast` (ToastType, Toast, toastReducer, toastActions), component `<nmx-toast>`, `initToast({ store, selectToasts, getTitle? })` và `showToast(type, message, duration)`. **Dual mode:** Nếu `window.nmxCore` → dispatch `CustomEvent("nmx-action", { detail: { action: "show-toast", payload } })`; ngược lại dispatch vào store plugin. Plugin gọi `showToast()` từ `@namorix/core`, mount `<nmx-toast>` khi standalone.
+- **WebSocket (core):** `createWsBridge<S>({ store, url?, options? })` builder: `.onConnect()`, `.onDisconnect()`, `.onConnectError()`, `.on(event, handler)`, `.start()`, `.stop({ close? })`, `.getSocket()`. Plugin cấu hình lifecycle + domain events rồi `bridge.start()`. `onceWithTimeout(socket, event, timeoutMs, emit)` từ `@namorix/core/ws`.
+- **Form/button (core):** Class form và button trong core đổi sang tiền tố `nmx-`: `.nmx-form-page`, `.nmx-form-card`, `.nmx-form-field`, `.nmx-form-control`, `.nmx-form-actions`, `.nmx-form-btn`, `.nmx-form-btn--primary/--ghost`, `.nmx-btn`, `.nmx-btn-filled`, `.nmx-btn-icon`, v.v. Frontend (connection, device, thread, joiner) và SCSS đã cập nhật dùng `nmx-form-*` / `nmx-form-btn*`. Core thêm style cho `.nmx-form-control-icon`, `.nmx-form-control--with-icon`, `.nmx-form-radio-row` / `.nmx-form-radio` / `.nmx-form-radio-pill`.
+- **Tài liệu:** `documents/namorix-core-usage.md` — hướng dẫn dùng core (store, i18n, WS, Toast, form/button, base elements). Mục lục `documents/README.md` đã thêm link.
+
 ### Frontend: base elements, root, AppBar, confirm-modal removal (unreleased)
 - **Core base (namorix-core):** **NmxBaseElement** — font injection + light DOM (`createRenderRoot() { return this }`). **NmxStoreElement** extends NmxBaseElement: abstract `getStore()`, optional locale subscription (`static useLocale`), `createStoreSlice(selector, equals?)`; dùng `subscribeStoreSelector` + `selectLocale` từ core.
 - **AppBaseElement** (`frontend/src/core/AppBaseElement.ts`): extends `NmxStoreElement<RootState>`, implements `getStore() { return store }`. Component app extend AppBaseElement khi cần store/locale.
@@ -202,13 +208,13 @@ ROUTER_TABLE, CHILD_TABLE, JOINER_TABLE TX va ACK bi filter ra khoi console log 
 - `frontend/src/features/joiner/joiner.component.ts` — Joiner Table, commission modal (form + modal-dialog), _canCommission (leader/router/child)
 - `frontend/src/shared/components/modal/modal.component.ts` — portal render, ModalAction tone/style/icon/loading
 - `frontend/src/shared/components/spinner/spinner.component.ts` — spin-loader (global)
-- `frontend/src/shared/styles/_form.scss` — form-radio-row, form-field, form-control, form-select
+- `vendor/namorix-core/src/styles/base/_form.scss` — nmx-form-* (page, card, field, control, actions, radio, control-icon, with-icon); `_button.scss` — nmx-btn*, nmx-form-btn*
 - `frontend/src/core/AppBaseElement.ts` — app base (extends NmxStoreElement, getStore → store)
 - `frontend/src/app.ts` — NmxThreadApp (nmx-thread-app), extends AppBaseElement
 - `frontend/index.html` — mount `<nmx-main>`; main.ts → nmx-app-container → nmx-thread-app
 - `frontend/src/core/store/slices/appbar.slice.ts` — setAppBar, clearAppBar
 - `frontend/src/core/components/appbar/` — page-header (extends AppLitElement)
-- `frontend/src/core/components/toast/` — toast dark (element: toast-view)
+- `vendor/namorix-core` — toast (nmx-toast, initToast, showToast), createWsBridge, onceWithTimeout, wsConnection slice; `documents/namorix-core-usage.md` — hướng dẫn dùng core
 - `frontend/src/core/components/modal/` — modal-dialog (confirm-modal đã xóa; dùng modal-dialog + props)
 - `frontend/src/shared/components/sidebar/` — nav, Settings sub-items icons
 - `frontend/src/features/settings/components/system-tab/` — action cards, danger divider

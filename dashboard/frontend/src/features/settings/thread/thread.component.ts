@@ -1,7 +1,7 @@
 import { LitElement, html } from "lit";
 import { customElement, property, state } from "lit/decorators.js";
 import { createLocaleController } from "@/core/i18n/locale-controller";
-import { showToast } from "@/store/toast";
+import { showToast } from "@namorix/core";
 import { t } from "@/core/i18n/i18n";
 
 import "@settings/thread/thread.style.scss";
@@ -101,16 +101,16 @@ export class SettingsThreadViewComponent extends LitElement {
   render() {
     void this.locale.value;
     return html`
-      <div class="form-page">
-        <div class="form-page-header">
-          <h2 class="form-page-title">${t("settings.thread.title")}</h2>
-          <p class="form-page-description">${t("settings.thread.description")}</p>
+      <div class="nmx-form-page">
+        <div class="nmx-form-page-header">
+          <h2 class="nmx-form-page-title">${t("settings.thread.title")}</h2>
+          <p class="nmx-form-page-description">${t("settings.thread.description")}</p>
         </div>
         ${!this.isConnected
-          ? html`<div class="form-page-alert form-page-alert-warn">${t("settings.thread.notConnected")}</div>`
+          ? html`<div class="nmx-form-page-alert nmx-form-page-alert-warn">${t("settings.thread.notConnected")}</div>`
           : ""}
-        ${this.message ? html`<div class="form-page-alert form-page-alert-${this.message.type}">${this.message.text}</div>` : ""}
-        <div class="form-card settings-thread-card">
+        ${this.message ? html`<div class="nmx-form-page-alert nmx-form-page-alert-${this.message.type}">${this.message.text}</div>` : ""}
+        <div class="nmx-form-card settings-thread-card">
           <div class="settings-thread-card-header">
             <div class="settings-thread-card-title">
               <span class="settings-thread-card-title-icon" aria-hidden="true">
@@ -132,65 +132,65 @@ export class SettingsThreadViewComponent extends LitElement {
               </label>
             </div>
           </div>
-          <div class="settings-thread-card-body form-page-form">
-            <div class="form-row-2">
-              <div class="form-field">
-                <label class="form-label" for="settings-thread-panid">${t("settings.thread.panIdLabel")}</label>
+          <div class="settings-thread-card-body nmx-form-page-form">
+            <div class="nmx-form-row-2">
+              <div class="nmx-form-field">
+                <label class="nmx-form-label" for="settings-thread-panid">${t("settings.thread.panIdLabel")}</label>
                 <input
                   id="settings-thread-panid"
                   type="text"
-                  class="form-control form-control--mono"
+                  class="nmx-form-control nmx-form-control--mono"
                   .value=${this.panid}
                   @input=${(e: Event) => (this.panid = (e.target as HTMLInputElement).value)}
                   placeholder=${t("settings.thread.placeholders.panId")}
                   ?disabled=${!this.isConnected}
                 />
               </div>
-              <div class="form-field">
-                <label class="form-label" for="settings-thread-channel">${t("settings.thread.channelLabel")}</label>
+              <div class="nmx-form-field">
+                <label class="nmx-form-label" for="settings-thread-channel">${t("settings.thread.channelLabel")}</label>
                 <input
                   id="settings-thread-channel"
                   type="number"
                   min="11"
                   max="26"
-                  class="form-control form-control--mono"
+                  class="nmx-form-control nmx-form-control--mono"
                   .value=${this.channel}
                   @input=${(e: Event) => (this.channel = parseInt((e.target as HTMLInputElement).value, 10) || 11)}
                   ?disabled=${!this.isConnected}
                 />
               </div>
             </div>
-            <div class="form-field">
-              <label class="form-label" for="settings-thread-networkname">${t("settings.thread.networkNameLabel")}</label>
+            <div class="nmx-form-field">
+              <label class="nmx-form-label" for="settings-thread-networkname">${t("settings.thread.networkNameLabel")}</label>
               <input
                 id="settings-thread-networkname"
                 type="text"
-                class="form-control"
+                class="nmx-form-control"
                 .value=${this.networkName}
                 @input=${(e: Event) => (this.networkName = (e.target as HTMLInputElement).value)}
                 placeholder=${t("settings.thread.placeholders.networkName")}
                 ?disabled=${!this.isConnected}
               />
             </div>
-            <div class="form-field">
-              <label class="form-label" for="settings-thread-extendedpanid">${t("settings.thread.extendedPanIdLabel")}</label>
+            <div class="nmx-form-field">
+              <label class="nmx-form-label" for="settings-thread-extendedpanid">${t("settings.thread.extendedPanIdLabel")}</label>
               <input
                 id="settings-thread-extendedpanid"
                 type="text"
-                class="form-control form-control--mono"
+                class="nmx-form-control nmx-form-control--mono"
                 .value=${this.extendedPanId}
                 @input=${(e: Event) => (this.extendedPanId = (e.target as HTMLInputElement).value)}
                 placeholder=${t("settings.thread.placeholders.extendedPanId")}
                 ?disabled=${!this.isConnected}
               />
             </div>
-            <div class="form-field">
-              <label class="form-label" for="settings-thread-networkkey">${t("settings.thread.networkKeyLabel")}</label>
-              <div class="form-control-wrap form-control-wrap--trailing">
+            <div class="nmx-form-field">
+              <label class="nmx-form-label" for="settings-thread-networkkey">${t("settings.thread.networkKeyLabel")}</label>
+              <div class="nmx-form-control-wrap nmx-form-control-wrap--trailing">
                 <input
                   id="settings-thread-networkkey"
                   type=${this.showNetworkKey ? "text" : "password"}
-                  class="form-control form-control--mono"
+                  class="nmx-form-control nmx-form-control--mono"
                   .value=${this.networkKey}
                   @input=${(e: Event) => (this.networkKey = (e.target as HTMLInputElement).value)}
                   placeholder=${t("settings.thread.placeholders.networkKey")}
@@ -206,14 +206,14 @@ export class SettingsThreadViewComponent extends LitElement {
                   <span class="material-symbols-outlined" aria-hidden>${this.showNetworkKey ? "visibility_off" : "visibility"}</span>
                 </button>
               </div>
-              <p class="form-helper">${t("settings.thread.networkKeyHint")}</p>
+              <p class="nmx-form-helper">${t("settings.thread.networkKeyHint")}</p>
             </div>
           </div>
           <div class="settings-thread-card-footer">
-            <button type="button" class="form-btn form-btn--ghost" @click=${this._handleLoad} ?disabled=${!this.isConnected || this.loading}>
+            <button type="button" class="nmx-form-btn nmx-form-btn--ghost" @click=${this._handleLoad} ?disabled=${!this.isConnected || this.loading}>
               ${this.loading ? t("settings.thread.loading") : t("settings.thread.reload")}
             </button>
-            <button type="button" class="form-btn form-btn--primary" @click=${this._handleApply} ?disabled=${!this.isConnected || this.applying}>
+            <button type="button" class="nmx-form-btn nmx-form-btn--primary" @click=${this._handleApply} ?disabled=${!this.isConnected || this.applying}>
               ${this.applying ? t("settings.thread.applying") : t("settings.thread.apply")}
             </button>
           </div>

@@ -1,33 +1,39 @@
-
 import { html } from "lit";
-import { customElement } from "lit/decorators.js";
+import { customElement, state } from "lit/decorators.js";
 import { NAV_ITEMS } from "./shared/constants/nav.constants";
 import { t } from "./core/i18n/i18n";
-import { AppBaseElement } from "@/core/AppBaseElement";
+import { AppBaseElement } from "@/core/app-base-element";
+import { startWsBridge } from "@/core/ws/ws-bridge";
+import { store } from "@/store/store";
+import { showToast } from "@namorix/core";
 
 import namorixLogo from "@namorix/assets/logo/namorix-logo-symbol-light.svg?url";
 import "@namorix/core/components/layout/nmx-sidebar";
 
 @customElement("nmx-thread-app")
 export class NmxThreadApp extends AppBaseElement {
-  // private static _wsBridgeStarted = false;
+  private static _wsBridgeStarted = false;
 
   // private readonly wsConnected = this.createStoreSlice((s) => selectWsConnected(s), Object.is);
   // private readonly appBar = this.createStoreSlice((s) => selectAppBar(s), Object.is);
 
-  // @state() private page: NavPage = "settings-connection";
+  @state() private page = "";
 
-  // override connectedCallback(): void {
-  //   super.connectedCallback();
-  //   if (!NmxThreadApp._wsBridgeStarted) {
-  //     NmxThreadApp._wsBridgeStarted = true;
-  //     startWsBridge(store);
-  //   }
-  // }
+  override connectedCallback(): void {
+    super.connectedCallback();
+    if (!NmxThreadApp._wsBridgeStarted) {
+      NmxThreadApp._wsBridgeStarted = true;
+      startWsBridge(store);
+    }
+  }
 
-  // private _handleNavigate(e: CustomEvent<NavPage>) {
-  //   this.page = e.detail;
-  // }
+  private _handleNavigate = (e: CustomEvent<string>) => {
+    this.page = e.detail;
+
+    if (e.detail === "monitor-topology") {
+      showToast("error", "This feature is not available in the current version.");
+    }
+  };
 
   // private _renderPage() {
   //   switch (this.page) {
@@ -98,6 +104,8 @@ export class NmxThreadApp extends AppBaseElement {
           brand="OpenThread"
           .logo=${namorixLogo}
           .navGroups=${navGroups}
+          .currentPage=${this.page}
+          @navigate=${this._handleNavigate}
         ></nmx-sidebar>
       </div>
     `;

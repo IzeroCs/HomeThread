@@ -3,39 +3,7 @@ import { EVENTS } from "shared/src/events";
 import type { RootState } from "@/store/store";
 import { getSocket } from "@/core/ws/ws-bridge";
 import type { OtConfig } from "@/shared/types/websocket.type";
-
-function onceWithTimeout<T>(
-  event: string,
-  timeoutMs: number,
-  emit: () => void
-): Promise<T | null> {
-  return new Promise((resolve) => {
-    const socket = getSocket();
-    if (!socket) {
-      resolve(null);
-      return;
-    }
-
-    let done = false;
-    const handler = (payload: T) => {
-      if (done) return;
-      done = true;
-      clearTimeout(timeoutId);
-      socket.off(event, handler as never);
-      resolve(payload);
-    };
-
-    socket.once(event, handler as never);
-    emit();
-
-    const timeoutId = window.setTimeout(() => {
-      if (done) return;
-      done = true;
-      socket.off(event, handler as never);
-      resolve(null);
-    }, timeoutMs);
-  });
-}
+import { onceWithTimeout } from "@namorix/core/ws";
 
 export const wsTestBrConnect = createAsyncThunk<
   { success: boolean; error?: string },
@@ -46,6 +14,7 @@ export const wsTestBrConnect = createAsyncThunk<
   if (!socket) return { success: false, error: "Not connected" };
 
   const result = await onceWithTimeout<{ success: boolean; error?: string }>(
+    socket,
     EVENTS.BR_TEST_RESULT,
     6000,
     () => socket.emit(EVENTS.BR_TEST, payload)
@@ -60,8 +29,8 @@ export const wsGetOtConfig = createAsyncThunk<OtConfig | null, void, { state: Ro
     const socket = getSocket();
     if (!socket) return null;
 
-    const result = await onceWithTimeout<OtConfig>(EVENTS.OT_CONFIG, 6000, () =>
-      socket.emit(EVENTS.OT_GET_CONFIG)
+    const result = await onceWithTimeout<OtConfig>(socket, EVENTS.OT_CONFIG, 6000, () =>
+      socket.emit(EVENTS.OT_GET_CONFIG),
     );
 
     return result ?? null;
@@ -77,6 +46,7 @@ export const wsSetOtConfig = createAsyncThunk<
   if (!socket) return { success: false, error: "Not connected" };
 
   const result = await onceWithTimeout<{ success: boolean; error?: string }>(
+    socket,
     EVENTS.OT_SET_CONFIG_RESULT,
     6000,
     () => socket.emit(EVENTS.OT_SET_CONFIG, payload)
@@ -94,6 +64,7 @@ export const wsSetThreadRunning = createAsyncThunk<
   if (!socket) return { success: false, error: "Not connected" };
 
   const result = await onceWithTimeout<{ success: boolean; error?: string }>(
+    socket,
     EVENTS.OT_SET_THREAD_RUNNING_RESULT,
     6000,
     () => socket.emit(EVENTS.OT_SET_THREAD_RUNNING, { running })
@@ -109,6 +80,7 @@ export const wsStartThread = createAsyncThunk<{ success: boolean; error?: string
     if (!socket) return { success: false, error: "Not connected" };
 
     const result = await onceWithTimeout<{ success: boolean; error?: string }>(
+      socket,
       EVENTS.OT_START_THREAD_RESULT,
       6000,
       () => socket.emit(EVENTS.OT_START_THREAD)
@@ -125,6 +97,7 @@ export const wsStopThread = createAsyncThunk<{ success: boolean; error?: string 
     if (!socket) return { success: false, error: "Not connected" };
 
     const result = await onceWithTimeout<{ success: boolean; error?: string }>(
+      socket,
       EVENTS.OT_STOP_THREAD_RESULT,
       6000,
       () => socket.emit(EVENTS.OT_STOP_THREAD)
@@ -143,6 +116,7 @@ export const wsCommissionerConnect = createAsyncThunk<
   if (!socket) return { success: false, error: "Not connected" };
 
   const result = await onceWithTimeout<{ success: boolean; error?: string }>(
+    socket,
     EVENTS.COMMISSIONER_CONNECT_RESULT,
     6000,
     () => socket.emit(EVENTS.COMMISSIONER_CONNECT, { eui64, psk, timeout: timeoutSeconds })
@@ -158,6 +132,7 @@ export const wsResetDevice = createAsyncThunk<{ success: boolean; error?: string
     if (!socket) return { success: false, error: "Not connected" };
 
     const result = await onceWithTimeout<{ success: boolean; error?: string }>(
+      socket,
       EVENTS.DEVICE_RESET_RESULT,
       6000,
       () => socket.emit(EVENTS.DEVICE_RESET)
@@ -176,6 +151,7 @@ export const wsFactoryResetDevice = createAsyncThunk<
   if (!socket) return { success: false, error: "Not connected" };
 
   const result = await onceWithTimeout<{ success: boolean; error?: string }>(
+    socket,
     EVENTS.DEVICE_FACTORY_RESET_RESULT,
     6000,
     () => socket.emit(EVENTS.DEVICE_FACTORY_RESET)

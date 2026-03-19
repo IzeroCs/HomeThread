@@ -4,7 +4,7 @@ import { BR_CONNECTION } from "shared/src/constants";
 import { validateBrConnectionConfig } from "shared/src/validation";
 import { createLocaleController } from "@/core/i18n/locale-controller";
 import { store } from "@/store/store";
-import { showToast } from "@/store/toast";
+import { showToast } from "@namorix/core";
 import { wsEmitConfigSave } from "@/store/thunks/ws.emit";
 import { wsTestBrConnect } from "@/store/thunks/ws.thunks";
 import { t } from "@/core/i18n/i18n";
@@ -132,63 +132,63 @@ export class SettingsConnectionViewComponent extends LitElement {
     const canSave = this._canSave;
 
     return html`
-      <div class="form-page">
-        <div class="form-page-header">
-          <h2 class="form-page-title">${t("settings.connection.title")}</h2>
-          <p class="form-page-description">${t("settings.connection.description")}</p>
+      <div class="nmx-form-page">
+        <div class="nmx-form-page-header">
+          <h2 class="nmx-form-page-title">${t("settings.connection.title")}</h2>
+          <p class="nmx-form-page-description">${t("settings.connection.description")}</p>
         </div>
 
         ${alertMessage
-          ? html`<div class="form-page-alert form-page-alert-error" role="alert">${alertMessage}</div>`
+          ? html`<div class="nmx-form-page-alert nmx-form-page-alert-error" role="alert">${alertMessage}</div>`
           : ""}
 
-        <div class="form-card settings-connection-card">
-          <form @submit=${this._handleSubmit} class="form-page-form">
-            <div class="form-row-2">
-              <div class="form-field">
-                <label class="form-label" for="settings-connection-host">${t("settings.connection.fields.hostLabel")}</label>
+        <div class="nmx-form-card settings-connection-card">
+          <form @submit=${this._handleSubmit} class="nmx-form-page-form">
+            <div class="nmx-form-row-2">
+              <div class="nmx-form-field">
+                <label class="nmx-form-label" for="settings-connection-host">${t("settings.connection.fields.hostLabel")}</label>
                 <input
                   type="text"
                   id="settings-connection-host"
-                  class="form-control ${this.errors.host ? "error" : ""}"
+                  class="nmx-form-control ${this.errors.host ? "error" : ""}"
                   .value=${this.formData.host}
                   @input=${(e: Event) => this._handleFieldChange("host", (e.target as HTMLInputElement).value)}
                   placeholder=${t("settings.connection.fields.hostPlaceholder")}
                 />
-                ${this.errors.host ? html`<p class="error-message">${this.errors.host}</p>` : ""}
-                <p class="form-helper">${t("settings.connection.fields.hostHint")}</p>
+                ${this.errors.host ? html`<p class="nmx-form-error-message">${this.errors.host}</p>` : ""}
+                <p class="nmx-form-helper">${t("settings.connection.fields.hostHint")}</p>
               </div>
-              <div class="form-field">
-                <label class="form-label" for="settings-connection-port">${t("settings.connection.fields.portLabel")}</label>
+              <div class="nmx-form-field">
+                <label class="nmx-form-label" for="settings-connection-port">${t("settings.connection.fields.portLabel")}</label>
                 <input
                   type="number"
                   id="settings-connection-port"
-                  class="form-control ${this.errors.port ? "error" : ""}"
+                  class="nmx-form-control ${this.errors.port ? "error" : ""}"
                   .value=${this.formData.port}
                   @input=${(e: Event) =>
                     this._handleFieldChange("port", parseInt((e.target as HTMLInputElement).value, 10) || BR_CONNECTION.DEFAULT_PORT)}
                   min=${BR_CONNECTION.MIN_PORT}
                   max=${BR_CONNECTION.MAX_PORT}
                 />
-                ${this.errors.port ? html`<p class="error-message">${this.errors.port}</p>` : ""}
-                <p class="form-helper">${t("settings.connection.fields.portHint", { defaultPort: BR_CONNECTION.DEFAULT_PORT })}</p>
+                ${this.errors.port ? html`<p class="nmx-form-error-message">${this.errors.port}</p>` : ""}
+                <p class="nmx-form-helper">${t("settings.connection.fields.portHint", { defaultPort: BR_CONNECTION.DEFAULT_PORT })}</p>
               </div>
             </div>
-            <div class="form-info-box">
-              <span class="material-symbols-outlined form-info-box__icon" aria-hidden="true">info</span>
-              <p class="form-info-box__text">${t("settings.connection.note")}</p>
+            <div class="nmx-form-info-box">
+              <span class="material-symbols-outlined nmx-form-info-box__icon" aria-hidden="true">info</span>
+              <p class="nmx-form-info-box__text">${t("settings.connection.note")}</p>
             </div>
-            <div class="form-actions">
+            <div class="nmx-form-actions">
               <button
                 type="button"
-                class="form-btn form-btn--ghost settings-connection-test-btn"
+                class="nmx-form-btn nmx-form-btn--ghost settings-connection-test-btn"
                 @click=${this._handleTestConnect}
                 ?disabled=${this.testStatus.type === "loading"}
               >
                 <span class="settings-connection-test-dot" aria-hidden="true"></span>
                 ${this.testStatus.type === "loading" ? t("settings.connection.actions.testing") : t("settings.connection.actions.test")}
               </button>
-              <button type="submit" class="form-btn form-btn--primary" ?disabled=${!canSave}>
+              <button type="submit" class="nmx-form-btn nmx-form-btn--primary" ?disabled=${!canSave}>
                 ${t("settings.connection.actions.save")}
               </button>
             </div>

@@ -118,7 +118,7 @@ CMD_STATE that bai **5 lan lien tiep** → dong transport + bat dau reconnect.
 - **AppBaseElement** (`frontend/src/core/AppBaseElement.ts`): extends `NmxStoreElement<RootState>`, implements `getStore() { return store }`. Component cần store/locale extend AppBaseElement.
 - **Root:** `index.html` mount `<nmx-main>`; NmxMain → `<nmx-app-container>` slot `<nmx-thread-app>`. **NmxThreadApp** (app.ts) extends AppBaseElement. Layout có thể dùng `createStoreSlice(selectWsConnected)`, `createStoreSlice(selectAppBar)`; render sidebar, toast, page-header, main.
 - **AppBar (Redux):** Slice `appBar` (heading, subtitle, actions, visible). Pages dispatch setAppBar/clearAppBar; layout đọc store và render `<page-header>`.
-- `WebSocketController` / Redux store: WS state + actions; socket URL `window.location.origin` (Vite proxy).
+- **WebSocket:** Core `createWsBridge<S>({ store, url?, options? })` — builder `.onConnect()`/`.onDisconnect()`/`.onConnectError()`/`.on(event, handler)`/`.start()`/`.stop()`/`.getSocket()`. Plugin (vd. `frontend/src/core/ws/ws-bridge.ts`) cấu hình lifecycle + domain events rồi gọi `bridge.start()` một lần (vd. trong root `connectedCallback`). WS connection state: `wsConnectionReducer` + `wsConnectionActions` từ `@namorix/core/store`. Emit/response với timeout: `onceWithTimeout` từ `@namorix/core/ws`. Socket URL mặc định `window.location.origin` (Vite proxy).
 - **i18n:** Slice `i18n` trong store, mặc định `"en"`; set từ user settings bằng `store.dispatch(setLocale(...))`. Components re-render khi locale đổi nhờ subscribe `selectLocale` (NmxStoreElement locale hoặc `createLocaleController` từ `@/core/i18n/locale-controller`).
 - **Path alias:** `@/`, `@core/*`, `@settings/*`, … (tsconfig + Vite). SCSS: `loadPaths: [src]` → `@use "styles/..."` / `shared/styles/...`.
 
@@ -173,11 +173,9 @@ Implemented trong `nodes.component.ts` (Lit): lưu `routerAgeOffsets` / `childAg
 - Trang Nodes: header (title + subtitle + nút Commission Node), Router Table, Child Table, Joiner List (pending commissioning). Khi BR disconnect: overlay phủ main (backdrop blur), card "Border Router Disconnected" + Try Reconnecting; nội dung phía sau giống layout khi connect (ghost), không bọc trong box riêng.
 - Stable list rendering: joiner card `joiner-${sharedId}-${expirationMs}`; router/child row theo RLOC16 (fallback theo index); modal detail dùng `fieldKey` (tên cột).
 
-### Toast Notifications
+### Toast Notifications (core)
 
-- API: `showToast(type, message, duration?)` — type = success | error | warning | info.
-- Title suy từ type (Thành công / Lỗi / Cảnh báo / Trợ giúp). Dark theme: card `$card-dark`, thanh dọc trái màu theo type, message muted, nút đóng góc trên-phải; slide-in từ phải, fade-out khi exit.
-- Không dùng thư viện bên thứ ba — ToastContainer + ToastContext + SCSS.
+- API: `showToast(type, message, duration?)` từ `@namorix/core` — type = success | error | warning | info. **Dual mode:** Nếu `window.nmxCore` → dispatch CustomEvent "nmx-action" (host render); ngược lại dispatch vào store plugin, `<nmx-toast>` render. Plugin gọi `initToast({ store, selectToasts, getTitle? })` một lần, mount `<nmx-toast>` khi standalone. Title qua `getTitle(type)` (i18n). Dark theme: thanh dọc trái theo type, message muted; slide-in phải, fade-out exit. Chi tiết: `documents/namorix-core-usage.md`.
 
 ### Sidebar Status Dot Colors
 
@@ -202,9 +200,9 @@ Version hiển thị trên Status subtitle lấy từ `frontend/package.json`: V
 
 ### Joiner / Commissioner (Nodes)
 
-- **Trang Joiner** (`features/joiner/`): Joiner Table + nút mở commission modal. Commission form (EUI64, PIN, timeout) và footer actions nằm trong `joiner.component.ts`; dùng `modal-dialog` với body/form classes chung từ _form.scss và modal.style.scss.
+- **Trang Joiner** (`features/joiner/`): Joiner Table + nút mở commission modal. Commission form (EUI64, PIN, timeout) và footer actions nằm trong `joiner.component.ts`; dùng `modal-dialog` với body/form classes `.nmx-form-*` từ core và modal.style.scss.
 - **Commissioner điều kiện:** Cho phép khi BR **attached** (state = leader, router hoặc child). `_canCommission` (thay `_isLeader`) = true khi `threadState` là "leader" | "router" | "child"; alert và disable form khi không thỏa.
-- **Timeout chọn:** Horizontal radio row (`.form-radio-row`, `.form-radio`, `.form-radio-pill` trong _form.scss); wrapper có border/radius, items hình chữ nhật, gap giữa item, hover bg cho item chưa chọn, selected = primary background.
+- **Timeout chọn:** Horizontal radio row (`.nmx-form-radio-row`, `.nmx-form-radio`, `.nmx-form-radio-pill` trong core `_form.scss`); wrapper có border/radius, items hình chữ nhật, gap, hover bg, selected = primary background.
 
 ### SCSS color tokens (RGB + functional naming)
 
@@ -216,11 +214,11 @@ Version hiển thị trên Status subtitle lấy từ `frontend/package.json`: V
 
 ### Settings / System page
 
-- Layout: `form-page system-page`; header (title "Hệ thống", mô tả, hint khi chưa kết nối BR); hai **action cards** (image panel trái + content phải), danger divider giữa, ConfirmModal cho Reset và Factory Reset. Card Restart: nền #111827, icon cam; Card Factory: nền tối đỏ, border #3d1a1a, title đỏ. Nút dùng `.system-btn-orange` / `.system-btn-red`.
+- Layout: `nmx-form-page` (+ class page riêng); header (title "Hệ thống", mô tả, hint khi chưa kết nối BR); hai **action cards** (image panel trái + content phải), danger divider giữa, ConfirmModal cho Reset và Factory Reset. Card Restart: nền #111827, icon cam; Card Factory: nền tối đỏ, border #3d1a1a, title đỏ. Nút dùng `.system-btn-orange` / `.system-btn-red`.
 
 ### OpenThread form card layout
 
-- `.form-card.ot-card`: `padding: 0`, `overflow: hidden` để footer không lồi góc. `.ot-card-header` full-bleed (padding riêng). `.ot-card-footer` margin `20px 1.75rem 1.75rem` (cùng width với body), border-radius, nền $bg-input.
+- `.nmx-form-card` (+ class card riêng): `padding: 0`, `overflow: hidden` khi cần footer không lồi góc. `.ot-card-header` full-bleed (padding riêng). `.ot-card-footer` margin `20px 1.75rem 1.75rem` (cùng width với body), border-radius, nền $bg-input.
 
 ### Topology map (feature)
 

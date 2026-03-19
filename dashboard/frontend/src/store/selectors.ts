@@ -23,6 +23,4 @@ export const selectJoinerTable = (s: RootState) => s.tables.joinerTable;
 
 export const selectSystemInfo = (s: RootState) => s.system.systemInfo;
 
-export const selectToasts = (s: RootState) => s.toast.toasts;
-
 export const selectAppBar = (s: RootState) => s.appBar;

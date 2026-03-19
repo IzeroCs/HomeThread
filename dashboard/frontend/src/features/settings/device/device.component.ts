@@ -1,7 +1,7 @@
 import { LitElement, html } from "lit";
 import { customElement, property, state } from "lit/decorators.js";
 import { createLocaleController } from "@/core/i18n/locale-controller";
-import { showToast } from "@/store/toast";
+import { showToast } from "@namorix/core";
 import { t } from "@/core/i18n/i18n";
 
 import "@/core/components/modal/modal.component";
@@ -99,12 +99,12 @@ export class SettingsDeviceViewComponent extends LitElement {
           ? `${confirmBaseLabel} (${this.countdown}s)`
           : confirmBaseLabel;
     return html`
-      <div class="form-page settings-device-page">
-        <div class="form-page-header">
-          <h2 class="form-page-title">${t("settings.device.title")}</h2>
-          <p class="form-page-description">${t("settings.device.description")}</p>
+      <div class="nmx-form-page settings-device-page">
+        <div class="nmx-form-page-header">
+          <h2 class="nmx-form-page-title">${t("settings.device.title")}</h2>
+          <p class="nmx-form-page-description">${t("settings.device.description")}</p>
         </div>
-        ${!this.isConnected ? html`<div class="form-page-alert form-page-alert-warn" role="alert">${t("settings.device.notConnectedHint")}</div>` : ""}
+        ${!this.isConnected ? html`<div class="nmx-form-page-alert nmx-form-page-alert-warn" role="alert">${t("settings.device.notConnectedHint")}</div>` : ""}
         <div class="settings-device-action-card settings-device-card-restart">
           <div class="settings-device-card-image">
             <div class="settings-device-card-bg"></div>

@@ -6,7 +6,7 @@ import { LitStoreController, shallowEqual } from "@namorix/core/store";
 import { selectBrStatus, selectJoinerTable, selectThreadState } from "@/store/selectors";
 import { wsCommissionerConnect } from "@/store/thunks/ws.thunks";
 import { wsEmitGetJoinerTable } from "@/store/thunks/ws.emit";
-import { showToast } from "@/store/toast";
+import { showToast } from "@namorix/core";
 import { t } from "@/core/i18n/i18n";
 
 import "@/core/components/appbar/appbar";
@@ -237,17 +237,17 @@ export class JoinerViewComponent extends LitElement {
               </div>
             `
           : ""}
-        <div class="form-page-form">
-          <div class="form-field">
-            <label class="form-label" for="commission-modal-eui64">
-              Joiner EUI64 <span class="form-required">*</span>
+        <div class="nmx-form-page-form">
+          <div class="nmx-form-field">
+            <label class="nmx-form-label" for="commission-modal-eui64">
+              Joiner EUI64 <span class="nmx-form-required">*</span>
             </label>
-            <div class="form-control-wrap">
-              <span class="material-symbols-outlined form-control-icon" aria-hidden>qr_code_2</span>
+            <div class="nmx-form-control-wrap">
+              <span class="material-symbols-outlined nmx-form-control-icon" aria-hidden>qr_code_2</span>
               <input
                 id="commission-modal-eui64"
                 type="text"
-                class="form-control form-control--mono form-control--with-icon"
+                class="nmx-form-control nmx-form-control--mono nmx-form-control--with-icon"
                 .value=${this.commissionEui64}
                 @input=${(e: Event) => (this.commissionEui64 = (e.target as HTMLInputElement).value)}
                 placeholder=${t("joiner.commissionModal.placeholders.eui64")}
@@ -256,18 +256,18 @@ export class JoinerViewComponent extends LitElement {
                 ?disabled=${this.commissionConnecting || !this._canCommission}
               />
             </div>
-            <p class="form-helper">The unique identifier for the device.</p>
+            <p class="nmx-form-helper">The unique identifier for the device.</p>
           </div>
-          <div class="form-field">
-            <label class="form-label" for="commission-modal-psk">
-              Joiner PIN <span class="form-required">*</span>
+          <div class="nmx-form-field">
+            <label class="nmx-form-label" for="commission-modal-psk">
+              Joiner PIN <span class="nmx-form-required">*</span>
             </label>
-            <div class="form-control-wrap">
-              <span class="material-symbols-outlined form-control-icon" aria-hidden>pin</span>
+            <div class="nmx-form-control-wrap">
+              <span class="material-symbols-outlined nmx-form-control-icon" aria-hidden>pin</span>
               <input
                 id="commission-modal-psk"
                 type="text"
-                class="form-control form-control--with-icon"
+                class="nmx-form-control nmx-form-control--with-icon"
                 .value=${this.commissionPsk}
                 @input=${(e: Event) => (this.commissionPsk = (e.target as HTMLInputElement).value)}
                 placeholder=${t("joiner.commissionModal.placeholders.pin")}
@@ -275,15 +275,15 @@ export class JoinerViewComponent extends LitElement {
                 ?disabled=${this.commissionConnecting || !this._canCommission}
               />
             </div>
-            <p class="form-helper">The commissioning credential provided with the device.</p>
+            <p class="nmx-form-helper">The commissioning credential provided with the device.</p>
           </div>
-          <div class="form-field">
-            <label class="form-label">${t("joiner.commissionModal.timeoutLabel")}</label>
-            <div class="form-radio-row" role="radiogroup" aria-label=${t("joiner.commissionModal.timeoutAriaLabel")}>
+          <div class="nmx-form-field">
+            <label class="nmx-form-label">${t("joiner.commissionModal.timeoutLabel")}</label>
+            <div class="nmx-form-radio-row" role="radiogroup" aria-label=${t("joiner.commissionModal.timeoutAriaLabel")}>
               ${TIMEOUT_OPTIONS.map((sec) => html`
-                <label class="form-radio">
+                <label class="nmx-form-radio">
                   <input
-                    class="form-radio-input"
+                    class="nmx-form-radio-input"
                     type="radio"
                     name="commission-timeout"
                     .value=${String(sec)}
@@ -291,7 +291,7 @@ export class JoinerViewComponent extends LitElement {
                     @change=${() => (this.commissionTimeoutSeconds = sec)}
                     ?disabled=${this.commissionConnecting || !this._canCommission}
                   />
-                  <span class="form-radio-pill">${sec}s</span>
+                  <span class="nmx-form-radio-pill">${sec}s</span>
                 </label>
               `)}
             </div>
