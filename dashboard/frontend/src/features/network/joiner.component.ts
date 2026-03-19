@@ -9,9 +9,9 @@ import { wsEmitGetJoinerTable } from "@/store/thunks/ws.emit";
 import { showToast } from "@namorix/core";
 import { t } from "@/core/i18n/i18n";
 
-import "@/core/components/appbar/appbar";
-import "@/core/components/modal/modal.component";
-import "@monitor/joiner/joiner.style.scss";
+import "@namorix/core/components/appbar";
+import "@namorix/core/components/modal";
+import "./joiner.style.scss";
 
 const DEFAULT_EUI64 = "f0f5bdfffe104b24";
 const DEFAULT_PSK = "H01THREAD";
@@ -317,7 +317,7 @@ export class JoinerViewComponent extends LitElement {
       ["leader", "router", "child"].includes(threadState.toLowerCase());
 
     return html`
-      <page-header
+      <nmx-appbar
         heading=${t("joiner.header.title")}
         subtitle=${t("joiner.header.subtitle")}
         .actions=${[{
@@ -329,7 +329,7 @@ export class JoinerViewComponent extends LitElement {
           tone: "info",
         }]}
         @action-click=${this._onHeaderAction}
-      ></page-header>
+      ></nmx-appbar>
       <div class="page-container">
         <div class="joiner-page">
           ${isConnected ? html`
@@ -445,12 +445,15 @@ export class JoinerViewComponent extends LitElement {
             </div>
           </section>
 
-          <modal-dialog
+          <nmx-modal
             .open=${this.isCommissionModalOpen}
             .shouldRender=${() => isConnected}
             .title=${t("joiner.commissionModal.title")}
             .subtitle=${t("joiner.commissionModal.subtitle")}
             .body=${this._renderCommissionBody()}
+            .cancelLabel=${t("modal.actions.cancel")}
+            .confirmLabel=${t("joiner.commissionModal.start")}
+            .closeAriaLabel=${t("modal.closeAriaLabel")}
             .cancelAction=${{
               onClick: () => this._closeCommissionModal(),
             }}
@@ -464,7 +467,7 @@ export class JoinerViewComponent extends LitElement {
               icon: "play_arrow",
             }}
             .onClose=${() => this._closeCommissionModal()}
-          ></modal-dialog>
+          ></nmx-modal>
         </div>
       </div>
     `;

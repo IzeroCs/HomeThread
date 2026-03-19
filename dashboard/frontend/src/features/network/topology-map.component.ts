@@ -8,7 +8,7 @@ import { LitStoreController, shallowEqual } from "@namorix/core/store";
 import { selectBrStatus, selectChildTable, selectOtConfig, selectRouterTable } from "@/store/selectors";
 import { t } from "@/core/i18n/i18n";
 
-import "@monitor/topology/topology-map.style.scss";
+import "./topology-map.style.scss";
 
 // ─── Có thể chỉnh tay: pan/zoom và layout ─────────────────────────────────────
 const LERP = 0.12;

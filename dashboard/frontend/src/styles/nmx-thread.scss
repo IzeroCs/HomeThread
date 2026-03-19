@@ -1,23 +1,23 @@
 :root {
   // ---- Thread Role ----
-  --role-disconnected: #64748b; // disconnected/disabled indicator (legacy)
-  --role-disabled: #ed6c02; // disabled node
-  --role-child: #2563eb; // child node
-  --role-router: #7b1fa2; // router node
-  --role-leader: #10b981; // leader node
+  --nmx-thread-color-role-disconnected: #64748b; // disconnected/disabled indicator (legacy)
+  --nmx-thread-color-role-disabled: #ed6c02; // disabled node
+  --nmx-thread-color-role-child: #2563eb; // child node
+  --nmx-thread-color-role-router: #7b1fa2; // router node
+  --nmx-thread-color-role-leader: #10b981; // leader node
 
   // ---- Link Quality ----
-  --link-quality-good: #22c55e; // good link quality
-  --link-quality-mid: #0ba3f5; // medium link quality
-  --link-quality-warn: #f59e0b; // warning link quality
+  --nmx-thread-color-link-quality-good: #22c55e; // good link quality
+  --nmx-thread-color-link-quality-mid: #0ba3f5; // medium link quality
+  --nmx-thread-color-link-quality-warn: #f59e0b; // warning link quality
 
   // ---- BR State ----
-  --br-state-connected: #4ade80; // connected state
-  --br-state-disconnected: #f87171; // disconnected state
+  --nmx-thread-color-br-state-connected: #4ade80; // connected state
+  --nmx-thread-color-br-state-disconnected: #f87171; // disconnected state
 
   // ---- Topology ----
-  --nmx-th-topology-accent: #00c8ff;
-  --nmx-th-topology-bg: #081420;
-  --nmx-th-topology-ink: #050d1b;
-  --nmx-th-topology-offline: color-mix(in oklab, var(--on-surface-variant) 35%, transparent);
+  --nmx-thread-color-topology-accent: #00c8ff;
+  --nmx-thread-color-topology-bg: #081420;
+  --nmx-thread-color-topology-ink: #050d1b;
+  --nmx-thread-color-topology-offline: color-mix(in oklab, var(--nmx-color-on-surface-variant) 35%, transparent);
 }

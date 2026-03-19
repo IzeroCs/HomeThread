@@ -1,15 +1,6 @@
-
-app-layout,
-waiting-page,
-appbar-nav,
-status-view,
-nodes-view,
-joiner-view,
-settings-connection,
-settings-thread,
-settings-device {
-  display: contents;
-}
+@use "@namorix/core/styles/nmx-base.scss" as *;
+@use "@styles/nmx-thread" as *;
+@use "@styles/features/network/status.style.scss" as *;
 
 .app-layout {
   min-height: 100vh;

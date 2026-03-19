@@ -46,6 +46,8 @@ Version notation in this file uses Semantic Versioning `MAJOR.MINOR.PATCH` (no l
 | 2.18.0  | **Toast dual mode + createWsBridge + form/button nmx- prefix (unreleased).** Core: Toast slice + `<nmx-toast>`, `initToast({ store, selectToasts, getTitle? })`, `showToast()` dual mode (window.nmxCore → CustomEvent "nmx-action", else dispatch). WS: `createWsBridge` builder (onConnect/onDisconnect/onConnectError/on/start/stop/getSocket), `onceWithTimeout` từ `@namorix/core/ws`. Form/button: core `_form.scss`/`_button.scss` đổi toàn bộ class sang `.nmx-form-*`, `.nmx-btn*`, `.nmx-form-btn*`; frontend (connection, device, thread, joiner + SCSS) cập nhật. **Doc:** `documents/namorix-core-usage.md` — hướng dẫn dùng core; `documents/README.md` thêm mục. |
 
 
+| 2.19.0  | **Navigation/content rendering refactor.** Core thêm `nmx-content` + `NmxPageBuilder`/`PageEntry` để host app render trang theo `currentPage` (controlled). Frontend `nmx-thread-app` dùng sidebar `navigate` để set `NavPage` state, sau đó render page qua `<nmx-content>` với `pages` đã được build sẵn (tạo 1 lần). Đồng thời fix import SCSS feature từ `@monitor/*` sang path đúng trong `features/network/*`. |
+
 ## What Works (Completed)
 
 ### Infrastructure

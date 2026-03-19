@@ -63,6 +63,7 @@ Core/shared integration (frontend):
 - Redux store uses `createPluginStore` from `@namorix/core/store`.
 - i18n: `initI18n({ store, dicts, fallbackLocale })` từ `@namorix/core/i18n`; locale mặc định `"en"`, set từ user settings bằng `store.dispatch(setLocale(...))` (không detect/persist localStorage). Component cần locale: extend AppBaseElement (có sẵn locale subscription) hoặc dùng `createLocaleController` từ `@/core/i18n/locale-controller`.
 - Base elements: **NmxBaseElement** (core, font + light DOM only), **NmxStoreElement** (core, abstract `getStore()`, locale subscription, `createStoreSlice`), **AppBaseElement** (frontend, extends NmxStoreElement, `getStore() { return store }`).
+- Layout/pages: core provides `<nmx-content>` + `NmxPageBuilder`/`PageEntry` để host app render trang controlled theo `currentPage`; frontend maps `NavPage` -> `render()` callbacks và import side-effect feature components để custom elements được define trước khi render.
 - WebSocket: **createWsBridge** từ `@namorix/core/ws` — builder `onConnect`/`onDisconnect`/`onConnectError`/`on(event, handler)`/`start()`/`stop()`/`getSocket()`; **onceWithTimeout** cùng package. Toast: **initToast**, **showToast** từ `@namorix/core`; dual mode (standalone → store, desktop → CustomEvent "nmx-action"). Chi tiết: `documents/namorix-core-usage.md`.
 - `@namorix/assets` is consumed via submodule `vendor/namorix-assets` for shared branding assets (e.g. logo SVG imported with `?url`).
 

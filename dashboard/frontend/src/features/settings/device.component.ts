@@ -4,7 +4,7 @@ import { createLocaleController } from "@/core/i18n/locale-controller";
 import { showToast } from "@namorix/core";
 import { t } from "@/core/i18n/i18n";
 
-import "@/core/components/modal/modal.component";
+import "@namorix/core/components/modal";
 import "@settings/device/device.style.scss";
 
 type ConfirmAction = "reset" | "factory" | null;
@@ -157,10 +157,13 @@ export class SettingsDeviceViewComponent extends LitElement {
             </div>
           </div>
         </div>
-        <modal-dialog
+        <nmx-modal
           .open=${isConfirmOpen}
           .title=${confirmTitle}
           .body=${html`<p>${confirmMessage}</p>`}
+          .cancelLabel=${t("modal.actions.cancel")}
+          .confirmLabel=${confirmLabel}
+          .closeAriaLabel=${t("modal.closeAriaLabel")}
           .onClose=${() => this._closeConfirm()}
           .cancelAction=${{
             label: t("confirmModal.cancelLabel"),
@@ -177,7 +180,7 @@ export class SettingsDeviceViewComponent extends LitElement {
             style: "filled",
             tone: isFactory ? "danger" : "warning",
           }}
-        ></modal-dialog>
+        ></nmx-modal>
       </div>
     `;
   }

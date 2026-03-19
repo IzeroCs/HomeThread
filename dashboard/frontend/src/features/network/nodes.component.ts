@@ -7,8 +7,8 @@ import { selectBrStatus, selectChildTable, selectOtConfig, selectRouterTable, se
 import { appBarActions } from "@/store/slices/appbar.slice";
 import { t } from "@/core/i18n/i18n";
 
-import "@/core/components/modal/modal.component";
-import "@monitor/nodes/nodes.style.scss";
+import "@namorix/core/components/modal";
+import "./nodes.style.scss";
 
 function normCol(name: string): string {
   return String(name).trim().toLowerCase();
@@ -341,9 +341,10 @@ export class NodesComponent extends LitElement {
             </div>
           </section>
 
-          <modal-dialog
+          <nmx-modal
             .open=${this.selectedRow != null}
             .title=${modalTitle}
+            .closeAriaLabel=${t("modal.closeAriaLabel")}
             .body=${html`
               <ul class="nodes-modal-detail-list">
                 ${modalEntries.map(({ key: fieldKey, value }) => html`
@@ -355,7 +356,7 @@ export class NodesComponent extends LitElement {
               </ul>
             `}
             .onClose=${() => (this.selectedRow = null)}
-          ></modal-dialog>
+          ></nmx-modal>
         </div>
       </div>
     `;

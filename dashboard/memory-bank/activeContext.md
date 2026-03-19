@@ -34,6 +34,12 @@ Giao tiếp BR ↔ backend theo hướng **notify-first**: Thread-Host push `CMD
 - **confirm-modal bỏ**: Settings Device dùng trực tiếp `<modal-dialog>` với countdown trong component.
 - **page-header**: Component appbar extend base; tag `page-header`, export `PageHeaderAction`.
 
+### Navigation layout: `nmx-content` + `NmxPageBuilder` (unreleased)
+- **Core:** `@namorix/core/components/layout` cung cấp `nmx-content` (light DOM) + `NmxPageBuilder`/`PageEntry` để host app render trang theo `currentPage` (controlled component; `nmx-content` không tự lắng nghe navigation event).
+- **Frontend:** `frontend/src/nmx-thread-app.ts` giữ state `page: NavPage` và cập nhật state qua event `navigate` từ `<nmx-sidebar>`, sau đó render main bằng `<nmx-content .currentPage=${this.page} .pages=${this.pages}></nmx-content>`.
+- **Prebuilt pages:** `this.pages` được build trước trong field initializer (tạo 1 lần) bằng `new NmxPageBuilder<NavPage>().add(id, render).build()`.
+- **Custom element registration:** NmxThreadApp import side-effect các page components để các custom element (vd `status-view`, `nodes-view`, `joiner-view`, `topology-map`, `settings-*`) được define trước khi `nmx-content` render callback.
+
 ### Frontend i18n (unreleased)
 - **Internationalization scaffold:** `frontend/src/core/i18n/` với `t(key, params?)`, locale `"en"|"vi"`, fallback `locale → en → key`. Locale nằm trong store (`@namorix/core/store` i18n slice) với mặc định `"en"`, và được set từ user settings/config bằng `setLocale`.
 - **Runtime**: sử dụng `@namorix/core/i18n` (`createStoreBoundTranslator`, `createLocaleStorage`, `normalizeLocale`).

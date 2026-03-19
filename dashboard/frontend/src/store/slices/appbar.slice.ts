@@ -1,5 +1,5 @@
 import { createSlice, type PayloadAction } from "@reduxjs/toolkit";
-import type { PageHeaderAction } from "@/core/components/appbar/appbar";
+import type { PageHeaderAction } from "@namorix/core";
 
 export type AppBarState = {
   visible: boolean;

@@ -116,7 +116,7 @@ CMD_STATE that bai **5 lan lien tiep** → dong transport + bat dau reconnect.
 
 - **Base elements (core):** **NmxBaseElement** — font injection + light DOM only. **NmxStoreElement** extends NmxBaseElement: abstract `getStore()`, optional locale subscription (`static useLocale`), `createStoreSlice(selector, equals?)`; dùng `subscribeStoreSelector` + `selectLocale` từ `@namorix/core/store`.
 - **AppBaseElement** (`frontend/src/core/AppBaseElement.ts`): extends `NmxStoreElement<RootState>`, implements `getStore() { return store }`. Component cần store/locale extend AppBaseElement.
-- **Root:** `index.html` mount `<nmx-main>`; NmxMain → `<nmx-app-container>` slot `<nmx-thread-app>`. **NmxThreadApp** (app.ts) extends AppBaseElement. Layout có thể dùng `createStoreSlice(selectWsConnected)`, `createStoreSlice(selectAppBar)`; render sidebar, toast, page-header, main.
+- **Root:** `index.html` mount `<nmx-main>`; NmxMain → `<nmx-app-container>` slot `<nmx-thread-app>`. **NmxThreadApp** (app.ts) extends AppBaseElement. Layout có thể dùng `createStoreSlice(selectWsConnected)`, `createStoreSlice(selectAppBar)`; render sidebar, toast, page-header, và main page qua `<nmx-content>` (core) nhận `currentPage` + `pages`.
 - **AppBar (Redux):** Slice `appBar` (heading, subtitle, actions, visible). Pages dispatch setAppBar/clearAppBar; layout đọc store và render `<page-header>`.
 - **WebSocket:** Core `createWsBridge<S>({ store, url?, options? })` — builder `.onConnect()`/`.onDisconnect()`/`.onConnectError()`/`.on(event, handler)`/`.start()`/`.stop()`/`.getSocket()`. Plugin (vd. `frontend/src/core/ws/ws-bridge.ts`) cấu hình lifecycle + domain events rồi gọi `bridge.start()` một lần (vd. trong root `connectedCallback`). WS connection state: `wsConnectionReducer` + `wsConnectionActions` từ `@namorix/core/store`. Emit/response với timeout: `onceWithTimeout` từ `@namorix/core/ws`. Socket URL mặc định `window.location.origin` (Vite proxy).
 - **i18n:** Slice `i18n` trong store, mặc định `"en"`; set từ user settings bằng `store.dispatch(setLocale(...))`. Components re-render khi locale đổi nhờ subscribe `selectLocale` (NmxStoreElement locale hoặc `createLocaleController` từ `@/core/i18n/locale-controller`).
@@ -126,6 +126,7 @@ CMD_STATE that bai **5 lan lien tiep** → dong transport + bat dau reconnect.
 
 - Sidebar chia 2 group: **Monitor** (`status`, `nodes`, `joiner`, `topology`) và **Settings** (`settings-connection`, `settings-thread`, `settings-device`).
 - Settings không dùng “expand/collapse” và không còn trang trung gian `settings-view`; mỗi item Settings map trực tiếp tới 1 page component.
+- Navigation source-of-truth: `NmxThreadApp.page` (NavPage union) được cập nhật từ event `navigate` của `<nmx-sidebar>`, sau đó được truyền xuống `<nmx-content>` để chọn page theo `id` từ `NmxPageBuilder` (controlled rendering, `nmx-content` không tự lắng nghe event).
 
 ### Backend path aliases
 

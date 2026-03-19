@@ -7,8 +7,6 @@ import { selectBrStatus, selectConfig, selectOtConfig, selectSystemInfo } from "
 import { appBarActions } from "@/store/slices/appbar.slice";
 import { t } from "@/core/i18n/i18n";
 
-import "@monitor/status/status.style.scss";
-
 function formatPanId(panid: string | null | undefined): string {
   if (!panid) return "—";
   return panid.startsWith("0x") || panid.startsWith("0X") ? panid : `0x${panid}`;
