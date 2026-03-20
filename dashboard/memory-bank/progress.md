@@ -123,7 +123,7 @@ Console da bo. Commissioner gop vao Nodes (modal + Joiner List).
 - **SCSS RGB tokens:** `_variables.scss` định nghĩa RGB (hex 6) cho mọi màu dùng trong `rgba()`; component dùng `rgba($var, opacity)` và có thể có functional naming local (vd. `$modal-overlay-bg`).
 - **Base:** NmxBaseElement (core), NmxStoreElement (core), AppBaseElement (frontend, getStore → store). Component cần store/locale extend AppBaseElement.
 - **Root:** index.html mount `<nmx-main>`; NmxMain → nmx-app-container → nmx-thread-app (NmxThreadApp extends AppBaseElement). Layout subscribe wsConnected + appBar qua createStoreSlice; render sidebar, toast, page-header, main.
-- **AppBar (Redux):** Slice appBar (heading, subtitle, actions, visible). Pages dispatch setAppBar/clearAppBar; layout đọc store và render `<page-header>` khi appBar.visible.
+- **AppBar (Redux):** Slice `appBar` (actions, visible). Pages dispatch setAppBar/clearAppBar; layout đọc store và render `<page-header>` khi `appBar.visible`.
 - Toast: core `<nmx-toast>`, `initToast` + `showToast` dual mode (standalone → store; desktop → CustomEvent). Dark theme; thanh doc trai theo type, title, message muted; slide-in phai, fade-out exit.
 - Modal: **confirm-modal đã xóa**; confirm flows dùng trực tiếp **modal-dialog** (vd. Settings Device với countdown trong component). modal-dialog render qua portal; ModalAction tone/style/icon/loading. spin-loader (core/components/spinner). Form/button: class **nmx-form-*** và **nmx-btn*** / **nmx-form-btn*** từ core (`_form.scss`, `_button.scss`); modal alert/info trong modal.style.scss.
 - Sidebar (core/components/sidebar): brand "OpenThread", nav Monitor/Settings; Settings sub-items `lan`, `device_hub`, `warning`; status dot theo thread state + BR connection.

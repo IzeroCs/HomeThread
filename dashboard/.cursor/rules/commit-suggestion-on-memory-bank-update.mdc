@@ -1,0 +1,17 @@
+---
+description:
+globs:
+  - "**/*"
+alwaysApply: true
+---
+# Commit Suggestion Rule (After Memory Bank Update)
+
+Khi user yêu cầu **update memory bank** và mình đã hoàn thành việc cập nhật Memory Bank (host + submodule/core), hãy:
+
+1. Gợi ý **Git commit title** (1 dòng).
+2. Gợi ý **commit description/body** (nhiều dòng nếu cần).
+3. Commit suggestion phải phản ánh thay đổi ở cả 2 nơi:
+   - `dashboard/memory-bank/`
+   - `dashboard/vendor/namorix-core/memory-bank/`
+4. Nếu chỉ docs thay đổi, title/description phải dùng style phù hợp (ví dụ `docs:` hoặc `chore(docs):`).
+

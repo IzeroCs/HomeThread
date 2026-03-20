@@ -76,8 +76,8 @@
   },
   "joiner": {
     "header": {
-      "title": "Joiner",
-      "subtitle": "Manage devices waiting to join the Thread network"
+      "title": "Joiner"
+      
     },
     "actions": {
       "addJoiner": "Add joiner"
@@ -144,8 +144,7 @@
   },
   "status": {
     "header": {
-      "title": "Status",
-      "subtitle": "Network health and configuration overview"
+      "title": "Status"
     },
     "br": {
       "title": "BR Connection Status",
@@ -268,8 +267,7 @@
   ,
   "nodes": {
     "header": {
-      "title": "Nodes",
-      "subtitle": "Manage and monitor network topology and connectivity"
+      "title": "Nodes"
     },
     "common": {
       "columns": {

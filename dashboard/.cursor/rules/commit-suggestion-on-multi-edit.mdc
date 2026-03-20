@@ -1,0 +1,18 @@
+---
+description:
+globs:
+  - "**/*"
+alwaysApply: true
+---
+# Commit Suggestion Rule (Multi-Edit + Submodule)
+
+Khi trong một lượt tác vụ có sửa **nhiều file** (ví dụ: >= 5 file) và/hoặc có sửa các phần thuộc submodule (thường nằm dưới `vendor/` như `dashboard/vendor/namorix-core`), hãy:
+
+1. Tự gợi ý **commit title** (dòng đầu) + **commit description/body** (các dòng giải thích).
+2. Title ưu tiên format ngắn theo dạng:
+   - `fix: ...` hoặc `refactor: ...` hoặc `chore: ...` hoặc `style: ...`
+3. Body cần có ít nhất 2 phần:
+   - Tóm tắt lý do thay đổi (why).
+   - Ghi rõ phạm vi chính (what changed) và nhắc tới submodule tương ứng (ví dụ: “updated `vendor/namorix-core`”).
+
+Lưu ý: Nếu user chưa yêu cầu tạo commit thật sự, chỉ cần **gợi ý** (không tự commit). Nếu các thay đổi không đủ điều kiện “multi-edit”, không cần gợi ý commit. 

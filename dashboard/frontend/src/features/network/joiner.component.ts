@@ -318,8 +318,7 @@ export class JoinerViewComponent extends LitElement {
 
     return html`
       <nmx-appbar
-        heading=${t("joiner.header.title")}
-        subtitle=${t("joiner.header.subtitle")}
+        local
         .actions=${[{
           id: "commission",
           icon: "add_circle",
@@ -330,7 +329,6 @@ export class JoinerViewComponent extends LitElement {
         }]}
         @action-click=${this._onHeaderAction}
       ></nmx-appbar>
-      <div class="page-container">
         <div class="joiner-page">
           ${isConnected ? html`
             <div class="joiner-status-cards">
@@ -469,7 +467,6 @@ export class JoinerViewComponent extends LitElement {
             .onClose=${() => this._closeCommissionModal()}
           ></nmx-modal>
         </div>
-      </div>
     `;
   }
 }

@@ -1,5 +1,9 @@
 @use "@namorix/core/styles/_mixin.scss" as *;
 
+status-view {
+    display: contents;
+}
+
 .status-page {
     width: 100%;
     max-width: var(--nmx-form-page-max-width);

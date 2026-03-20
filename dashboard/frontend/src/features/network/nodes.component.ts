@@ -4,7 +4,7 @@ import { store } from "@/store/store";
 import { createLocaleController } from "@/core/i18n/locale-controller";
 import { LitStoreController, shallowEqual } from "@namorix/core/store";
 import { selectBrStatus, selectChildTable, selectOtConfig, selectRouterTable, selectThreadState } from "@/store/selectors";
-import { appBarActions } from "@/store/slices/appbar.slice";
+import { clearPageHeader, setPageHeader } from "@namorix/core";
 import { t } from "@/core/i18n/i18n";
 
 import "@namorix/core/components/modal";
@@ -130,7 +130,7 @@ export class NodesComponent extends LitElement {
   override disconnectedCallback() {
     if (this._routerTick) clearInterval(this._routerTick);
     if (this._childTick) clearInterval(this._childTick);
-    store.dispatch(appBarActions.clearAppBar());
+    clearPageHeader();
     super.disconnectedCallback();
   }
 
@@ -162,14 +162,13 @@ export class NodesComponent extends LitElement {
   render() {
     void this.locale.value;
     const appBar = {
-      heading: t("nodes.header.title"),
-      subtitle: t("nodes.header.subtitle"),
       actions: [],
+      visible: false,
     };
     const sig = JSON.stringify(appBar);
     if (sig !== this._lastAppBarSig) {
       this._lastAppBarSig = sig;
-      store.dispatch(appBarActions.setAppBar(appBar));
+      setPageHeader(appBar);
     }
     const { isConnected, routerTable, childTable, otConfig } = this.appState.value;
     const rH = routerTable?.headers ?? [];
@@ -210,7 +209,6 @@ export class NodesComponent extends LitElement {
     }
 
     return html`
-      <div class="page-container">
         <div class="nodes-page">
           <section class="nodes-section">
             <h2 class="nodes-section-title">
@@ -358,7 +356,6 @@ export class NodesComponent extends LitElement {
             .onClose=${() => (this.selectedRow = null)}
           ></nmx-modal>
         </div>
-      </div>
     `;
   }
 

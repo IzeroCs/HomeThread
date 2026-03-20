@@ -100,7 +100,7 @@ flowchart TD
 Memory Bank updates occur when:
 1. Discovering new project patterns
 2. After implementing significant changes
-3. When user requests with **update memory bank** (MUST review ALL files)
+3. When user requests with **update memory bank** (MUST review ALL files; update both host + core library docs)
 4. When context needs clarification
 
 \```mermaid
@@ -119,7 +119,10 @@ flowchart TD
     Start --> Process
 \```
 
-Note: When triggered by **update memory bank**, I MUST review every memory bank file, even if some don't require updates. Focus particularly on activeContext.md and progress.md as they track current state.
+Note: When triggered by **update memory bank**, I MUST review every memory bank file from BOTH locations:
+- `dashboard/memory-bank/*.md` (host app docs)
+- `dashboard/vendor/namorix-core/memory-bank/*.md` (core library docs / submodule)
+Even if some don't require updates, I still need to check them for consistency. Focus particularly on `activeContext.md` and `progress.md` in BOTH locations as they track current state.
 
 ## Project Intelligence (.cursor/rules)
 
