@@ -18,7 +18,6 @@ Khi user yêu cầu cập nhật docs (host + submodule/core) và mình đã ho�
 ## Output format (Markdown, dễ copy)
 Trả về commit suggestion dưới dạng Markdown để copy-paste:
 
-```md
 ### Thread (host)
 ```text
 <title>
@@ -31,6 +30,5 @@ Trả về commit suggestion dưới dạng Markdown để copy-paste:
 <title>
 
 <body>
-```
 ```
 
