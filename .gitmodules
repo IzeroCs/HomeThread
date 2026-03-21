@@ -1,6 +1,0 @@
-[submodule "dashboard/vendor/namorix-core"]
-	path = dashboard/vendor/namorix-core
-	url = git@github.com:Namorix/namorix-core.git
-[submodule "dashboard/vendor/namorix-assets"]
-	path = dashboard/vendor/namorix-assets
-	url = git@github.com:Namorix/namorix-assets.git
