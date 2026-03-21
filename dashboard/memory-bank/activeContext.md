@@ -143,9 +143,9 @@ Giao tiếp BR ↔ backend theo hướng **notify-first**: Thread-Host push `CMD
 
 ### Docker backend (chay backend bang container)
 - **Vi tri:** Dockerfile va docker-compose o **thu muc goc** dashboard/: `Dockerfile.backend`, `docker-compose.yml`, `.dockerignore`. Sau co the them frontend cung build.
-- **Cau hinh:** `network_mode: host` (dung chung bang route host — backend khong can doc route trong code). Volume chi `./backend/data:/app/data`.
+- **Cau hinh:** `network_mode: host` (dung chung bang route host — backend khong can doc route trong code). Volume `../data:/app/data` (SQLite + migrations ở `namorix-thread/data`).
 - **Default BR:** 192.168.31.3:5000. **mDNS trong Docker khong dung duoc**; khi Docker phai dung IP. "Tim BR" sau co the quet dai IP (TCP 5000).
-- **Chay:** `docker compose up --build`; container name `dashboard-thread-backend`. Doc: `backend/README.docker.md`.
+- **Chay:** `docker compose up --build`; container name `namorix-thread-backend`. Doc: `backend/README.docker.md`.
 
 ### BR connection (Settings)
 - **IPv4 khuyen nghi:** Nhieu BR (vd. ESP32-S3) chi listen TCP tren IPv4 (0.0.0.0:5000) → dung **IPv4** lam BR Host (vd. 192.168.31.3) tranh ECONNREFUSED.

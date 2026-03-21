@@ -27,7 +27,6 @@ frontend/dist/
 
 # Backend
 backend/dist/
-backend/data/
 
 # Local docs symlink (trỏ về namorix-thread/documents/)
 docs

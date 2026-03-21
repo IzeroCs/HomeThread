@@ -5,14 +5,14 @@
 import path from "path";
 import { eq } from "drizzle-orm";
 import { migrate } from "drizzle-orm/better-sqlite3/migrator";
-import { getDrizzle } from "./database.db";
+import { getDataRoot, getDrizzle } from "./database.db";
 import { appSettings } from "./database.schema";
 import { logger } from "@utils/logger.util";
 
 const migrationLog = logger.child("Migration");
 
 function getMigrationsFolder(): string {
-  return path.join(process.cwd(), "data", "migrations");
+  return path.join(getDataRoot(), "migrations");
 }
 
 const APP_SETTINGS_SEED: Array<{ key: string; value: string }> = [

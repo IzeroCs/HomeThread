@@ -13,7 +13,7 @@ Backhaul Ethernet W5500 đã có IPv6 trên backbone (link-local + ULA/global kh
 
 ### Backend reply → Thread-Node (route trên host)
 - Node gửi tới backend OK; **reply từ backend về Node** cần **route** trên máy backend: prefix Thread (vd. fdb8:.../fdd7:...) **via BR** (link-local BR trên backbone). BR gửi RA với RIO nhưng **router lifetime = 0** → Linux có thể cài route từ RIO nếu **accept_ra_rt_info_max_plen** đủ lớn (vd. 128). **Quan trọng:** set **per-interface**, không dùng `all`: `sysctl net.ipv6.conf.<iface>.accept_ra_rt_info_max_plen=128` (vd. `enp8s0`). `net.ipv6.conf.all.*` chỉ là mặc định cho interface mới, không áp dụng ngược lại cho interface đã tồn tại. Route từ RA mất sau reboot; có thể gửi **Router Solicitation (RS)** từ backend (vd. `rdisc6 -1 <iface>`) để BR trả RA sớm thay vì chờ chu kỳ. Sau **factory reset BR** prefix và có thể BR link-local đổi → cập nhật route/RS.
-- **Dashboard Docker:** Backend chạy container với `network_mode: host` (dùng chung route host), bind mount `./backend/data` (DB). mDNS trong container không ổn định → default BR **192.168.31.3:5000**. Nếu cần backend tự add route (IPv6 prefix via BR): chạy container với `--cap-add=NET_ADMIN` hoặc dùng host để add route.
+- **Dashboard Docker:** Backend chạy container với `network_mode: host` (dùng chung route host), bind mount `namorix-thread/data` (DB). mDNS trong container không ổn định → default BR **192.168.31.3:5000**. Nếu cần backend tự add route (IPv6 prefix via BR): chạy container với `--cap-add=NET_ADMIN` hoặc dùng host để add route.
 
 ## Thay đổi gần đây
 

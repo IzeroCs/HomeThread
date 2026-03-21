@@ -3,27 +3,23 @@
 ## Project Structure
 
 ```
-dashboard/                # npm workspaces root
-├── package.json           # Root: scripts + workspaces config
-├── backend/               # Node.js + TypeScript server
-│   └── src/
-│       ├── coap/          # CoAP server (decorator), CoapStatus, coap.response, DeviceCoapController, device-coap.service, device.payload (DeviceInfoPayload, DeviceTopologyPayload, entity, state)
-│       ├── communicate/   # frame/, transport/, br/ (BrManager/BrSession/BrConnection/BrCommand)
-│       ├── settings/      # BrConnectionConfigService, AppSettingsService
-│       ├── thread/        # thread.config (OtConfigStore), thread.data, thread.polling, thread-role
-│       ├── websocket/     # WebSocketServer; handler/ (config, br, device, thread, commissioner, srp); ws.type, ws.decorator (@WsOn, getWsRoutes)
-│       ├── database/      # SQLite, Drizzle schema + migrations (data/migrations), repositories (device, app-settings)
-│       ├── cbor/          # CBOR decode (noi bo)
-│       └── utils/         # logger, ipv6
-├── frontend/              # Lit + Vite + SCSS
-│   └── src/
-│       ├── app.ts         # AppLayout (custom element app-layout), entry component
-│       ├── main.ts        # imports index.scss + app
-│       ├── core/          # app-lit-element (base), store, components, i18n, styles, types, ws
-│       ├── features/      # monitor (nodes, status, joiner, topology), settings (connection, thread, device)
-│       └── index.html     # mount <app-layout></app-layout>
-├── shared/                # Pure TypeScript package (types, events, constants, validation)
-└── memory-bank/           # Cursor Memory Bank files
+namorix-thread/           # monorepo root (repo)
+├── data/                  # SQLite + Drizzle migrations (runtime; cạnh dashboard/)
+└── dashboard/             # npm workspaces root
+    ├── package.json
+    ├── backend/           # Node.js + TypeScript server
+    │   └── src/
+    │       ├── coap/      # CoAP server (decorator), CoapStatus, coap.response, DeviceCoapController, device-coap.service, device.payload (…)
+    │       ├── communicate/
+    │       ├── settings/
+    │       ├── thread/
+    │       ├── websocket/
+    │       ├── database/  # Drizzle schema; migrations ở ../../data/migrations (repo root)
+    │       ├── cbor/
+    │       └── utils/
+    ├── frontend/          # Lit + Vite + SCSS
+    ├── shared/
+    └── memory-bank/
 ```
 
 ## Tech Stack
@@ -162,7 +158,7 @@ SQLite (`better-sqlite3`, WAL mode). Migrations:
 ## Docker (backend)
 
 - **Vi tri:** `Dockerfile.backend`, `docker-compose.yml` o thu muc goc. Build: `docker compose up --build`.
-- **Cau hinh:** `network_mode: host` (reply CoAP ve Thread-Node dung **bang route cua host** — backend khong can doc/cau hinh route trong code). Volume chi `./backend/data:/app/data`. Container name: `dashboard-thread-backend`.
+- **Cau hinh:** `network_mode: host` (reply CoAP ve Thread-Node dung **bang route cua host** — backend khong can doc/cau hinh route trong code). Volume `../data:/app/data` (host: `namorix-thread/data`). Trong image: `NAMORIX_DATA_DIR=/app/data`. Container name: `namorix-thread-backend` (docker-compose).
 - **Default BR:** 192.168.31.3:5000. **mDNS trong Docker khong dung duoc**; khi chay Docker phai dung IP. "Tim BR" sau co the lam bang quet dai IP (TCP 5000). Chi tiet: `backend/README.docker.md`.
 
 ## Configuration

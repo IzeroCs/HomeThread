@@ -1,6 +1,6 @@
 # Backend — Docker
 
-Dockerfile và docker-compose nằm ở **thư mục gốc `dashboard/`** (để sau build cùng frontend).
+Dockerfile và docker-compose nằm ở **thư mục gốc `dashboard/`** (để sau build cùng frontend). Dữ liệu SQLite + migration nằm ở **`namorix-thread/data/`** (volume `../data:/app/data` khi chạy compose từ `dashboard/`).
 
 ## Chạy nhanh (từ thư mục `dashboard/`)
 

@@ -10,7 +10,19 @@ import { logger } from "@utils/logger.util";
 
 const dbLog = logger.child("DB");
 
-const DB_DIR = path.join(process.cwd(), "data", "database");
+/**
+ * Runtime data root: `namorix-thread/data` (SQLite, Drizzle migrations).
+ * Docker: set `NAMORIX_DATA_DIR=/app/data` (volume `../data:/app/data`).
+ */
+export function getDataRoot(): string {
+  if (process.env.NAMORIX_DATA_DIR) {
+    return path.resolve(process.env.NAMORIX_DATA_DIR);
+  }
+  // dashboard/backend/src/database → ../../../../data
+  return path.resolve(__dirname, "..", "..", "..", "..", "data");
+}
+
+const DB_DIR = path.join(getDataRoot(), "database");
 const DB_PATH = path.join(DB_DIR, "database.db");
 
 let dbInstance: Database.Database | null = null;
