@@ -47,6 +47,7 @@ Dashboard Thread có thể chạy **độc lập** (Vite dev / backend riêng) h
 
 - **Spec tích hợp:** `namorix/namorix-desktop-architecture.md` — plugin manifest, `window.nmxCore`, CORS (`DESKTOP_ORIGIN`), auth exchange (`nmx_token`), milestone **M3** (load Thread trong cửa sổ shell).
 - **Core:** `namorix-core/memory-bank/` — mục §10 / bảng Desktop integration; không nhân đôi nội dung spec trong repo Thread.
+- **Embed shell:** Core 0.9.2+ — `defineCustomElementOnce` cho component Lit dùng chung; plugin backend — `DESKTOP_ORIGIN` khớp Vite; lib build — cấu hình `process.env` khi cần (xem `techContext.md`).
 
 Chi tiết product/tech: `dashboard/memory-bank/productContext.md`, `techContext.md` (mục Namorix Desktop).
 

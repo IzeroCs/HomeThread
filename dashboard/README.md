@@ -79,15 +79,38 @@ dashboard/
    - `npm run build` — build cả hai (backend: `tsc && tsc-alias` để thay path alias trong dist; frontend: Vite)
    - `npm run build:backend` / `npm run build:frontend` — build từng phần
 
-### Cùng Namorix Desktop (plugin trong shell)
+### Cùng Namorix Desktop (plugin bundle trong shell)
 
-Desktop backend mặc định **:3000**; Thread backend dev cũng **:3000** → xung đột. Khi chạy song song:
+Thread backend phục vụ **cùng một origin** (HTTP + static + WebSocket + CoAP): `GET /manifest.json`, `GET /health`, static `dist/plugin` (`/assets/thread.js`, `/assets/thread.css`), Socket.io. **Mặc định `PORT=4000`** — khớp `namorix/backend/plugins.config.json` (`"url": "http://localhost:4000"`). Desktop backend mặc định **:3000** → không xung đột.
 
-1. Thread backend: `cd backend && PORT=3001 npm run dev` (hoặc tương đương workspace).
-2. Thread frontend (origin plugin + proxy WS tới BR backend): `cd frontend && npm run dev:shell` — Vite **:4000**, `THREAD_BACKEND_PORT=3001` (đã gắn trong script), `public/manifest.json` + `health` cho Desktop registry.
-3. Trong repo **namorix** (Desktop): `backend/plugins.config.json` trỏ `"url": "http://localhost:4000"` cho plugin `thread`; chạy backend + frontend Desktop như tài liệu `namorix/docs/README.md`.
+**Biến môi trường (Thread backend):**
 
-`nmx-thread-app` trong shell nhận `data-plugin-base-url` từ shell và nối WebSocket qua origin đó (Vite proxy `/socket.io` → Thread backend).
+| Biến | Mặc định | Ý nghĩa |
+|------|----------|---------|
+| `PORT` | `4000` | Cổng HTTP (manifest, static, health, Socket.io) |
+| `DESKTOP_ORIGIN` | `http://localhost:5173` | CORS cho trình duyệt + Socket.io (origin Vite của Desktop) |
+| `PLUGIN_STATIC_DIR` | `dashboard/dist/plugin` (tính từ `backend/src`) | Thư mục output của `npm run build:plugin` |
+
+**Workflow dev (gợi ý):**
+
+1. Build plugin (một lần hoặc watch): từ thư mục **`dashboard/`** gọi `npm run build:plugin` hoặc `npm run build:plugin:watch` (script ở root workspace; tương đương `npm run build:plugin:watch --workspace=frontend`).
+2. Chạy Thread backend: `npm run dev:backend` — phục vụ static sau khi đã có `dist/plugin`.
+3. Chạy Namorix Desktop (backend + Vite) theo `namorix/docs/README.md`; đăng nhập để `plugin-loader` tải plugin.
+
+Sau khi `build:plugin:watch` rebuild, **hard reload** trình duyệt Desktop (vd. Ctrl+Shift+R) để tránh cache module ES cũ.
+
+**Kiểm tra nhanh (Thread đang chạy trên 4000):**
+
+```bash
+curl -s http://localhost:4000/manifest.json | head
+curl -s http://localhost:4000/health
+```
+
+**Chạy Thread SPA độc lập** (không qua bundle plugin): `npm run dev` trong `dashboard/` — Vite mặc định proxy `THREAD_BACKEND_PORT` tới **4000** (cùng cổng backend mặc định). Script `dev:shell` dùng Vite **5173** + backend **4000**.
+
+`nmx-thread-app` trong shell nhận `data-plugin-base-url` từ shell; WebSocket tới origin plugin (cùng host:port với `thread.js` khi embed).
+
+**Docker:** `docker-compose` mặc định vẫn `PORT=3000` (xem `docker-compose.yml`). Khi chạy Desktop trỏ tới container, dùng `http://localhost:3000` trong `plugins.config.json`, hoặc đổi biến `PORT` trong compose thành `4000` cho thống nhất với dev native (và nhớ build/mount `dist/plugin` nếu cần static plugin).
 
 ## Truy cập từ LAN
 
@@ -117,7 +140,7 @@ Nếu dùng i18n Ally để highlight/auto-detect keys cho custom `t()`:
 
 ## Cấu hình
 
-- **Backend**: `backend/.env.example` — PORT. Cấu hình BR (host, port) lưu SQLite qua Settings.
+- **Backend**: `backend/.env.example` — `PORT` (mặc định **4000**), `DESKTOP_ORIGIN`, `PLUGIN_STATIC_DIR` (plugin bundle). Cấu hình BR (host, port) lưu SQLite qua Settings.
 - **Frontend**: Proxy trong `vite.config.ts` (`/api`, `/socket.io` → backend). Có thể set `VITE_WS_URL` nếu cần URL backend khác.
 
 ## Backend – TCP & frame protocol

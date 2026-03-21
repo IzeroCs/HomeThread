@@ -1,3 +1,7 @@
+/**
+ * Lib build for Namorix Desktop: single ES module + one CSS file.
+ * Run: npm run build:plugin | npm run build:plugin:watch
+ */
 import { defineConfig } from "vite";
 import { readFileSync } from "fs";
 import { dirname, join, resolve } from "path";
@@ -5,17 +9,12 @@ import { fileURLToPath } from "url";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const pkg = JSON.parse(readFileSync(join(__dirname, "package.json"), "utf-8"));
-/** Parent of `namorix-thread/` — sibling repos: `namorix-core`, `namorix-assets` (see `namorix-thread.code-workspace`). */
 const siblingReposRoot = resolve(__dirname, "../../..");
 const namorixCoreSrc = resolve(siblingReposRoot, "namorix-core/src");
 const namorixAssetsRoot = resolve(siblingReposRoot, "namorix-assets");
 
-/** OpenThread backend (dashboard/backend). Default 4000 — same as plugin static + WS origin for Namorix Desktop. */
-const threadBackendPort = process.env.THREAD_BACKEND_PORT ?? "4000";
-const threadBackendTarget = `http://127.0.0.1:${threadBackendPort}`;
-
-/** Shell plugin dev: `VITE_DEV_PORT=4000 npm run dev` — manifest + assets for Namorix Desktop. */
-const devPort = Number(process.env.VITE_DEV_PORT ?? 5173);
+/** Output: dashboard/dist/plugin/assets/thread.js + thread.css */
+const outDir = resolve(__dirname, "../dist/plugin");
 
 export default defineConfig({
   plugins: [],
@@ -46,29 +45,27 @@ export default defineConfig({
   },
   define: {
     __APP_VERSION__: JSON.stringify(pkg.version || "0.0.0"),
+    'process.env.NODE_ENV': JSON.stringify('production'),
   },
-  server: {
-    port: devPort,
-    host: true,
-    cors: true,
-    fs: {
-      allow: [
-        resolve(__dirname, ".."),
-        resolve(__dirname, "../shared"),
-        namorixCoreSrc,
-        namorixAssetsRoot,
-      ],
+  build: {
+    emptyOutDir: true,
+    cssCodeSplit: false,
+    outDir,
+    lib: {
+      entry: resolve(__dirname, "src/thread-plugin-entry.ts"),
+      formats: ["es"],
+      fileName: "assets/thread",
     },
-    proxy: {
-      "/api": {
-        target: threadBackendTarget,
-        changeOrigin: true,
-      },
-      "/socket.io": {
-        target: threadBackendTarget,
-        changeOrigin: true,
-        ws: true,
-        secure: false,
+    rollupOptions: {
+      output: {
+        /** Prefer one CSS file; other emitted assets keep hashed names */
+        assetFileNames: (assetInfo) => {
+          const name = assetInfo.names?.[0] ?? assetInfo.name ?? "";
+          if (typeof name === "string" && name.endsWith(".css")) {
+            return "assets/thread.css";
+          }
+          return "assets/[name]-[hash][extname]";
+        },
       },
     },
   },

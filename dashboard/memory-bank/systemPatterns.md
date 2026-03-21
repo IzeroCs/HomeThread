@@ -234,4 +234,5 @@ Version hiển thị trên Status subtitle lấy từ `frontend/package.json`: V
 
 - **Repo:** `namorix` (Desktop shell + backend). **Spec:** `namorix/namorix-desktop-architecture.md` — plugin container, manifest JSON, inject `<script type="module">` + CSS, `customElements.whenDefined`, z-index plugin ≤ 99, portal `#nmx-plugin-portal`.
 - **Thread** đóng vai plugin **`thread`** trong spec; luồng auth/gateway/log tập trung ở Desktop — không thay pattern BR/TCP/CoAP nội bộ dashboard đã mô tả ở các mục trên.
+- **Trùng bundle `@namorix/core`:** Shell và plugin đều có thể import cùng source component Lit. Core **0.9.2+** dùng `defineCustomElementOnce` cho các tag chrome dùng chung — tránh `NotSupportedError: the name "nmx-sidebar" has already been used` khi `desktop.js` đã define trước `thread.js`.
 - Chi tiết triển khai plugin: xem **namorix** / **namorix-core** memory bank; tránh nhân đôi bảng milestone tại đây.

@@ -8,8 +8,11 @@
     "dev:backend": "npm run dev --workspace=backend",
     "dev:frontend": "npm run dev --workspace=frontend",
     "build": "npm run build --workspace=backend && npm run build --workspace=frontend",
+    "build:plugin": "npm run build:plugin --workspace=frontend",
+    "build:plugin:watch": "npm run build:plugin:watch --workspace=frontend",
     "build:backend": "npm run build --workspace=backend",
-    "build:frontend": "npm run build --workspace=frontend"
+    "build:frontend": "npm run build --workspace=frontend",
+    "db:generate": "npm run db:generate --workspace=backend"
   },
   "devDependencies": {
     "concurrently": "^9.1.0"

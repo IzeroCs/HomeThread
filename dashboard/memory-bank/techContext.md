@@ -71,6 +71,9 @@ Assets usage (frontend):
 
 - Repo **`namorix`** định nghĩa Desktop shell + backend (auth, gateway, plugin registry). Spec: **`../namorix/namorix-desktop-architecture.md`** (cùng parent folder với `namorix-thread` trong layout GitHub thông thường).
 - Thread là **plugin đầu tiên** trong spec; tích hợp runtime (manifest, bundle ES module, health URL) mô tả ở §8 Desktop — **không** trùng với tài liệu CoAP/device trong `namorix-thread/documents/`.
+- **Plugin HTTP server (Express):** CORS / Socket.io dùng biến **`DESKTOP_ORIGIN`** — phải khớp origin trang Namorix Desktop thực tế (vd. `http://localhost:5174` nếu Vite đổi port); nếu không, dynamic `import()` của `thread.js` bị chặn CORS.
+- **Build lib plugin** (`frontend/vite.plugin.config.ts`, `npm run build:plugin`): nên `define` **`process.env.NODE_ENV`** (hoặc tương đương) cho bundle browser nếu dependency (vd. RTK) còn tham chiếu `process` — tránh `ReferenceError: process is not defined` trong console.
+- **Core components + shell:** `@namorix/core` 0.9.2+ đăng ký shared custom elements qua **`defineCustomElementOnce`** — xem `namorix-core/memory-bank/progress.md` 0.9.2.
 - **Hợp đồng shell (core):** `@namorix/core/shell-api` — `PluginRuntimeStatus`, `ShellWindowEvent` (tên `CustomEvent` shell), `SHELL_APP_EMIT_PREFIX`; type `NmxCoreApi` gồm `onLocaleChange` (đăng ký đổi locale theo shell). Plugin không cần hardcode chuỗi `nmx-shell-locale-changed` nếu dùng API trên.
 - **Gateway → plugin backend:** Proxy `/api/plugins/:pluginId/*` forward header **`Authorization`** chuẩn; API plugin (HTTP) nên đọc `Authorization` / Bearer JWT — không phụ thuộc `x-forwarded-authorization`.
 - Dev standalone plugin: spec mô tả redirect Desktop + query `nmx_token` (§5.5) — triển khai theo milestone **M3** trên repo `namorix`; memory bank host: `namorix/memory-bank/`.

@@ -5,8 +5,10 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "dev:shell": "env THREAD_BACKEND_PORT=3001 VITE_DEV_PORT=4000 vite",
+    "dev:shell": "env THREAD_BACKEND_PORT=4000 VITE_DEV_PORT=5173 vite",
     "build": "tsc -b && vite build",
+    "build:plugin": "vite build --config vite.plugin.config.ts",
+    "build:plugin:watch": "vite build --watch --config vite.plugin.config.ts",
     "preview": "vite preview"
   },
   "dependencies": {
