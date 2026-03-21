@@ -193,6 +193,7 @@ ROUTER_TABLE, CHILD_TABLE, JOINER_TABLE TX va ACK bi filter ra khoi console log 
 1. **Tim BR** *(tuy chon)* — mDNS browse `_thread-frame._tcp` (khi chay tren host) hoac quet dai IP (TCP 5000) khi chay Docker
 2. **TCP keepalive** — Da co the bat de phat hien mat ket noi BR nhanh hon (backend TransportTcp)
 3. **Security** *(neu can)* — auth WS, HTTPS
+4. **Namorix Desktop** *(repo `namorix`, milestone M3)* — khi shell sẵn sàng: align `nmx-thread-app` với spec plugin (manifest, lib build, `isInShell`, gateway JWT). Theo dõi `namorix/memory-bank/` + `namorix-core/memory-bank/`; không trùng lặp dài trong memory bank Thread — chỉ tham chiếu `namorix/namorix-desktop-architecture.md`.
 
 ## Files to Watch
 

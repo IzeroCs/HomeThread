@@ -71,6 +71,12 @@ Assets usage (frontend):
 - Ensure Vite alias `@namorix/assets` points to the assets submodule root (or its `src/` if it uses that layout).
 - Import SVG as URL: `import logoUrl from "@namorix/assets/logo/namorix-logo-dark.svg?url"` and pass it to components as a string (e.g. `<img src=${logoUrl}>`).
 
+### Namorix Desktop (cross-repo — không thay đổi cấu trúc dashboard hiện tại)
+
+- Repo **`namorix`** định nghĩa Desktop shell + backend (auth, gateway, plugin registry). Spec: **`../namorix/namorix-desktop-architecture.md`** (cùng parent folder với `namorix-thread` trong layout GitHub thông thường).
+- Thread là **plugin đầu tiên** trong spec; tích hợp runtime (manifest, bundle ES module, health URL) mô tả ở §8 Desktop — **không** trùng với tài liệu CoAP/device trong `namorix-thread/documents/`.
+- Dev standalone plugin: spec mô tả redirect Desktop + query `nmx_token` (§5.5) — triển khai theo milestone **M3** trên repo `namorix`; memory bank host: `namorix/memory-bank/`.
+
 ### Shared Package (`shared/`)
 
 ```

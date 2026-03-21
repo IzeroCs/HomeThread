@@ -41,6 +41,15 @@ Cung cấp giao diện web quản lý Thread network:
 - Frontend phải hoạt động từ LAN (Vite host: true)
 - Không đóng TCP khi server restart — BR vẫn chạy
 
+## Namorix Desktop (shell host — repo khác)
+
+Dashboard Thread có thể chạy **độc lập** (Vite dev / backend riêng) hoặc sau này được **embed như plugin** trong **Namorix Desktop** — repo sibling **`namorix`** (thường cùng workspace multi-root với `namorix-core` / `namorix-assets`; file workspace: `namorix/namorix.code-workspace`).
+
+- **Spec tích hợp:** `namorix/namorix-desktop-architecture.md` — plugin manifest, `window.nmxCore`, CORS (`DESKTOP_ORIGIN`), auth exchange (`nmx_token`), milestone **M3** (load Thread trong cửa sổ shell).
+- **Core:** `namorix-core/memory-bank/` — mục §10 / bảng Desktop integration; không nhân đôi nội dung spec trong repo Thread.
+
+Chi tiết product/tech: `dashboard/memory-bank/productContext.md`, `techContext.md` (mục Namorix Desktop).
+
 ## Documents (namorix-thread/documents/)
 
 - **README.md** — Mục lục tài liệu, sơ đồ kiến trúc, luồng đăng ký tóm tắt.

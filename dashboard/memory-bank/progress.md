@@ -47,6 +47,7 @@ Version notation in this file uses Semantic Versioning `MAJOR.MINOR.PATCH` (no l
 
 
 | 2.19.0  | **Navigation/content rendering refactor.** Core thêm `nmx-content` + `NmxPageBuilder`/`PageEntry` để host app render trang theo `currentPage` (controlled). Frontend `nmx-thread-app` dùng sidebar `navigate` để set `NavPage` state, sau đó render page qua `<nmx-content>` với `pages` đã được build sẵn (tạo 1 lần). Đồng thời fix import SCSS feature từ `@monitor/*` sang path đúng trong `features/network/*`. |
+| 2.19.1  | **Memory bank — tham chiếu Namorix Desktop.** Đồng bộ `dashboard/memory-bank/` với repo sibling **`namorix`** (Desktop shell): trỏ `namorix/namorix-desktop-architecture.md` cho plugin-in-shell, manifest, CORS, `window.nmxCore`, milestone **M3**; kèm `namorix/memory-bank/` và `namorix-core/memory-bank/`. **Không đổi code** Thread — chỉ tài liệu. |
 
 ## What Works (Completed)
 

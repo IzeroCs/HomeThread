@@ -228,3 +228,9 @@ Version hiển thị trên Status subtitle lấy từ `frontend/package.json`: V
 - **Label:** rect width động `Math.max(80, labelText.length*6.5+20)`; .node__label-bg (default/--selected/--offline); hover/selected styles cho label-bg & label; &--selected:hover override để selected thắng hover.
 - **Node body:** baseline không filter; hover/selected thêm filter + stroke; &--selected .node__inner scale(1.08); fill transition; offline stroke muted.
 - **Edge:** ẩn nếu fromNode.offline || toNode.offline. Focus: tabindex="0", :focus-visible box-shadow.
+
+## Namorix Desktop (plugin — cross-repo)
+
+- **Repo:** `namorix` (Desktop shell + backend). **Spec:** `namorix/namorix-desktop-architecture.md` — plugin container, manifest JSON, inject `<script type="module">` + CSS, `customElements.whenDefined`, z-index plugin ≤ 99, portal `#nmx-plugin-portal`.
+- **Thread** đóng vai plugin **`thread`** trong spec; luồng auth/gateway/log tập trung ở Desktop — không thay pattern BR/TCP/CoAP nội bộ dashboard đã mô tả ở các mục trên.
+- Chi tiết triển khai plugin: xem **namorix** / **namorix-core** memory bank; tránh nhân đôi bảng milestone tại đây.
