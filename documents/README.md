@@ -36,7 +36,7 @@ Tài liệu kiến trúc cho hệ thống **Namorix Thread** gồm ba thành ph�
 | [entity-model/entity_model_specification.md](entity-model/entity_model_specification.md) | Firmware entity model (ESP-IDF): struct, API, event system |
 | [installation.md](installation.md) | Setup Linux host: nhận route IPv6 từ BR qua RA/RIO |
 | [websocket.md](websocket.md) | Backend WebSocket server, handler modules, event routing |
-| [namorix-core-usage.md](namorix-core-usage.md) | **Frontend:** Cách dùng namorix-core (store, i18n, WS, Toast, form/button, base elements) |
+| [namorix-core-usage.md](namorix-core-usage.md) | **Frontend:** Cách dùng namorix-core (store, i18n, WS, Toast, **shell-api** / locale trong Desktop, gateway `Authorization`, form/button, base elements) |
 
 ## Luồng đăng ký thiết bị (tóm tắt)
 

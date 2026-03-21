@@ -114,7 +114,8 @@ CMD_STATE that bai **5 lan lien tiep** → dong transport + bat dau reconnect.
 
 ### State Management
 
-- **Base elements (core):** **NmxBaseElement** — font injection + light DOM only. **NmxStoreElement** extends NmxBaseElement: abstract `getStore()`, optional locale subscription (`static useLocale`), `createStoreSlice(selector, equals?)`; dùng `subscribeStoreSelector` + `selectLocale` từ `@namorix/core/store`.
+- **Base elements (core):** **NmxBaseElement** — font injection + light DOM only. **NmxStoreElement** extends NmxBaseElement: abstract `getStore()`, optional locale subscription (`static useLocale`), `createStoreSlice(selector, equals?)`; dùng `subscribeStoreSelector` + `selectLocale` từ `@namorix/core/store`. `willUpdate(changed: PropertyValues)` khớp Lit (không ép `Map<string, unknown>`).
+- **Trong shell Desktop:** `window.nmxCore` (type `NmxCoreApi` từ `@namorix/core/shell-api`). Đồng bộ i18n với shell: `nmxCore.onLocaleChange?.((locale) => { … })` hoặc lắng `ShellWindowEvent.LocaleChanged` từ cùng package constants — xem `nmx-thread-app`.
 - **AppBaseElement** (`frontend/src/core/AppBaseElement.ts`): extends `NmxStoreElement<RootState>`, implements `getStore() { return store }`. Component cần store/locale extend AppBaseElement.
 - **Root:** `index.html` mount `<nmx-main>`; NmxMain → `<nmx-app-container>` slot `<nmx-thread-app>`. **NmxThreadApp** (app.ts) extends AppBaseElement. Layout có thể dùng `createStoreSlice(selectWsConnected)`, `createStoreSlice(selectAppBar)`; render sidebar, toast, page-header, và main page qua `<nmx-content>` (core) nhận `currentPage` + `pages`.
 - **AppBar (Redux):** Slice `appBar` (actions, visible). Pages dispatch setAppBar/clearAppBar; layout đọc store và render `<page-header>`.

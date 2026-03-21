@@ -6,6 +6,7 @@ Backend ổn định với BR qua TCP + frame protocol, CoAP device ingest, SRP 
 
 Frontend align với hệ “core/shared”:
 - `namorix-core` submodule tại `dashboard/vendor/namorix-core`
+- **Shell contract (Namorix Desktop):** Hằng số và tên sự kiện shell từ `@namorix/core/shell-api` (`PluginRuntimeStatus`, `ShellWindowEvent`, …). Đồng bộ locale với shell: ưu tiên `window.nmxCore?.onLocaleChange?.(handler)` (trả unsubscribe); fallback `addEventListener(ShellWindowEvent.LocaleChanged, …)` — xem `frontend/src/nmx-thread-app.ts`. Gateway Desktop forward JWT tới plugin backend qua header **`Authorization: Bearer <jwt>`** (plugin API đọc `req.headers.authorization`; không dùng `x-forwarded-authorization`).
 - Bundle core tokens/base styles qua Vite (alias `@namorix/core` → source khi `dist/` chưa build)
 - Store: `createPluginStore` từ `@namorix/core/store`; locale mặc định `"en"`, set từ user settings qua `setLocale`
 - i18n: `initI18n({ store, dicts, fallbackLocale })` từ `@namorix/core/i18n`; không còn locale-storage/detect

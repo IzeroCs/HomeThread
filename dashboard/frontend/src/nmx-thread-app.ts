@@ -7,6 +7,7 @@ import { startWsBridge } from "@/core/ws/ws-bridge";
 import { store } from "@/store/store";
 import { selectWsConnected } from "@/store/selectors";
 import { NmxPageBuilder } from "@namorix/core/components/layout";
+import { ShellWindowEvent, type NmxCoreApi } from "@namorix/core/shell-api";
 import { setLocale } from "@namorix/core/store";
 import { normalizeLocale } from "@namorix/core/i18n";
 import { t } from "@/core/i18n/i18n";
@@ -24,6 +25,8 @@ import "@/features/network/status.component";
 export class NmxThreadApp extends AppBaseElement {
   private static _wsBridgeStarted = false;
 
+  private _unsubLocale: (() => void) | null = null;
+
   @state() private page: NavPage = "monitor-status";
 
   private readonly pages = new NmxPageBuilder<NavPage>()
@@ -40,11 +43,24 @@ export class NmxThreadApp extends AppBaseElement {
       const base = this.getAttribute("data-plugin-base-url")?.trim();
       startWsBridge(store, base ? { url: base } : undefined);
     }
-    window.addEventListener("nmx-shell-locale-changed", this._onShellLocale as EventListener);
+    const onLocale = (locale: string) => {
+      store.dispatch(setLocale(normalizeLocale(locale)));
+    };
+    const shellApi = window.nmxCore as NmxCoreApi | undefined;
+    if (shellApi?.onLocaleChange) {
+      this._unsubLocale = shellApi.onLocaleChange(onLocale);
+    } else {
+      window.addEventListener(ShellWindowEvent.LocaleChanged, this._onShellLocale as EventListener);
+    }
   }
 
   override disconnectedCallback(): void {
-    window.removeEventListener("nmx-shell-locale-changed", this._onShellLocale as EventListener);
+    if (this._unsubLocale) {
+      this._unsubLocale();
+      this._unsubLocale = null;
+    } else {
+      window.removeEventListener(ShellWindowEvent.LocaleChanged, this._onShellLocale as EventListener);
+    }
     super.disconnectedCallback();
   }
 

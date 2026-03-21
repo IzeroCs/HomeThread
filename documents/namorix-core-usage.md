@@ -59,7 +59,7 @@ const { t } = initI18n({
 });
 ```
 
-- **Locale:** Mặc định lấy từ state `i18n.locale`. Backend/config có thể gửi locale (ví dụ qua WebSocket) và plugin dispatch `setLocale(normalizeLocale(locale))` từ `@namorix/core/store` / `@namorix/core/i18n`.
+- **Locale:** Mặc định lấy từ state `i18n.locale`. Backend/config có thể gửi locale (ví dụ qua WebSocket) và plugin dispatch `setLocale(normalizeLocale(locale))` từ `@namorix/core/store` / `@namorix/core/i18n`. **Trong Namorix Desktop:** đồng bộ với locale shell — xem **§5 Shell API** (`onLocaleChange` / `ShellWindowEvent.LocaleChanged`).
 
 ### Sử dụng trong component
 
@@ -179,7 +179,26 @@ showToast("error", "Kết nối thất bại", 5000);
 
 Plugin không cần phân biệt hai mode — chỉ gọi `showToast()` từ `@namorix/core`.
 
-## 5. Base elements (Lit)
+## 5. Shell API (`@namorix/core/shell-api`)
+
+Dùng khi plugin chạy **trong Namorix Desktop** (có `window.nmxCore`) hoặc cần **một nguồn chuỗi** cho trạng thái runtime / tên sự kiện shell (tránh literal rải rác giữa host và plugin).
+
+### Constants và types
+
+- Import: `PluginRuntimeStatus`, `ShellWindowEvent`, `SHELL_APP_EMIT_PREFIX` từ `@namorix/core/shell-api`.
+- `ShellWindowEvent` gồm các tên `CustomEvent` shell (ví dụ locale: `LocaleChanged` → `nmx-shell-locale-changed` — đúng với host phát sự kiện).
+- Type `NmxCoreApi` mô tả API inject trên `window.nmxCore` (token, user, toast, title/cửa sổ, `emit`/`on`, v.v.).
+
+### Đồng bộ locale với shell
+
+- **Ưu tiên:** `window.nmxCore?.onLocaleChange?.((locale) => { store.dispatch(setLocale(normalizeLocale(locale))); })` — host trả về hàm hủy đăng ký.
+- **Fallback:** `window.addEventListener(ShellWindowEvent.LocaleChanged, handler)` / `removeEventListener` khi không có `onLocaleChange`.
+
+### Plugin backend (HTTP qua gateway Desktop)
+
+Request từ browser tới plugin đi qua gateway Desktop; sau `requireAuth`, header JWT được forward với tên **`Authorization: Bearer <token>`**. API plugin nên verify JWT từ `req.headers.authorization` (chuẩn), không phụ thuộc `x-forwarded-authorization`.
+
+## 6. Base elements (Lit)
 
 - **NmxBaseElement:** Chỉ font + light DOM (`createRenderRoot() { return this }`). Dùng cho component không cần store.
 - **NmxStoreElement:** Kế thừa NmxBaseElement; abstract `getStore()`, optional locale subscription (`static useLocale`), `createStoreSlice(selector, equals?)` để subscribe state. Dùng khi component cần Redux hoặc locale.
@@ -187,7 +206,7 @@ Plugin không cần phân biệt hai mode — chỉ gọi `showToast()` từ `@n
 
 Component cần store/locale nên extend AppBaseElement (hoặc NmxStoreElement nếu tự inject store).
 
-## 6. Styles và form/button
+## 7. Styles và form/button
 
 Core cung cấp tokens và base styles; plugin import trong entry SCSS:
 
@@ -202,7 +221,7 @@ Core cung cấp tokens và base styles; plugin import trong entry SCSS:
 
 Dùng đúng class `nmx-form-*` / `nmx-btn*` để đồng bộ với core; không dùng lại class cũ không prefix (đã bỏ).
 
-## 7. Sidebar và layout
+## 8. Sidebar và layout
 
 - **nmx-sidebar:** Component core, nhận props (brand, logo, navGroups, currentPage) và emit `navigate` với page id. Plugin (vd. NmxThreadApp) lắng nghe và cập nhật nội dung theo `currentPage`.
 - **nmx-app-container:** Layout chính; nhận slot (vd. `.slotHtml`) để render nội dung app.
@@ -215,5 +234,6 @@ Dùng đúng class `nmx-form-*` / `nmx-btn*` để đồng bộ với core; khô
 | i18n | `initI18n`, `normalizeLocale` từ `@namorix/core/i18n` |
 | WebSocket | `createWsBridge`, `onceWithTimeout` từ `@namorix/core/ws` |
 | Toast | `initToast`, `showToast` từ `@namorix/core`; component `@namorix/core/components/toast` |
+| Shell (Desktop) | `PluginRuntimeStatus`, `ShellWindowEvent`, `SHELL_APP_EMIT_PREFIX`, type `NmxCoreApi` từ `@namorix/core/shell-api` |
 | Base element | Từ package core (NmxBaseElement, NmxStoreElement) |
 | Styles | `@namorix/core/styles/_tokens.scss`, `@namorix/core/styles/nmx-base.scss` |
