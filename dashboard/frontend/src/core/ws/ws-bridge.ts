@@ -20,7 +20,7 @@ import type {
   OtThreadState,
 } from "@/shared/types/websocket.type";
 
-const WS_URL =
+const WS_URL_DEFAULT =
   import.meta.env?.VITE_WS_URL ??
   (typeof window !== "undefined" ? window.location.origin : "http://localhost:3000");
 
@@ -31,11 +31,13 @@ export function getSocket(): Socket | null {
   return socket;
 }
 
-export function startWsBridge(store: Store<RootState>): void {
+/** Pass `url` when embedded in Namorix Desktop (must match plugin origin + Vite proxy to Thread backend). */
+export function startWsBridge(store: Store<RootState>, options?: { url?: string }): void {
+  const wsUrl = options?.url?.trim() || WS_URL_DEFAULT;
   if (!bridge) {
     bridge = createWsBridge<RootState>({
       store,
-      url: WS_URL,
+      url: wsUrl,
     });
 
     bridge

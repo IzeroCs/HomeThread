@@ -10,6 +10,13 @@ const siblingReposRoot = resolve(__dirname, "../../..");
 const namorixCoreSrc = resolve(siblingReposRoot, "namorix-core/src");
 const namorixAssetsRoot = resolve(siblingReposRoot, "namorix-assets");
 
+/** OpenThread backend (dashboard/backend). Use 3001 when Desktop already uses 3000. */
+const threadBackendPort = process.env.THREAD_BACKEND_PORT ?? "3000";
+const threadBackendTarget = `http://127.0.0.1:${threadBackendPort}`;
+
+/** Shell plugin dev: `VITE_DEV_PORT=4000 npm run dev` — manifest + assets for Namorix Desktop. */
+const devPort = Number(process.env.VITE_DEV_PORT ?? 5173);
+
 export default defineConfig({
   plugins: [],
   esbuild: {
@@ -41,8 +48,9 @@ export default defineConfig({
     __APP_VERSION__: JSON.stringify(pkg.version || "0.0.0"),
   },
   server: {
-    port: 5173,
-    host: true, // Lắng nghe trên 0.0.0.0 để truy cập từ LAN (vd. http://<IP-máy>:5173)
+    port: devPort,
+    host: true,
+    cors: true,
     fs: {
       allow: [
         resolve(__dirname, ".."),
@@ -53,11 +61,11 @@ export default defineConfig({
     },
     proxy: {
       "/api": {
-        target: "http://localhost:3000",
+        target: threadBackendTarget,
         changeOrigin: true,
       },
       "/socket.io": {
-        target: "http://localhost:3000",
+        target: threadBackendTarget,
         changeOrigin: true,
         ws: true,
         secure: false,

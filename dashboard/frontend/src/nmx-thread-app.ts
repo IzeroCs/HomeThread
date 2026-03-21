@@ -7,6 +7,8 @@ import { startWsBridge } from "@/core/ws/ws-bridge";
 import { store } from "@/store/store";
 import { selectWsConnected } from "@/store/selectors";
 import { NmxPageBuilder } from "@namorix/core/components/layout";
+import { setLocale } from "@namorix/core/store";
+import { normalizeLocale } from "@namorix/core/i18n";
 import { t } from "@/core/i18n/i18n";
 
 import namorixLogo from "@namorix/assets/logo/namorix-logo-symbol-light.svg?url";
@@ -35,9 +37,24 @@ export class NmxThreadApp extends AppBaseElement {
     super.connectedCallback();
     if (!NmxThreadApp._wsBridgeStarted) {
       NmxThreadApp._wsBridgeStarted = true;
-      startWsBridge(store);
+      const base = this.getAttribute("data-plugin-base-url")?.trim();
+      startWsBridge(store, base ? { url: base } : undefined);
     }
+    window.addEventListener("nmx-shell-locale-changed", this._onShellLocale as EventListener);
   }
+
+  override disconnectedCallback(): void {
+    window.removeEventListener("nmx-shell-locale-changed", this._onShellLocale as EventListener);
+    super.disconnectedCallback();
+  }
+
+  private _onShellLocale = (e: Event) => {
+    const ce = e as CustomEvent<{ locale?: string }>;
+    const loc = ce.detail?.locale;
+    if (typeof loc === "string" && loc.length > 0) {
+      store.dispatch(setLocale(normalizeLocale(loc)));
+    }
+  };
 
   private _handleNavigate = (e: CustomEvent<NavPage>) => {
     this.page = e.detail;

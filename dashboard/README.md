@@ -79,6 +79,16 @@ dashboard/
    - `npm run build` — build cả hai (backend: `tsc && tsc-alias` để thay path alias trong dist; frontend: Vite)
    - `npm run build:backend` / `npm run build:frontend` — build từng phần
 
+### Cùng Namorix Desktop (plugin trong shell)
+
+Desktop backend mặc định **:3000**; Thread backend dev cũng **:3000** → xung đột. Khi chạy song song:
+
+1. Thread backend: `cd backend && PORT=3001 npm run dev` (hoặc tương đương workspace).
+2. Thread frontend (origin plugin + proxy WS tới BR backend): `cd frontend && npm run dev:shell` — Vite **:4000**, `THREAD_BACKEND_PORT=3001` (đã gắn trong script), `public/manifest.json` + `health` cho Desktop registry.
+3. Trong repo **namorix** (Desktop): `backend/plugins.config.json` trỏ `"url": "http://localhost:4000"` cho plugin `thread`; chạy backend + frontend Desktop như tài liệu `namorix/docs/README.md`.
+
+`nmx-thread-app` trong shell nhận `data-plugin-base-url` từ shell và nối WebSocket qua origin đó (Vite proxy `/socket.io` → Thread backend).
+
 ## Truy cập từ LAN
 
 - Frontend dev server lắng nghe trên `0.0.0.0` (Vite `host: true`). Từ máy khác trong mạng mở: `http://<IP-máy-chạy-dev>:5173`.

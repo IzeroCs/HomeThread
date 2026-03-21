@@ -1,0 +1,13 @@
+{
+  "id": "thread",
+  "displayName": "Thread",
+  "version": "1.0.0",
+  "entry": "/src/thread-plugin-entry.ts",
+  "element": "nmx-thread-app",
+  "defaultWindowSize": { "width": 1100, "height": 700 },
+  "minWindowSize": { "width": 800, "height": 500 },
+  "singleInstance": false,
+  "health": "/health",
+  "permissions": ["thread:read", "thread:write"],
+  "logEnabled": true
+}
