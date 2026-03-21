@@ -5,6 +5,10 @@ import { fileURLToPath } from "url";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const pkg = JSON.parse(readFileSync(join(__dirname, "package.json"), "utf-8"));
+/** Parent of `namorix-thread/` — sibling repos: `namorix-core`, `namorix-assets` (see `namorix-thread.code-workspace`). */
+const siblingReposRoot = resolve(__dirname, "../../..");
+const namorixCoreSrc = resolve(siblingReposRoot, "namorix-core/src");
+const namorixAssetsRoot = resolve(siblingReposRoot, "namorix-assets");
 
 export default defineConfig({
   plugins: [],
@@ -15,8 +19,8 @@ export default defineConfig({
   },
   resolve: {
     alias: {
-      "@namorix/core": resolve(__dirname, "../vendor/namorix-core/src"),
-      "@namorix/assets": resolve(__dirname, "../vendor/namorix-assets"),
+      "@namorix/core": namorixCoreSrc,
+      "@namorix/assets": namorixAssetsRoot,
       "@": resolve(__dirname, "src"),
       "@core": resolve(__dirname, "src/core"),
       "@features": resolve(__dirname, "src/features"),
@@ -40,7 +44,12 @@ export default defineConfig({
     port: 5173,
     host: true, // Lắng nghe trên 0.0.0.0 để truy cập từ LAN (vd. http://<IP-máy>:5173)
     fs: {
-      allow: [resolve(__dirname, ".."), resolve(__dirname, "../shared")],
+      allow: [
+        resolve(__dirname, ".."),
+        resolve(__dirname, "../shared"),
+        namorixCoreSrc,
+        namorixAssetsRoot,
+      ],
     },
     proxy: {
       "/api": {

@@ -2,8 +2,10 @@
   "compilerOptions": {
     "baseUrl": ".",
     "paths": {
-      "@namorix/core": ["../vendor/namorix-core/src/index.ts"],
-      "@namorix/core/*": ["../vendor/namorix-core/src/*"],
+      "@namorix/core": ["../../../namorix-core/src/index.ts"],
+      "@namorix/core/*": ["../../../namorix-core/src/*"],
+      "@namorix/assets": ["../../../namorix-assets"],
+      "@namorix/assets/*": ["../../../namorix-assets/*"],
 
       "@/*": ["src/*"],
       "@core/*": ["src/core/*"],
