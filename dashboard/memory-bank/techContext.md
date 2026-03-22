@@ -78,6 +78,7 @@ Assets usage (frontend):
 - **Hợp đồng shell (core):** `@namorix/core/shell-api` — `PluginRuntimeStatus`, `ShellWindowEvent` (tên `CustomEvent` shell), `SHELL_APP_EMIT_PREFIX`; type `NmxCoreApi` gồm `onLocaleChange` (đăng ký đổi locale theo shell). Plugin không cần hardcode chuỗi `nmx-shell-locale-changed` nếu dùng API trên.
 - **Gateway → plugin backend:** Proxy `/api/plugins/:pluginId/*` forward header **`Authorization`** chuẩn; API plugin (HTTP) nên đọc `Authorization` / Bearer JWT — không phụ thuộc `x-forwarded-authorization`.
 - Dev standalone plugin: spec mô tả redirect Desktop + query `nmx_token` (§5.5) — triển khai theo milestone **M3** trên repo `namorix`; memory bank host: `namorix/memory-bank/`.
+- **Backend Thread vs Desktop:** `namorix/backend` là **host** (auth, registry, gateway). Backend trong repo này là **plugin** (OpenThread/CoAP/WS domain + Express mỏng cho static/manifest). **Không** có khối logic copy từ Desktop — trùng chủ yếu **stack** và **hợp đồng** tích hợp. Viết plugin mới: ưu tiên đọc spec + `namorix/documents/thread-desktop-plugin-integration.md`; **không** bắt buộc SDK trong core (xem `namorix/memory-bank/systemPatterns.md`).
 
 ### Shared Package (`shared/`)
 
