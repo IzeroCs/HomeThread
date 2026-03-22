@@ -7,7 +7,11 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const pkg = JSON.parse(readFileSync(join(__dirname, "package.json"), "utf-8"));
 /** Parent of `namorix-thread/` — sibling repos: `namorix-core`, `namorix-assets` (see `namorix-thread.code-workspace`). */
 const siblingReposRoot = resolve(__dirname, "../../..");
-const namorixCoreSrc = resolve(siblingReposRoot, "namorix-core/src");
+const namorixCoreSrc = resolve(siblingReposRoot, "namorix-core/frontend/src");
+const namorixCoreSharedSrc = resolve(
+  siblingReposRoot,
+  "namorix-core/shared/src/index.ts",
+);
 const namorixAssetsRoot = resolve(siblingReposRoot, "namorix-assets");
 
 /** OpenThread backend (dashboard/backend). Default 4000 — same as plugin static + WS origin for Namorix Desktop. */
@@ -27,6 +31,7 @@ export default defineConfig({
   resolve: {
     alias: {
       "@namorix/core": namorixCoreSrc,
+      "@namorix/core-shared": namorixCoreSharedSrc,
       "@namorix/assets": namorixAssetsRoot,
       "@": resolve(__dirname, "src"),
       "@core": resolve(__dirname, "src/core"),
@@ -40,7 +45,11 @@ export default defineConfig({
   css: {
     preprocessorOptions: {
       scss: {
-        loadPaths: [resolve(__dirname, "src"), resolve(__dirname, "../shared/src")],
+        loadPaths: [
+          resolve(__dirname, "src"),
+          resolve(__dirname, "../shared/src"),
+          namorixCoreSrc,
+        ],
       },
     },
   },
@@ -56,6 +65,7 @@ export default defineConfig({
         resolve(__dirname, ".."),
         resolve(__dirname, "../shared"),
         namorixCoreSrc,
+        resolve(siblingReposRoot, "namorix-core/shared"),
         namorixAssetsRoot,
       ],
     },

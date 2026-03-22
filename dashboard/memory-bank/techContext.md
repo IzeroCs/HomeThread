@@ -52,8 +52,8 @@ Transport: TCP (net.Socket) to BR; CoAP (UDP 5683, udp6 listen [::]) from Thread
 Frontend: **AppBaseElement** (`core/AppBaseElement.ts`) extends **NmxStoreElement** (core): store qua `getStore()`, optional locale, `createStoreSlice()`, light DOM (kế thừa từ NmxBaseElement). Root: `index.html` mount `<nmx-main>` → nmx-app-container → **nmx-thread-app** (NmxThreadApp trong app.ts). **AppBar** qua Redux slice `appBar`; pages dispatch setAppBar/clearAppBar. i18n: `t(key, params?)` từ `core/i18n/`, locales trong `core/i18n/locales/`; locale trong store slice `i18n` (default `"en"`), set từ user settings bằng `setLocale` (không persist localStorage).
 
 Core/shared integration (frontend):
-- `@namorix/core` is consumed via submodule `vendor/namorix-core` (dashboard/vendor/namorix-core).
-- When `dist/` is not built, Vite aliases `@namorix/core` → `vendor/namorix-core/src` and the app imports SCSS sources:
+- `@namorix/core` — sibling repo `namorix-core/frontend` (`file:../../../namorix-core/frontend`); `@namorix/core-shared` — `namorix-core/shared` (alias trong Vite cho dev bundle). *(Hoặc submodule `vendor/namorix-core` — map tới `…/frontend/src`.)*
+- When `dist/` is not built, Vite aliases `@namorix/core` → `namorix-core/frontend/src` (sibling layout) and the app imports SCSS sources:
   - `@namorix/core/styles/_tokens.scss`
   - `@namorix/core/styles/nmx-base.scss`
 - Redux store uses `createPluginStore` from `@namorix/core/store`.
@@ -178,10 +178,10 @@ SQLite (`better-sqlite3`, WAL mode). Migrations:
 
 - **tsconfig.json** `baseUrl` + `paths`: `@/*` → src, `@shared/*`, `@features/*`, `@nodes/*`, `@settings/*`, `@status/*`.
 - **vite.config.ts** `resolve.alias`: cùng mapping (resolve(__dirname, "src/...")).
-- **Core alias (dev/submodule)**: Vite alias `@namorix/core` → `../vendor/namorix-core/src` để import từ source khi `dist/` chưa build.
+- **Core alias (dev)**: Vite alias `@namorix/core` → sibling `namorix-core/frontend/src` (hoặc `../vendor/namorix-core/frontend/src` nếu submodule); `@namorix/core-shared` → `namorix-core/shared/src`.
 - **SCSS:** `css.preprocessorOptions.scss.loadPaths: [resolve(__dirname, "src")]` — trong .scss dùng `@use "shared/styles/variables"` hoặc `@use "shared/styles/form"` (đường dẫn từ `src/`).
 - Toàn bộ import TS/TSX dùng alias; không dùng relative `../../` qua nhiều cấp.
-- **Form/button styles:** Core cung cấp `.nmx-form-*` và `.nmx-btn*` / `.nmx-form-btn*` trong `vendor/namorix-core/src/styles/base/_form.scss` và `_button.scss`; import qua `@namorix/core/styles/nmx-base.scss`. Plugin dùng class `nmx-form-page`, `nmx-form-card`, `nmx-form-field`, `nmx-form-control`, `nmx-form-actions`, `nmx-form-btn`, v.v. Xem `documents/namorix-core-usage.md`.
+- **Form/button styles:** Core cung cấp `.nmx-form-*` và `.nmx-btn*` / `.nmx-form-btn*` trong `namorix-core/frontend/src/styles/base/_form.scss` và `_button.scss` (hoặc tương đương dưới `vendor/…/frontend/src/…`); import qua `@namorix/core/styles/nmx-base.scss`. Plugin dùng class `nmx-form-page`, `nmx-form-card`, `nmx-form-field`, `nmx-form-control`, `nmx-form-actions`, `nmx-form-btn`, v.v. Xem `documents/namorix-core-usage.md`.
 
 ### Backend
 

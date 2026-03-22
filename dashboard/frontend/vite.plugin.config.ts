@@ -10,7 +10,11 @@ import { fileURLToPath } from "url";
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const pkg = JSON.parse(readFileSync(join(__dirname, "package.json"), "utf-8"));
 const siblingReposRoot = resolve(__dirname, "../../..");
-const namorixCoreSrc = resolve(siblingReposRoot, "namorix-core/src");
+const namorixCoreSrc = resolve(siblingReposRoot, "namorix-core/frontend/src");
+const namorixCoreSharedSrc = resolve(
+  siblingReposRoot,
+  "namorix-core/shared/src/index.ts",
+);
 const namorixAssetsRoot = resolve(siblingReposRoot, "namorix-assets");
 
 /** Output: dashboard/dist/plugin/assets/thread.js + thread.css */
@@ -26,6 +30,7 @@ export default defineConfig({
   resolve: {
     alias: {
       "@namorix/core": namorixCoreSrc,
+      "@namorix/core-shared": namorixCoreSharedSrc,
       "@namorix/assets": namorixAssetsRoot,
       "@": resolve(__dirname, "src"),
       "@core": resolve(__dirname, "src/core"),
@@ -39,7 +44,11 @@ export default defineConfig({
   css: {
     preprocessorOptions: {
       scss: {
-        loadPaths: [resolve(__dirname, "src"), resolve(__dirname, "../shared/src")],
+        loadPaths: [
+          resolve(__dirname, "src"),
+          resolve(__dirname, "../shared/src"),
+          namorixCoreSrc,
+        ],
       },
     },
   },

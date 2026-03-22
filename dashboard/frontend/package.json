@@ -12,7 +12,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@namorix/core": "file:../../../namorix-core",
+    "@namorix/core": "file:../../../namorix-core/frontend",
     "@reduxjs/toolkit": "^2.9.0",
     "lit": "^3.2.0",
     "shared": "file:../shared",
