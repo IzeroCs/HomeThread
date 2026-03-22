@@ -76,8 +76,7 @@ Assets usage (frontend):
 - **Core components + shell:** `@namorix/core` 0.9.2+ đăng ký shared custom elements qua **`defineCustomElementOnce`** — xem `namorix-core/memory-bank/progress.md` 0.9.2.
 - **Cửa sổ shell:** Host `namorix` mount root plugin (tag từ `manifest.element`) qua property **`pluginBody`** trên `nmx-window` — light DOM không dùng `<slot>` cho vùng body; xem `namorix/memory-bank/progress.md` **0.9.3**.
 - **Hợp đồng shell (core):** `@namorix/core/shell-api` — `PluginRuntimeStatus`, `ShellWindowEvent` (tên `CustomEvent` shell), `SHELL_APP_EMIT_PREFIX`; type `NmxCoreApi` gồm `onLocaleChange` (đăng ký đổi locale theo shell). Plugin không cần hardcode chuỗi `nmx-shell-locale-changed` nếu dùng API trên.
-- **HTTP gateway → plugin backend:** Proxy `/api/plugins/:pluginId/*` forward header **`Authorization`** chuẩn; API plugin (REST) nên đọc `Authorization` / Bearer JWT — không phụ thuộc `x-forwarded-authorization`.
-- **WebSocket / Socket.IO:** Plugin UI kết nối **trực tiếp** tới Thread backend (URL origin plugin, `data-plugin-base-url` + `startWsBridge`); **không** qua backend Desktop. Chỉ **HTTP** dùng gateway trên Desktop — `namorix-desktop-architecture.md` §6.11.
+- **Gateway → plugin backend:** Proxy `/api/plugins/:pluginId/*` forward header **`Authorization`** chuẩn; API plugin (HTTP) nên đọc `Authorization` / Bearer JWT — không phụ thuộc `x-forwarded-authorization`.
 - Dev standalone plugin: spec mô tả redirect Desktop + query `nmx_token` (§5.5) — triển khai theo milestone **M3** trên repo `namorix`; memory bank host: `namorix/memory-bank/`.
 
 ### Shared Package (`shared/`)
