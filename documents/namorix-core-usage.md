@@ -196,7 +196,13 @@ Dùng khi plugin chạy **trong Namorix Desktop** (có `window.nmxCore`) hoặc 
 
 ### Plugin backend (HTTP qua gateway Desktop)
 
-Request từ browser tới plugin đi qua gateway Desktop; sau `requireAuth`, header JWT được forward với tên **`Authorization: Bearer <token>`**. API plugin nên verify JWT từ `req.headers.authorization` (chuẩn), không phụ thuộc `x-forwarded-authorization`.
+Các request **HTTP (REST/fetch)** từ browser tới API plugin **nên** đi qua gateway Desktop (`/api/plugins/:pluginId/*`); sau `requireAuth`, header JWT được forward với tên **`Authorization: Bearer <token>`**. API plugin nên verify JWT từ `req.headers.authorization` (chuẩn), không phụ thuộc `x-forwarded-authorization`.
+
+### WebSocket / Socket.IO (plugin UI → plugin backend, trực tiếp)
+
+- **Không** đi qua `/api/plugins/...` trên Desktop. Backend Namorix **không** reverse-proxy WebSocket cho luồng dữ liệu realtime của plugin.
+- Dùng `createWsBridge` từ `@namorix/core/ws` (trong Thread: `startWsBridge({ url })` ở `frontend/src/core/ws/ws-bridge.ts`) với `url` = **origin plugin** — trong shell: attribute `data-plugin-base-url` trên root plugin; standalone/dev: `window.location.origin` của dev server plugin hoặc `VITE_WS_URL`.
+- Dev shell Thread: Vite `dev:shell` proxy Socket.IO tới Thread backend (xem `namorix/docs/README.md` M3). CORS / `DESKTOP_ORIGIN` trên Express Thread; xác thực JWT (nếu có) do **Thread backend** xử lý.
 
 ## 6. Base elements (Lit)
 
