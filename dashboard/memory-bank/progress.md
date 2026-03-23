@@ -51,6 +51,7 @@ Version notation in this file uses Semantic Versioning `MAJOR.MINOR.PATCH` (no l
 | 2.22.0  | **Namorix-core workspace paths.** `@namorix/core` → sibling `namorix-core/frontend` (`file:../../../namorix-core/frontend`); Vite/tsconfig alias trỏ `namorix-core/frontend/src`; thêm alias `@namorix/core-shared` → `namorix-core/shared/src`; SCSS `loadPaths` gồm core frontend `src`. Khác với package `shared/` nội bộ dashboard (`file:../shared`). |
 | 2.22.1  | **Docs — plugin / backend:** `dashboard/memory-bank/techContext.md` + `namorix/documents/thread-desktop-plugin-integration.md` — làm rõ Thread backend vs Desktop host; không bắt buộc SDK Express trong core; hợp đồng + tài liệu thay cho abstraction nặng. |
 | 2.23.0  | **Memory bank — đường dẫn spec + workspace.** Đồng bộ tham chiếu **`namorix/documents/namorix-desktop-architecture.md`** (thay path cũ ở root repo `namorix`); `dashboard/README.md` workflow dev → `namorix/documents/README.md`. Rule `.cursor/rules/commit-suggestion-on-memory-bank-update.mdc`: gợi ý commit cho Thread + **`namorix-core`** memory bank (sibling). Changelog **2.17.0**: diễn đạt legacy `vendor/namorix-core`. **Không đổi code** — chỉ tài liệu. |
+| 2.23.1  | **Memory bank:** Đồng bộ `progress` / `activeContext`; xác nhận cấu trúc **`backend/src/communicate/`** — `frame/`, `transport/`, `br/` (`BrConnection`, `BrSession`, `BrCommand`, facade `BrManager`). Workspace parent **`namorix-workspace`**; tham chiếu `namorix/memory-bank/`, `namorix-core/memory-bank/`. **Không đổi code.** *(2026-03-23.)* |
 
 ## What Works (Completed)
 

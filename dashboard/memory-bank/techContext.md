@@ -11,6 +11,9 @@ namorix-thread/           # monorepo root (repo)
     │   └── src/
     │       ├── coap/      # CoAP server (decorator), CoapStatus, coap.response, DeviceCoapController, device-coap.service, device.payload (…)
     │       ├── communicate/
+    │       │   ├── frame/      # parser, builder, CRC, dataset/table parsers
+    │       │   ├── transport/  # TCP client (TransportTcp)
+    │       │   └── br/         # BrConnection, BrCommand, BrSession, BrManager
     │       ├── settings/
     │       ├── thread/
     │       ├── websocket/

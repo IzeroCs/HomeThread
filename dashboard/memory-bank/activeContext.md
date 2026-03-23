@@ -16,10 +16,10 @@ Frontend align với hệ “core/shared”:
 
 Giao tiếp BR ↔ backend theo hướng **notify-first**: Thread-Host push `CMD_NOTIFY (0x45)` mask thay đổi; backend debounce + gộp mask rồi pull đúng phần cần (dataset/ip/tables). Backend vẫn **poll STATE mỗi 5s** để health-check và phát hiện role transitions; khi TCP connect thành công sẽ pull baseline để UI không stale nếu missed notify. **Không** theo dõi số client frontend (đã bỏ `frontendConnectionCount`, `onFrontendConnected`/`onFrontendDisconnected`); websocket.server.ts trên connection chỉ gửi config + last* data, không gọi communicate.
 
-### BR module naming/refactor (unreleased)
-- `backend/src/communicate/` đã được chuẩn hoá theo domain: `frame/`, `transport/`, `br/`.
-- `br/` tách rõ: `BrConnection` (TCP/raw), `BrCommand` (frame TX/RX), `BrSession` (poll/notify/baseline/SRP/health/topology), `BrManager` (facade).
-- `thread/thread.config.ts` đổi sang `OtConfigStore` (store) + `OtConfig` (data type) để tránh va chạm type/class.
+### BR module layout (`communicate/` — từ 2.15.1+)
+- `backend/src/communicate/` chuẩn hoá theo domain: `frame/`, `transport/`, `br/`.
+- `br/`: `BrConnection` (TCP/raw), `BrCommand` (frame TX/RX), `BrSession` (poll/notify/baseline/SRP/health/topology), `BrManager` (facade).
+- `thread/thread.config.ts` dùng `OtConfigStore` (store) + `OtConfig` (data type) để tránh va chạm type/class.
 
 ## Recent Significant Changes
 
