@@ -1,11 +1,5 @@
-.gitnexus
-.claude
-CLAUDE.md
-AGENTS.md
-
 # Dashboard backend SQLite (runtime; migrations under data/migrations/ are tracked)
 data/database/
 data/*.db
 data/*.db-wal
 data/*.db-shm
-

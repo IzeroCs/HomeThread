@@ -45,7 +45,7 @@ Cung cấp giao diện web quản lý Thread network:
 
 Dashboard Thread có thể chạy **độc lập** (Vite dev / backend riêng) hoặc sau này được **embed như plugin** trong **Namorix Desktop** — repo sibling **`namorix`** (thường cùng workspace multi-root với `namorix-core` / `namorix-assets`; file workspace: `namorix/namorix.code-workspace`).
 
-- **Spec tích hợp:** `namorix/namorix-desktop-architecture.md` — plugin manifest, `window.nmxCore`, CORS (`DESKTOP_ORIGIN`), auth exchange (`nmx_token`), milestone **M3** (load Thread trong cửa sổ shell).
+- **Spec tích hợp:** `namorix/documents/namorix-desktop-architecture.md` — plugin manifest, `window.nmxCore`, CORS (`DESKTOP_ORIGIN`), auth exchange (`nmx_token`), milestone **M3** (load Thread trong cửa sổ shell).
 - **Core:** `namorix-core/memory-bank/` — mục §10 / bảng Desktop integration; không nhân đôi nội dung spec trong repo Thread.
 - **Embed shell:** Core 0.9.2+ — `defineCustomElementOnce` cho component Lit dùng chung; plugin backend — `DESKTOP_ORIGIN` khớp Vite; lib build — cấu hình `process.env` khi cần (xem `techContext.md`).
 

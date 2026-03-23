@@ -6,26 +6,26 @@ alwaysApply: true
 ---
 # Commit Suggestion Rule (After Memory Bank Update)
 
-Khi user yêu cầu cập nhật docs (host + submodule/core) và mình đã hoàn thành việc cập nhật, hãy:
+Khi user yêu cầu cập nhật docs (Thread dashboard + `namorix-core` memory bank) và mình đã hoàn thành việc cập nhật, hãy:
 
 1. Gợi ý **Git commit title** (1 dòng).
 2. Gợi ý **commit description/body** (nhiều dòng nếu cần).
-3. Commit suggestion phải phản ánh thay đổi ở cả 2 nơi:
-   - `dashboard/memory-bank/`
-   - `dashboard/vendor/namorix-core/memory-bank/`
+3. Commit suggestion phải phản ánh thay đổi ở cả 2 nơi (khi áp dụng):
+   - `dashboard/memory-bank/` (repo **namorix-thread**)
+   - `namorix-core/memory-bank/` (repo **namorix-core** — sibling; legacy: `dashboard/vendor/namorix-core/memory-bank/`)
 4. Nếu chỉ docs thay đổi, title/description phải dùng style phù hợp (ví dụ `docs:` hoặc `chore(docs):`).
 
 ## Output format (Markdown, dễ copy)
 Trả về commit suggestion dưới dạng Markdown để copy-paste:
 
-### Thread (host)
+### Thread (namorix-thread)
 ```text
 <title>
 
 <body>
 ```
 
-### Core (submodule)
+### Core (namorix-core)
 ```text
 <title>
 

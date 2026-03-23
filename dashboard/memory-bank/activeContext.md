@@ -5,7 +5,8 @@
 Backend ổn định với BR qua TCP + frame protocol, CoAP device ingest, SRP register, WebSocket handlers theo decorator. Frontend đã **migrate React → Lit** (Web Components), **light DOM**. **Topology map** (feature `src/features/topology/`): pan/zoom, spotlight canvas, manual layout khi ≤10 node, node select (toggle, persistent), label box width động, edge ẩn khi offline, focus tabindex + :focus-visible; accent cyan `$topology-accent`, nền `$bg-topology`. **Settings UI:** palette thống nhất (bg-app/sidebar/card/input), button semantics (primary/ghost/warn/danger), danger zone subtle, Connected badge + sidebar dot cyan. **Cấu trúc:** feature-based (`nodes|settings|status|topology`, `src/shared`); path alias frontend/backend như trước. Tiếp theo: bảo trì, optional mDNS/scan BR, security nếu cần.
 
 Frontend align với hệ “core/shared”:
-- `namorix-core` submodule tại `dashboard/vendor/namorix-core` (hoặc sibling `../../namorix-core` khi workspace alias giống Desktop)
+- **Spec Desktop (SoT):** `namorix/documents/namorix-desktop-architecture.md`; mục lục host: `namorix/documents/README.md`.
+- `namorix-core` qua sibling `../../namorix-core` (workspace giống Desktop); *(legacy: `dashboard/vendor/namorix-core` nếu clone cũ)*
 - **Core 0.9.2+ — đăng ký custom element an toàn khi embed shell:** Các component chrome dùng chung (`nmx-sidebar`, `nmx-toast`, …) trong `@namorix/core` đăng ký bằng `defineCustomElementOnce` (không dùng `@customElement` parse-time). Shell Desktop load trước → plugin `thread.js` load sau không gây `NotSupportedError` trùng tên tag. Chi tiết: `namorix-core/memory-bank/systemPatterns.md`.
 - **Shell contract (Namorix Desktop):** Hằng số và tên sự kiện shell từ `@namorix/core/shell-api` (`PluginRuntimeStatus`, `ShellWindowEvent`, …). Đồng bộ locale với shell: ưu tiên `window.nmxCore?.onLocaleChange?.(handler)` (trả unsubscribe); fallback `addEventListener(ShellWindowEvent.LocaleChanged, …)` — xem `frontend/src/nmx-thread-app.ts`. Gateway Desktop forward JWT tới plugin backend qua header **`Authorization: Bearer <jwt>`** (plugin API đọc `req.headers.authorization`; không dùng `x-forwarded-authorization`).
 - Bundle core tokens/base styles qua Vite (alias `@namorix/core` → source khi `dist/` chưa build)
@@ -195,7 +196,7 @@ ROUTER_TABLE, CHILD_TABLE, JOINER_TABLE TX va ACK bi filter ra khoi console log 
 1. **Tim BR** *(tuy chon)* — mDNS browse `_thread-frame._tcp` (khi chay tren host) hoac quet dai IP (TCP 5000) khi chay Docker
 2. **TCP keepalive** — Da co the bat de phat hien mat ket noi BR nhanh hon (backend TransportTcp)
 3. **Security** *(neu can)* — auth WS, HTTPS
-4. **Namorix Desktop** *(repo `namorix`, milestone M3)* — khi shell sẵn sàng: align `nmx-thread-app` với spec plugin (manifest, lib build, `isInShell`, gateway JWT). Theo dõi `namorix/memory-bank/` + `namorix-core/memory-bank/`; không trùng lặp dài trong memory bank Thread — chỉ tham chiếu `namorix/namorix-desktop-architecture.md`.
+4. **Namorix Desktop** *(repo `namorix`, milestone M3)* — khi shell sẵn sàng: align `nmx-thread-app` với spec plugin (manifest, lib build, `isInShell`, gateway JWT). Theo dõi `namorix/memory-bank/` + `namorix-core/memory-bank/`; không trùng lặp dài trong memory bank Thread — chỉ tham chiếu `namorix/documents/namorix-desktop-architecture.md`.
 
 ## Files to Watch
 

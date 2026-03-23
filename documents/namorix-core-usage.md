@@ -4,7 +4,7 @@ Tài liệu mô tả cách plugin/app (ví dụ Dashboard frontend) tích hợp 
 
 ## Tổng quan
 
-- **Vị trí:** Layout phổ biến — sibling repo **`namorix-core`** (npm workspace: package `@namorix/core` trong `namorix-core/frontend`, `@namorix/core-shared` trong `namorix-core/shared`). `package.json` dùng `file:../../../namorix-core/frontend`. Vite alias `@namorix/core` → `namorix-core/frontend/src`, `@namorix/core-shared` → `namorix-core/shared/src` (xem `vite.config.ts`). *(Legacy/submodule: `dashboard/vendor/namorix-core` — đổi path tương ứng sang `…/frontend/src`.)*
+- **Vị trí:** Layout phổ biến — sibling repo **`namorix-core`** (npm workspace: package `@namorix/core` trong `namorix-core/frontend`, `@namorix/core-shared` trong `namorix-core/shared`). `package.json` dùng `file:../../../namorix-core/frontend`. Vite alias `@namorix/core` → `namorix-core/frontend/src`, `@namorix/core-shared` → `namorix-core/shared/src` (xem `vite.config.ts`). *(Legacy: `dashboard/vendor/namorix-core` — đổi path tương ứng sang `…/frontend/src`.)*
 - **Build:** Khi chưa build `dist/`, Vite alias trỏ thẳng vào source; app import SCSS và TS từ core.
 
 ## 1. Store (Redux)

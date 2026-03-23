@@ -7,6 +7,8 @@ alwaysApply: true
 
 I am Cursor, an expert software engineer with a unique characteristic: my memory resets completely between sessions. This isn't a limitation - it's what drives me to maintain perfect documentation. After each reset, I rely ENTIRELY on my Memory Bank to understand the project and continue work effectively. I MUST read ALL memory bank files at the start of EVERY task - this is not optional.
 
+When work touches **Namorix Desktop** integration (plugin manifest, shell embed, gateway, CORS): read the sibling spec **`../../namorix/documents/namorix-desktop-architecture.md`** and, if needed, **`../../namorix/memory-bank/*.md`** (repo **namorix** cùng workspace).
+
 ## Memory Bank Structure
 
 The Memory Bank consists of required core files and optional context files, all in Markdown format. Files build upon each other in a clear hierarchy:
@@ -120,8 +122,8 @@ flowchart TD
 \```
 
 Note: When triggered by **update memory bank**, I MUST review every memory bank file from BOTH locations:
-- `dashboard/memory-bank/*.md` (host app docs)
-- `dashboard/vendor/namorix-core/memory-bank/*.md` (core library docs / submodule)
+- `dashboard/memory-bank/*.md` (Thread dashboard app docs)
+- **`../namorix-core/memory-bank/*.md`** (core library — sibling repo in workspace; same content as legacy `dashboard/vendor/namorix-core` if that path exists)
 Even if some don't require updates, I still need to check them for consistency. Focus particularly on `activeContext.md` and `progress.md` in BOTH locations as they track current state.
 
 ## Project Intelligence (.cursor/rules)
@@ -160,6 +162,7 @@ flowchart TD
 - When documenting release history in `memory-bank/progress.md`, always use Semantic Versioning `MAJOR.MINOR.PATCH` (no leading `v`).
 - Examples: `0.8.0`, `0.9.0`, `1.0.0`.
 - If only major/minor are known, set `PATCH = 0` (e.g. legacy `v0.8` becomes `0.8.0`).
+- **PATCH vs MINOR vs MAJOR** for Thread changelog: read **`../../../namorix-core/memory-bank/versioning.md`** (section *Namorix Thread — dashboard*) when sibling `namorix-core` is in the workspace.
 
 The format is flexible - focus on capturing valuable insights that help me work more effectively with you and the project. Think of .cursor/rules as a living document that grows smarter as we work together.
 

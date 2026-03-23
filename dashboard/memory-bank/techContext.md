@@ -52,7 +52,7 @@ Transport: TCP (net.Socket) to BR; CoAP (UDP 5683, udp6 listen [::]) from Thread
 Frontend: **AppBaseElement** (`core/AppBaseElement.ts`) extends **NmxStoreElement** (core): store qua `getStore()`, optional locale, `createStoreSlice()`, light DOM (kế thừa từ NmxBaseElement). Root: `index.html` mount `<nmx-main>` → nmx-app-container → **nmx-thread-app** (NmxThreadApp trong app.ts). **AppBar** qua Redux slice `appBar`; pages dispatch setAppBar/clearAppBar. i18n: `t(key, params?)` từ `core/i18n/`, locales trong `core/i18n/locales/`; locale trong store slice `i18n` (default `"en"`), set từ user settings bằng `setLocale` (không persist localStorage).
 
 Core/shared integration (frontend):
-- `@namorix/core` — sibling repo `namorix-core/frontend` (`file:../../../namorix-core/frontend`); `@namorix/core-shared` — `namorix-core/shared` (alias trong Vite cho dev bundle). *(Hoặc submodule `vendor/namorix-core` — map tới `…/frontend/src`.)*
+- `@namorix/core` — sibling repo `namorix-core/frontend` (`file:../../../namorix-core/frontend`); `@namorix/core-shared` — `namorix-core/shared` (alias trong Vite cho dev bundle). *(Legacy: `vendor/namorix-core` — map tới `…/frontend/src`.)*
 - When `dist/` is not built, Vite aliases `@namorix/core` → `namorix-core/frontend/src` (sibling layout) and the app imports SCSS sources:
   - `@namorix/core/styles/_tokens.scss`
   - `@namorix/core/styles/nmx-base.scss`
@@ -61,15 +61,15 @@ Core/shared integration (frontend):
 - Base elements: **NmxBaseElement** (core, font + light DOM only), **NmxStoreElement** (core, abstract `getStore()`, locale subscription, `createStoreSlice`), **AppBaseElement** (frontend, extends NmxStoreElement, `getStore() { return store }`).
 - Layout/pages: core provides `<nmx-content>` + `NmxPageBuilder`/`PageEntry` để host app render trang controlled theo `currentPage`; frontend maps `NavPage` -> `render()` callbacks và import side-effect feature components để custom elements được define trước khi render.
 - WebSocket: **createWsBridge** từ `@namorix/core/ws` — builder `onConnect`/`onDisconnect`/`onConnectError`/`on(event, handler)`/`start()`/`stop()`/`getSocket()`; **onceWithTimeout** cùng package. Toast: **initToast**, **showToast** từ `@namorix/core`; dual mode (standalone → store, desktop → CustomEvent "nmx-action"). Chi tiết: `documents/namorix-core-usage.md`.
-- `@namorix/assets` is consumed via submodule `vendor/namorix-assets` for shared branding assets (e.g. logo SVG imported with `?url`).
+- `@namorix/assets` — sibling repo `namorix-assets` (Vite alias `file:` / path tới thư mục assets).
 
 Assets usage (frontend):
-- Ensure Vite alias `@namorix/assets` points to the assets submodule root (or its `src/` if it uses that layout).
+- Ensure Vite alias `@namorix/assets` points to the assets repo root (or its `src/` if it uses that layout).
 - Import SVG as URL: `import logoUrl from "@namorix/assets/logo/namorix-logo-dark.svg?url"` and pass it to components as a string (e.g. `<img src=${logoUrl}>`).
 
 ### Namorix Desktop (cross-repo — không thay đổi cấu trúc dashboard hiện tại)
 
-- Repo **`namorix`** định nghĩa Desktop shell + backend (auth, gateway, plugin registry). Spec: **`../namorix/namorix-desktop-architecture.md`** (cùng parent folder với `namorix-thread` trong layout GitHub thông thường).
+- Repo **`namorix`** định nghĩa Desktop shell + backend (auth, gateway, plugin registry). Spec: **`../namorix/documents/namorix-desktop-architecture.md`** (sibling trong workspace).
 - Thread là **plugin đầu tiên** trong spec; tích hợp runtime (manifest, bundle ES module, health URL) mô tả ở §8 Desktop — **không** trùng với tài liệu CoAP/device trong `namorix-thread/documents/`.
 - **Plugin HTTP server (Express):** CORS / Socket.io dùng biến **`DESKTOP_ORIGIN`** — phải khớp origin trang Namorix Desktop thực tế (vd. `http://localhost:5174` nếu Vite đổi port); nếu không, dynamic `import()` của `thread.js` bị chặn CORS.
 - **Build lib plugin** (`frontend/vite.plugin.config.ts`, `npm run build:plugin`): nên `define` **`process.env.NODE_ENV`** (hoặc tương đương) cho bundle browser nếu dependency (vd. RTK) còn tham chiếu `process` — tránh `ReferenceError: process is not defined` trong console.
@@ -179,7 +179,7 @@ SQLite (`better-sqlite3`, WAL mode). Migrations:
 
 - **tsconfig.json** `baseUrl` + `paths`: `@/*` → src, `@shared/*`, `@features/*`, `@nodes/*`, `@settings/*`, `@status/*`.
 - **vite.config.ts** `resolve.alias`: cùng mapping (resolve(__dirname, "src/...")).
-- **Core alias (dev)**: Vite alias `@namorix/core` → sibling `namorix-core/frontend/src` (hoặc `../vendor/namorix-core/frontend/src` nếu submodule); `@namorix/core-shared` → `namorix-core/shared/src`.
+- **Core alias (dev)**: Vite alias `@namorix/core` → sibling `namorix-core/frontend/src` (hoặc `../vendor/namorix-core/frontend/src` nếu layout cũ); `@namorix/core-shared` → `namorix-core/shared/src`.
 - **SCSS:** `css.preprocessorOptions.scss.loadPaths: [resolve(__dirname, "src")]` — trong .scss dùng `@use "shared/styles/variables"` hoặc `@use "shared/styles/form"` (đường dẫn từ `src/`).
 - Toàn bộ import TS/TSX dùng alias; không dùng relative `../../` qua nhiều cấp.
 - **Form/button styles:** Core cung cấp `.nmx-form-*` và `.nmx-btn*` / `.nmx-form-btn*` trong `namorix-core/frontend/src/styles/base/_form.scss` và `_button.scss` (hoặc tương đương dưới `vendor/…/frontend/src/…`); import qua `@namorix/core/styles/nmx-base.scss`. Plugin dùng class `nmx-form-page`, `nmx-form-card`, `nmx-form-field`, `nmx-form-control`, `nmx-form-actions`, `nmx-form-btn`, v.v. Xem `documents/namorix-core-usage.md`.

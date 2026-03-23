@@ -95,7 +95,7 @@ Thread backend phục vụ **cùng một origin** (HTTP + static + WebSocket + C
 
 1. Build plugin (một lần hoặc watch): từ thư mục **`dashboard/`** gọi `npm run build:plugin` hoặc `npm run build:plugin:watch` (script ở root workspace; tương đương `npm run build:plugin:watch --workspace=frontend`).
 2. Chạy Thread backend: `npm run dev:backend` — phục vụ static sau khi đã có `dist/plugin`.
-3. Chạy Namorix Desktop (backend + Vite) theo `namorix/docs/README.md`; đăng nhập để `plugin-loader` tải plugin.
+3. Chạy Namorix Desktop (backend + Vite) theo `namorix/documents/README.md`; đăng nhập để `plugin-loader` tải plugin.
 
 Sau khi `build:plugin:watch` rebuild, **hard reload** trình duyệt Desktop (vd. Ctrl+Shift+R) để tránh cache module ES cũ.
 
