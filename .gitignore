@@ -3,3 +3,36 @@ data/database/
 data/*.db
 data/*.db-wal
 data/*.db-shm
+
+# Dependencies
+node_modules/
+
+# Build outputs
+dist/
+build/
+*.tsbuildinfo
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# IDE / OS
+.idea/
+.vscode/
+*.swp
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
+
+# Vite
+frontend/dist/
+
+# Backend
+backend/dist/
+
+# Local docs symlink (trỏ về namorix-thread/documents/)
+docs

@@ -69,7 +69,7 @@ export default defineConfig({
     port: devPort,
     host: true,
     cors: {
-      origin: process.env.DESKTOP_ORIGIN ?? "http://localhost:5173",
+      origin: process.env.DESKTOP_ORIGIN ?? true,
       credentials: true,
     },
     fs: {

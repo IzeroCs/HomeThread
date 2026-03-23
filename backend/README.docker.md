@@ -1,11 +1,11 @@
 # Backend — Docker
 
-Dockerfile và docker-compose nằm ở **thư mục gốc `dashboard/`** (để sau build cùng frontend). Dữ liệu SQLite + migration nằm ở **`namorix-thread/data/`** (volume `../data:/app/data` khi chạy compose từ `dashboard/`).
+Dockerfile và docker-compose nằm ở **thư mục gốc `namorix-thread/`**. Dữ liệu SQLite + migration nằm ở **`namorix-thread/data/`** (volume `./data:/app/data` khi chạy compose từ root repo).
 
-## Chạy nhanh (từ thư mục `dashboard/`)
+## Chạy nhanh (từ root `namorix-thread/`)
 
 ```bash
-cd /path/to/dashboard
+cd /path/to/namorix-thread
 docker compose up --build
 ```
 
@@ -23,8 +23,8 @@ docker compose up --build
 ## Build riêng image
 
 ```bash
-# Từ thư mục dashboard/
-cd /path/to/dashboard
+# Từ root namorix-thread/
+cd /path/to/namorix-thread
 docker build -f Dockerfile.backend -t namorix-thread-backend .
 docker run --rm -p 3000:3000 -p 5683:5683/udp namorix-thread-backend
 ```

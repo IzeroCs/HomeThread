@@ -1,10 +1,10 @@
 # Namorix Core — Hướng dẫn sử dụng
 
-Tài liệu mô tả cách plugin/app (ví dụ Dashboard frontend) tích hợp và sử dụng **namorix-core** — thư viện dùng chung cho store, i18n, WebSocket, Toast và UI primitives.
+Tài liệu mô tả cách plugin/app (ví dụ Thread frontend) tích hợp và sử dụng **@namorix/core** — thư viện dùng chung cho store, i18n, WebSocket, Toast và UI primitives.
 
 ## Tổng quan
 
-- **Vị trí:** Layout phổ biến — sibling repo **`namorix-core`** (npm workspace: package `@namorix/core` trong `namorix-core/frontend`, `@namorix/core-shared` trong `namorix-core/shared`). `package.json` dùng `file:../../../namorix-core/frontend`. Vite alias `@namorix/core` → `namorix-core/frontend/src`, `@namorix/core-shared` → `namorix-core/shared/src` (xem `vite.config.ts`). *(Legacy: `dashboard/vendor/namorix-core` — đổi path tương ứng sang `…/frontend/src`.)*
+- **Vị trí:** Monorepo sibling **`namorix/core`** (npm workspace: package `@namorix/core` trong `namorix/core/frontend`, `@namorix/core-shared` trong `namorix/core/shared`). `package.json` dùng `file:../../../namorix/core/frontend`. Vite alias `@namorix/core` → `namorix/core/frontend/src`, `@namorix/core-shared` → `namorix/core/shared/src` (xem `vite.config.ts`).
 - **Build:** Khi chưa build `dist/`, Vite alias trỏ thẳng vào source; app import SCSS và TS từ core.
 
 ## 1. Store (Redux)
@@ -216,8 +216,8 @@ Core cung cấp tokens và base styles; plugin import trong entry SCSS:
 ```
 
 - **Tokens:** Biến CSS `--nmx-*` (và các biến legacy được map từ tokens).
-- **Form:** Class `.nmx-form-*` (page, card, field, label, control, actions, error-message, info-box, radio row, …). Xem `vendor/namorix-core/src/styles/base/_form.scss`.
-- **Button:** `.nmx-btn`, `.nmx-btn-filled`, `.nmx-btn-icon`, `.nmx-form-btn`, `.nmx-form-btn--primary`, `.nmx-form-btn--ghost`. Xem `vendor/namorix-core/src/styles/base/_button.scss`.
+- **Form:** Class `.nmx-form-*` (page, card, field, label, control, actions, error-message, info-box, radio row, …). Nguồn style ở `namorix/core/frontend/src/styles/base/_form.scss`.
+- **Button:** `.nmx-btn`, `.nmx-btn-filled`, `.nmx-btn-icon`, `.nmx-form-btn`, `.nmx-form-btn--primary`, `.nmx-form-btn--ghost`. Nguồn style ở `namorix/core/frontend/src/styles/base/_button.scss`.
 
 Dùng đúng class `nmx-form-*` / `nmx-btn*` để đồng bộ với core; không dùng lại class cũ không prefix (đã bỏ).
 

@@ -1,4 +1,4 @@
-# Project Brief — Namorix Thread (dashboard)
+# Project Brief — Namorix Thread
 
 ## Project Overview
 
@@ -43,13 +43,13 @@ Cung cấp giao diện web quản lý Thread network:
 
 ## Namorix Desktop (shell host — repo khác)
 
-Dashboard Thread có thể chạy **độc lập** (Vite dev / backend riêng) hoặc sau này được **embed như plugin** trong **Namorix Desktop** — repo sibling **`namorix`** (thường cùng workspace multi-root với `namorix-core` / `namorix-assets`; file workspace: `namorix/namorix.code-workspace`).
+Dashboard Thread có thể chạy **độc lập** (Vite dev / backend riêng) hoặc được **embed như plugin** trong **Namorix Desktop** — repo sibling **`namorix`** (chứa `core/` in-repo + dùng chung `namorix-assets` trong workspace).
 
 - **Spec tích hợp:** `namorix/documents/namorix-desktop-architecture.md` — plugin manifest, `window.nmxCore`, CORS (`DESKTOP_ORIGIN`), auth exchange (`nmx_token`), milestone **M3** (load Thread trong cửa sổ shell).
-- **Core:** `namorix-core/memory-bank/` — mục §10 / bảng Desktop integration; không nhân đôi nội dung spec trong repo Thread.
+- **Core:** theo dõi qua `namorix/documents/core-library.md` và `namorix/memory-bank/*`; không nhân đôi nội dung spec trong repo Thread.
 - **Embed shell:** Core 0.9.2+ — `defineCustomElementOnce` cho component Lit dùng chung; plugin backend — `DESKTOP_ORIGIN` khớp Vite; lib build — cấu hình `process.env` khi cần (xem `techContext.md`).
 
-Chi tiết product/tech: `dashboard/memory-bank/productContext.md`, `techContext.md` (mục Namorix Desktop).
+Chi tiết product/tech: `memory-bank/productContext.md`, `memory-bank/techContext.md` (mục Namorix Desktop).
 
 ## Documents (namorix-thread/documents/)
 
@@ -60,4 +60,4 @@ Chi tiết product/tech: `dashboard/memory-bank/productContext.md`, `techContext
 - **Kiến trúc:** `architecture/real_br_integration.md` — BR thật, routing, troubleshooting.
 - **Backend:** `websocket.md` (handler modules), `installation.md` (IPv6 route Linux).
 - **Entity model (firmware):** `iot-entity-model/entity_model_specification.md`
-- Migration (nếu có): `documents/dashboard/migration_to_frame_protocol.md`
+- Migration (nếu có): `documents/migration_to_frame_protocol.md`

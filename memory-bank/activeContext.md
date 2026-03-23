@@ -1,4 +1,4 @@
-# Active Context — Namorix Thread (dashboard)
+# Active Context — Namorix Thread
 
 ## Current Work Focus
 
@@ -6,8 +6,8 @@ Backend ổn định với BR qua TCP + frame protocol, CoAP device ingest, SRP 
 
 Frontend align với hệ “core/shared”:
 - **Spec Desktop (SoT):** `namorix/documents/namorix-desktop-architecture.md`; mục lục host: `namorix/documents/README.md`.
-- `namorix-core` qua sibling `../../namorix-core` (workspace giống Desktop); *(legacy: `dashboard/vendor/namorix-core` nếu clone cũ)*
-- **Core 0.9.2+ — đăng ký custom element an toàn khi embed shell:** Các component chrome dùng chung (`nmx-sidebar`, `nmx-toast`, …) trong `@namorix/core` đăng ký bằng `defineCustomElementOnce` (không dùng `@customElement` parse-time). Shell Desktop load trước → plugin `thread.js` load sau không gây `NotSupportedError` trùng tên tag. Chi tiết: `namorix-core/memory-bank/systemPatterns.md`.
+- Core qua sibling `../../namorix/core` (workspace giống Desktop).
+- **Core 0.9.2+ — đăng ký custom element an toàn khi embed shell:** Các component chrome dùng chung (`nmx-sidebar`, `nmx-toast`, …) trong `@namorix/core` đăng ký bằng `defineCustomElementOnce` (không dùng `@customElement` parse-time). Shell Desktop load trước → plugin `thread.js` load sau không gây `NotSupportedError` trùng tên tag. Chi tiết: `namorix/memory-bank/systemPatterns.md`.
 - **Shell contract (Namorix Desktop):** Hằng số và tên sự kiện shell từ `@namorix/core/shell-api` (`PluginRuntimeStatus`, `ShellWindowEvent`, …). Đồng bộ locale với shell: ưu tiên `window.nmxCore?.onLocaleChange?.(handler)` (trả unsubscribe); fallback `addEventListener(ShellWindowEvent.LocaleChanged, …)` — xem `frontend/src/nmx-thread-app.ts`. Gateway Desktop forward JWT tới plugin backend qua header **`Authorization: Bearer <jwt>`** (plugin API đọc `req.headers.authorization`; không dùng `x-forwarded-authorization`).
 - Bundle core tokens/base styles qua Vite (alias `@namorix/core` → source khi `dist/` chưa build)
 - Store: `createPluginStore` từ `@namorix/core/store`; locale mặc định `"en"`, set từ user settings qua `setLocale`
@@ -23,6 +23,11 @@ Giao tiếp BR ↔ backend theo hướng **notify-first**: Thread-Host push `CMD
 
 ## Recent Significant Changes
 
+### Thread frontend Vite CORS + scripts (unreleased)
+- `frontend/vite.config.ts`: `server.cors.origin` đổi thành `process.env.DESKTOP_ORIGIN ?? true` để dev standalone không cần set `DESKTOP_ORIGIN`.
+- `frontend/package.json`: bỏ script `dev:shell`; luồng chuẩn dùng `dev`/`dev:frontend` cho cả standalone và shell-oriented frontend dev.
+- `README.md` (root): cập nhật hướng dẫn chạy frontend tương ứng (không yêu cầu `dev:shell` nữa).
+
 ### Namorix Core: Toast dual mode + createWsBridge + form/button nmx- prefix (unreleased)
 - **Toast (core):** Slice `toast` (ToastType, Toast, toastReducer, toastActions), component `<nmx-toast>`, `initToast({ store, selectToasts, getTitle? })` và `showToast(type, message, duration)`. **Dual mode:** Nếu `window.nmxCore` → dispatch `CustomEvent("nmx-action", { detail: { action: "show-toast", payload } })`; ngược lại dispatch vào store plugin. Plugin gọi `showToast()` từ `@namorix/core`, mount `<nmx-toast>` khi standalone.
 - **WebSocket (core):** `createWsBridge<S>({ store, url?, options? })` builder: `.onConnect()`, `.onDisconnect()`, `.onConnectError()`, `.on(event, handler)`, `.start()`, `.stop({ close? })`, `.getSocket()`. Plugin cấu hình lifecycle + domain events rồi `bridge.start()`. `onceWithTimeout(socket, event, timeoutMs, emit)` từ `@namorix/core/ws`.
@@ -30,7 +35,7 @@ Giao tiếp BR ↔ backend theo hướng **notify-first**: Thread-Host push `CMD
 - **Tài liệu:** `documents/namorix-core-usage.md` — hướng dẫn dùng core (store, i18n, WS, Toast, form/button, base elements). Mục lục `documents/README.md` đã thêm link.
 
 ### Frontend: base elements, root, AppBar, confirm-modal removal (unreleased)
-- **Core base (namorix-core):** **NmxBaseElement** — font injection + light DOM (`createRenderRoot() { return this }`). **NmxStoreElement** extends NmxBaseElement: abstract `getStore()`, optional locale subscription (`static useLocale`), `createStoreSlice(selector, equals?)`; dùng `subscribeStoreSelector` + `selectLocale` từ core.
+- **Core base (`@namorix/core`):** **NmxBaseElement** — font injection + light DOM (`createRenderRoot() { return this }`). **NmxStoreElement** extends NmxBaseElement: abstract `getStore()`, optional locale subscription (`static useLocale`), `createStoreSlice(selector, equals?)`; dùng `subscribeStoreSelector` + `selectLocale` từ core.
 - **AppBaseElement** (`frontend/src/core/AppBaseElement.ts`): extends `NmxStoreElement<RootState>`, implements `getStore() { return store }`. Component app extend AppBaseElement khi cần store/locale.
 - **Root:** `index.html` mount `<nmx-main>`; NmxMain render `<nmx-app-container>` với slot `<nmx-thread-app></nmx-thread-app>`. **NmxThreadApp** (app.ts) extends AppBaseElement, tag `nmx-thread-app`.
 - **AppBar qua Redux**: Slice `appBar` với `setAppBar`, `clearAppBar`; selector `selectAppBar`. Layout đọc store và render `<page-header>` khi `appBar.visible`; pages dispatch setAppBar/clearAppBar.
@@ -145,8 +150,8 @@ Giao tiếp BR ↔ backend theo hướng **notify-first**: Thread-Host push `CMD
 - **Version:** Subtitle Status lay tu `frontend/package.json` qua Vite `__APP_VERSION__`; dong bo voi progress.md (1.0.0).
 
 ### Docker backend (chay backend bang container)
-- **Vi tri:** Dockerfile va docker-compose o **thu muc goc** dashboard/: `Dockerfile.backend`, `docker-compose.yml`, `.dockerignore`. Sau co the them frontend cung build.
-- **Cau hinh:** `network_mode: host` (dung chung bang route host — backend khong can doc route trong code). Volume `../data:/app/data` (SQLite + migrations ở `namorix-thread/data`).
+- **Vi tri:** Dockerfile va docker-compose o **thu muc goc** `namorix-thread/`: `Dockerfile.backend`, `docker-compose.yml`, `.dockerignore`.
+- **Cau hinh:** `network_mode: host` (dung chung bang route host — backend khong can doc route trong code). Volume `./data:/app/data` (SQLite + migrations ở `namorix-thread/data`).
 - **Default BR:** 192.168.31.3:5000. **mDNS trong Docker khong dung duoc**; khi Docker phai dung IP. "Tim BR" sau co the quet dai IP (TCP 5000).
 - **Chay:** `docker compose up --build`; container name `namorix-thread-backend`. Doc: `backend/README.docker.md`.
 
@@ -196,7 +201,7 @@ ROUTER_TABLE, CHILD_TABLE, JOINER_TABLE TX va ACK bi filter ra khoi console log 
 1. **Tim BR** *(tuy chon)* — mDNS browse `_thread-frame._tcp` (khi chay tren host) hoac quet dai IP (TCP 5000) khi chay Docker
 2. **TCP keepalive** — Da co the bat de phat hien mat ket noi BR nhanh hon (backend TransportTcp)
 3. **Security** *(neu can)* — auth WS, HTTPS
-4. **Namorix Desktop** *(repo `namorix`, milestone M3)* — khi shell sẵn sàng: align `nmx-thread-app` với spec plugin (manifest, lib build, `isInShell`, gateway JWT). Theo dõi `namorix/memory-bank/` + `namorix-core/memory-bank/`; không trùng lặp dài trong memory bank Thread — chỉ tham chiếu `namorix/documents/namorix-desktop-architecture.md`.
+4. **Namorix Desktop** *(repo `namorix`, milestone M3)* — khi shell sẵn sàng: align `nmx-thread-app` với spec plugin (manifest, lib build, `isInShell`, gateway JWT). Theo dõi `namorix/memory-bank/`; không trùng lặp dài trong memory bank Thread — chỉ tham chiếu `namorix/documents/namorix-desktop-architecture.md`.
 
 ## Files to Watch
 
@@ -218,13 +223,13 @@ ROUTER_TABLE, CHILD_TABLE, JOINER_TABLE TX va ACK bi filter ra khoi console log 
 - `frontend/src/features/joiner/joiner.component.ts` — Joiner Table, commission modal (form + modal-dialog), _canCommission (leader/router/child)
 - `frontend/src/shared/components/modal/modal.component.ts` — portal render, ModalAction tone/style/icon/loading
 - `frontend/src/shared/components/spinner/spinner.component.ts` — spin-loader (global)
-- `vendor/namorix-core/src/styles/base/_form.scss` — nmx-form-* (page, card, field, control, actions, radio, control-icon, with-icon); `_button.scss` — nmx-btn*, nmx-form-btn*
+- `../../namorix/core/frontend/src/styles/base/_form.scss` — nmx-form-* (page, card, field, control, actions, radio, control-icon, with-icon); `_button.scss` — nmx-btn*, nmx-form-btn*
 - `frontend/src/core/AppBaseElement.ts` — app base (extends NmxStoreElement, getStore → store)
 - `frontend/src/app.ts` — NmxThreadApp (nmx-thread-app), extends AppBaseElement
 - `frontend/index.html` — mount `<nmx-main>`; main.ts → nmx-app-container → nmx-thread-app
 - `frontend/src/core/store/slices/appbar.slice.ts` — setAppBar, clearAppBar
 - `frontend/src/core/components/appbar/` — page-header (extends AppLitElement)
-- `vendor/namorix-core` — toast (nmx-toast, initToast, showToast), createWsBridge, onceWithTimeout, wsConnection slice; `documents/namorix-core-usage.md` — hướng dẫn dùng core
+- `../../namorix/core/frontend` — toast (nmx-toast, initToast, showToast), createWsBridge, onceWithTimeout, wsConnection slice; `documents/namorix-core-usage.md` — hướng dẫn dùng core
 - `frontend/src/core/components/modal/` — modal-dialog (confirm-modal đã xóa; dùng modal-dialog + props)
 - `frontend/src/shared/components/sidebar/` — nav, Settings sub-items icons
 - `frontend/src/features/settings/components/system-tab/` — action cards, danger divider

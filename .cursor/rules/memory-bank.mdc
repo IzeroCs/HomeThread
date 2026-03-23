@@ -121,10 +121,10 @@ flowchart TD
     Start --> Process
 \```
 
-Note: When triggered by **update memory bank**, I MUST review every memory bank file from BOTH locations:
-- `dashboard/memory-bank/*.md` (Thread dashboard app docs)
-- **`../namorix-core/memory-bank/*.md`** (core library — sibling repo in workspace; same content as legacy `dashboard/vendor/namorix-core` if that path exists)
-Even if some don't require updates, I still need to check them for consistency. Focus particularly on `activeContext.md` and `progress.md` in BOTH locations as they track current state.
+Note: When triggered by **update memory bank**, I MUST review every memory bank file from:
+- `memory-bank/*.md` (Namorix Thread)
+- `../../namorix/memory-bank/*.md` (Namorix host, when integration context is affected)
+Even if some don't require updates, I still need to check them for consistency. Focus particularly on `activeContext.md` and `progress.md`.
 
 ## Project Intelligence (.cursor/rules)
 
@@ -162,7 +162,7 @@ flowchart TD
 - When documenting release history in `memory-bank/progress.md`, always use Semantic Versioning `MAJOR.MINOR.PATCH` (no leading `v`).
 - Examples: `0.8.0`, `0.9.0`, `1.0.0`.
 - If only major/minor are known, set `PATCH = 0` (e.g. legacy `v0.8` becomes `0.8.0`).
-- **PATCH vs MINOR vs MAJOR** for Thread changelog: read **`../../../namorix-core/memory-bank/versioning.md`** (section *Namorix Thread — dashboard*) when sibling `namorix-core` is in the workspace.
+- **PATCH vs MINOR vs MAJOR** for Thread changelog: follow Semantic Versioning consistency in this repo's `memory-bank/progress.md`.
 
 The format is flexible - focus on capturing valuable insights that help me work more effectively with you and the project. Think of .cursor/rules as a living document that grows smarter as we work together.
 

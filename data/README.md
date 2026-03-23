@@ -1,8 +1,8 @@
-# Runtime data (dashboard backend)
+# Runtime data (thread backend)
 
-Thư mục này nằm ở **root repo** `namorix-thread/` (cạnh `dashboard/`), không còn trong `dashboard/backend/data`.
+Thư mục này nằm ở **root repo** `namorix-thread/`.
 
 - **`database/`** — SQLite (`database.db` + WAL). Git-ignore.
-- **`migrations/`** — file migration do Drizzle (`drizzle-kit generate` từ `dashboard/backend/`).
+- **`migrations/`** — file migration do Drizzle (`drizzle-kit generate` từ `backend/`).
 
-Docker: `dashboard/docker-compose.yml` mount `../data` → `/app/data`; backend dùng `NAMORIX_DATA_DIR=/app/data`.
+Docker: `docker-compose.yml` (root repo) mount `./data` → `/app/data`; backend dùng `NAMORIX_DATA_DIR=/app/data`.
