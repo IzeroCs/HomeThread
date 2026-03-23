@@ -5,12 +5,12 @@ import { fileURLToPath } from "url";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const pkg = JSON.parse(readFileSync(join(__dirname, "package.json"), "utf-8"));
-/** Parent of `namorix-thread/` — sibling repos: `namorix-core`, `namorix-assets` (see `namorix-thread.code-workspace`). */
+/** Parent of `namorix-thread/` — sibling repos: `namorix` (contains `core/`) and `namorix-assets`. */
 const siblingReposRoot = resolve(__dirname, "../../..");
-const namorixCoreSrc = resolve(siblingReposRoot, "namorix-core/frontend/src");
+const namorixCoreSrc = resolve(siblingReposRoot, "namorix/core/frontend/src");
 const namorixCoreSharedSrc = resolve(
   siblingReposRoot,
-  "namorix-core/shared/src/index.ts",
+  "namorix/core/shared/src/index.ts",
 );
 const namorixAssetsRoot = resolve(siblingReposRoot, "namorix-assets");
 
@@ -29,18 +29,27 @@ export default defineConfig({
     },
   },
   resolve: {
-    alias: {
-      "@namorix/core": namorixCoreSrc,
-      "@namorix/core-shared": namorixCoreSharedSrc,
-      "@namorix/assets": namorixAssetsRoot,
-      "@": resolve(__dirname, "src"),
-      "@core": resolve(__dirname, "src/core"),
-      "@features": resolve(__dirname, "src/features"),
-      "@shared": resolve(__dirname, "src/shared"),
-      "@network": resolve(__dirname, "src/features/network"),
-      "@settings": resolve(__dirname, "src/features/settings"),
-      "@styles": resolve(__dirname, "src/styles"),
-    },
+    alias: [
+      { find: "@namorix/core/styles", replacement: resolve(namorixCoreSrc, "styles") },
+      { find: "@namorix/core/ws", replacement: resolve(namorixCoreSrc, "ws/index.ts") },
+      { find: "@namorix/core/shell-api", replacement: resolve(namorixCoreSrc, "shell-api/index.ts") },
+      { find: "@namorix/core/store", replacement: resolve(namorixCoreSrc, "store/index.ts") },
+      {
+        find: "@namorix/core/components",
+        replacement: resolve(namorixCoreSrc, "components"),
+      },
+      { find: "@namorix/core/i18n", replacement: resolve(namorixCoreSrc, "i18n/index.ts") },
+      { find: "@namorix/core", replacement: resolve(namorixCoreSrc, "index.ts") },
+      { find: "@namorix/core-shared", replacement: namorixCoreSharedSrc },
+      { find: "@namorix/assets", replacement: namorixAssetsRoot },
+      { find: "@", replacement: resolve(__dirname, "src") },
+      { find: "@core", replacement: resolve(__dirname, "src/core") },
+      { find: "@features", replacement: resolve(__dirname, "src/features") },
+      { find: "@shared", replacement: resolve(__dirname, "src/shared") },
+      { find: "@network", replacement: resolve(__dirname, "src/features/network") },
+      { find: "@settings", replacement: resolve(__dirname, "src/features/settings") },
+      { find: "@styles", replacement: resolve(__dirname, "src/styles") },
+    ],
   },
   css: {
     preprocessorOptions: {
@@ -59,13 +68,16 @@ export default defineConfig({
   server: {
     port: devPort,
     host: true,
-    cors: true,
+    cors: {
+      origin: process.env.DESKTOP_ORIGIN ?? "http://localhost:5173",
+      credentials: true,
+    },
     fs: {
       allow: [
         resolve(__dirname, ".."),
         resolve(__dirname, "../shared"),
         namorixCoreSrc,
-        resolve(siblingReposRoot, "namorix-core/shared"),
+        resolve(siblingReposRoot, "namorix/core/shared"),
         namorixAssetsRoot,
       ],
     },

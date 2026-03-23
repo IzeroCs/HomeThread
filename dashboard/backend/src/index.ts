@@ -57,13 +57,32 @@ function loadPluginManifest(): Record<string, unknown> {
       `Could not read frontend package.json for plugin version (${pkgPath})`,
     );
   }
+
+  const devBase = process.env.PLUGIN_DEV_FRONTEND_URL?.trim();
+  if (devBase) {
+    const base = devBase.replace(/\/+$/, "");
+    return {
+      id: "thread",
+      displayName: "Thread",
+      version,
+      entry: `${base}/src/main.ts`,
+      element: "nmx-main",
+      defaultWindowSize: { width: 1100, height: 700 },
+      minWindowSize: { width: 800, height: 500 },
+      singleInstance: false,
+      health: "/health",
+      permissions: ["thread:read", "thread:write"],
+      logEnabled: true,
+    };
+  }
+
   return {
     id: "thread",
     displayName: "Thread",
     version,
     entry: "/assets/thread.js",
     styles: "/assets/thread.css",
-    element: "nmx-thread-app",
+    element: "nmx-main",
     defaultWindowSize: { width: 1100, height: 700 },
     minWindowSize: { width: 800, height: 500 },
     singleInstance: false,

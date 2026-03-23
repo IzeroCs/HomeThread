@@ -5,14 +5,14 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "dev:shell": "env THREAD_BACKEND_PORT=4000 VITE_DEV_PORT=5173 vite",
+    "dev:shell": "env THREAD_BACKEND_PORT=4000 VITE_DEV_PORT=4001 DESKTOP_ORIGIN=http://localhost:5173 vite",
     "build": "tsc -b && vite build",
     "build:plugin": "vite build --config vite.plugin.config.ts",
     "build:plugin:watch": "vite build --watch --config vite.plugin.config.ts",
     "preview": "vite preview"
   },
   "dependencies": {
-    "@namorix/core": "file:../../../namorix-core/frontend",
+    "@namorix/core": "file:../../../namorix/core/frontend",
     "@reduxjs/toolkit": "^2.9.0",
     "lit": "^3.2.0",
     "shared": "file:../shared",
