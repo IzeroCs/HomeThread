@@ -6,7 +6,7 @@
 import { Server, Socket } from "socket.io";
 import type { BrConnectionConfigService, BrManager } from "@communicate";
 import { AppSettingsService } from "@settings/app-settings.service";
-import { logger } from "@utils/logger.util";
+import { logger } from "@namorix/core-backend";
 import { EVENTS } from "shared/src/events";
 import { getWsRoutes } from "./ws.type";
 import {

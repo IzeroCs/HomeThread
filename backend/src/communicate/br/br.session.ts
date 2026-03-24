@@ -1,9 +1,9 @@
 import { BrConnection } from "./br.connection"
 import { BrCommand, type AckDataConfig } from "./br.command"
 import { FrameParser, type ParsedFrame } from "../frame"
+import { logger } from "@namorix/core-backend"
 import { BrConnectionConfigService } from "@settings/br-connection.service"
 import { AppSettingsService } from "@settings/app-settings.service"
-import { transportLogger } from "@utils/logger.util"
 import { getPreferredBackendIPv6 } from "@utils/ipv6.util"
 import { ENV } from "../../env"
 import { DEVICE_ROLE, DEVICE_ROLE_NAMES } from "@thread/thread-role"
@@ -23,6 +23,7 @@ import type { ConnectionStatus } from "shared/src/types"
 const RECONNECT_INTERVAL_MS = 3000
 /** STATE 5 lần không có phản hồi (bất kỳ frame từ leader) thì đóng port và reconnect. */
 const STATE_WITHOUT_RESPONSE_LIMIT = 5
+const transportLogger = logger.child("Transport")
 
 export type OnBroadcast = (event: EventName, data?: unknown) => void
 

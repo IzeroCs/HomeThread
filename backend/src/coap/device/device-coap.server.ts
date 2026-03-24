@@ -8,7 +8,7 @@
  */
 
 import * as coap from "coap";
-import { logger } from "@utils/logger.util";
+import { logger } from "@namorix/core-backend";
 import { registerCoapControllers, DeviceCoapController } from "../index";
 
 const coapLog = logger.child("CoAP");

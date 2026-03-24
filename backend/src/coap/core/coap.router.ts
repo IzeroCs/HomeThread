@@ -3,7 +3,7 @@
  */
 
 import type { Server } from "coap";
-import { logger } from "@utils/logger.util";
+import { logger } from "@namorix/core-backend";
 import { getCoapRoutes, CoapStatus } from "./coap.type";
 
 const coapLog = logger.child("CoAP");

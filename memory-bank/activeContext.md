@@ -32,6 +32,17 @@ Giao tiếp BR ↔ backend theo hướng **notify-first**: Thread-Host push `CMD
 - `backend/src/index.ts` của Thread refactor aggressive sang dùng SDK; file chỉ còn phần resolve env/manifest/public base URL + bootstrap domain runtime (Socket.IO/BrManager/CoAP) qua hooks.
 - API contract giữ nguyên path và shape cho `GET /health`, `GET /api/desktop-registration-status`, và payload đăng ký vẫn có `registrationSecret`.
 
+### Desktop embed WS fix + manifest migration + security notes (2.33.0)
+- Frontend `nmx-thread-app` thêm logic tách 2 mode:
+  - **In-shell:** fetch `GET /api/desktop-bridge-config`, connect WS tới `window.location.origin` qua `/namorix-plugin-ws` với `auth.secret` + `query.pluginId`.
+  - **Standalone:** giữ kết nối trực tiếp backend plugin (`/socket.io`).
+- Backend `index.ts` mount route `GET /api/desktop-bridge-config` và manifest đổi `element` sang `nmx-thread-main` (frontend entry + index.html đồng bộ cùng tag mới).
+- Backend logger migration sang `@namorix/core-backend`, bỏ wrapper `desktop-origin.ts`; README/techContext thêm cảnh báo rõ Socket.IO backend hiện chưa có auth end-user (chỉ an toàn trong trusted LAN).
+- TS strict fix: route `/api/desktop-bridge-config` khai báo type `Request/Response` tường minh để không còn implicit `any` trong IDE diagnostics.
+
+### Core-shared dev alignment (workspace)
+- Theo host repo `namorix`, `@namorix/core-shared` đã chuyển sang package exports src-based (`core/shared/src/index.ts`), giúp frontend/backend trong workspace không phụ thuộc `dist` stale khi thêm shared types.
+
 ### Plugin-generic extraction to `@namorix/core-backend` (2.30.0)
 - Core backend thêm các module generic:
   - `plugin-secret.ts` → `getOrCreateEnvStyleSecret`

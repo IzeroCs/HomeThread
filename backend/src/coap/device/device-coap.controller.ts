@@ -7,7 +7,7 @@ import type { CoapRequest, CoapResponse, CoapStatusValue } from "../core/coap.ty
 import { CoapStatus } from "../core/coap.type";
 import { sendCoapResponse } from "../core/coap.response";
 import { CoapGet, CoapPost, ParseCborOrSend } from "../core/coap.decorator";
-import { logger } from "@utils/logger.util";
+import { logger } from "@namorix/core-backend";
 import { formatMacForLog, formatRloc16ForLog } from "@utils/format.util";
 import type { DeviceInfoPayload } from "./device.payload";
 import {

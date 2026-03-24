@@ -6,8 +6,7 @@ import Database from "better-sqlite3";
 import path from "path";
 import fs from "fs";
 import { drizzle } from "drizzle-orm/better-sqlite3";
-import { resolveNamorixRepoDataLayout } from "@namorix/core-backend";
-import { logger } from "@utils/logger.util";
+import { logger, resolveNamorixRepoDataLayout } from "@namorix/core-backend";
 
 const dbLog = logger.child("DB");
 

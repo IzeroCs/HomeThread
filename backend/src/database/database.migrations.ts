@@ -7,7 +7,7 @@ import { eq } from "drizzle-orm";
 import { migrate } from "drizzle-orm/better-sqlite3/migrator";
 import { getDataRoot, getDrizzle } from "./database.db";
 import { appSettings } from "./database.schema";
-import { logger } from "@utils/logger.util";
+import { logger } from "@namorix/core-backend";
 
 const migrationLog = logger.child("Migration");
 

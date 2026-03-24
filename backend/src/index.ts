@@ -5,7 +5,7 @@
  */
 
 import path from "path";
-import { resolveDesktopOrigin } from "./desktop-origin";
+import type { Request, Response } from "express";
 import { ENV } from "./env";
 import fs from "fs";
 import { Server } from "socket.io";
@@ -15,10 +15,10 @@ import { BrConnectionConfigService, BrManager } from "@communicate";
 import { AppSettingsService } from "@settings/app-settings.service";
 import { WebSocketServer } from "@websocket/websocket.server";
 import { startCoapDeviceServer as startDeviceCoapServer } from "@coap/device/device-coap.server";
-import { logger } from "@utils/logger.util";
 import { getPluginRegistrationSecret } from "./plugin-secret";
 import {
   createPluginBackendServer,
+  logger,
   type PluginRegisterRequestBody,
 } from "@namorix/core-backend";
 
@@ -33,7 +33,7 @@ const pluginStaticDir =
   ENV.PLUGIN_STATIC_DIR ?? path.join(__dirname, "../../dist/plugin");
 
 /** Namorix Desktop shell origin (browser); used for CORS + Socket.io. */
-const desktopOrigin = resolveDesktopOrigin();
+const desktopOrigin = ENV.DESKTOP_ORIGIN;
 const pluginId = "thread";
 const desktopBackendUrl = ENV.DESKTOP_BACKEND_URL;
 const pluginRegistrationSecret = getPluginRegistrationSecret();
@@ -64,7 +64,7 @@ function loadPluginManifest(): Record<string, unknown> {
       displayName: "Thread",
       version,
       entry: `${base}/src/main.ts`,
-      element: "nmx-main",
+      element: "nmx-thread-main",
       defaultWindowSize: { width: 1100, height: 700 },
       minWindowSize: { width: 800, height: 500 },
       singleInstance: false,
@@ -80,7 +80,7 @@ function loadPluginManifest(): Record<string, unknown> {
     version,
     entry: "/assets/thread.js",
     styles: "/assets/thread.css",
-    element: "nmx-main",
+    element: "nmx-thread-main",
     defaultWindowSize: { width: 1100, height: 700 },
     minWindowSize: { width: 800, height: 500 },
     singleInstance: false,
@@ -118,8 +118,14 @@ const pluginServer = createPluginBackendServer({
       error: (msg) => registerLog.error(msg),
     },
   },
-  mountDomainRoutes: () => {
-    // No extra domain HTTP route here. WebSocket/CoAP are bootstrapped in onAfterListen.
+  mountDomainRoutes: ({ app }) => {
+    app.get("/api/desktop-bridge-config", (_req: Request, res: Response) => {
+      res.json({
+        pluginId,
+        registrationSecret: pluginRegistrationSecret,
+        socketPath: "/namorix-plugin-ws",
+      });
+    });
   },
   hooks: {
     onAfterListen: ({ httpServer }) => {

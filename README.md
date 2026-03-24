@@ -39,3 +39,9 @@ Build:
 - Mục lục docs: `documents/README.md`
 - Memory bank: `memory-bank/*.md`
 - Việc còn lại: `TODO.md`
+
+## Security Notes
+
+- Thread backend WebSocket currently accepts connections without user authentication.
+- Do not expose port `4000` outside trusted LAN/dev environments.
+- For wider deployment, add authentication/authorization at WebSocket layer (for example Desktop JWT validation or service token gate).

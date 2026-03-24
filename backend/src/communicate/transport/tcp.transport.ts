@@ -4,7 +4,8 @@
  */
 
 import * as net from "net";
-import { transportLogger } from "@utils/logger.util";
+import { logger } from "@namorix/core-backend";
+const transportLogger = logger.child("Transport");
 
 export interface TransportTcpConfig {
   host: string;

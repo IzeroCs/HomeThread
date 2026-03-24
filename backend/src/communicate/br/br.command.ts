@@ -5,13 +5,15 @@
 
 import { buildFrame, CMD, type ParsedFrame } from "../frame";
 import { CMD_NAMES } from "../frame/frame.constants";
-import { transportLogger, frameLogger } from "@utils/logger.util";
+import { logger } from "@namorix/core-backend";
 import { DEVICE_ROLE } from "@thread/thread-role";
 import { bytes16ToIPv6String, ipv6StringToBytes } from "@utils/ipv6.util";
 import { parseDatasetActive, type ParsedDataset } from "../frame";
 import { EVENTS, type EventName } from "shared/src/events";
 
 const FRAME_RESPONSE_TIMEOUT_MS = 5000;
+const transportLogger = logger.child("Transport");
+const frameLogger = logger.child("Frame");
 
 /** BR health ACK payload: 16-byte prefix (4× uint32 BE) + optional raw suffix (TLV) stored as hex. */
 export type BrHealthPayload = {

@@ -1,13 +1,8 @@
 import path from "node:path";
 import { config } from "dotenv";
+import { parsePort } from "@namorix/core-backend";
 
 config({ path: path.join(__dirname, "../../.env") });
-
-function parsePort(raw: string | undefined, fallback: number): number {
-  const n = Number(raw ?? "");
-  if (!Number.isFinite(n) || n <= 0) return fallback;
-  return Math.trunc(n);
-}
 
 function parseDesktopOrigin(): string {
   const explicit = process.env.DESKTOP_ORIGIN?.trim();

@@ -31,13 +31,27 @@ export function getSocket(): Socket | null {
   return socket;
 }
 
-/** Pass `url` when embedded in Namorix Desktop (must match plugin origin + Vite proxy to Thread backend). */
-export function startWsBridge(store: Store<RootState>, options?: { url?: string }): void {
+export type WsBridgeStartOptions = {
+  url?: string;
+  path?: string;
+  auth?: Record<string, unknown>;
+  transports?: ("websocket" | "polling")[];
+  query?: Record<string, string>;
+};
+
+/** Supports both standalone (`/socket.io`) and in-shell (`/namorix-plugin-ws`) WebSocket wiring. */
+export function startWsBridge(store: Store<RootState>, options?: WsBridgeStartOptions): void {
   const wsUrl = options?.url?.trim() || WS_URL_DEFAULT;
   if (!bridge) {
     bridge = createWsBridge<RootState>({
       store,
       url: wsUrl,
+      options: {
+        path: options?.path,
+        auth: options?.auth,
+        transports: options?.transports,
+        query: options?.query,
+      },
     });
 
     bridge

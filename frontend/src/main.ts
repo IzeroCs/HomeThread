@@ -13,7 +13,7 @@ import "./nmx-thread-app";
 
 import appStyle from "./nmx-thread-app.style.scss?inline";
 
-@customElement("nmx-main")
+@customElement("nmx-thread-main")
 export class NmxMain extends NmxBaseMain {
   static override styles: CSSResultGroup = [unsafeCSS(appStyle)];
 
@@ -43,6 +43,6 @@ export class NmxMain extends NmxBaseMain {
 
 declare global {
   interface HTMLElementTagNameMap {
-    "nmx-main": NmxMain;
+    "nmx-thread-main": NmxMain;
   }
 }

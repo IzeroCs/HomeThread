@@ -38,11 +38,7 @@ export class NmxThreadApp extends AppBaseElement {
 
   override connectedCallback(): void {
     super.connectedCallback();
-    if (!NmxThreadApp._wsBridgeStarted) {
-      NmxThreadApp._wsBridgeStarted = true;
-      const base = this.getAttribute("data-plugin-base-url")?.trim();
-      startWsBridge(store, base ? { url: base } : undefined);
-    }
+    void this._startWsBridgeOnce();
     const onLocale = (locale: string) => {
       store.dispatch(setLocale(normalizeLocale(locale)));
     };
@@ -71,6 +67,43 @@ export class NmxThreadApp extends AppBaseElement {
       store.dispatch(setLocale(normalizeLocale(loc)));
     }
   };
+
+  private _isInShell(): boolean {
+    return Boolean(window.nmxCore && this.getAttribute("nmx-window-id"));
+  }
+
+  private async _startWsBridgeOnce(): Promise<void> {
+    if (NmxThreadApp._wsBridgeStarted) return;
+    NmxThreadApp._wsBridgeStarted = true;
+
+    if (this._isInShell()) {
+      try {
+        const r = await fetch("/api/desktop-bridge-config", { credentials: "include" });
+        if (r.ok) {
+          const cfg = (await r.json()) as {
+            pluginId?: string;
+            registrationSecret?: string;
+            socketPath?: string;
+          };
+          if (cfg.pluginId && cfg.registrationSecret) {
+            startWsBridge(store, {
+              url: window.location.origin,
+              path: cfg.socketPath || "/namorix-plugin-ws",
+              auth: { secret: cfg.registrationSecret },
+              query: { pluginId: cfg.pluginId },
+              transports: ["websocket", "polling"],
+            });
+            return;
+          }
+        }
+      } catch {
+        // Fall through to standalone mode.
+      }
+    }
+
+    const base = this.getAttribute("data-plugin-base-url")?.trim();
+    startWsBridge(store, base ? { url: base } : undefined);
+  }
 
   private _handleNavigate = (e: CustomEvent<NavPage>) => {
     this.page = e.detail;

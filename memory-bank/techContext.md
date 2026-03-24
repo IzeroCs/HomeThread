@@ -58,6 +58,7 @@ Frontend: **AppBaseElement** (`core/AppBaseElement.ts`) extends **NmxStoreElemen
 Core/shared integration (frontend):
 - **Layout:** Repo `namorix-thread` nằm cạnh `namorix/` và `namorix-assets/` trong cùng workspace parent (vd. `namorix-workspace/`). `@namorix/core` resolve tới **`namorix/core/frontend/src`** qua Vite alias + `tsconfig` `paths` — **không** dùng `file:` dependency trong `frontend/package.json` (tránh npm workspace/`Invalid Version` và trùng với alias).
 - **Vite:** `siblingReposRoot = resolve(__dirname, "../..")` trong `vite.config.ts` / `vite.plugin.config.ts` → `join(siblingReposRoot, "namorix/core/frontend/src")` cho `@namorix/core` và các subpath (`/i18n`, `/store`, …); `@namorix/core-shared` → `namorix/core/shared/src/index.ts`; `@namorix/assets` → `namorix-assets` root.
+- **Core shared package mode:** `@namorix/core-shared` ở repo host (`namorix/core/shared`) đang theo src-based exports (`src/index.ts`) để workflow dev/typecheck không cần build `dist` trước.
 - When `dist/` is not built, Vite aliases `@namorix/core` → `namorix/core/frontend/src` (sibling layout) and the app imports SCSS sources:
   - `@namorix/core/styles/_tokens.scss`
   - `@namorix/core/styles/nmx-base.scss`
@@ -83,6 +84,7 @@ Assets usage (frontend):
 - **Cửa sổ shell:** Host `namorix` mount root plugin (tag từ `manifest.element`) qua property **`pluginBody`** trên `nmx-window` — light DOM không dùng `<slot>` cho vùng body; xem `namorix/memory-bank/progress.md` **0.9.3**.
 - **Hợp đồng shell (core):** `@namorix/core/shell-api` — `PluginRuntimeStatus`, `ShellWindowEvent` (tên `CustomEvent` shell), `SHELL_APP_EMIT_PREFIX`; type `NmxCoreApi` gồm `onLocaleChange` (đăng ký đổi locale theo shell). Plugin không cần hardcode chuỗi `nmx-shell-locale-changed` nếu dùng API trên.
 - **Gateway → plugin backend:** Proxy `/api/plugins/:pluginId/*` forward header **`Authorization`** chuẩn; API plugin (HTTP) nên đọc `Authorization` / Bearer JWT — không phụ thuộc `x-forwarded-authorization`.
+- **WS security limitation (current):** Thread Socket.IO backend currently has no end-user auth gate (`allowRequest` accepts connections). Keep backend port in trusted LAN only; if deploying broader, add authentication (Desktop-verified JWT or service secret).
 - Dev standalone plugin: spec mô tả redirect Desktop + query `nmx_token` (§5.5) — triển khai theo milestone **M3** trên repo `namorix`; memory bank host: `namorix/memory-bank/`.
 - **Backend Thread vs Desktop:** `namorix/backend` là **host** (auth, registry, gateway). Backend trong repo này là **plugin** (OpenThread/CoAP/WS domain + Express mỏng cho static/manifest). **Không** có khối logic copy từ Desktop — trùng chủ yếu **stack** và **hợp đồng** tích hợp. Viết plugin mới: ưu tiên đọc spec + `namorix/documents/thread-desktop-plugin-integration.md`; **không** bắt buộc SDK trong core (xem `namorix/memory-bank/systemPatterns.md`).
 
