@@ -23,6 +23,11 @@ Giao tiếp BR ↔ backend theo hướng **notify-first**: Thread-Host push `CMD
 
 ## Recent Significant Changes
 
+### `@namorix/core-backend` + layout `data/` (2.26.0)
+- **Core (repo `namorix`):** `resolveNamorixRepoDataLayout` trong `namorix/core/backend` — Thread `database.db.ts` dùng thay tính path tay; đồng bộ với Desktop `paths.ts`.
+- **Dependency:** `backend/package.json` + root `namorix-thread/package.json` — `file:` tới sibling `namorix/core/backend`. **Bắt buộc `npm install` ở root Thread** để có `node_modules/@namorix/core-backend`.
+- **Agent:** Repo sibling **`namorix`** có `.cursor/rules/no-terminal.mdc` — khi làm việc trong `namorix/` không tự chạy terminal; hướng dẫn user chạy `npm install` / dán log nếu cần.
+
 ### Core alias base path + tsconfig (2.25.0)
 - **Vấn đề:** Sau khi bỏ wrapper `dashboard/`, `siblingReposRoot` còn `resolve(__dirname, "../../..")` → trỏ sai (thiếu segment `namorix-workspace`), Vite/esbuild báo **ENOENT** khi mở file core (vd. `@namorix/core/i18n`).
 - **Sửa:** `frontend/vite.config.ts` và `frontend/vite.plugin.config.ts` dùng `siblingReposRoot = resolve(__dirname, "../..")` (root workspace chứa `namorix/` và `namorix-assets/`). `frontend/tsconfig.json` đồng bộ `paths` với `../../namorix/...` và `../../namorix-assets`.

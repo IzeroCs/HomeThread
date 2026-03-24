@@ -1,5 +1,7 @@
 # Tech Context — Namorix Thread
 
+**Cursor / agent:** `.cursor/rules/no-terminal.mdc` — không tự chạy terminal (`npm`, build, test) trong repo này; chỉ đọc/ghi file. Cần log hoặc `npm install` thì user chạy local hoặc cho phép rõ trong chat.
+
 ## Project Structure
 
 ```
@@ -37,6 +39,7 @@ namorix-thread/           # monorepo root (repo)
 | better-sqlite3 | ^11.7.0 | SQLite (WAL mode) |
 | pino | ^9.5.0 | Structured logging |
 | pino-pretty | latest | Pretty console output |
+| `@namorix/core-backend` | `file:` → `namorix/core/backend` | Logger (pino) + **`resolveNamorixRepoDataLayout(__dirname)`** cho SQLite/migrations (`<repo>/data/...`, override **`NAMORIX_DATA_DIR`**). Khai báo ở **`backend/package.json`** (`file:../../namorix/core/backend`) và root **`package.json`** (`file:../namorix/core/backend`) để workspaces hoist — **sau đổi dependency chạy `npm install` tại root repo Thread**. |
 
 Transport: TCP (net.Socket) to BR; CoAP (UDP 5683, udp6 listen [::]) from Thread-Node. Dependencies: `coap`. CBOR decode/encode noi bo (`backend/src/cbor`). Thread-Node la **CoAP client**: GET /device/ping**?mac=** (16-char hex, heartbeat → last_seen_at); POST /device/register/info (keys 0–6, key 0 = mac), /device/update/topology (payload **role-based**: child 0–5 parent_*; router/leader 0,1,2,6 neighbors array), /device/register/entity, /device/update/entity, /device/update/state (key 0 = mac, **key 1** = array). ENTITY_KEYS 0–6 (disabled key 6); STATE_KEYS 0–6 (không available). Spec payload: documents/coap/device_payload_spec.md; SRP: documents/coap/backend_discovery_srp.md; BR/routing: documents/architecture/real_br_integration.md. Backend luu **8 bảng** (device_info, device_topology, device_topology_neighbor, device_topology_history, device_entity, device_entity_state + history, **device_health_br** — 1 row per device, upsert via CMD_BR_HEALTH); upsertTopology parse theo role, replace neighbors; updateDeviceLastSeen, getDeviceStatus(30s/5m); **upsertBrHealth** (device-health.repository). Frame log: CMD STATE và ACK ẩn (br.command.ts).
 

@@ -14,6 +14,9 @@
     "build:frontend": "npm run build --workspace=frontend",
     "db:generate": "npm run db:generate --workspace=backend"
   },
+  "dependencies": {
+    "@namorix/core-backend": "file:../namorix/core/backend"
+  },
   "devDependencies": {
     "concurrently": "^9.1.0"
   },

@@ -6,24 +6,20 @@ import Database from "better-sqlite3";
 import path from "path";
 import fs from "fs";
 import { drizzle } from "drizzle-orm/better-sqlite3";
+import { resolveNamorixRepoDataLayout } from "@namorix/core-backend";
 import { logger } from "@utils/logger.util";
 
 const dbLog = logger.child("DB");
 
-/**
- * Runtime data root: `namorix-thread/data` (SQLite, Drizzle migrations).
- * Docker: set `NAMORIX_DATA_DIR=/app/data` (volume `../data:/app/data`).
- */
+const layout = resolveNamorixRepoDataLayout(__dirname);
+
+/** Runtime data root (`<repo>/data` hoặc `NAMORIX_DATA_DIR`). */
 export function getDataRoot(): string {
-  if (process.env.NAMORIX_DATA_DIR) {
-    return path.resolve(process.env.NAMORIX_DATA_DIR);
-  }
-  // dashboard/backend/src/database → ../../../../data
-  return path.resolve(__dirname, "..", "..", "..", "..", "data");
+  return layout.dataDir;
 }
 
-const DB_DIR = path.join(getDataRoot(), "database");
-const DB_PATH = path.join(DB_DIR, "database.db");
+const DB_DIR = layout.databaseDir;
+const DB_PATH = layout.dbPath;
 
 let dbInstance: Database.Database | null = null;
 let drizzleInstance: ReturnType<typeof drizzle> | null = null;
