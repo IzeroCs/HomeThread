@@ -4,13 +4,10 @@
  * Khởi tạo giao tiếp (BrManager) ở đây; WebSocketServer chỉ emit dữ liệu tới frontend.
  */
 
-import "./load-env";
 import path from "path";
 import { resolveDesktopOrigin } from "./desktop-origin";
+import { ENV } from "./env";
 import fs from "fs";
-import { createServer } from "http";
-import express from "express";
-import cors from "cors";
 import { Server } from "socket.io";
 import { getDatabase, closeDatabase } from "@database/database.db";
 import { runMigrations } from "@database/database.migrations";
@@ -19,33 +16,33 @@ import { AppSettingsService } from "@settings/app-settings.service";
 import { WebSocketServer } from "@websocket/websocket.server";
 import { startCoapDeviceServer as startDeviceCoapServer } from "@coap/device/device-coap.server";
 import { logger } from "@utils/logger.util";
+import { getPluginRegistrationSecret } from "./plugin-secret";
+import {
+  createPluginBackendServer,
+  type PluginRegisterRequestBody,
+} from "@namorix/core-backend";
 
 const serverLog = logger.child("Server");
+const registerLog = logger.child("PluginRegister");
 
 /** Default 4000 — matches Namorix Desktop `plugins.config.json` plugin baseUrl. */
-const PORT = Number(process.env.PORT ?? 4000);
+const PORT = ENV.PORT;
 
 /** Built plugin output: `dashboard/dist/plugin` (Vite `vite.plugin.config.ts`). */
 const pluginStaticDir =
-  process.env.PLUGIN_STATIC_DIR ?? path.join(__dirname, "../../dist/plugin");
+  ENV.PLUGIN_STATIC_DIR ?? path.join(__dirname, "../../dist/plugin");
 
 /** Namorix Desktop shell origin (browser); used for CORS + Socket.io. */
 const desktopOrigin = resolveDesktopOrigin();
+const pluginId = "thread";
+const desktopBackendUrl = ENV.DESKTOP_BACKEND_URL;
+const pluginRegistrationSecret = getPluginRegistrationSecret();
 
 getDatabase();
 runMigrations();
 
 const brConnectionConfigService = new BrConnectionConfigService();
 const appSettingsService = new AppSettingsService();
-
-const app = express();
-
-app.use(
-  cors({
-    origin: desktopOrigin,
-    credentials: true,
-  }),
-);
 
 function loadPluginManifest(): Record<string, unknown> {
   const pkgPath = path.join(__dirname, "../../frontend/package.json");
@@ -59,7 +56,7 @@ function loadPluginManifest(): Record<string, unknown> {
     );
   }
 
-  const devBase = process.env.PLUGIN_DEV_FRONTEND_URL?.trim();
+  const devBase = ENV.PLUGIN_DEV_FRONTEND_URL;
   if (devBase) {
     const base = devBase.replace(/\/+$/, "");
     return {
@@ -93,73 +90,93 @@ function loadPluginManifest(): Record<string, unknown> {
   };
 }
 
-app.get("/manifest.json", (_req, res) => {
-  res.json(loadPluginManifest());
+function resolvePluginPublicBaseUrl(): string {
+  const fromEnv = ENV.PLUGIN_PUBLIC_BASE_URL;
+  if (fromEnv) return fromEnv.replace(/\/+$/, "");
+  return `http://localhost:${PORT}`;
+}
+
+const pluginServer = createPluginBackendServer({
+  pluginId,
+  serviceName: "namorix-thread-backend",
+  port: PORT,
+  pluginStaticDir,
+  desktopOrigin,
+  desktopBackendUrl,
+  resolveManifest: loadPluginManifest,
+  resolvePublicBaseUrl: resolvePluginPublicBaseUrl,
+  registrationSecret: pluginRegistrationSecret,
+  logger: {
+    server: {
+      info: (msg) => serverLog.info(msg),
+      warn: (msg) => serverLog.warn(msg),
+      error: (msg) => serverLog.error(msg),
+    },
+    register: {
+      info: (msg) => registerLog.info(msg),
+      warn: (msg) => registerLog.warn(msg),
+      error: (msg) => registerLog.error(msg),
+    },
+  },
+  mountDomainRoutes: () => {
+    // No extra domain HTTP route here. WebSocket/CoAP are bootstrapped in onAfterListen.
+  },
+  hooks: {
+    onAfterListen: ({ httpServer }) => {
+      httpServer.maxConnections = 50;
+      httpServer.timeout = 60000;
+      httpServer.keepAliveTimeout = 5000;
+
+      const io = new Server(httpServer, {
+        cors: { origin: desktopOrigin, methods: ["GET", "POST"], credentials: true },
+        pingTimeout: 20000,
+        pingInterval: 10000,
+        maxHttpBufferSize: 100e3,
+        allowEIO3: false,
+        transports: ["websocket", "polling"],
+        allowRequest: (_req, callback) => callback(null, true),
+      });
+
+      const communicateManager = new BrManager(
+        brConnectionConfigService,
+        appSettingsService,
+        (event, data) => io.emit(event, data),
+      );
+
+      void new WebSocketServer(io, brConnectionConfigService, appSettingsService, communicateManager);
+      startDeviceCoapServer();
+
+      serverLog.info("=".repeat(50));
+      serverLog.info("Backend HTTP + WebSocket server initialized");
+      serverLog.info(`Listening on http://localhost:${PORT} (plugin static: ${pluginStaticDir})`);
+      serverLog.info(`Desktop CORS origin: ${desktopOrigin}`);
+      serverLog.info("=".repeat(50));
+
+      const config = brConnectionConfigService.getLatest();
+      if (config) {
+        serverLog.info("Current BR connection config:");
+        serverLog.info(`  Host: ${config.brHost}`);
+        serverLog.info(`  Port: ${config.brPort}`);
+        communicateManager.connectIfConfigured().catch((err) => {
+          serverLog.error(`BR auto-connect failed: ${err?.message ?? err}`);
+        });
+      } else {
+        serverLog.info("No BR config. Configure via frontend WebSocket.");
+      }
+
+      const shutdown = (): void => {
+        serverLog.info("Shutting down...");
+        communicateManager.shutdown();
+        closeDatabase();
+        void pluginServer.stop(0);
+      };
+      process.on("SIGINT", shutdown);
+      process.on("SIGTERM", shutdown);
+    },
+    onShutdown: () => {
+      // `closeDatabase` handled by thread shutdown callback.
+    },
+  },
 });
 
-app.get("/health", (_req, res) => {
-  res.status(200).json({ ok: true, service: "namorix-thread-backend" });
-});
-
-app.use(express.static(pluginStaticDir));
-
-const httpServer = createServer(app);
-httpServer.maxConnections = 50;
-httpServer.timeout = 60000;
-httpServer.keepAliveTimeout = 5000;
-
-const io = new Server(httpServer, {
-  cors: { origin: desktopOrigin, methods: ["GET", "POST"], credentials: true },
-  pingTimeout: 20000,
-  pingInterval: 10000,
-  maxHttpBufferSize: 100e3,
-  allowEIO3: false,
-  transports: ["websocket", "polling"],
-  allowRequest: (_req, callback) => callback(null, true),
-});
-
-const communicateManager = new BrManager(
-  brConnectionConfigService,
-  appSettingsService,
-  (event, data) => io.emit(event, data),
-);
-
-void new WebSocketServer(io, brConnectionConfigService, appSettingsService, communicateManager);
-
-startDeviceCoapServer();
-
-httpServer.listen(PORT, () => {
-  serverLog.info("=".repeat(50));
-  serverLog.info("Backend HTTP + WebSocket server initialized");
-  serverLog.info(`Listening on http://localhost:${PORT} (plugin static: ${pluginStaticDir})`);
-  serverLog.info(`Desktop CORS origin: ${desktopOrigin}`);
-  serverLog.info("=".repeat(50));
-
-  const config = brConnectionConfigService.getLatest();
-  if (config) {
-    serverLog.info("Current BR connection config:");
-    serverLog.info(`  Host: ${config.brHost}`);
-    serverLog.info(`  Port: ${config.brPort}`);
-    communicateManager.connectIfConfigured().catch((err) => {
-      serverLog.error(`BR auto-connect failed: ${err?.message ?? err}`);
-    });
-  } else {
-    serverLog.info("No BR config. Configure via frontend WebSocket.");
-  }
-
-  serverLog.info("=".repeat(50));
-});
-
-process.on("SIGINT", () => {
-  serverLog.info("Shutting down...");
-  communicateManager.shutdown();
-  closeDatabase();
-  httpServer.close(() => process.exit(0));
-});
-
-process.on("SIGTERM", () => {
-  serverLog.info("Shutting down...");
-  communicateManager.shutdown();
-  closeDatabase();
-  httpServer.close(() => process.exit(0));
-});
+void pluginServer.start();

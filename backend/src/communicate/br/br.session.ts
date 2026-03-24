@@ -5,6 +5,7 @@ import { BrConnectionConfigService } from "@settings/br-connection.service"
 import { AppSettingsService } from "@settings/app-settings.service"
 import { transportLogger } from "@utils/logger.util"
 import { getPreferredBackendIPv6 } from "@utils/ipv6.util"
+import { ENV } from "../../env"
 import { DEVICE_ROLE, DEVICE_ROLE_NAMES } from "@thread/thread-role"
 import type { DeviceRole } from "@thread/thread-role"
 import { OtConfigStore, type OtConfig as OtConfigShape } from "@thread/thread.config"
@@ -707,12 +708,10 @@ export class BrSession {
           }
 
           if (!this.connectedThisSession && isLeaderRouterOrChild) {
-            const backendIPv6 = process.env.BACKEND_IPV6?.trim() || getPreferredBackendIPv6()
+            const backendIPv6 = ENV.BACKEND_IPV6 || getPreferredBackendIPv6()
             if (backendIPv6) {
-              const hostname = process.env.SRP_HOSTNAME?.trim() || "dashboard"
-              const port = process.env.SRP_PORT ? parseInt(process.env.SRP_PORT, 10) : 5683
-              const srpPort =
-                Number.isInteger(port) && port >= 1 && port <= 65535 ? port : 5683
+              const hostname = ENV.SRP_HOSTNAME
+              const srpPort = ENV.SRP_PORT
               transportLogger.info(
                 `SRP register: IPv6=${backendIPv6} hostname=${hostname} port=${srpPort}`,
               )

@@ -9,6 +9,7 @@ Frontend align với hệ “core/shared”:
 - Core qua sibling `../../namorix/core` (workspace giống Desktop).
 - **Core 0.9.2+ — đăng ký custom element an toàn khi embed shell:** Các component chrome dùng chung (`nmx-sidebar`, `nmx-toast`, …) trong `@namorix/core` đăng ký bằng `defineCustomElementOnce` (không dùng `@customElement` parse-time). Shell Desktop load trước → plugin `thread.js` load sau không gây `NotSupportedError` trùng tên tag. Chi tiết: `namorix/memory-bank/systemPatterns.md`.
 - **Shell contract (Namorix Desktop):** Hằng số và tên sự kiện shell từ `@namorix/core/shell-api` (`PluginRuntimeStatus`, `ShellWindowEvent`, …). Đồng bộ locale với shell: ưu tiên `window.nmxCore?.onLocaleChange?.(handler)` (trả unsubscribe); fallback `addEventListener(ShellWindowEvent.LocaleChanged, …)` — xem `frontend/src/nmx-thread-app.ts`. Gateway Desktop forward JWT tới plugin backend qua header **`Authorization: Bearer <jwt>`** (plugin API đọc `req.headers.authorization`; không dùng `x-forwarded-authorization`).
+- **Auth host update (Namorix Desktop 0.9.20+):** Claims/auth user của host chuyển sang **role-only** (`user.role` bitmask, hiện tại `ADMIN=1<<0`), không còn `permissions` trong auth snapshot. Không giả định username admin cố định; quyền quản trị dựa trên role.
 - Bundle core tokens/base styles qua Vite (alias `@namorix/core` → source khi `dist/` chưa build)
 - Store: `createPluginStore` từ `@namorix/core/store`; locale mặc định `"en"`, set từ user settings qua `setLocale`
 - i18n: `initI18n({ store, dicts, fallbackLocale })` từ `@namorix/core/i18n`; không còn locale-storage/detect
@@ -22,6 +23,39 @@ Giao tiếp BR ↔ backend theo hướng **notify-first**: Thread-Host push `CMD
 - `thread/thread.config.ts` dùng `OtConfigStore` (store) + `OtConfig` (data type) để tránh va chạm type/class.
 
 ## Recent Significant Changes
+
+### Full SDK plugin backend in core (2.31.0)
+- `@namorix/core-backend` thêm Full SDK:
+  - `createPluginBackendServer` (Express/CORS/static + route chuẩn `manifest`/`health`/`desktop-registration-status`)
+  - shared API response types cho status endpoints
+  - registration loop tích hợp sẵn (vẫn giữ semantics backoff + 403 stop)
+- `backend/src/index.ts` của Thread refactor aggressive sang dùng SDK; file chỉ còn phần resolve env/manifest/public base URL + bootstrap domain runtime (Socket.IO/BrManager/CoAP) qua hooks.
+- API contract giữ nguyên path và shape cho `GET /health`, `GET /api/desktop-registration-status`, và payload đăng ký vẫn có `registrationSecret`.
+
+### Plugin-generic extraction to `@namorix/core-backend` (2.30.0)
+- Core backend thêm các module generic:
+  - `plugin-secret.ts` → `getOrCreateEnvStyleSecret`
+  - `plugin-registration-loop.ts` → `createDesktopPluginRegisterLoop` (status/backoff/403 stop)
+  - `plugin-registration.types.ts` → `DesktopRegisterStatus`, `RegistrationStateSnapshot`, `PluginRegisterRequestBody`
+- Thread backend adopt ngược:
+  - `backend/src/plugin-secret.ts` thành wrapper mỏng gọi helper core.
+  - `backend/src/index.ts` bỏ loop local, dùng engine core; giữ nguyên route `/health` và `/api/desktop-registration-status` cùng shape payload.
+  - Domain-specific vẫn ở Thread (`loadPluginManifest`, `resolvePluginPublicBaseUrl`, BR/TCP/CoAP/SRP).
+
+### Plugin registration secret file auto-generate (2.29.0)
+- Thread backend thêm `backend/src/plugin-secret.ts`: secret đăng ký plugin được đọc/tạo tại `data/.plugin-secrets` (mode `0600`), không còn yêu cầu nhập `PLUGIN_REGISTRATION_SECRET` trong `.env`.
+- `backend/src/index.ts` dùng secret file cho payload `register-request`; warning `disabled` chỉ còn cho thiếu `DESKTOP_BACKEND_URL`.
+
+### Backend env constants (2.28.0)
+- `backend/src/env.ts` là điểm duy nhất parse `.env` + defaults (PORT, DESKTOP_ORIGIN, plugin register vars, SRP vars...); `index.ts`, `desktop-origin.ts`, `communicate/br/br.session.ts` chuyển sang dùng constants thay vì `process.env` rải rác.
+- Mục tiêu: cấu hình typed/ổn định hơn, dễ debug (đặc biệt flow register plugin và SRP), không đổi behavior runtime.
+
+### Plugin register loop + status endpoint (2.27.0)
+- `backend/src/index.ts` thêm loop `POST /api/plugins/register-request` về Desktop backend (`DESKTOP_BACKEND_URL`) với backoff, log rõ từng attempt/success/fail và dừng retry khi nhận `403`.
+- Trạng thái đăng ký được expose qua:
+  - `GET /api/desktop-registration-status`
+  - `GET /health` (field `pluginRegister`)
+- Mục tiêu: khi shell Desktop thấy `plugins: []`, có thể kiểm tra trực tiếp từ backend Thread xem đã gửi request hay chưa và lỗi gần nhất là gì.
 
 ### `@namorix/core-backend` + layout `data/` (2.26.0)
 - **Core (repo `namorix`):** `resolveNamorixRepoDataLayout` trong `namorix/core/backend` — Thread `database.db.ts` dùng thay tính path tay; đồng bộ với Desktop `paths.ts`.
