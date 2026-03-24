@@ -10,7 +10,9 @@ Khi user yêu cầu cập nhật docs (Namorix Thread memory bank) và mình đ�
 
 1. Gợi ý **Git commit title** (1 dòng).
 2. Gợi ý **commit description/body** (nhiều dòng nếu cần).
-3. Commit suggestion phải phản ánh thay đổi trong `memory-bank/` (repo **namorix-thread**) và các docs liên quan nếu có.
+3. Commit suggestion phải phản ánh đúng thay đổi docs/ngữ cảnh trong repo, nhưng:
+   - **TUYỆT ĐỐI không nhắc từ khóa `memory-bank`** trong commit title/body.
+   - Dùng wording trung tính như: "project docs", "context docs", "documentation sync", "workspace docs".
 4. Nếu chỉ docs thay đổi, title/description phải dùng style phù hợp (ví dụ `docs:` hoặc `chore(docs):`).
 
 ## Output format (Markdown, dễ copy)
