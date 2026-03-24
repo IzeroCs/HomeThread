@@ -1,10 +1,12 @@
-import { defineConfig } from "vite";
+import { defineConfig, loadEnv } from "vite";
 import { readFileSync } from "fs";
 import { dirname, join, resolve } from "path";
 import { fileURLToPath } from "url";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const pkg = JSON.parse(readFileSync(join(__dirname, "package.json"), "utf-8"));
+/** Repo root (`namorix-thread/`). */
+const repoRoot = resolve(__dirname, "..");
 /** Workspace root (`namorix-workspace/`) — contains sibling repos `namorix` and `namorix-assets`. */
 const siblingReposRoot = resolve(__dirname, "../..");
 const namorixCoreSrc = resolve(siblingReposRoot, "namorix/core/frontend/src");
@@ -14,14 +16,21 @@ const namorixCoreSharedSrc = resolve(
 );
 const namorixAssetsRoot = resolve(siblingReposRoot, "namorix-assets");
 
-/** OpenThread backend (dashboard/backend). Default 4000 — same as plugin static + WS origin for Namorix Desktop. */
-const threadBackendPort = process.env.THREAD_BACKEND_PORT ?? "4000";
-const threadBackendTarget = `http://127.0.0.1:${threadBackendPort}`;
+function resolveDesktopOriginForVite(env: Record<string, string>): string {
+  const o = env.DESKTOP_ORIGIN?.trim();
+  if (o) return o;
+  const p = env.DESKTOP_VITE_PORT?.trim() ?? "5173";
+  return `http://localhost:${p}`;
+}
 
-/** Shell plugin dev: `VITE_DEV_PORT=4000 npm run dev` — manifest + assets for Namorix Desktop. */
-const devPort = Number(process.env.VITE_DEV_PORT ?? 5173);
+export default defineConfig(({ mode }) => {
+  const env = loadEnv(mode, repoRoot, "");
+  const backendPort = env.PORT || env.THREAD_BACKEND_PORT || "4000";
+  const threadBackendTarget = `http://127.0.0.1:${backendPort}`;
+  const threadVitePort = Number(env.THREAD_VITE_PORT ?? env.VITE_DEV_PORT ?? 5180);
+  const desktopOrigin = resolveDesktopOriginForVite(env);
 
-export default defineConfig({
+  return {
   plugins: [],
   esbuild: {
     tsconfigRaw: {
@@ -66,10 +75,10 @@ export default defineConfig({
     __APP_VERSION__: JSON.stringify(pkg.version || "0.0.0"),
   },
   server: {
-    port: devPort,
+    port: threadVitePort,
     host: true,
     cors: {
-      origin: process.env.DESKTOP_ORIGIN ?? true,
+      origin: desktopOrigin,
       credentials: true,
     },
     fs: {
@@ -94,4 +103,5 @@ export default defineConfig({
       },
     },
   },
+};
 });

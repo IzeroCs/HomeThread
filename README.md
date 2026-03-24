@@ -6,6 +6,16 @@ Monorepo cho Thread dashboard/plugin gồm:
 - `frontend/` — Lit + Vite
 - `shared/` — types/events/constants dùng chung
 
+## Dev — cổng mặc định (`.env` ở root repo)
+
+| Biến | Mặc định | Ý nghĩa |
+|------|----------|---------|
+| `PORT` | `4000` | Backend Thread (API, plugin static, Socket.io) |
+| `THREAD_VITE_PORT` | `5180` | Vite dashboard (tránh đụng Desktop `5173` khi chạy cả hai) |
+| `DESKTOP_ORIGIN` | `http://localhost:5173` | Origin shell Namorix Desktop (CORS); phải khớp `namorix/.env` |
+
+Override cục bộ: tạo `.env.local` (gitignored).
+
 ## Quick Start
 
 ```bash

@@ -22,7 +22,7 @@ import type {
 
 const WS_URL_DEFAULT =
   import.meta.env?.VITE_WS_URL ??
-  (typeof window !== "undefined" ? window.location.origin : "http://localhost:3000");
+  (typeof window !== "undefined" ? window.location.origin : "http://localhost:4000");
 
 let bridge: ReturnType<typeof createWsBridge<RootState>> | null = null;
 let socket: Socket | null = null;

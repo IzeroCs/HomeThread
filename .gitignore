@@ -8,8 +8,7 @@ dist/
 build/
 *.tsbuildinfo
 
-# Environment
-.env
+# Environment (root `.env` is committed for default dev ports; keep overrides local)
 .env.local
 .env.*.local
 

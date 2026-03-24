@@ -4,8 +4,9 @@
  * Khởi tạo giao tiếp (BrManager) ở đây; WebSocketServer chỉ emit dữ liệu tới frontend.
  */
 
-import "dotenv/config";
+import "./load-env";
 import path from "path";
+import { resolveDesktopOrigin } from "./desktop-origin";
 import fs from "fs";
 import { createServer } from "http";
 import express from "express";
@@ -28,8 +29,8 @@ const PORT = Number(process.env.PORT ?? 4000);
 const pluginStaticDir =
   process.env.PLUGIN_STATIC_DIR ?? path.join(__dirname, "../../dist/plugin");
 
-/** Namorix Desktop Vite dev origin (browser); used for CORS + Socket.io. */
-const desktopOrigin = process.env.DESKTOP_ORIGIN ?? "http://localhost:5174";
+/** Namorix Desktop shell origin (browser); used for CORS + Socket.io. */
+const desktopOrigin = resolveDesktopOrigin();
 
 getDatabase();
 runMigrations();

@@ -73,7 +73,7 @@ Assets usage (frontend):
 
 - Repo **`namorix`** định nghĩa Desktop shell + backend (auth, gateway, plugin registry). Spec: **`../namorix/documents/namorix-desktop-architecture.md`** (sibling trong workspace).
 - Thread là **plugin đầu tiên** trong spec; tích hợp runtime (manifest, bundle ES module, health URL) mô tả ở §8 Desktop — **không** trùng với tài liệu CoAP/device trong `namorix-thread/documents/`.
-- **Plugin HTTP server (Express):** CORS / Socket.io dùng biến **`DESKTOP_ORIGIN`** — phải khớp origin trang Namorix Desktop thực tế (vd. `http://localhost:5174` nếu Vite đổi port); nếu không, dynamic `import()` của `thread.js` bị chặn CORS.
+- **Plugin HTTP server (Express):** CORS / Socket.io dùng biến **`DESKTOP_ORIGIN`** — phải khớp origin trang Namorix Desktop thực tế (mặc định `http://localhost:5173`; đổi port shell thì cập nhật `.env` Thread); nếu không, dynamic `import()` của `thread.js` bị chặn CORS.
 - **Build lib plugin** (`frontend/vite.plugin.config.ts`, `npm run build:plugin`): nên `define` **`process.env.NODE_ENV`** (hoặc tương đương) cho bundle browser nếu dependency (vd. RTK) còn tham chiếu `process` — tránh `ReferenceError: process is not defined` trong console.
 - **Core components + shell:** `@namorix/core` 0.9.2+ đăng ký shared custom elements qua **`defineCustomElementOnce`** — xem `namorix/memory-bank/progress.md` (mục core alignment historical).
 - **Cửa sổ shell:** Host `namorix` mount root plugin (tag từ `manifest.element`) qua property **`pluginBody`** trên `nmx-window` — light DOM không dùng `<slot>` cho vùng body; xem `namorix/memory-bank/progress.md` **0.9.3**.
