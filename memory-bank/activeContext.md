@@ -23,6 +23,11 @@ Giao tiếp BR ↔ backend theo hướng **notify-first**: Thread-Host push `CMD
 
 ## Recent Significant Changes
 
+### Core alias base path + tsconfig (2.25.0)
+- **Vấn đề:** Sau khi bỏ wrapper `dashboard/`, `siblingReposRoot` còn `resolve(__dirname, "../../..")` → trỏ sai (thiếu segment `namorix-workspace`), Vite/esbuild báo **ENOENT** khi mở file core (vd. `@namorix/core/i18n`).
+- **Sửa:** `frontend/vite.config.ts` và `frontend/vite.plugin.config.ts` dùng `siblingReposRoot = resolve(__dirname, "../..")` (root workspace chứa `namorix/` và `namorix-assets/`). `frontend/tsconfig.json` đồng bộ `paths` với `../../namorix/...` và `../../namorix-assets`.
+- **npm:** Bỏ dependency `file:` `@namorix/core` ở frontend (tránh xung đột workspace + alias đã đủ cho dev). Root `namorix-thread/package.json` có `version` để `npm install` ổn định.
+
 ### Thread frontend Vite CORS + scripts (unreleased)
 - `frontend/vite.config.ts`: `server.cors.origin` đổi thành `process.env.DESKTOP_ORIGIN ?? true` để dev standalone không cần set `DESKTOP_ORIGIN`.
 - `frontend/package.json`: bỏ script `dev:shell`; luồng chuẩn dùng `dev`/`dev:frontend` cho cả standalone và shell-oriented frontend dev.
@@ -227,6 +232,7 @@ ROUTER_TABLE, CHILD_TABLE, JOINER_TABLE TX va ACK bi filter ra khoi console log 
 - `frontend/src/core/AppBaseElement.ts` — app base (extends NmxStoreElement, getStore → store)
 - `frontend/src/app.ts` — NmxThreadApp (nmx-thread-app), extends AppBaseElement
 - `frontend/index.html` — mount `<nmx-main>`; main.ts → nmx-app-container → nmx-thread-app
+- `frontend/vite.config.ts`, `frontend/vite.plugin.config.ts` — `siblingReposRoot` + alias `@namorix/core` / `@namorix/assets`; `frontend/tsconfig.json` — `paths` khớp cùng layout workspace
 - `frontend/src/core/store/slices/appbar.slice.ts` — setAppBar, clearAppBar
 - `frontend/src/core/components/appbar/` — page-header (extends AppLitElement)
 - `../../namorix/core/frontend` — toast (nmx-toast, initToast, showToast), createWsBridge, onceWithTimeout, wsConnection slice; `documents/namorix-core-usage.md` — hướng dẫn dùng core
