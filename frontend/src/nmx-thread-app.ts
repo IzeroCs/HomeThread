@@ -121,34 +121,36 @@ export class NmxThreadApp extends AppBaseElement {
   }
 
   render() {
-    if (!this.wsConnected.value) {
-      return html`<nmx-waiting
-        heading=${t("waiting.title")}
-        subtitle=${t("waiting.subtitle")}
-        cardLabel=${t("waiting.card.label")}
-        cardStatus=${t("waiting.card.status")}
-        cardHint=${t("waiting.card.hint")}
-        infoText=${t("waiting.info")}
-      ></nmx-waiting>`;
-    }
-
+    const wsConnected = this.wsConnected.value;
     const navGroups = this._buildNavGroups();
 
     return html`
-      <div class="nmx-thread-app nmx-app-container-main">
-        <nmx-sidebar
-          brand=${t("sidebar.brand")}
-          .logo=${namorixLogo}
-          .navGroups=${navGroups}
-          .currentPage=${this.page}
-          @navigate=${this._handleNavigate}
-        ></nmx-sidebar>
-        <nmx-appbar></nmx-appbar>
-        <nmx-content
-          .currentPage=${this.page}
-          .pages=${this.pages}
-        ></nmx-content>
-      </div>
+      <nmx-waiting
+        .open=${!wsConnected}
+        heading=${t("waiting.title")}
+        subtitle=${t("waiting.subtitle")}
+        cardLabel=${t("waiting.card.label")}
+        actionLabel=${t("common.actions.reload")}
+      ></nmx-waiting>
+
+      ${wsConnected
+        ? html`
+            <div class="nmx-thread-app nmx-app-container-main">
+              <nmx-sidebar
+                brand=${t("sidebar.brand")}
+                .logo=${namorixLogo}
+                .navGroups=${navGroups}
+                .currentPage=${this.page}
+                @navigate=${this._handleNavigate}
+              ></nmx-sidebar>
+              <nmx-appbar></nmx-appbar>
+              <nmx-content
+                .currentPage=${this.page}
+                .pages=${this.pages}
+              ></nmx-content>
+            </div>
+          `
+        : html``}
     `;
   }
 }
