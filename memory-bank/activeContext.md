@@ -4,13 +4,20 @@
 
 Backend ổn định với BR qua TCP + frame protocol, CoAP device ingest, SRP register, WebSocket handlers theo decorator. Frontend đã **migrate React → Lit** (Web Components), **light DOM**. **Topology map** (feature `src/features/topology/`): pan/zoom, spotlight canvas, manual layout khi ≤10 node, node select (toggle, persistent), label box width động, edge ẩn khi offline, focus tabindex + :focus-visible; accent cyan `$topology-accent`, nền `$bg-topology`. **Settings UI:** palette thống nhất (bg-app/sidebar/card/input), button semantics (primary/ghost/warn/danger), danger zone subtle, Connected badge + sidebar dot cyan. **Cấu trúc:** feature-based (`nodes|settings|status|topology`, `src/shared`); path alias frontend/backend như trước. Tiếp theo: bảo trì, optional mDNS/scan BR, security nếu cần.
 
+**Current runtime contract (container-managed):**
+- Desktop quản lý addon bằng Docker API (pull/create/start/stop/remove/logs), không còn control/register WS giữa addon backend và Desktop.
+- Frontend Thread trong shell kết nối runtime Socket.IO trực tiếp addon backend qua `data-addon-base-url`.
+- Code Thread đã bỏ control-state slice/bridge và không còn gate `blockedByPolicy` từ control channel.
+- Docker image build dùng **một** `Dockerfile` multi-target (`prod`/`dev`), không còn `Dockerfile.dev`; compose dev build với `target: dev`.
+- Manifest image label đã rút gọn theo runtime fields đang dùng: `id`, `displayName`, `entry`, `styles`, `element`, `internalPort`, `defaultWindowSize`.
+
 Frontend align với hệ “core/shared”:
 - **Spec Desktop (SoT):** `namorix/documents/namorix-desktop-architecture.md`; mục lục host: `namorix/documents/README.md`.
 - Core qua sibling `../../namorix/core` (workspace giống Desktop).
 - **Core 0.9.2+ — đăng ký custom element an toàn khi embed shell:** Các component chrome dùng chung (`nmx-sidebar`, `nmx-toast`, …) trong `@namorix/core` đăng ký bằng `defineCustomElementOnce` (không dùng `@customElement` parse-time). Shell Desktop load trước → addon `thread.js` load sau không gây `NotSupportedError` trùng tên tag. Chi tiết: `namorix/memory-bank/systemPatterns.md`.
 - **Shell contract (Namorix Desktop):** Hằng số và tên sự kiện shell từ `@namorix/core/shell-api` (`AddonRuntimeStatus`, `ShellWindowEvent`, …). Đồng bộ locale với shell: ưu tiên `window.nmxCore?.onLocaleChange?.(handler)` (trả unsubscribe); fallback `addEventListener(ShellWindowEvent.LocaleChanged, …)` — xem `frontend/src/nmx-thread-app.ts`. Gateway Desktop forward JWT tới addon backend qua header **`Authorization: Bearer <jwt>`** (addon API đọc `req.headers.authorization`; không dùng `x-forwarded-authorization`).
 - **Auth host update (Namorix Desktop 0.9.20+):** Claims/auth user của host chuyển sang **role-only** (`user.role` bitmask, hiện tại `ADMIN=1<<0`), không còn `permissions` trong auth snapshot. Không giả định username admin cố định; quyền quản trị dựa trên role.
-- **Desktop login API (host 0.9.23+):** `POST /api/auth/login` dùng JSON **`{ "username", "password" }`** — khi viết curl / tooling hướng tới admin addon registrations, xem **`namorix/documents/thread-desktop-addon-integration.md`** (đã cập nhật).
+- **Desktop login API (host 0.9.23+):** `POST /api/auth/login` dùng JSON **`{ "username", "password" }`** — khi viết curl / tooling hướng tới shell addon manager events, xem **`namorix/documents/thread-desktop-addon-integration.md`** (đã cập nhật).
 - Bundle core tokens/base styles qua Vite (alias `@namorix/core` → source khi `dist/` chưa build)
 - Store: `createAddonStore` từ `@namorix/core/store`; locale mặc định `"en"`, set từ user settings qua `setLocale`
 - i18n: `initI18n({ store, dicts, fallbackLocale })` từ `@namorix/core/i18n`; không còn locale-storage/detect
@@ -25,17 +32,19 @@ Giao tiếp BR ↔ backend theo hướng **notify-first**: Thread-Host push `CMD
 
 ## Recent Significant Changes
 
-### WS-only full control plane (big-bang breaking)
+> Lưu ý: Các mục bên dưới chủ yếu là **historical transition**. Runtime hiện hành của Thread addon là container-managed, direct runtime Socket.IO, không còn register/control WS flow.
+
+### WS-only full control plane (historical)
 - Thread backend bỏ HTTP register/sync loop, chuyển sang control WS events `register:request/register:ack` và `manifestSync:request/manifestSync:ack`.
 - Frontend Thread bỏ bootstrap `GET /api/desktop-bridge-config`; runtime WS khởi tạo **direct** tới addon backend (`data-addon-base-url` do shell inject), không qua Desktop runtime relay.
 - Desktop host addon-plane HTTP paths giờ trả explicit breaking rejection (`410`) để chặn hybrid behavior.
 
-### Direct runtime finalized (Desktop relay removed)
+### Direct runtime finalized (Desktop relay removed, historical transition)
 - Desktop không còn mount runtime relay `/namorix-addon-ws`.
 - Frontend Thread khi chạy trong shell đọc `data-addon-base-url` và mở Socket.IO trực tiếp đến addon backend origin.
 - Control-plane vẫn realtime qua `/namorix-addon-control-ws`; policy block/revoke tiếp tục do Desktop authority phát xuống addon backend.
 
-### Level-3 control-plane (breaking, realtime Desktop policy)
+### Level-3 control-plane (historical)
 - Shared contract mới trong `@namorix/core-shared`: `backend-control-ws.ts` (protocol version, typed events, lifecycle states, reason codes).
 - Desktop backend mount control gateway path `/namorix-addon-control-ws` và push lifecycle theo admin transitions (`approved/blocked/rejected`).
 - Policy cứng control channel:
@@ -94,7 +103,7 @@ Giao tiếp BR ↔ backend theo hướng **notify-first**: Thread-Host push `CMD
 - Core backend thêm các module generic:
   - `addon/addon-secret.ts` → `getOrCreateEnvStyleSecret`
   - `addon/addon-registration-loop.ts` → `createDesktopAddonRegisterLoop` (status/backoff/403 stop)
-  - `addon/addon-registration.types.ts` → `DesktopRegisterStatus`, `RegistrationStateSnapshot`, `AddonRegisterRequestBody`
+  - `addon/addon-runtime.types.ts` (đã rename từ file registration cũ) → runtime snapshot contracts
 - Thread backend adopt ngược:
   - `backend/src/addon-secret.ts` thành wrapper mỏng gọi helper core.
   - `backend/src/index.ts` bỏ loop local, dùng engine core; giữ nguyên route `/health` và `/api/desktop-registration-status` cùng shape payload.

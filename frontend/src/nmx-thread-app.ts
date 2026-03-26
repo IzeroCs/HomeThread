@@ -5,7 +5,7 @@ import type { NavPage } from "./shared/types/nav.type";
 import { AppBaseElement } from "@/core/app-base-element";
 import { startWsBridge } from "@/core/ws/ws-bridge";
 import { store } from "@/store/store";
-import { selectControlState, selectWsConnected } from "@/store/selectors";
+import { selectWsConnected } from "@/store/selectors";
 import { NmxPageBuilder } from "@namorix/core/components";
 import { ShellWindowEvent, type NmxCoreApi } from "@namorix/core/shell-api";
 import { setLocale, wsConnectionActions } from "@namorix/core/store";
@@ -32,8 +32,6 @@ export class NmxThreadApp extends AppBaseElement {
 
   private readonly wsConnected = this.createStoreSlice(
     (s) => selectWsConnected(s), Object.is);
-  private readonly controlState = this.createStoreSlice(
-    (s) => selectControlState(s), Object.is);
 
   override connectedCallback(): void {
     super.connectedCallback();
@@ -118,24 +116,19 @@ export class NmxThreadApp extends AppBaseElement {
 
   render() {
     const wsConnected = this.wsConnected.value;
-    const controlState = this.controlState.value;
     const navGroups = this._buildNavGroups();
-    const blockedByPolicy =
-      controlState.lifecycle === "blocked" || controlState.lifecycle === "revoked";
-    const waitingSubtitle = blockedByPolicy
-      ? controlState.message || `Addon is ${controlState.lifecycle} by Desktop policy`
-      : t("waiting.subtitle");
+    const waitingSubtitle = t("waiting.subtitle");
 
     return html`
       <nmx-waiting
-        .open=${!wsConnected || blockedByPolicy}
+        .open=${!wsConnected}
         heading=${t("waiting.title")}
         subtitle=${waitingSubtitle}
         cardLabel=${t("waiting.card.label")}
         actionLabel=${t("common.actions.reload")}
       ></nmx-waiting>
 
-      ${wsConnected && !blockedByPolicy
+      ${wsConnected
         ? html`
             <div class="nmx-thread-app nmx-app-container-main">
               <nmx-sidebar

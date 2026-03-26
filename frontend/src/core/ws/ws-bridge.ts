@@ -10,7 +10,7 @@ import { tablesActions } from "@/store/slices/tables.slice";
 import { systemActions, type SystemInfo } from "@/store/slices/system.slice";
 import { setLocale } from "@namorix/core/store";
 import { normalizeLocale } from "@namorix/core/i18n";
-import { bindAddonControlWsEvent, createWsBridge } from "@namorix/core/ws";
+import { createWsBridge } from "@namorix/core/ws";
 
 import type {
   BrConnectionConfigFromBackend,
@@ -142,11 +142,6 @@ export function startWsBridge(store: Store<RootState>, options?: WsBridgeStartOp
       .on(EVENTS.SYSTEM_INFO, (store, data) =>
         store.dispatch(systemActions.systemInfoReceived((data ?? null) as SystemInfo)),
       );
-    bindAddonControlWsEvent(bridge as any, EVENTS.ADDON_CONTROL_STATE, {
-      onBlockedOrRevoked: () => {
-        stopWsBridge({ close: true });
-      },
-    });
   }
 
   socket = bridge.start();

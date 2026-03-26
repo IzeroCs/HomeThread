@@ -1,0 +1,16 @@
+services:
+  thread:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: dev
+    volumes:
+      - .:/app
+      - /app/node_modules
+    ports:
+      - "4000:4000"
+    labels:
+      namorix.addon: "true"
+      namorix.addonId: "thread"
+    environment:
+      DESKTOP_ORIGIN: http://localhost:5173

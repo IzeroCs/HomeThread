@@ -52,5 +52,6 @@ Chi tiết đầy đủ: [coap/device_payload_spec.md](coap/device_payload_spec.
 - Khi build addon để chạy trong shell Desktop, tránh import deep path `@namorix/core/components/*`.
 - Dùng `@namorix/core/components` để đảm bảo bundle tương thích importmap host.
 - Runtime addon UI kết nối trực tiếp addon backend Socket.IO (direct runtime), không đi qua Desktop runtime relay.
-- Control-plane Level-3: addon backend giữ WS control channel riêng với Desktop backend (`/namorix-addon-control-ws`) để nhận lifecycle realtime (`approved/blocked/revoked/...`), không chỉ suy luận từ network failure.
+- Desktop quản lý addon theo container lifecycle (pull/create/start/stop/remove/logs) qua Docker API; addon backend không còn control WS registration lifecycle.
+- Docker image manifest label (`namorix.manifest`) giữ tối giản theo runtime fields đang dùng; compose dev build target `dev` từ cùng `Dockerfile`.
 - Xem thêm hướng dẫn tích hợp tại `../namorix/documents/thread-desktop-addon-integration.md` (repo sibling trong cùng workspace).

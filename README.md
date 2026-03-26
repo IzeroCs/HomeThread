@@ -23,6 +23,15 @@ npm install
 npm run dev
 ```
 
+## Container Dev (Desktop-managed)
+
+- Dev compose file: `compose.dev.yml` (repo root).
+- Docker image specs:
+  - `Dockerfile` (single multi-target file with `namorix.manifest` image label)
+  - `target=prod` for production-like image
+  - `target=dev` for `tsx watch` local development (used by `compose.dev.yml`)
+  - Manifest label keeps runtime-used fields only (`id`, `displayName`, `entry`, `styles`, `element`, `internalPort`, `defaultWindowSize`)
+
 Chạy riêng:
 
 - `npm run dev:backend`
