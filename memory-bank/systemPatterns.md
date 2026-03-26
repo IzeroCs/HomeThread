@@ -230,10 +230,10 @@ Version hiển thị trên Status subtitle lấy từ `frontend/package.json`: V
 - **Node body:** baseline không filter; hover/selected thêm filter + stroke; &--selected .node__inner scale(1.08); fill transition; offline stroke muted.
 - **Edge:** ẩn nếu fromNode.offline || toNode.offline. Focus: tabindex="0", :focus-visible box-shadow.
 
-## Namorix Desktop (plugin — cross-repo)
+## Namorix Desktop (addon — cross-repo)
 
-- **Repo:** `namorix` (Desktop shell + backend). **Spec:** `namorix/documents/namorix-desktop-architecture.md` — plugin container, manifest JSON, inject `<script type="module">` + CSS, `customElements.whenDefined`, z-index plugin ≤ 99, portal `#nmx-plugin-portal`.
-- **Thread** đóng vai plugin **`thread`** trong spec; luồng auth/gateway/log tập trung ở Desktop — không thay pattern BR/TCP/CoAP nội bộ dashboard đã mô tả ở các mục trên.
-- **Trùng bundle `@namorix/core`:** Shell và plugin đều có thể import cùng source component Lit. Core **0.9.2+** dùng `defineCustomElementOnce` cho các tag chrome dùng chung — tránh `NotSupportedError: the name "nmx-sidebar" has already been used` khi `desktop.js` đã define trước `thread.js`.
-- Chi tiết triển khai plugin: xem **namorix** memory bank; tránh nhân đôi bảng milestone tại đây.
+- **Repo:** `namorix` (Desktop shell + backend). **Spec:** `namorix/documents/namorix-desktop-architecture.md` — addon container, manifest JSON, inject `<script type="module">` + CSS, `customElements.whenDefined`, z-index addon ≤ 99, portal `#nmx-addon-portal`.
+- **Thread** đóng vai addon **`thread`** trong spec; luồng auth/gateway/log tập trung ở Desktop — không thay pattern BR/TCP/CoAP nội bộ dashboard đã mô tả ở các mục trên.
+- **Trùng bundle `@namorix/core`:** Shell và addon đều có thể import cùng source component Lit. Core **0.9.2+** dùng `defineCustomElementOnce` cho các tag chrome dùng chung — tránh `NotSupportedError: the name "nmx-sidebar" has already been used` khi `desktop.js` đã define trước `thread.js`.
+- Chi tiết triển khai addon: xem **namorix** memory bank; tránh nhân đôi bảng milestone tại đây.
 - **Desktop admin entries contract:** `shell:addonRegistry:listEntries` ack payload cho admin entries không còn secret, chỉ còn `entryId/addonId/baseUrl/manifest/createdAt` (host-side xử lý); Thread addon không cần quan tâm trường này.

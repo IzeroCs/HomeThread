@@ -9,8 +9,7 @@ import { wsEmitGetJoinerTable } from "@/store/thunks/ws.emit";
 import { showToast } from "@namorix/core";
 import { t } from "@/core/i18n/i18n";
 
-import "@namorix/core/components/appbar";
-import "@namorix/core/components/modal";
+import "@namorix/core/components";
 import "./joiner.style.scss";
 
 const DEFAULT_EUI64 = "f0f5bdfffe104b24";

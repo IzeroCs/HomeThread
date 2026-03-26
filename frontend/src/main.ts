@@ -4,7 +4,7 @@ import { html } from "lit";
 
 import "@namorix/core/styles/_tokens.scss";
 import "@namorix/core/styles/_reset.scss";
-import "@namorix/core/components/nmx-app-container";
+import "@namorix/core/components";
 import { NmxBaseMain } from "@namorix/core";
 import { store, type RootState } from "@/store/store";
 import type { ToastType } from "@namorix/core";

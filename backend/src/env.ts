@@ -22,7 +22,6 @@ export const ENV = {
   ADDON_STATIC_DIR: process.env.ADDON_STATIC_DIR?.trim() || null,
   DESKTOP_ORIGIN: parseDesktopOrigin(),
   DESKTOP_BACKEND_URL: process.env.DESKTOP_BACKEND_URL?.trim() || "http://localhost:3000",
-  ADDON_DEV_FRONTEND_URL: process.env.ADDON_DEV_FRONTEND_URL?.trim() || "",
   ADDON_PUBLIC_BASE_URL: process.env.ADDON_PUBLIC_BASE_URL?.trim() || "",
   BACKEND_IPV6: process.env.BACKEND_IPV6?.trim() || "",
   SRP_HOSTNAME: process.env.SRP_HOSTNAME?.trim() || "dashboard",

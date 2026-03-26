@@ -7,7 +7,7 @@ import { selectBrStatus, selectChildTable, selectOtConfig, selectRouterTable, se
 import { clearPageHeader, setPageHeader } from "@namorix/core";
 import { t } from "@/core/i18n/i18n";
 
-import "@namorix/core/components/modal";
+import "@namorix/core/components";
 import "./nodes.style.scss";
 
 function normCol(name: string): string {

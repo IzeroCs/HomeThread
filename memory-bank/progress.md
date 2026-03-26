@@ -8,6 +8,7 @@ Version notation in this file uses Semantic Versioning `MAJOR.MINOR.PATCH` (no l
 
 | Version | Notes |
 |---------|--------|
+| 2.34.2  | **Importmap alignment (Desktop shell runtime).** Chuẩn hoá imports frontend Thread từ deep `@namorix/core/components/*` về `@namorix/core/components` để bundle addon tương thích importmap Desktop. Verify lại source `frontend/src` và artifact `dist/addon/assets/thread.js`: không còn deep components specifier gây lỗi resolve runtime. *(2026-03-26.)* |
 | 2.34.0  | **Breaking rename (host Thread):** Toàn bộ khái niệm sản phẩm **plugin → addon** đồng bộ với Desktop **0.9.29**: `createAddonBackendServer`, env `ADDON_*`, secret `data/.addon-secrets`, `GET /api/desktop-bridge-config` trả `addonId` + `/namorix-addon-ws`, build `npm run build:addon` / `vite.addon.config.ts`, out `dist/addon`. Không giữ alias tương thích. *(2026-03-26.)* |
 | 2.34.1  | **Workspace documentation sync.** Đồng bộ `memory-bank/` + tài liệu cross-repo với sibling **`namorix`**: thuật ngữ addon, `createAddonStore`, tham chiếu Desktop shell Vite helpers **`vite-core-dist-from-src.ts`** / **`vite-emit-core-dist.ts`** (khi mô tả importmap `/dist/core/*`). Không đổi hợp đồng runtime Thread. *(2026-03-26.)* |
 | 2.33.3  | **Contract note (host-side):** Desktop host `shell:addonRegistry:listEntries` ack payload (admin entries) không còn secret, chỉ còn `entryId/addonId/baseUrl/manifest/createdAt`. Thread addon không bị ảnh hưởng vì admin flow xử lý trong Desktop host. |

@@ -16,7 +16,12 @@ import { AppSettingsService } from "@settings/app-settings.service";
 import { WebSocketServer } from "@websocket/websocket.server";
 import { startCoapDeviceServer as startDeviceCoapServer } from "@coap/device/device-coap.server";
 import { getAddonRegistrationSecret } from "./addon-secret";
-import { createAddonBackendServer, logger } from "@namorix/core-backend";
+import {
+  createAddonBackendServer,
+  logger,
+  type AddonManifestSyncRequestBody,
+  type RegistrationStateSnapshot,
+} from "@namorix/core-backend";
 
 const serverLog = logger.child("Server");
 const registerLog = logger.child("AddonRegister");
@@ -33,6 +38,7 @@ const desktopOrigin = ENV.DESKTOP_ORIGIN;
 const addonId = "thread";
 const desktopBackendUrl = ENV.DESKTOP_BACKEND_URL;
 const addonRegistrationSecret = getAddonRegistrationSecret();
+let lastManifestSyncSignature = "";
 
 getDatabase();
 runMigrations();
@@ -50,24 +56,6 @@ function loadAddonManifest(): Record<string, unknown> {
     serverLog.warn(
       `Could not read frontend package.json for addon version (${pkgPath})`,
     );
-  }
-
-  const devBase = ENV.ADDON_DEV_FRONTEND_URL;
-  if (devBase) {
-    const base = devBase.replace(/\/+$/, "");
-    return {
-      id: "thread",
-      displayName: "Thread",
-      version,
-      entry: `${base}/src/main.ts`,
-      element: "nmx-thread-main",
-      defaultWindowSize: { width: 1100, height: 700 },
-      minWindowSize: { width: 800, height: 500 },
-      singleInstance: false,
-      health: "/health",
-      permissions: ["thread:read", "thread:write"],
-      logEnabled: true,
-    };
   }
 
   return {
@@ -92,6 +80,34 @@ function resolveAddonPublicBaseUrl(): string {
   return `http://localhost:${PORT}`;
 }
 
+async function syncApprovedManifest(): Promise<void> {
+  const desktop = desktopBackendUrl.trim().replace(/\/+$/, "");
+  if (!desktop) return;
+
+  const body: AddonManifestSyncRequestBody = {
+    baseUrl: resolveAddonPublicBaseUrl(),
+    manifest: loadAddonManifest(),
+    registrationSecret: addonRegistrationSecret,
+  };
+  const signature = JSON.stringify({
+    baseUrl: body.baseUrl,
+    manifest: body.manifest,
+  });
+  if (signature === lastManifestSyncSignature) return;
+
+  const response = await fetch(`${desktop}/api/addons/manifest-sync/${addonId}`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  if (!response.ok) {
+    const text = await response.text().catch(() => "");
+    throw new Error(`manifest-sync HTTP ${response.status}${text ? `: ${text}` : ""}`);
+  }
+
+  lastManifestSyncSignature = signature;
+}
+
 const addonServer = createAddonBackendServer({
   addonId,
   serviceName: "namorix-thread-backend",
@@ -113,6 +129,17 @@ const addonServer = createAddonBackendServer({
       warn: (msg) => registerLog.warn(msg),
       error: (msg) => registerLog.error(msg),
     },
+  },
+  onRegistrationStateChange: (nextState: RegistrationStateSnapshot) => {
+    if (nextState.status !== "registered") return;
+    void syncApprovedManifest()
+      .then(() => {
+        registerLog.info("manifest-sync sent successfully");
+      })
+      .catch((error: unknown) => {
+        const message = error instanceof Error ? error.message : String(error);
+        registerLog.warn(`manifest-sync failed: ${message}`);
+      });
   },
   mountDomainRoutes: (app) => {
     app.get("/api/desktop-bridge-config", (_req: Request, res: Response) => {

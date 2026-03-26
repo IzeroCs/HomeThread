@@ -6,17 +6,14 @@ import { AppBaseElement } from "@/core/app-base-element";
 import { startWsBridge } from "@/core/ws/ws-bridge";
 import { store } from "@/store/store";
 import { selectWsConnected } from "@/store/selectors";
-import { NmxPageBuilder } from "@namorix/core/components/layout";
+import { NmxPageBuilder } from "@namorix/core/components";
 import { ShellWindowEvent, type NmxCoreApi } from "@namorix/core/shell-api";
 import { setLocale } from "@namorix/core/store";
 import { normalizeLocale } from "@namorix/core/i18n";
 import { t } from "@/core/i18n/i18n";
 
 import namorixLogo from "@namorix/assets/logo/namorix-logo-symbol-light.svg?url";
-import "@namorix/core/components/layout/nmx-sidebar";
-import "@namorix/core/components/appbar/nmx-appbar";
-import "@namorix/core/components/layout/nmx-content";
-import "@namorix/core/components/waiting/nmx-waiting";
+import "@namorix/core/components";
 
 import "@/features/network/status.component";
 

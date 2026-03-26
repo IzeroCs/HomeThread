@@ -31,6 +31,16 @@ Giao tiếp BR ↔ backend theo hướng **notify-first**: Thread-Host push `CMD
 ### Docs / memory-bank alignment (2.34.1)
 - `memory-bank/` + `documents/namorix-core-usage.md` khớp host: `createAddonStore`, addon vocabulary; khi cần mô tả shell Desktop + importmap `/dist/core/*`, tham chiếu tên file Vite helper trên repo **`namorix`**: `vite-core-dist-from-src.ts`, `vite-emit-core-dist.ts` (xem `namorix/documents/README.md`).
 
+### Manifest sync endpoint after approval (2.34.x)
+- Registration loop (`createDesktopAddonRegisterLoop`) đã chuyển sang behavior theo trạng thái response: `pending` (`202`) thì retry, `approved` (`200`) thì dừng retry.
+- Sau khi `approved`, Thread backend gọi endpoint Desktop `POST /api/addons/manifest-sync/:addonId` để đồng bộ `baseUrl` + manifest (verify `registrationSecret`), giúp host nhận thay đổi metadata mà không cần bật lại register spam.
+- Policy update manifest ở host dùng allowlist configurable; `id` phải khớp `addonId`, `element` giữ cố định để tránh phá contract mount.
+
+### Importmap alignment for Desktop shell bundle (2.34.x)
+- Chuẩn hoá imports trong frontend Thread để tránh deep specifier `@namorix/core/components/*`; dùng `@namorix/core/components` cho side-effect registration và named exports từ core components.
+- Mục tiêu: bundle addon khi load trong Desktop shell không còn lỗi runtime `Failed to resolve module specifier '@namorix/core/components/...'`.
+- Kết quả verify: rà source `frontend/src` và output `dist/addon/assets/thread.js` không còn deep components specifier.
+
 ### Full SDK addon backend in core (2.31.0)
 - `@namorix/core-backend` thêm Full SDK:
   - `createAddonBackendServer` (Express/CORS/static + route chuẩn `manifest`/`health`/`desktop-registration-status`)
@@ -264,6 +274,7 @@ ROUTER_TABLE, CHILD_TABLE, JOINER_TABLE TX va ACK bi filter ra khoi console log 
 2. **TCP keepalive** — Da co the bat de phat hien mat ket noi BR nhanh hon (backend TransportTcp)
 3. **Security** *(neu can)* — auth WS, HTTPS
 4. **Namorix Desktop** *(repo `namorix`, milestone M3)* — khi shell sẵn sàng: align `nmx-thread-app` với spec addon (manifest, lib build, `isInShell`, gateway JWT). Theo dõi `namorix/memory-bank/`; không trùng lặp dài trong memory bank Thread — chỉ tham chiếu `namorix/documents/namorix-desktop-architecture.md`.
+5. **Addon registration observability (phase sau):** sau khi register loop dừng ở trạng thái `approved`, cân nhắc thêm heartbeat/ping trạng thái chậm để backend addon có thể tự nhận biết khi host chuyển sang `blocked`/`revoked` (tránh poll dày).
 
 ## Files to Watch
 

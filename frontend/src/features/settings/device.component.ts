@@ -4,7 +4,7 @@ import { createLocaleController } from "@/core/i18n/locale-controller";
 import { showToast } from "@namorix/core";
 import { t } from "@/core/i18n/i18n";
 
-import "@namorix/core/components/modal";
+import "@namorix/core/components";
 import "@settings/device/device.style.scss";
 
 type ConfirmAction = "reset" | "factory" | null;

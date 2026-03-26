@@ -46,3 +46,9 @@ Tài liệu kiến trúc cho hệ thống **Namorix Thread** gồm ba thành ph�
 4. Định kỳ: **GET /device/ping?mac=** (heartbeat + restart detection), **POST /device/update/topology**, **POST /device/update/state**.
 
 Chi tiết đầy đủ: [coap/device_payload_spec.md](coap/device_payload_spec.md).
+
+## Ghi chú khi embed vào Namorix Desktop
+
+- Khi build addon để chạy trong shell Desktop, tránh import deep path `@namorix/core/components/*`.
+- Dùng `@namorix/core/components` để đảm bảo bundle tương thích importmap host.
+- Xem thêm hướng dẫn tích hợp tại `../namorix/documents/thread-desktop-addon-integration.md` (repo sibling trong cùng workspace).
