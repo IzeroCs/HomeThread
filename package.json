@@ -4,7 +4,7 @@
   "version": "0.0.0",
   "description": "Namorix Thread monorepo (backend + frontend + shared)",
   "scripts": {
-    "dev": "concurrently -n backend,frontend,addon,lint-be,lint-fe,lint-css -c blue,green,magenta,cyan,white,yellow \"npm run dev --workspace=backend\" \"npm run dev --workspace=frontend\" \"npm run build:addon:watch --workspace=frontend\" \"npm run lint:watch --workspace=backend\" \"npm run lint:watch --workspace=frontend\" \"npm run lint:styles:watch --workspace=frontend\"",
+    "dev": "concurrently -n backend,frontend,addon -c blue,green,magenta \"npm run dev --workspace=backend\" \"npm run dev --workspace=frontend\" \"npm run build:addon:watch --workspace=frontend\"",
     "dev:backend": "npm run dev --workspace=backend",
     "dev:frontend": "npm run dev --workspace=frontend",
     "build": "npm run build --workspace=backend && npm run build --workspace=frontend",

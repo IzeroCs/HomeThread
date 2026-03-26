@@ -74,7 +74,7 @@ const addonServer = createAddonBackendServer({
           serverLog.error(`BR auto-connect failed: ${err?.message ?? err}`);
         });
       } else {
-        serverLog.info("No BR config. Configure via frontend WebSocket.");
+        serverLog.info("No BR config. Configure via frontend WebSocket");
       }
 
       const shutdown = (): void => {

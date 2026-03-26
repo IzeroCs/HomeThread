@@ -1,16 +1,26 @@
 services:
   thread:
+    container_name: namorix-thread
+    image: namorix-thread:dev
     build:
       context: .
       dockerfile: Dockerfile
       target: dev
+    working_dir: /workspace/namorix-thread
+    command: sh -c "[ -x node_modules/.bin/concurrently ] || npm install; npm run dev"
     volumes:
-      - .:/app
-      - /app/node_modules
+      - ..:/workspace
+      - namorix-thread-node-modules:/workspace/namorix-thread/node_modules
+      - namorix-thread-npm-cache:/root/.npm
     ports:
       - "4000:4000"
+      - "5180:5180"
     labels:
       namorix.addon: "true"
       namorix.addonId: "thread"
     environment:
       DESKTOP_ORIGIN: http://localhost:5173
+
+volumes:
+  namorix-thread-node-modules:
+  namorix-thread-npm-cache:

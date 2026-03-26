@@ -35,6 +35,7 @@ export class NmxMain extends NmxBaseMain {
   render() {
     return html`
       <nmx-app-container
+        .shellMode=${typeof window !== "undefined" && !!window.nmxCore}
         .slotHtml=${html`<nmx-thread-app></nmx-thread-app>`}
       ></nmx-app-container>
     `;

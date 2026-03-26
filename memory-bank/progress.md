@@ -8,6 +8,8 @@ Version notation in this file uses Semantic Versioning `MAJOR.MINOR.PATCH` (no l
 
 | Version | Notes |
 |---------|--------|
+| 2.36.6  | **Desktop embed layout + dev sync docs.** Thread entry `nmx-thread-main` now passes shell mode to `nmx-app-container` so addon content follows shell window size instead of viewport sizing. Synced integration context/docs for Desktop dev auto-reload behavior when `thread.js`/`thread.css` changes. *(2026-03-26.)* |
+| 2.36.5  | **Addon image labels switched to flat keys.** Replaced inline JSON label `namorix.manifest` in `Dockerfile` with explicit `namorix.addon.*` labels (`id`, `display_name`, `entry`, `styles`, `element`, `internal_port`, `window_width`, `window_height`) and synced docs/memory context to new contract. *(2026-03-26.)* |
 | 2.36.4  | **Lint/style rollout for Thread repo.** Added ESLint + TypeScript ESLint + Stylelint configs at repo root, wired `lint`/`lint:fix` scripts for root/frontend/backend, and updated root `dev` to run lint watchers in parallel with backend/frontend/addon workflows. *(2026-03-26.)* |
 | 2.36.3  | **Documentation hard sync to current container runtime.** Rewrote host integration guide (`namorix/documents/thread-desktop-addon-integration.md`) to Docker-managed lifecycle + direct runtime Socket.IO only, updated Thread Docker readme to current files (`Dockerfile` multi-target, `compose.dev.yml`, port 4000), and removed current-state wording that implied legacy control/register WS flow. *(2026-03-26.)* |
 | 2.36.2  | **Container-managed alignment completed.** Thread backend/frontend bỏ toàn bộ control/register WS dependencies (control state bridge/slice, registration env/secret usage), giữ runtime direct Socket.IO và vận hành theo Desktop Docker-managed lifecycle. *(2026-03-26.)* |

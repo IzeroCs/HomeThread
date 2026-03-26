@@ -7,8 +7,16 @@ COPY backend/package*.json backend/
 COPY frontend/package*.json frontend/
 COPY shared/package*.json shared/
 
-# Keep only runtime-used manifest fields.
-LABEL namorix.manifest='{"id":"thread","displayName":"Thread","entry":"/assets/thread.js","styles":"/assets/thread.css","element":"nmx-thread-main","internalPort":4000,"defaultWindowSize":{"width":1100,"height":700}}'
+# Addon runtime labels (flat keys, no JSON-in-label).
+LABEL \
+  namorix.addon.id="thread" \
+  namorix.addon.display_name="Thread" \
+  namorix.addon.entry="/assets/thread.js" \
+  namorix.addon.styles="/assets/thread.css" \
+  namorix.addon.element="nmx-thread-main" \
+  namorix.addon.internal_port="4000" \
+  namorix.addon.window_width="1100" \
+  namorix.addon.window_height="700"
 
 FROM base AS prod
 RUN npm ci

@@ -13,6 +13,9 @@ Backend ổn định với BR qua TCP + frame protocol, CoAP device ingest, SRP 
 - Docs/runtime contract đã sync lại theo current-state: không mô tả control/register WS như flow đang dùng; tài liệu tích hợp host tập trung vào shell events `shell:addon:*` + direct runtime Socket.IO.
 - Lint/style stack đã thêm ở root repo (`.eslintrc.cjs`, `stylelint.config.cjs`) + Cursor rule `lint-and-style.mdc`; scripts lint/fix/watch cho frontend/backend đã sẵn sàng.
 - `npm run dev` root hiện chạy kèm lint watchers để phát hiện lỗi style/import trong lúc phát triển.
+- **Desktop shell embed fit-window + dev reload sync (2.36.6):**
+  - Entry `nmx-thread-main` truyền `shellMode` cho `nmx-app-container` khi chạy trong shell để nội dung addon bám kích thước `nmx-window`.
+  - Desktop host bổ sung dev watcher cho `thread.js` / `thread.css` và tự reload shell khi asset thay đổi, giảm thao tác refresh tay khi debug addon trong Desktop.
 
 Frontend align với hệ “core/shared”:
 - **Spec Desktop (SoT):** `namorix/documents/namorix-desktop-architecture.md`; mục lục host: `namorix/documents/README.md`.

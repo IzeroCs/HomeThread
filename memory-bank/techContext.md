@@ -98,7 +98,7 @@ Assets usage (frontend):
 - **Gateway → addon backend:** Proxy `/api/addons/:addonId/*` forward header **`Authorization`** chuẩn; API addon (HTTP) nên đọc `Authorization` / Bearer JWT — không phụ thuộc `x-forwarded-authorization`.
 - **WS security limitation (current):** Thread Socket.IO backend currently has no end-user auth gate (`allowRequest` accepts connections). Runtime UI nay đi direct vào addon backend, nên backend port addon chỉ nên mở trong trusted LAN/VPN hoặc cần bổ sung security middleware chung.
 - Runtime policy (current): addon frontend runtime đi direct tới addon backend Socket.IO; Desktop backend quản lý lifecycle qua Docker API và shell WS (`shell:addon:*`, `shell:addons`). Không còn addon control/register/sync channel.
-- **Build/runtime shape (current):** `namorix-thread/Dockerfile` là file multi-target (`prod`/`dev`) và giữ `namorix.manifest` image label ở một chỗ duy nhất; compose dev dùng `target: dev`.
+- **Build/runtime shape (current):** `namorix-thread/Dockerfile` là file multi-target (`prod`/`dev`) và publish bộ image labels rời `namorix.addon.*` ở một chỗ duy nhất; compose dev dùng `target: dev`.
 - **Backend Thread vs Desktop:** `namorix/backend` là **host** (auth, registry, gateway). Backend trong repo này là **addon** (OpenThread/CoAP/WS domain + Express mỏng cho static/manifest). **Không** có khối logic copy từ Desktop — trùng chủ yếu **stack** và **hợp đồng** tích hợp. Viết addon mới: ưu tiên đọc spec + `namorix/documents/thread-desktop-addon-integration.md`; **không** bắt buộc SDK trong core (xem `namorix/memory-bank/systemPatterns.md`).
 
 ### Shared Package (`shared/`)
