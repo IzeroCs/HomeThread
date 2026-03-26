@@ -39,7 +39,7 @@ export type WsBridgeStartOptions = {
   query?: Record<string, string>;
 };
 
-/** Supports both standalone (`/socket.io`) and in-shell (`/namorix-plugin-ws`) WebSocket wiring. */
+/** Supports both standalone (`/socket.io`) and in-shell (`/namorix-addon-ws`) WebSocket wiring. */
 export function startWsBridge(store: Store<RootState>, options?: WsBridgeStartOptions): void {
   const wsUrl = options?.url?.trim() || WS_URL_DEFAULT;
   if (!bridge) {

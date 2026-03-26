@@ -7,12 +7,12 @@ Backend ổn định với BR qua TCP + frame protocol, CoAP device ingest, SRP 
 Frontend align với hệ “core/shared”:
 - **Spec Desktop (SoT):** `namorix/documents/namorix-desktop-architecture.md`; mục lục host: `namorix/documents/README.md`.
 - Core qua sibling `../../namorix/core` (workspace giống Desktop).
-- **Core 0.9.2+ — đăng ký custom element an toàn khi embed shell:** Các component chrome dùng chung (`nmx-sidebar`, `nmx-toast`, …) trong `@namorix/core` đăng ký bằng `defineCustomElementOnce` (không dùng `@customElement` parse-time). Shell Desktop load trước → plugin `thread.js` load sau không gây `NotSupportedError` trùng tên tag. Chi tiết: `namorix/memory-bank/systemPatterns.md`.
-- **Shell contract (Namorix Desktop):** Hằng số và tên sự kiện shell từ `@namorix/core/shell-api` (`PluginRuntimeStatus`, `ShellWindowEvent`, …). Đồng bộ locale với shell: ưu tiên `window.nmxCore?.onLocaleChange?.(handler)` (trả unsubscribe); fallback `addEventListener(ShellWindowEvent.LocaleChanged, …)` — xem `frontend/src/nmx-thread-app.ts`. Gateway Desktop forward JWT tới plugin backend qua header **`Authorization: Bearer <jwt>`** (plugin API đọc `req.headers.authorization`; không dùng `x-forwarded-authorization`).
+- **Core 0.9.2+ — đăng ký custom element an toàn khi embed shell:** Các component chrome dùng chung (`nmx-sidebar`, `nmx-toast`, …) trong `@namorix/core` đăng ký bằng `defineCustomElementOnce` (không dùng `@customElement` parse-time). Shell Desktop load trước → addon `thread.js` load sau không gây `NotSupportedError` trùng tên tag. Chi tiết: `namorix/memory-bank/systemPatterns.md`.
+- **Shell contract (Namorix Desktop):** Hằng số và tên sự kiện shell từ `@namorix/core/shell-api` (`AddonRuntimeStatus`, `ShellWindowEvent`, …). Đồng bộ locale với shell: ưu tiên `window.nmxCore?.onLocaleChange?.(handler)` (trả unsubscribe); fallback `addEventListener(ShellWindowEvent.LocaleChanged, …)` — xem `frontend/src/nmx-thread-app.ts`. Gateway Desktop forward JWT tới addon backend qua header **`Authorization: Bearer <jwt>`** (addon API đọc `req.headers.authorization`; không dùng `x-forwarded-authorization`).
 - **Auth host update (Namorix Desktop 0.9.20+):** Claims/auth user của host chuyển sang **role-only** (`user.role` bitmask, hiện tại `ADMIN=1<<0`), không còn `permissions` trong auth snapshot. Không giả định username admin cố định; quyền quản trị dựa trên role.
-- **Desktop login API (host 0.9.23+):** `POST /api/auth/login` dùng JSON **`{ "username", "password" }`** — khi viết curl / tooling hướng tới admin plugin registrations, xem **`namorix/documents/thread-desktop-plugin-integration.md`** (đã cập nhật).
+- **Desktop login API (host 0.9.23+):** `POST /api/auth/login` dùng JSON **`{ "username", "password" }`** — khi viết curl / tooling hướng tới admin addon registrations, xem **`namorix/documents/thread-desktop-addon-integration.md`** (đã cập nhật).
 - Bundle core tokens/base styles qua Vite (alias `@namorix/core` → source khi `dist/` chưa build)
-- Store: `createPluginStore` từ `@namorix/core/store`; locale mặc định `"en"`, set từ user settings qua `setLocale`
+- Store: `createAddonStore` từ `@namorix/core/store`; locale mặc định `"en"`, set từ user settings qua `setLocale`
 - i18n: `initI18n({ store, dicts, fallbackLocale })` từ `@namorix/core/i18n`; không còn locale-storage/detect
 - Base classes: **NmxBaseElement** (core, font + light DOM), **NmxStoreElement** (core, store + locale + createStoreSlice), **AppBaseElement** (frontend, extends NmxStoreElement, `getStore()` → app store)
 
@@ -25,9 +25,15 @@ Giao tiếp BR ↔ backend theo hướng **notify-first**: Thread-Host push `CMD
 
 ## Recent Significant Changes
 
-### Full SDK plugin backend in core (2.31.0)
+### Product rename plugin → addon (2.34.0)
+- Đồng bộ với Desktop **0.9.29**: `createAddonBackendServer`, `addon-secret` / `data/.addon-secrets`, HTTP `/api/addons/register-request`, WS `/namorix-addon-ws` + `query.addonId`, shell events `shell:addons` / `shell:addonRegistry:*`, build `npm run build:addon` + `dist/addon`. Không giữ alias tên cũ.
+
+### Docs / memory-bank alignment (2.34.1)
+- `memory-bank/` + `documents/namorix-core-usage.md` khớp host: `createAddonStore`, addon vocabulary; khi cần mô tả shell Desktop + importmap `/dist/core/*`, tham chiếu tên file Vite helper trên repo **`namorix`**: `vite-core-dist-from-src.ts`, `vite-emit-core-dist.ts` (xem `namorix/documents/README.md`).
+
+### Full SDK addon backend in core (2.31.0)
 - `@namorix/core-backend` thêm Full SDK:
-  - `createPluginBackendServer` (Express/CORS/static + route chuẩn `manifest`/`health`/`desktop-registration-status`)
+  - `createAddonBackendServer` (Express/CORS/static + route chuẩn `manifest`/`health`/`desktop-registration-status`)
   - shared API response types cho status endpoints
   - registration loop tích hợp sẵn (vẫn giữ semantics backoff + 403 stop)
 - `backend/src/index.ts` của Thread refactor aggressive sang dùng SDK; file chỉ còn phần resolve env/manifest/public base URL + bootstrap domain runtime (Socket.IO/BrManager/CoAP) qua hooks.
@@ -35,8 +41,8 @@ Giao tiếp BR ↔ backend theo hướng **notify-first**: Thread-Host push `CMD
 
 ### Desktop embed WS fix + manifest migration + security notes (2.33.0)
 - Frontend `nmx-thread-app` thêm logic tách 2 mode:
-  - **In-shell:** fetch `GET /api/desktop-bridge-config`, connect WS tới `window.location.origin` qua `/namorix-plugin-ws` với `auth.secret` + `query.pluginId`.
-  - **Standalone:** giữ kết nối trực tiếp backend plugin (`/socket.io`).
+  - **In-shell:** fetch `GET /api/desktop-bridge-config`, connect WS tới `window.location.origin` qua `/namorix-addon-ws` với `auth.secret` + `query.addonId`.
+  - **Standalone:** giữ kết nối trực tiếp backend Thread (`/socket.io`).
 - Backend `index.ts` mount route `GET /api/desktop-bridge-config` và manifest đổi `element` sang `nmx-thread-main` (frontend entry + index.html đồng bộ cùng tag mới).
 - Backend logger migration sang `@namorix/core-backend`, bỏ wrapper `desktop-origin.ts`; README/techContext thêm cảnh báo rõ Socket.IO backend hiện chưa có auth end-user (chỉ an toàn trong trusted LAN).
 - TS strict fix: route `/api/desktop-bridge-config` khai báo type `Request/Response` tường minh để không còn implicit `any` trong IDE diagnostics.
@@ -44,30 +50,30 @@ Giao tiếp BR ↔ backend theo hướng **notify-first**: Thread-Host push `CMD
 ### Core-shared dev alignment (workspace)
 - Theo host repo `namorix`, `@namorix/core-shared` đã chuyển sang package exports src-based (`core/shared/src/index.ts`), giúp frontend/backend trong workspace không phụ thuộc `dist` stale khi thêm shared types.
 
-### Plugin-generic extraction to `@namorix/core-backend` (2.30.0)
+### Addon-generic extraction to `@namorix/core-backend` (2.30.0)
 - Core backend thêm các module generic:
-  - `plugin-secret.ts` → `getOrCreateEnvStyleSecret`
-  - `plugin-registration-loop.ts` → `createDesktopPluginRegisterLoop` (status/backoff/403 stop)
-  - `plugin-registration.types.ts` → `DesktopRegisterStatus`, `RegistrationStateSnapshot`, `PluginRegisterRequestBody`
+  - `addon/addon-secret.ts` → `getOrCreateEnvStyleSecret`
+  - `addon/addon-registration-loop.ts` → `createDesktopAddonRegisterLoop` (status/backoff/403 stop)
+  - `addon/addon-registration.types.ts` → `DesktopRegisterStatus`, `RegistrationStateSnapshot`, `AddonRegisterRequestBody`
 - Thread backend adopt ngược:
-  - `backend/src/plugin-secret.ts` thành wrapper mỏng gọi helper core.
+  - `backend/src/addon-secret.ts` thành wrapper mỏng gọi helper core.
   - `backend/src/index.ts` bỏ loop local, dùng engine core; giữ nguyên route `/health` và `/api/desktop-registration-status` cùng shape payload.
-  - Domain-specific vẫn ở Thread (`loadPluginManifest`, `resolvePluginPublicBaseUrl`, BR/TCP/CoAP/SRP).
+  - Domain-specific vẫn ở Thread (`loadAddonManifest`, `resolveAddonPublicBaseUrl`, BR/TCP/CoAP/SRP).
 
-### Plugin registration secret file auto-generate (2.29.0)
-- Thread backend thêm `backend/src/plugin-secret.ts`: secret đăng ký plugin được đọc/tạo tại `data/.plugin-secrets` (mode `0600`), không còn yêu cầu nhập `PLUGIN_REGISTRATION_SECRET` trong `.env`.
+### Addon registration secret file auto-generate (2.29.0)
+- Thread backend thêm `backend/src/addon-secret.ts`: secret đăng ký addon được đọc/tạo tại `data/.addon-secrets` (mode `0600`), không còn yêu cầu nhập secret thủ công trong `.env` khi dùng file.
 - `backend/src/index.ts` dùng secret file cho payload `register-request`; warning `disabled` chỉ còn cho thiếu `DESKTOP_BACKEND_URL`.
 
 ### Backend env constants (2.28.0)
-- `backend/src/env.ts` là điểm duy nhất parse `.env` + defaults (PORT, DESKTOP_ORIGIN, plugin register vars, SRP vars...); `index.ts`, `desktop-origin.ts`, `communicate/br/br.session.ts` chuyển sang dùng constants thay vì `process.env` rải rác.
-- Mục tiêu: cấu hình typed/ổn định hơn, dễ debug (đặc biệt flow register plugin và SRP), không đổi behavior runtime.
+- `backend/src/env.ts` là điểm duy nhất parse `.env` + defaults (PORT, DESKTOP_ORIGIN, addon register vars, SRP vars...); `index.ts`, `desktop-origin.ts`, `communicate/br/br.session.ts` chuyển sang dùng constants thay vì `process.env` rải rác.
+- Mục tiêu: cấu hình typed/ổn định hơn, dễ debug (đặc biệt flow register addon và SRP), không đổi behavior runtime.
 
-### Plugin register loop + status endpoint (2.27.0)
-- `backend/src/index.ts` thêm loop `POST /api/plugins/register-request` về Desktop backend (`DESKTOP_BACKEND_URL`) với backoff, log rõ từng attempt/success/fail và dừng retry khi nhận `403`.
+### Addon register loop + status endpoint (2.27.0)
+- `backend/src/index.ts` thêm loop `POST /api/addons/register-request` về Desktop backend (`DESKTOP_BACKEND_URL`) với backoff, log rõ từng attempt/success/fail và dừng retry khi nhận `403`.
 - Trạng thái đăng ký được expose qua:
   - `GET /api/desktop-registration-status`
-  - `GET /health` (field `pluginRegister`)
-- Mục tiêu: khi shell Desktop thấy `plugins: []`, có thể kiểm tra trực tiếp từ backend Thread xem đã gửi request hay chưa và lỗi gần nhất là gì.
+  - `GET /health` (field `addonRegister`)
+- Mục tiêu: khi shell Desktop thấy danh sách addon rỗng, có thể kiểm tra trực tiếp từ backend Thread xem đã gửi request hay chưa và lỗi gần nhất là gì.
 
 ### `@namorix/core-backend` + layout `data/` (2.26.0)
 - **Core (repo `namorix`):** `resolveNamorixRepoDataLayout` trong `namorix/core/backend` — Thread `database.db.ts` dùng thay tính path tay; đồng bộ với Desktop `paths.ts`.
@@ -76,7 +82,7 @@ Giao tiếp BR ↔ backend theo hướng **notify-first**: Thread-Host push `CMD
 
 ### Core alias base path + tsconfig (2.25.0)
 - **Vấn đề:** Sau khi bỏ wrapper `dashboard/`, `siblingReposRoot` còn `resolve(__dirname, "../../..")` → trỏ sai (thiếu segment `namorix-workspace`), Vite/esbuild báo **ENOENT** khi mở file core (vd. `@namorix/core/i18n`).
-- **Sửa:** `frontend/vite.config.ts` và `frontend/vite.plugin.config.ts` dùng `siblingReposRoot = resolve(__dirname, "../..")` (root workspace chứa `namorix/` và `namorix-assets/`). `frontend/tsconfig.json` đồng bộ `paths` với `../../namorix/...` và `../../namorix-assets`.
+- **Sửa:** `frontend/vite.config.ts` và `frontend/vite.addon.config.ts` dùng `siblingReposRoot = resolve(__dirname, "../..")` (root workspace chứa `namorix/` và `namorix-assets/`). `frontend/tsconfig.json` đồng bộ `paths` với `../../namorix/...` và `../../namorix-assets`.
 - **npm:** Bỏ dependency `file:` `@namorix/core` ở frontend (tránh xung đột workspace + alias đã đủ cho dev). Root `namorix-thread/package.json` có `version` để `npm install` ổn định.
 
 ### Thread frontend Vite CORS + scripts (unreleased)
@@ -85,8 +91,8 @@ Giao tiếp BR ↔ backend theo hướng **notify-first**: Thread-Host push `CMD
 - `README.md` (root): cập nhật hướng dẫn chạy frontend tương ứng (không yêu cầu `dev:shell` nữa).
 
 ### Namorix Core: Toast dual mode + createWsBridge + form/button nmx- prefix (unreleased)
-- **Toast (core):** Slice `toast` (ToastType, Toast, toastReducer, toastActions), component `<nmx-toast>`, `initToast({ store, selectToasts, getTitle? })` và `showToast(type, message, duration)`. **Dual mode:** Nếu `window.nmxCore` → dispatch `CustomEvent("nmx-action", { detail: { action: "show-toast", payload } })`; ngược lại dispatch vào store plugin. Plugin gọi `showToast()` từ `@namorix/core`, mount `<nmx-toast>` khi standalone.
-- **WebSocket (core):** `createWsBridge<S>({ store, url?, options? })` builder: `.onConnect()`, `.onDisconnect()`, `.onConnectError()`, `.on(event, handler)`, `.start()`, `.stop({ close? })`, `.getSocket()`. Plugin cấu hình lifecycle + domain events rồi `bridge.start()`. `onceWithTimeout(socket, event, timeoutMs, emit)` từ `@namorix/core/ws`.
+- **Toast (core):** Slice `toast` (ToastType, Toast, toastReducer, toastActions), component `<nmx-toast>`, `initToast({ store, selectToasts, getTitle? })` và `showToast(type, message, duration)`. **Dual mode:** Nếu `window.nmxCore` → dispatch `CustomEvent("nmx-action", { detail: { action: "show-toast", payload } })`; ngược lại dispatch vào store app. Addon gọi `showToast()` từ `@namorix/core`, mount `<nmx-toast>` khi standalone.
+- **WebSocket (core):** `createWsBridge<S>({ store, url?, options? })` builder: `.onConnect()`, `.onDisconnect()`, `.onConnectError()`, `.on(event, handler)`, `.start()`, `.stop({ close? })`, `.getSocket()`. Addon cấu hình lifecycle + domain events rồi `bridge.start()`. `onceWithTimeout(socket, event, timeoutMs, emit)` từ `@namorix/core/ws`.
 - **Form/button (core):** Class form và button trong core đổi sang tiền tố `nmx-`: `.nmx-form-page`, `.nmx-form-card`, `.nmx-form-field`, `.nmx-form-control`, `.nmx-form-actions`, `.nmx-form-btn`, `.nmx-form-btn--primary/--ghost`, `.nmx-btn`, `.nmx-btn-filled`, `.nmx-btn-icon`, v.v. Frontend (connection, device, thread, joiner) và SCSS đã cập nhật dùng `nmx-form-*` / `nmx-form-btn*`. Core thêm style cho `.nmx-form-control-icon`, `.nmx-form-control--with-icon`, `.nmx-form-radio-row` / `.nmx-form-radio` / `.nmx-form-radio-pill`.
 - **Tài liệu:** `documents/namorix-core-usage.md` — hướng dẫn dùng core (store, i18n, WS, Toast, form/button, base elements). Mục lục `documents/README.md` đã thêm link.
 
@@ -257,7 +263,7 @@ ROUTER_TABLE, CHILD_TABLE, JOINER_TABLE TX va ACK bi filter ra khoi console log 
 1. **Tim BR** *(tuy chon)* — mDNS browse `_thread-frame._tcp` (khi chay tren host) hoac quet dai IP (TCP 5000) khi chay Docker
 2. **TCP keepalive** — Da co the bat de phat hien mat ket noi BR nhanh hon (backend TransportTcp)
 3. **Security** *(neu can)* — auth WS, HTTPS
-4. **Namorix Desktop** *(repo `namorix`, milestone M3)* — khi shell sẵn sàng: align `nmx-thread-app` với spec plugin (manifest, lib build, `isInShell`, gateway JWT). Theo dõi `namorix/memory-bank/`; không trùng lặp dài trong memory bank Thread — chỉ tham chiếu `namorix/documents/namorix-desktop-architecture.md`.
+4. **Namorix Desktop** *(repo `namorix`, milestone M3)* — khi shell sẵn sàng: align `nmx-thread-app` với spec addon (manifest, lib build, `isInShell`, gateway JWT). Theo dõi `namorix/memory-bank/`; không trùng lặp dài trong memory bank Thread — chỉ tham chiếu `namorix/documents/namorix-desktop-architecture.md`.
 
 ## Files to Watch
 
@@ -283,7 +289,7 @@ ROUTER_TABLE, CHILD_TABLE, JOINER_TABLE TX va ACK bi filter ra khoi console log 
 - `frontend/src/core/AppBaseElement.ts` — app base (extends NmxStoreElement, getStore → store)
 - `frontend/src/app.ts` — NmxThreadApp (nmx-thread-app), extends AppBaseElement
 - `frontend/index.html` — mount `<nmx-main>`; main.ts → nmx-app-container → nmx-thread-app
-- `frontend/vite.config.ts`, `frontend/vite.plugin.config.ts` — `siblingReposRoot` + alias `@namorix/core` / `@namorix/assets`; `frontend/tsconfig.json` — `paths` khớp cùng layout workspace
+- `frontend/vite.config.ts`, `frontend/vite.addon.config.ts` — `siblingReposRoot` + alias `@namorix/core` / `@namorix/assets`; `frontend/tsconfig.json` — `paths` khớp cùng layout workspace
 - `frontend/src/core/store/slices/appbar.slice.ts` — setAppBar, clearAppBar
 - `frontend/src/core/components/appbar/` — page-header (extends AppLitElement)
 - `../../namorix/core/frontend` — toast (nmx-toast, initToast, showToast), createWsBridge, onceWithTimeout, wsConnection slice; `documents/namorix-core-usage.md` — hướng dẫn dùng core

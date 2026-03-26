@@ -43,11 +43,11 @@ Cung cấp giao diện web quản lý Thread network:
 
 ## Namorix Desktop (shell host — repo khác)
 
-Dashboard Thread có thể chạy **độc lập** (Vite dev / backend riêng) hoặc được **embed như plugin** trong **Namorix Desktop** — repo sibling **`namorix`** (chứa `core/` in-repo + dùng chung `namorix-assets` trong workspace).
+Dashboard Thread có thể chạy **độc lập** (Vite dev / backend riêng) hoặc được **embed như addon** trong **Namorix Desktop** — repo sibling **`namorix`** (chứa `core/` in-repo + dùng chung `namorix-assets` trong workspace).
 
-- **Spec tích hợp:** `namorix/documents/namorix-desktop-architecture.md` — plugin manifest, `window.nmxCore`, CORS (`DESKTOP_ORIGIN`), auth exchange (`nmx_token`), milestone **M3** (load Thread trong cửa sổ shell).
+- **Spec tích hợp:** `namorix/documents/namorix-desktop-architecture.md` — addon manifest, `window.nmxCore`, CORS (`DESKTOP_ORIGIN`), auth exchange (`nmx_token`), milestone **M3** (load Thread trong cửa sổ shell).
 - **Core:** theo dõi qua `namorix/documents/core-library.md` và `namorix/memory-bank/*`; không nhân đôi nội dung spec trong repo Thread.
-- **Embed shell:** Core 0.9.2+ — `defineCustomElementOnce` cho component Lit dùng chung; plugin backend — `DESKTOP_ORIGIN` khớp Vite; lib build — cấu hình `process.env` khi cần (xem `techContext.md`).
+- **Embed shell:** Core 0.9.2+ — `defineCustomElementOnce` cho component Lit dùng chung; addon backend — `DESKTOP_ORIGIN` khớp Vite; lib build — cấu hình `process.env` khi cần (xem `techContext.md`).
 
 Chi tiết product/tech: `memory-bank/productContext.md`, `memory-bank/techContext.md` (mục Namorix Desktop).
 

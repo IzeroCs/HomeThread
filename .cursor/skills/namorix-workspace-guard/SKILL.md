@@ -39,7 +39,7 @@ When changes affect runtime integration, check all items below:
    - Ensure `DESKTOP_ORIGIN` in Thread matches Desktop shell origin.
 
 2. **Vite proxy and dev ports**
-   - Desktop frontend proxies `/api` and `/namorix-plugin-ws` to Desktop backend `PORT`.
+   - Desktop frontend proxies `/api` and `/namorix-addon-ws` to Desktop backend `PORT`.
    - Thread frontend proxies to Thread backend `PORT` (or explicit compatible fallback).
 
 3. **Core backend shared path logic**

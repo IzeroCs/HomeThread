@@ -6,8 +6,8 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
-    "build:plugin": "vite build --config vite.plugin.config.ts",
-    "build:plugin:watch": "vite build --watch --config vite.plugin.config.ts",
+    "build:addon": "vite build --config vite.addon.config.ts",
+    "build:addon:watch": "vite build --watch --config vite.addon.config.ts",
     "preview": "vite preview"
   },
   "dependencies": {

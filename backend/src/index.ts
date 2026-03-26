@@ -1,6 +1,6 @@
 /**
  * Backend: WebSocket server cho OpenThread qua TCP (frame protocol).
- * HTTP: Express — static plugin bundle (Namorix Desktop), manifest.json, health.
+ * HTTP: Express — static addon bundle (Namorix Desktop), manifest.json, health.
  * Khởi tạo giao tiếp (BrManager) ở đây; WebSocketServer chỉ emit dữ liệu tới frontend.
  */
 
@@ -15,28 +15,24 @@ import { BrConnectionConfigService, BrManager } from "@communicate";
 import { AppSettingsService } from "@settings/app-settings.service";
 import { WebSocketServer } from "@websocket/websocket.server";
 import { startCoapDeviceServer as startDeviceCoapServer } from "@coap/device/device-coap.server";
-import { getPluginRegistrationSecret } from "./plugin-secret";
-import {
-  createPluginBackendServer,
-  logger,
-  type PluginRegisterRequestBody,
-} from "@namorix/core-backend";
+import { getAddonRegistrationSecret } from "./addon-secret";
+import { createAddonBackendServer, logger } from "@namorix/core-backend";
 
 const serverLog = logger.child("Server");
-const registerLog = logger.child("PluginRegister");
+const registerLog = logger.child("AddonRegister");
 
-/** Default 4000 — matches Namorix Desktop `plugins.config.json` plugin baseUrl. */
+/** Default 4000 — matches Namorix Desktop addon baseUrl. */
 const PORT = ENV.PORT;
 
-/** Built plugin output: `dashboard/dist/plugin` (Vite `vite.plugin.config.ts`). */
-const pluginStaticDir =
-  ENV.PLUGIN_STATIC_DIR ?? path.join(__dirname, "../../dist/plugin");
+/** Built addon output: `dist/addon` (Vite `vite.addon.config.ts`). */
+const addonStaticDir =
+  ENV.ADDON_STATIC_DIR ?? path.join(__dirname, "../../dist/addon");
 
 /** Namorix Desktop shell origin (browser); used for CORS + Socket.io. */
 const desktopOrigin = ENV.DESKTOP_ORIGIN;
-const pluginId = "thread";
+const addonId = "thread";
 const desktopBackendUrl = ENV.DESKTOP_BACKEND_URL;
-const pluginRegistrationSecret = getPluginRegistrationSecret();
+const addonRegistrationSecret = getAddonRegistrationSecret();
 
 getDatabase();
 runMigrations();
@@ -44,7 +40,7 @@ runMigrations();
 const brConnectionConfigService = new BrConnectionConfigService();
 const appSettingsService = new AppSettingsService();
 
-function loadPluginManifest(): Record<string, unknown> {
+function loadAddonManifest(): Record<string, unknown> {
   const pkgPath = path.join(__dirname, "../../frontend/package.json");
   let version = "0.0.0";
   try {
@@ -52,11 +48,11 @@ function loadPluginManifest(): Record<string, unknown> {
     version = (JSON.parse(raw) as { version?: string }).version ?? "0.0.0";
   } catch {
     serverLog.warn(
-      `Could not read frontend package.json for plugin version (${pkgPath})`,
+      `Could not read frontend package.json for addon version (${pkgPath})`,
     );
   }
 
-  const devBase = ENV.PLUGIN_DEV_FRONTEND_URL;
+  const devBase = ENV.ADDON_DEV_FRONTEND_URL;
   if (devBase) {
     const base = devBase.replace(/\/+$/, "");
     return {
@@ -90,22 +86,22 @@ function loadPluginManifest(): Record<string, unknown> {
   };
 }
 
-function resolvePluginPublicBaseUrl(): string {
-  const fromEnv = ENV.PLUGIN_PUBLIC_BASE_URL;
+function resolveAddonPublicBaseUrl(): string {
+  const fromEnv = ENV.ADDON_PUBLIC_BASE_URL;
   if (fromEnv) return fromEnv.replace(/\/+$/, "");
   return `http://localhost:${PORT}`;
 }
 
-const pluginServer = createPluginBackendServer({
-  pluginId,
+const addonServer = createAddonBackendServer({
+  addonId,
   serviceName: "namorix-thread-backend",
   port: PORT,
-  pluginStaticDir,
+  addonStaticDir,
   desktopOrigin,
   desktopBackendUrl,
-  resolveManifest: loadPluginManifest,
-  resolvePublicBaseUrl: resolvePluginPublicBaseUrl,
-  registrationSecret: pluginRegistrationSecret,
+  resolveManifest: loadAddonManifest,
+  resolvePublicBaseUrl: resolveAddonPublicBaseUrl,
+  registrationSecret: addonRegistrationSecret,
   logger: {
     server: {
       info: (msg) => serverLog.info(msg),
@@ -118,12 +114,12 @@ const pluginServer = createPluginBackendServer({
       error: (msg) => registerLog.error(msg),
     },
   },
-  mountDomainRoutes: ({ app }) => {
+  mountDomainRoutes: (app) => {
     app.get("/api/desktop-bridge-config", (_req: Request, res: Response) => {
       res.json({
-        pluginId,
-        registrationSecret: pluginRegistrationSecret,
-        socketPath: "/namorix-plugin-ws",
+        addonId,
+        registrationSecret: addonRegistrationSecret,
+        socketPath: "/namorix-addon-ws",
       });
     });
   },
@@ -154,7 +150,7 @@ const pluginServer = createPluginBackendServer({
 
       serverLog.info("=".repeat(50));
       serverLog.info("Backend HTTP + WebSocket server initialized");
-      serverLog.info(`Listening on http://localhost:${PORT} (plugin static: ${pluginStaticDir})`);
+      serverLog.info(`Listening on http://localhost:${PORT} (addon static: ${addonStaticDir})`);
       serverLog.info(`Desktop CORS origin: ${desktopOrigin}`);
       serverLog.info("=".repeat(50));
 
@@ -174,7 +170,7 @@ const pluginServer = createPluginBackendServer({
         serverLog.info("Shutting down...");
         communicateManager.shutdown();
         closeDatabase();
-        void pluginServer.stop(0);
+        void addonServer.stop(0);
       };
       process.on("SIGINT", shutdown);
       process.on("SIGTERM", shutdown);
@@ -185,4 +181,4 @@ const pluginServer = createPluginBackendServer({
   },
 });
 
-void pluginServer.start();
+void addonServer.start();

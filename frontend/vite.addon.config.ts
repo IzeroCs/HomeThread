@@ -1,6 +1,6 @@
 /**
  * Lib build for Namorix Desktop: single ES module + one CSS file.
- * Run: npm run build:plugin | npm run build:plugin:watch
+ * Run: npm run build:addon | npm run build:addon:watch
  */
 import { defineConfig, type Plugin } from "vite";
 import { readFileSync } from "fs";
@@ -17,11 +17,11 @@ const namorixCoreSharedSrc = resolve(
 );
 const namorixAssetsRoot = resolve(siblingReposRoot, "namorix-assets");
 
-/** Output: dashboard/dist/plugin/assets/thread.js + thread.css */
-const outDir = resolve(__dirname, "../dist/plugin");
+/** Output: dist/addon/assets/thread.js + thread.css */
+const outDir = resolve(__dirname, "../dist/addon");
 
 /** Same idea as Desktop `coreExternalForBuild`: leave bare `@namorix/core*` + resolved src paths out of the bundle (importmap on host). */
-function pluginCoreExternal(id: string): boolean {
+function addonCoreExternal(id: string): boolean {
   const n = id.split("?")[0].replace(/\\/g, "/");
   if (/\.(scss|sass|css)$/.test(n)) return false;
   if (id === "@namorix/core/styles" || id.startsWith("@namorix/core/styles/")) {
@@ -105,7 +105,7 @@ export default defineConfig({
       fileName: "assets/thread",
     },
     rollupOptions: {
-      external: pluginCoreExternal,
+      external: addonCoreExternal,
       output: {
         /** Prefer one CSS file; other emitted assets keep hashed names */
         assetFileNames: (assetInfo) => {

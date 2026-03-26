@@ -53,11 +53,11 @@ Console đã bỏ. Commissioner gộp vào Nodes (modal Commission Node + Joiner
 
 Thiết bị **Thread-Node** (router/child/endpoint) gửi dữ liệu **trực tiếp tới backend** qua IP: **CoAP** (UDP 5683, IPv6), path **/device/** (ping, register/info, register/entity, update/info, update/entity, update/topology, update/state), payload **CBOR**. BR chỉ route IP. **GET /device/ping** nên gửi kèm query **?mac=** (16 ký tự hex) để backend cập nhật heartbeat (last_seen_at). Backend parse CBOR, lưu device/entity/topology/state vào SQLite (8 bảng, gồm device_topology_neighbor, device_health_br); có thể trả **restore state** CBOR trong response register/entity; không gửi lên frontend. **Tài liệu:** `documents/coap/device_payload_spec.md` (spec chính), `documents/coap/backend_discovery_srp.md` (SRP discovery), `documents/architecture/real_br_integration.md` (routing, troubleshooting).
 
-## Namorix Desktop (plugin / shell)
+## Namorix Desktop (addon / shell)
 
 Khi Thread chạy **trong shell** Namorix (không phải tab trình duyệt standalone):
 
-- Shell cấp JWT và **`window.nmxCore`**; plugin frontend chỉ gọi API Desktop/gateway — xem `namorix/documents/namorix-desktop-architecture.md` §5–8 (auth, gateway, plugin loading, `isInShell`).
+- Shell cấp JWT và **`window.nmxCore`**; addon frontend chỉ gọi API Desktop/gateway — xem `namorix/documents/namorix-desktop-architecture.md` §5–8 (auth, gateway, addon loading, `isInShell`).
 - Toast đã hỗ trợ dual mode (`window.nmxCore` → CustomEvent) — khớp hướng host render toast trong shell.
 - Việc **build lib-mode** (`thread.js` / manifest) và **conditional layout** (`nmx-thread-app`) là hạng mục **M3** trên Desktop; roadmap nằm trong spec Desktop và `namorix/memory-bank/`, không thay thế tài liệu CoAP/BR của Thread.
-- **CORS + core trùng tag:** Frontend Vite của Thread cho phép fallback CORS `origin: true` khi thiếu `DESKTOP_ORIGIN` (dev standalone không cần set thêm). Khi embed/plugin backend cần policy chặt hơn thì vẫn nên set `DESKTOP_ORIGIN` đúng origin Desktop. `@namorix/core` dùng `defineCustomElementOnce` (0.9.2+) để không crash khi shell đã đăng ký `nmx-sidebar` và các tag chrome khác trước plugin.
+- **CORS + core trùng tag:** Frontend Vite của Thread cho phép fallback CORS `origin: true` khi thiếu `DESKTOP_ORIGIN` (dev standalone không cần set thêm). Khi embed/addon backend cần policy chặt hơn thì vẫn nên set `DESKTOP_ORIGIN` đúng origin Desktop. `@namorix/core` dùng `defineCustomElementOnce` (0.9.2+) để không crash khi shell đã đăng ký `nmx-sidebar` và các tag chrome khác trước addon.

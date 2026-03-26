@@ -1,5 +1,5 @@
 import {
-  createPluginStore,
+  createAddonStore,
   type BaseRootState,
   wsConnectionReducer,
   type WsConnectionState,
@@ -25,7 +25,7 @@ export type RootState = BaseRootState & {
   appBar: AppBarState;
 };
 
-export const store = createPluginStore<RootState>({
+export const store = createAddonStore<RootState>({
   reducer: {
     ws: wsConnectionReducer,
     br: brReducer,

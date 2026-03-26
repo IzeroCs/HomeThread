@@ -1,6 +1,6 @@
 # Namorix Thread
 
-Monorepo cho Thread dashboard/plugin gồm:
+Monorepo cho Thread dashboard/addon gồm:
 
 - `backend/` — Node.js + TCP frame protocol + CoAP ingest
 - `frontend/` — Lit + Vite
@@ -10,7 +10,7 @@ Monorepo cho Thread dashboard/plugin gồm:
 
 | Biến | Mặc định | Ý nghĩa |
 |------|----------|---------|
-| `PORT` | `4000` | Backend Thread (API, plugin static, Socket.io) |
+| `PORT` | `4000` | Backend Thread (API, addon static, Socket.io) |
 | `THREAD_VITE_PORT` | `5180` | Vite dashboard (tránh đụng Desktop `5173` khi chạy cả hai) |
 | `DESKTOP_ORIGIN` | `http://localhost:5173` | Origin shell Namorix Desktop (CORS); phải khớp `namorix/.env` |
 
@@ -31,8 +31,8 @@ Chạy riêng:
 Build:
 
 - `npm run build`
-- `npm run build:plugin`
-- `npm run build:plugin:watch`
+- `npm run build:addon`
+- `npm run build:addon:watch`
 
 ## Tài liệu
 

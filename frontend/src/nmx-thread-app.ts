@@ -81,16 +81,16 @@ export class NmxThreadApp extends AppBaseElement {
         const r = await fetch("/api/desktop-bridge-config", { credentials: "include" });
         if (r.ok) {
           const cfg = (await r.json()) as {
-            pluginId?: string;
+            addonId?: string;
             registrationSecret?: string;
             socketPath?: string;
           };
-          if (cfg.pluginId && cfg.registrationSecret) {
+          if (cfg.addonId && cfg.registrationSecret) {
             startWsBridge(store, {
               url: window.location.origin,
-              path: cfg.socketPath || "/namorix-plugin-ws",
+              path: cfg.socketPath || "/namorix-addon-ws",
               auth: { secret: cfg.registrationSecret },
-              query: { pluginId: cfg.pluginId },
+              query: { addonId: cfg.addonId },
               transports: ["websocket", "polling"],
             });
             return;
@@ -101,7 +101,7 @@ export class NmxThreadApp extends AppBaseElement {
       }
     }
 
-    const base = this.getAttribute("data-plugin-base-url")?.trim();
+    const base = this.getAttribute("data-addon-base-url")?.trim();
     startWsBridge(store, base ? { url: base } : undefined);
   }
 
