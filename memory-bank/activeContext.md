@@ -25,6 +25,39 @@ Giao tiếp BR ↔ backend theo hướng **notify-first**: Thread-Host push `CMD
 
 ## Recent Significant Changes
 
+### WS-only full control plane (big-bang breaking)
+- Thread backend bỏ HTTP register/sync loop, chuyển sang control WS events `register:request/register:ack` và `manifestSync:request/manifestSync:ack`.
+- Frontend Thread bỏ bootstrap `GET /api/desktop-bridge-config`; runtime WS khởi tạo **direct** tới addon backend (`data-addon-base-url` do shell inject), không qua Desktop runtime relay.
+- Desktop host addon-plane HTTP paths giờ trả explicit breaking rejection (`410`) để chặn hybrid behavior.
+
+### Direct runtime finalized (Desktop relay removed)
+- Desktop không còn mount runtime relay `/namorix-addon-ws`.
+- Frontend Thread khi chạy trong shell đọc `data-addon-base-url` và mở Socket.IO trực tiếp đến addon backend origin.
+- Control-plane vẫn realtime qua `/namorix-addon-control-ws`; policy block/revoke tiếp tục do Desktop authority phát xuống addon backend.
+
+### Level-3 control-plane (breaking, realtime Desktop policy)
+- Shared contract mới trong `@namorix/core-shared`: `backend-control-ws.ts` (protocol version, typed events, lifecycle states, reason codes).
+- Desktop backend mount control gateway path `/namorix-addon-control-ws` và push lifecycle theo admin transitions (`approved/blocked/rejected`).
+- Policy cứng control channel:
+  - `max_control_connections_per_addonId = 5`
+  - defensive limit theo IP
+  - uniqueness `addonId + instanceId` (connection mới thay connection cũ)
+  - `identify_timeout_ms` + heartbeat timeout để dọn zombie sockets
+- Thread backend migrate sang reusable SDK trong `@namorix/core-backend`:
+  - `createAddonControlClient`
+  - `AddonControlStateService`
+  - `createAddonControlAllowRequestGuard`
+  - nhận lifecycle realtime từ Desktop
+  - phát state ra frontend qua WS event `addon:controlState`
+  - deny runtime socket handshake khi lifecycle không phải `approved`
+- Frontend Thread dùng control slice/ws helper từ `@namorix/core`:
+  - `addonControlReducer` / `addonControlActions`
+  - `bindAddonControlWsEvent`
+  - không giữ local duplicate slice/control handler trong repo Thread
+- Frontend Thread giữ UX hard-state:
+  - render waiting/blocked state theo lifecycle control-plane
+  - khi `blocked/revoked`: set connect error rõ ràng + stop WS bridge reconnect loop
+
 ### Product rename plugin → addon (2.34.0)
 - Đồng bộ với Desktop **0.9.29**: `createAddonBackendServer`, `addon-secret` / `data/.addon-secrets`, HTTP `/api/addons/register-request`, WS `/namorix-addon-ws` + `query.addonId`, shell events `shell:addons` / `shell:addonRegistry:*`, build `npm run build:addon` + `dist/addon`. Không giữ alias tên cũ.
 
@@ -49,13 +82,10 @@ Giao tiếp BR ↔ backend theo hướng **notify-first**: Thread-Host push `CMD
 - `backend/src/index.ts` của Thread refactor aggressive sang dùng SDK; file chỉ còn phần resolve env/manifest/public base URL + bootstrap domain runtime (Socket.IO/BrManager/CoAP) qua hooks.
 - API contract giữ nguyên path và shape cho `GET /health`, `GET /api/desktop-registration-status`, và payload đăng ký vẫn có `registrationSecret`.
 
-### Desktop embed WS fix + manifest migration + security notes (2.33.0)
-- Frontend `nmx-thread-app` thêm logic tách 2 mode:
-  - **In-shell:** fetch `GET /api/desktop-bridge-config`, connect WS tới `window.location.origin` qua `/namorix-addon-ws` với `auth.secret` + `query.addonId`.
-  - **Standalone:** giữ kết nối trực tiếp backend Thread (`/socket.io`).
-- Backend `index.ts` mount route `GET /api/desktop-bridge-config` và manifest đổi `element` sang `nmx-thread-main` (frontend entry + index.html đồng bộ cùng tag mới).
+### Desktop embed WS fix + manifest migration + security notes (2.33.0, historical)
+- Frontend từng dùng `GET /api/desktop-bridge-config` + Desktop runtime gateway.
+- Flow này đã được thay thế hoàn toàn bởi direct runtime ở các mốc mới hơn.
 - Backend logger migration sang `@namorix/core-backend`, bỏ wrapper `desktop-origin.ts`; README/techContext thêm cảnh báo rõ Socket.IO backend hiện chưa có auth end-user (chỉ an toàn trong trusted LAN).
-- TS strict fix: route `/api/desktop-bridge-config` khai báo type `Request/Response` tường minh để không còn implicit `any` trong IDE diagnostics.
 
 ### Core-shared dev alignment (workspace)
 - Theo host repo `namorix`, `@namorix/core-shared` đã chuyển sang package exports src-based (`core/shared/src/index.ts`), giúp frontend/backend trong workspace không phụ thuộc `dist` stale khi thêm shared types.
@@ -96,9 +126,9 @@ Giao tiếp BR ↔ backend theo hướng **notify-first**: Thread-Host push `CMD
 - **npm:** Bỏ dependency `file:` `@namorix/core` ở frontend (tránh xung đột workspace + alias đã đủ cho dev). Root `namorix-thread/package.json` có `version` để `npm install` ổn định.
 
 ### Thread frontend Vite CORS + scripts (unreleased)
-- `frontend/vite.config.ts`: `server.cors.origin` đổi thành `process.env.DESKTOP_ORIGIN ?? true` để dev standalone không cần set `DESKTOP_ORIGIN`.
-- `frontend/package.json`: bỏ script `dev:shell`; luồng chuẩn dùng `dev`/`dev:frontend` cho cả standalone và shell-oriented frontend dev.
-- `README.md` (root): cập nhật hướng dẫn chạy frontend tương ứng (không yêu cầu `dev:shell` nữa).
+- `frontend/vite.config.ts`: CORS theo `DESKTOP_ORIGIN`; runtime WS không còn proxy qua Desktop gateway.
+- `frontend/package.json`: bỏ script `dev:shell`; luồng chuẩn dùng `dev`/`dev:frontend`.
+- `README.md` (root): cập nhật hướng dẫn chạy frontend tương ứng theo gateway runtime.
 
 ### Namorix Core: Toast dual mode + createWsBridge + form/button nmx- prefix (unreleased)
 - **Toast (core):** Slice `toast` (ToastType, Toast, toastReducer, toastActions), component `<nmx-toast>`, `initToast({ store, selectToasts, getTitle? })` và `showToast(type, message, duration)`. **Dual mode:** Nếu `window.nmxCore` → dispatch `CustomEvent("nmx-action", { detail: { action: "show-toast", payload } })`; ngược lại dispatch vào store app. Addon gọi `showToast()` từ `@namorix/core`, mount `<nmx-toast>` khi standalone.

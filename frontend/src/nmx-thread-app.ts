@@ -5,10 +5,10 @@ import type { NavPage } from "./shared/types/nav.type";
 import { AppBaseElement } from "@/core/app-base-element";
 import { startWsBridge } from "@/core/ws/ws-bridge";
 import { store } from "@/store/store";
-import { selectWsConnected } from "@/store/selectors";
+import { selectControlState, selectWsConnected } from "@/store/selectors";
 import { NmxPageBuilder } from "@namorix/core/components";
 import { ShellWindowEvent, type NmxCoreApi } from "@namorix/core/shell-api";
-import { setLocale } from "@namorix/core/store";
+import { setLocale, wsConnectionActions } from "@namorix/core/store";
 import { normalizeLocale } from "@namorix/core/i18n";
 import { t } from "@/core/i18n/i18n";
 
@@ -32,6 +32,8 @@ export class NmxThreadApp extends AppBaseElement {
 
   private readonly wsConnected = this.createStoreSlice(
     (s) => selectWsConnected(s), Object.is);
+  private readonly controlState = this.createStoreSlice(
+    (s) => selectControlState(s), Object.is);
 
   override connectedCallback(): void {
     super.connectedCallback();
@@ -69,37 +71,34 @@ export class NmxThreadApp extends AppBaseElement {
     return Boolean(window.nmxCore && this.getAttribute("nmx-window-id"));
   }
 
+  private _resolveAddonWsUrl(): string {
+    const rawBaseUrl = this.getAttribute("data-addon-base-url")?.trim() ?? "";
+    if (!rawBaseUrl) return "";
+    try {
+      return new URL(rawBaseUrl, window.location.origin).origin;
+    } catch {
+      return "";
+    }
+  }
+
   private async _startWsBridgeOnce(): Promise<void> {
     if (NmxThreadApp._wsBridgeStarted) return;
-    NmxThreadApp._wsBridgeStarted = true;
 
-    if (this._isInShell()) {
-      try {
-        const r = await fetch("/api/desktop-bridge-config", { credentials: "include" });
-        if (r.ok) {
-          const cfg = (await r.json()) as {
-            addonId?: string;
-            registrationSecret?: string;
-            socketPath?: string;
-          };
-          if (cfg.addonId && cfg.registrationSecret) {
-            startWsBridge(store, {
-              url: window.location.origin,
-              path: cfg.socketPath || "/namorix-addon-ws",
-              auth: { secret: cfg.registrationSecret },
-              query: { addonId: cfg.addonId },
-              transports: ["websocket", "polling"],
-            });
-            return;
-          }
-        }
-      } catch {
-        // Fall through to standalone mode.
-      }
+    if (!this._isInShell()) {
+      store.dispatch(wsConnectionActions.connectError("Desktop shell context is required"));
+      return;
     }
 
-    const base = this.getAttribute("data-addon-base-url")?.trim();
-    startWsBridge(store, base ? { url: base } : undefined);
+    const addonWsUrl = this._resolveAddonWsUrl();
+    if (!addonWsUrl) {
+      store.dispatch(wsConnectionActions.connectError("Addon backend URL is unavailable"));
+      return;
+    }
+    NmxThreadApp._wsBridgeStarted = true;
+    startWsBridge(store, {
+      url: addonWsUrl,
+      transports: ["websocket", "polling"],
+    });
   }
 
   private _handleNavigate = (e: CustomEvent<NavPage>) => {
@@ -119,18 +118,24 @@ export class NmxThreadApp extends AppBaseElement {
 
   render() {
     const wsConnected = this.wsConnected.value;
+    const controlState = this.controlState.value;
     const navGroups = this._buildNavGroups();
+    const blockedByPolicy =
+      controlState.lifecycle === "blocked" || controlState.lifecycle === "revoked";
+    const waitingSubtitle = blockedByPolicy
+      ? controlState.message || `Addon is ${controlState.lifecycle} by Desktop policy`
+      : t("waiting.subtitle");
 
     return html`
       <nmx-waiting
-        .open=${!wsConnected}
+        .open=${!wsConnected || blockedByPolicy}
         heading=${t("waiting.title")}
-        subtitle=${t("waiting.subtitle")}
+        subtitle=${waitingSubtitle}
         cardLabel=${t("waiting.card.label")}
         actionLabel=${t("common.actions.reload")}
       ></nmx-waiting>
 
-      ${wsConnected
+      ${wsConnected && !blockedByPolicy
         ? html`
             <div class="nmx-thread-app nmx-app-container-main">
               <nmx-sidebar

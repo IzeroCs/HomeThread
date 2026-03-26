@@ -15,7 +15,8 @@
     "db:generate": "npm run db:generate --workspace=backend"
   },
   "dependencies": {
-    "@namorix/core-backend": "file:../namorix/core/backend"
+    "@namorix/core-backend": "file:../namorix/core/backend",
+    "@namorix/core-shared": "file:../namorix/core/shared"
   },
   "devDependencies": {
     "concurrently": "^9.1.0"

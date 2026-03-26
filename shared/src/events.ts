@@ -68,6 +68,9 @@ export const EVENTS = {
 
   // Backend system info (IPv4/IPv6) for Status → System section
   SYSTEM_INFO: "system:info",
+
+  // Addon control-plane lifecycle state from Desktop backend
+  ADDON_CONTROL_STATE: "addon:controlState",
 } as const;
 
 export type EventName = (typeof EVENTS)[keyof typeof EVENTS];

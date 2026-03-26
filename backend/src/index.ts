@@ -1,11 +1,11 @@
 /**
  * Backend: WebSocket server cho OpenThread qua TCP (frame protocol).
- * HTTP: Express — static addon bundle (Namorix Desktop), manifest.json, health.
+ * HTTP: Express — static addon bundle only.
  * Khởi tạo giao tiếp (BrManager) ở đây; WebSocketServer chỉ emit dữ liệu tới frontend.
  */
 
 import path from "path";
-import type { Request, Response } from "express";
+import { randomUUID } from "node:crypto";
 import { ENV } from "./env";
 import fs from "fs";
 import { Server } from "socket.io";
@@ -17,11 +17,15 @@ import { WebSocketServer } from "@websocket/websocket.server";
 import { startCoapDeviceServer as startDeviceCoapServer } from "@coap/device/device-coap.server";
 import { getAddonRegistrationSecret } from "./addon-secret";
 import {
+  AddonControlStateService,
+  createAddonControlAllowRequestGuard,
+  createAddonControlClient,
   createAddonBackendServer,
   logger,
-  type AddonManifestSyncRequestBody,
   type RegistrationStateSnapshot,
 } from "@namorix/core-backend";
+import { BackendControlReasonCode } from "@namorix/core-shared";
+import { EVENTS } from "shared/src/events";
 
 const serverLog = logger.child("Server");
 const registerLog = logger.child("AddonRegister");
@@ -38,7 +42,25 @@ const desktopOrigin = ENV.DESKTOP_ORIGIN;
 const addonId = "thread";
 const desktopBackendUrl = ENV.DESKTOP_BACKEND_URL;
 const addonRegistrationSecret = getAddonRegistrationSecret();
+const controlStateService = new AddonControlStateService();
+const controlClientInstanceId = `${addonId}-${process.pid}-${randomUUID()}`;
 let lastManifestSyncSignature = "";
+let registrationStateRef: RegistrationStateSnapshot | null = null;
+let controlClientRef:
+  | ReturnType<typeof createAddonControlClient>
+  | null = null;
+let registerRetryTimer: ReturnType<typeof setTimeout> | null = null;
+let isWsRegistered = false;
+let latestRegistrationState: RegistrationStateSnapshot = {
+  status: "pending",
+  attempts: 0,
+  lastError: null,
+  lastHttpStatus: null,
+  registeredAt: null,
+  stopped: false,
+  controlLifecycle: controlStateService.getSnapshot().lifecycle,
+  controlReasonCode: controlStateService.getSnapshot().reasonCode,
+};
 
 getDatabase();
 runMigrations();
@@ -68,7 +90,6 @@ function loadAddonManifest(): Record<string, unknown> {
     defaultWindowSize: { width: 1100, height: 700 },
     minWindowSize: { width: 800, height: 500 },
     singleInstance: false,
-    health: "/health",
     permissions: ["thread:read", "thread:write"],
     logEnabled: true,
   };
@@ -80,11 +101,9 @@ function resolveAddonPublicBaseUrl(): string {
   return `http://localhost:${PORT}`;
 }
 
-async function syncApprovedManifest(): Promise<void> {
-  const desktop = desktopBackendUrl.trim().replace(/\/+$/, "");
-  if (!desktop) return;
-
-  const body: AddonManifestSyncRequestBody = {
+function buildManifestSyncBody() {
+  const body = {
+    addonId,
     baseUrl: resolveAddonPublicBaseUrl(),
     manifest: loadAddonManifest(),
     registrationSecret: addonRegistrationSecret,
@@ -93,19 +112,20 @@ async function syncApprovedManifest(): Promise<void> {
     baseUrl: body.baseUrl,
     manifest: body.manifest,
   });
-  if (signature === lastManifestSyncSignature) return;
+  return { body, signature };
+}
 
-  const response = await fetch(`${desktop}/api/addons/manifest-sync/${addonId}`, {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify(body),
-  });
-  if (!response.ok) {
-    const text = await response.text().catch(() => "");
-    throw new Error(`manifest-sync HTTP ${response.status}${text ? `: ${text}` : ""}`);
-  }
-
-  lastManifestSyncSignature = signature;
+function scheduleRegisterViaWs(delayMs: number): void {
+  if (registerRetryTimer) clearTimeout(registerRetryTimer);
+  registerRetryTimer = setTimeout(() => {
+    if (isWsRegistered) return;
+    controlClientRef?.requestRegister({
+      id: addonId,
+      baseUrl: resolveAddonPublicBaseUrl(),
+      manifest: loadAddonManifest(),
+      registrationSecret: addonRegistrationSecret,
+    });
+  }, delayMs);
 }
 
 const addonServer = createAddonBackendServer({
@@ -131,25 +151,13 @@ const addonServer = createAddonBackendServer({
     },
   },
   onRegistrationStateChange: (nextState: RegistrationStateSnapshot) => {
+    registrationStateRef = nextState;
+    nextState.controlLifecycle = controlStateService.getSnapshot().lifecycle;
+    nextState.controlReasonCode = controlStateService.getSnapshot().reasonCode;
+    latestRegistrationState = { ...nextState };
     if (nextState.status !== "registered") return;
-    void syncApprovedManifest()
-      .then(() => {
-        registerLog.info("manifest-sync sent successfully");
-      })
-      .catch((error: unknown) => {
-        const message = error instanceof Error ? error.message : String(error);
-        registerLog.warn(`manifest-sync failed: ${message}`);
-      });
   },
-  mountDomainRoutes: (app) => {
-    app.get("/api/desktop-bridge-config", (_req: Request, res: Response) => {
-      res.json({
-        addonId,
-        registrationSecret: addonRegistrationSecret,
-        socketPath: "/namorix-addon-ws",
-      });
-    });
-  },
+  mountDomainRoutes: () => {},
   hooks: {
     onAfterListen: ({ httpServer }) => {
       httpServer.maxConnections = 50;
@@ -163,7 +171,7 @@ const addonServer = createAddonBackendServer({
         maxHttpBufferSize: 100e3,
         allowEIO3: false,
         transports: ["websocket", "polling"],
-        allowRequest: (_req, callback) => callback(null, true),
+        allowRequest: createAddonControlAllowRequestGuard(controlStateService),
       });
 
       const communicateManager = new BrManager(
@@ -173,6 +181,74 @@ const addonServer = createAddonBackendServer({
       );
 
       void new WebSocketServer(io, brConnectionConfigService, appSettingsService, communicateManager);
+      io.on("connection", (socket) => {
+        socket.emit(EVENTS.ADDON_CONTROL_STATE, controlStateService.getSnapshot());
+      });
+      const controlClient = createAddonControlClient({
+        desktopBackendUrl,
+        addonId,
+        registrationSecret: addonRegistrationSecret,
+        instanceId: controlClientInstanceId,
+        stateService: controlStateService,
+        onLifecycle: (payload) => {
+          if (registrationStateRef) {
+            registrationStateRef.controlLifecycle = payload.lifecycle;
+            registrationStateRef.controlReasonCode = payload.reasonCode;
+          }
+          latestRegistrationState = {
+            ...latestRegistrationState,
+            controlLifecycle: payload.lifecycle,
+            controlReasonCode: payload.reasonCode,
+          };
+          io.emit(EVENTS.ADDON_CONTROL_STATE, controlStateService.getSnapshot());
+          if (payload.lifecycle === "approved") {
+            const { body, signature } = buildManifestSyncBody();
+            if (signature !== lastManifestSyncSignature) {
+              controlClient.requestManifestSync(body);
+            }
+          }
+          if (!controlStateService.isRuntimeAllowed()) {
+            io.disconnectSockets(true);
+          }
+        },
+        onRegisterAck: (payload) => {
+          if (payload.status === "pending") {
+            latestRegistrationState = {
+              ...latestRegistrationState,
+              status: "pending",
+              attempts: latestRegistrationState.attempts + 1,
+              lastHttpStatus: null,
+              lastError: null,
+            };
+            scheduleRegisterViaWs(2000);
+            return;
+          }
+          isWsRegistered = true;
+          latestRegistrationState = {
+            ...latestRegistrationState,
+            status: "registered",
+            registeredAt: new Date().toISOString(),
+            stopped: true,
+            lastError: null,
+            controlReasonCode: BackendControlReasonCode.AddonApproved,
+          };
+          if (registrationStateRef) Object.assign(registrationStateRef, latestRegistrationState);
+          const { body, signature } = buildManifestSyncBody();
+          if (signature !== lastManifestSyncSignature) {
+            controlClient.requestManifestSync(body);
+          }
+        },
+        onManifestSyncAck: (payload) => {
+          if (payload.status === "approved" && payload.updated) {
+            const { signature } = buildManifestSyncBody();
+            lastManifestSyncSignature = signature;
+            registerLog.info("manifest-sync sent successfully via WS");
+          }
+        },
+      });
+      controlClientRef = controlClient;
+      controlClient.start();
+      scheduleRegisterViaWs(250);
       startDeviceCoapServer();
 
       serverLog.info("=".repeat(50));
@@ -195,6 +271,8 @@ const addonServer = createAddonBackendServer({
 
       const shutdown = (): void => {
         serverLog.info("Shutting down...");
+        controlClient.stop();
+        if (registerRetryTimer) clearTimeout(registerRetryTimer);
         communicateManager.shutdown();
         closeDatabase();
         void addonServer.stop(0);

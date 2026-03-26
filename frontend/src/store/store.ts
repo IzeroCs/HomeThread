@@ -1,4 +1,6 @@
 import {
+  addonControlReducer,
+  type AddonControlState,
   createAddonStore,
   type BaseRootState,
   wsConnectionReducer,
@@ -21,6 +23,7 @@ export type RootState = BaseRootState & {
   ot: OtState;
   tables: TablesState;
   system: SystemState;
+  control: AddonControlState;
   toast: ToastState;
   appBar: AppBarState;
 };
@@ -33,6 +36,7 @@ export const store = createAddonStore<RootState>({
     ot: otReducer,
     tables: tablesReducer,
     system: systemReducer,
+    control: addonControlReducer,
     toast: toastReducer,
     appBar: appBarReducer,
   } as any,

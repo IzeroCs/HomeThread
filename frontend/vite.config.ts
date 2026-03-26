@@ -95,12 +95,6 @@ export default defineConfig(({ mode }) => {
         target: threadBackendTarget,
         changeOrigin: true,
       },
-      "/socket.io": {
-        target: threadBackendTarget,
-        changeOrigin: true,
-        ws: true,
-        secure: false,
-      },
     },
   },
 };

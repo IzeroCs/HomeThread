@@ -10,7 +10,7 @@ import { tablesActions } from "@/store/slices/tables.slice";
 import { systemActions, type SystemInfo } from "@/store/slices/system.slice";
 import { setLocale } from "@namorix/core/store";
 import { normalizeLocale } from "@namorix/core/i18n";
-import { createWsBridge } from "@namorix/core/ws";
+import { bindAddonControlWsEvent, createWsBridge } from "@namorix/core/ws";
 
 import type {
   BrConnectionConfigFromBackend,
@@ -22,7 +22,7 @@ import type {
 
 const WS_URL_DEFAULT =
   import.meta.env?.VITE_WS_URL ??
-  (typeof window !== "undefined" ? window.location.origin : "http://localhost:4000");
+  (typeof window !== "undefined" ? window.location.origin : "");
 
 let bridge: ReturnType<typeof createWsBridge<RootState>> | null = null;
 let socket: Socket | null = null;
@@ -39,9 +39,13 @@ export type WsBridgeStartOptions = {
   query?: Record<string, string>;
 };
 
-/** Supports both standalone (`/socket.io`) and in-shell (`/namorix-addon-ws`) WebSocket wiring. */
+/** Runtime connections go directly to addon backend Socket.IO endpoint. */
 export function startWsBridge(store: Store<RootState>, options?: WsBridgeStartOptions): void {
   const wsUrl = options?.url?.trim() || WS_URL_DEFAULT;
+  if (!wsUrl) {
+    store.dispatch(wsConnectionActions.connectError("Addon backend URL is unavailable"));
+    return;
+  }
   if (!bridge) {
     bridge = createWsBridge<RootState>({
       store,
@@ -138,6 +142,11 @@ export function startWsBridge(store: Store<RootState>, options?: WsBridgeStartOp
       .on(EVENTS.SYSTEM_INFO, (store, data) =>
         store.dispatch(systemActions.systemInfoReceived((data ?? null) as SystemInfo)),
       );
+    bindAddonControlWsEvent(bridge as any, EVENTS.ADDON_CONTROL_STATE, {
+      onBlockedOrRevoked: () => {
+        stopWsBridge({ close: true });
+      },
+    });
   }
 
   socket = bridge.start();

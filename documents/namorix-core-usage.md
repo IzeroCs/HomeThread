@@ -70,6 +70,8 @@ const { t } = initI18n({
 
 Core cung cấp **createWsBridge** — builder khởi tạo socket, lifecycle và đăng ký domain events. Addon chỉ cấu hình callbacks và mapping event → dispatch.
 
+Trong repo `namorix-thread`, runtime policy hiện tại là **direct runtime**: frontend addon đọc `data-addon-base-url` do shell inject và kết nối trực tiếp addon backend Socket.IO (Desktop không relay runtime WS).
+
 ### Cấu hình và start
 
 ```ts

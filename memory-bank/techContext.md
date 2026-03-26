@@ -84,8 +84,10 @@ Assets usage (frontend):
 - **Cửa sổ shell:** Host `namorix` mount root addon (tag từ `manifest.element`) qua property **`addonBody`** trên `nmx-window` — light DOM không dùng `<slot>` cho vùng body; xem `namorix/memory-bank/progress.md` **0.9.3**.
 - **Hợp đồng shell (core):** `@namorix/core/shell-api` — `AddonRuntimeStatus`, `ShellWindowEvent` (tên `CustomEvent` shell), `SHELL_APP_EMIT_PREFIX`; type `NmxCoreApi` gồm `onLocaleChange` (đăng ký đổi locale theo shell). Addon không cần hardcode chuỗi `nmx-shell-locale-changed` nếu dùng API trên.
 - **Gateway → addon backend:** Proxy `/api/addons/:addonId/*` forward header **`Authorization`** chuẩn; API addon (HTTP) nên đọc `Authorization` / Bearer JWT — không phụ thuộc `x-forwarded-authorization`.
-- **WS security limitation (current):** Thread Socket.IO backend currently has no end-user auth gate (`allowRequest` accepts connections). Keep backend port in trusted LAN only; if deploying broader, add authentication (Desktop-verified JWT or service secret).
-- Dev standalone addon: spec mô tả redirect Desktop + query `nmx_token` (§5.5) — triển khai theo milestone **M3** trên repo `namorix`; memory bank host: `namorix/memory-bank/`.
+- **WS security limitation (current):** Thread Socket.IO backend currently has no end-user auth gate (`allowRequest` accepts connections). Runtime UI nay đi direct vào addon backend, nên backend port addon chỉ nên mở trong trusted LAN/VPN hoặc cần bổ sung security middleware chung.
+- Runtime policy (current): addon frontend runtime đi direct tới addon backend Socket.IO; addon control/register/sync đi qua control WS `/namorix-addon-control-ws`. HTTP addon-plane (`/api/addons/register-request`, `/api/addons/manifest-sync`, `/api/desktop-bridge-config`) đã bị loại khỏi flow chuẩn và Desktop không còn runtime WS relay.
+- **Level-3 control-plane (breaking):** Desktop backend có thêm WS control gateway `/namorix-addon-control-ws` cho backend-to-backend signaling (`control:identify`, `control:hello`, `control:lifecycle`, `control:heartbeat`, `control:error`), hợp đồng typed ở `@namorix/core-shared`. Thread backend mở control client realtime (socket.io-client), giữ lifecycle snapshot local (`approved/blocked/rejected/...`) và chỉ cho runtime Socket.IO handshake khi lifecycle là `approved`.
+- **Reusable SDK (current):** addon-side control client/state/allowRequest guard được dùng từ `@namorix/core-backend` thay vì file local riêng của Thread; frontend control slice/ws glue dùng `@namorix/core/store` và `@namorix/core/ws`.
 - **Backend Thread vs Desktop:** `namorix/backend` là **host** (auth, registry, gateway). Backend trong repo này là **addon** (OpenThread/CoAP/WS domain + Express mỏng cho static/manifest). **Không** có khối logic copy từ Desktop — trùng chủ yếu **stack** và **hợp đồng** tích hợp. Viết addon mới: ưu tiên đọc spec + `namorix/documents/thread-desktop-addon-integration.md`; **không** bắt buộc SDK trong core (xem `namorix/memory-bank/systemPatterns.md`).
 
 ### Shared Package (`shared/`)
@@ -179,7 +181,7 @@ SQLite (`better-sqlite3`, WAL mode). Migrations:
 ## Configuration
 
 - **Backend**: `.env` — PORT; BACKEND_IPV6 (tuy chon, cho SRP register; neu khong set thi tu lay IPv6 qua getPreferredBackendIPv6()). Cau hinh BR (brHost, brPort) luu SQLite qua Settings.
-- **Frontend**: `vite.config.ts` proxy `/api` + `/socket.io` → backend. Override WS URL bang `VITE_WS_URL`
+- **Frontend**: `vite.config.ts` proxy `/api` → Thread backend. Runtime WS dùng direct Socket.IO theo `data-addon-base-url` khi chạy trong shell.
 
 ## Path Aliases
 
