@@ -1,30 +1,34 @@
 # Backend — Docker
 
-Dockerfile và docker-compose nằm ở **thư mục gốc `namorix-thread/`**. Dữ liệu SQLite + migration nằm ở **`namorix-thread/data/`** (volume `./data:/app/data` khi chạy compose từ root repo).
+Docker assets nằm ở **thư mục gốc `namorix-thread/`**:
 
-## Chạy nhanh (từ root `namorix-thread/`)
+- `Dockerfile` (multi-target: `prod`, `dev`)
+- `compose.dev.yml` (dev container)
+
+Dữ liệu SQLite + migration nằm ở `namorix-thread/data/`.
+
+## Chạy dev container (từ root `namorix-thread/`)
 
 ```bash
 cd /path/to/namorix-thread
-docker compose up --build
+docker compose -f compose.dev.yml up --build
 ```
 
-- WebSocket/HTTP: http://localhost:3000
+- WebSocket/HTTP: http://localhost:4000
 - CoAP: UDP 5683 (Thread-Node gửi register/ping tới đây)
 
 ## Kết nối BR khi chạy Docker
 
-**mDNS không dùng được trong container:** Dù dùng `network_mode: host` hay bind resolv/nsswitch, resolve `Thread-Host.local` trong container thường thất bại. **Khuyến nghị:** Cấu hình BR connection bằng **IP** (vd. `192.168.31.3:5000`) trong Settings. Migration mặc định 192.168.31.3:5000 khi dùng Docker. Tính năng "Tìm BR" (sau này) có thể làm bằng **quét dải IP** (TCP port 5000) thay vì mDNS, hoạt động ổn trong Docker.
+**mDNS thường không ổn trong container.** Khuyến nghị cấu hình BR bằng **IPv4** (ví dụ `192.168.31.3:5000`) trong Settings. Tính năng "tìm BR" nên ưu tiên scan dải IP/TCP 5000.
 
 ## Reply từ backend → Thread-Node
 
-`docker-compose.yml` dùng **network_mode: host** — container dùng chung **network namespace** (và bảng routing) với host. Backend **không cần đọc hay cấu hình route trong code**: khi gửi CoAP response về node (rsinfo), kernel tự dùng route của host. Chỉ cần host đã có route tới prefix Thread (học qua RA từ BR hoặc thêm tay). *(Tùy chọn sau: API đọc route `ip -6 route` hoặc `/proc/net/ipv6_route` để hiển thị/kiểm tra.)*
+Compose dev hiện tại publish `4000:4000`; backend vẫn gửi CoAP response theo route của host stack. Nếu node không nhận response, kiểm tra route IPv6 giữa host và prefix Thread theo tài liệu kiến trúc.
 
-## Build riêng image
+## Build image production-like
 
 ```bash
-# Từ root namorix-thread/
 cd /path/to/namorix-thread
-docker build -f Dockerfile.backend -t namorix-thread-backend .
-docker run --rm -p 3000:3000 -p 5683:5683/udp namorix-thread-backend
+docker build --target prod -t namorix-thread:prod .
+docker run --rm -p 4000:4000 namorix-thread:prod
 ```

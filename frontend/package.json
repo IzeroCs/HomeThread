@@ -8,7 +8,13 @@
     "build": "tsc -b && vite build",
     "build:addon": "vite build --config vite.addon.config.ts",
     "build:addon:watch": "vite build --watch --config vite.addon.config.ts",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "lint": "eslint \"src/**/*.{ts,tsx}\"",
+    "lint:fix": "eslint \"src/**/*.{ts,tsx}\" --fix",
+    "lint:watch": "eslint \"src/**/*.{ts,tsx}\" --watch",
+    "lint:styles": "stylelint \"src/**/*.{scss,css}\"",
+    "lint:styles:fix": "stylelint \"src/**/*.{scss,css}\" --fix",
+    "lint:styles:watch": "stylelint \"src/**/*.{scss,css}\" --watch"
   },
   "dependencies": {
     "@reduxjs/toolkit": "^2.9.0",

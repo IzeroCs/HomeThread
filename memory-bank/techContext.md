@@ -53,6 +53,19 @@ Transport: TCP (net.Socket) to BR; CoAP (UDP 5683, udp6 listen [::]) from Thread
 | SCSS (sass) | ^1.83.0 | Styling |
 | socket.io-client | ^4.7.5 | WebSocket client |
 
+### Lint / style tooling
+
+| Tool | Scope | Mục tiêu |
+|---|---|---|
+| ESLint + TypeScript ESLint | `frontend/src`, `backend/src` | import order/grouping, `semi: always`, `indent: 2`, hygiene khi sửa file |
+| Stylelint (`stylelint-config-standard-scss`) | `frontend/src/**/*.{scss,css}` | thống nhất SCSS/CSS format + declaration semicolons |
+
+Scripts chính:
+
+- Root: `npm run lint`, `npm run lint:fix`
+- Frontend: `lint`, `lint:fix`, `lint:watch`, `lint:styles`, `lint:styles:fix`, `lint:styles:watch`
+- Backend: `lint`, `lint:fix`, `lint:watch`
+
 Frontend: **AppBaseElement** (`core/AppBaseElement.ts`) extends **NmxStoreElement** (core): store qua `getStore()`, optional locale, `createStoreSlice()`, light DOM (kế thừa từ NmxBaseElement). Root: `index.html` mount `<nmx-main>` → nmx-app-container → **nmx-thread-app** (NmxThreadApp trong app.ts). **AppBar** qua Redux slice `appBar`; pages dispatch setAppBar/clearAppBar. i18n: `t(key, params?)` từ `core/i18n/`, locales trong `core/i18n/locales/`; locale trong store slice `i18n` (default `"en"`), set từ user settings bằng `setLocale` (không persist localStorage).
 
 Core/shared integration (frontend):
@@ -153,6 +166,8 @@ npm run dev:frontend  # vite
 # Build
 npm run build         # backend: tsc && tsc-alias (alias → relative trong dist/), rồi frontend
 ```
+
+`npm run dev` ở root hiện chạy song song backend/frontend/addon-watch và lint watchers (`eslint --watch` backend/frontend + `stylelint --watch` frontend) để báo lỗi style/import realtime.
 
 **Backend scripts (backend/package.json):**
 - `dev`: `tsx watch src/index.ts` — tsx tự đọc baseUrl/paths trong tsconfig, không cần tsconfig-paths.

@@ -4,7 +4,7 @@
   "version": "0.0.0",
   "description": "Namorix Thread monorepo (backend + frontend + shared)",
   "scripts": {
-    "dev": "concurrently -n backend,frontend,addon -c blue,green,magenta \"npm run dev --workspace=backend\" \"npm run dev --workspace=frontend\" \"npm run build:addon:watch --workspace=frontend\"",
+    "dev": "concurrently -n backend,frontend,addon,lint-be,lint-fe,lint-css -c blue,green,magenta,cyan,white,yellow \"npm run dev --workspace=backend\" \"npm run dev --workspace=frontend\" \"npm run build:addon:watch --workspace=frontend\" \"npm run lint:watch --workspace=backend\" \"npm run lint:watch --workspace=frontend\" \"npm run lint:styles:watch --workspace=frontend\"",
     "dev:backend": "npm run dev --workspace=backend",
     "dev:frontend": "npm run dev --workspace=frontend",
     "build": "npm run build --workspace=backend && npm run build --workspace=frontend",
@@ -12,14 +12,23 @@
     "build:addon:watch": "npm run build:addon:watch --workspace=frontend",
     "build:backend": "npm run build --workspace=backend",
     "build:frontend": "npm run build --workspace=frontend",
-    "db:generate": "npm run db:generate --workspace=backend"
+    "db:generate": "npm run db:generate --workspace=backend",
+    "lint": "npm run lint --workspace=frontend && npm run lint --workspace=backend && npm run lint:styles --workspace=frontend",
+    "lint:fix": "npm run lint:fix --workspace=frontend && npm run lint:fix --workspace=backend && npm run lint:styles:fix --workspace=frontend"
   },
   "dependencies": {
     "@namorix/core-backend": "file:../namorix/core/backend",
     "@namorix/core-shared": "file:../namorix/core/shared"
   },
   "devDependencies": {
-    "concurrently": "^9.1.0"
+    "@typescript-eslint/eslint-plugin": "^8.46.0",
+    "@typescript-eslint/parser": "^8.46.0",
+    "concurrently": "^9.1.0",
+    "eslint": "^9.37.0",
+    "eslint-import-resolver-typescript": "^4.4.4",
+    "eslint-plugin-import": "^2.32.0",
+    "stylelint": "^16.24.0",
+    "stylelint-config-standard-scss": "^16.0.0"
   },
   "workspaces": [
     "backend",

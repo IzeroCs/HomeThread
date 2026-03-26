@@ -10,6 +10,9 @@ Backend ổn định với BR qua TCP + frame protocol, CoAP device ingest, SRP 
 - Code Thread đã bỏ control-state slice/bridge và không còn gate `blockedByPolicy` từ control channel.
 - Docker image build dùng **một** `Dockerfile` multi-target (`prod`/`dev`), không còn `Dockerfile.dev`; compose dev build với `target: dev`.
 - Manifest image label đã rút gọn theo runtime fields đang dùng: `id`, `displayName`, `entry`, `styles`, `element`, `internalPort`, `defaultWindowSize`.
+- Docs/runtime contract đã sync lại theo current-state: không mô tả control/register WS như flow đang dùng; tài liệu tích hợp host tập trung vào shell events `shell:addon:*` + direct runtime Socket.IO.
+- Lint/style stack đã thêm ở root repo (`.eslintrc.cjs`, `stylelint.config.cjs`) + Cursor rule `lint-and-style.mdc`; scripts lint/fix/watch cho frontend/backend đã sẵn sàng.
+- `npm run dev` root hiện chạy kèm lint watchers để phát hiện lỗi style/import trong lúc phát triển.
 
 Frontend align với hệ “core/shared”:
 - **Spec Desktop (SoT):** `namorix/documents/namorix-desktop-architecture.md`; mục lục host: `namorix/documents/README.md`.
@@ -261,10 +264,10 @@ Giao tiếp BR ↔ backend theo hướng **notify-first**: Thread-Host push `CMD
 - **Version:** Subtitle Status lay tu `frontend/package.json` qua Vite `__APP_VERSION__`; dong bo voi progress.md (1.0.0).
 
 ### Docker backend (chay backend bang container)
-- **Vi tri:** Dockerfile va docker-compose o **thu muc goc** `namorix-thread/`: `Dockerfile.backend`, `docker-compose.yml`, `.dockerignore`.
-- **Cau hinh:** `network_mode: host` (dung chung bang route host — backend khong can doc route trong code). Volume `./data:/app/data` (SQLite + migrations ở `namorix-thread/data`).
-- **Default BR:** 192.168.31.3:5000. **mDNS trong Docker khong dung duoc**; khi Docker phai dung IP. "Tim BR" sau co the quet dai IP (TCP 5000).
-- **Chay:** `docker compose up --build`; container name `namorix-thread-backend`. Doc: `backend/README.docker.md`.
+- **Vi tri:** Docker assets o **thu muc goc** `namorix-thread/`: `Dockerfile` (multi-target `prod`/`dev`), `compose.dev.yml`, `.dockerignore`.
+- **Cau hinh dev:** compose map `4000:4000`, bind source code vao `/app`, target build `dev`.
+- **Default BR:** 192.168.31.3:5000. **mDNS trong Docker thuong khong on dinh**; khi Docker nen dung IP. "Tim BR" sau co the quet dai IP (TCP 5000).
+- **Chay dev:** `docker compose -f compose.dev.yml up --build`. Doc: `backend/README.docker.md`.
 
 ### BR connection (Settings)
 - **IPv4 khuyen nghi:** Nhieu BR (vd. ESP32-S3) chi listen TCP tren IPv4 (0.0.0.0:5000) → dung **IPv4** lam BR Host (vd. 192.168.31.3) tranh ECONNREFUSED.

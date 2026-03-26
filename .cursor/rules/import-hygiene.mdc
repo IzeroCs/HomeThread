@@ -1,0 +1,40 @@
+---
+description: Keep imports clean and alias-first in namorix-thread
+globs:
+  - "frontend/src/**/*.{ts,tsx}"
+  - "backend/src/**/*.ts"
+alwaysApply: true
+---
+# Import Hygiene (namorix-thread)
+
+Mục tiêu: đồng nhất style import và giảm relative path dài.
+
+## Import style (đẹp mắt, dễ scan)
+
+- Sắp xếp import theo nhóm, cách nhau 1 dòng trống:
+  1) Node/built-in
+  2) External packages
+  3) Alias nội bộ (`@...`)
+  4) Relative (`./...`)
+- Trong mỗi nhóm: sort alphabet tăng dần theo module specifier.
+- Dùng `import type` cho type-only imports khi có thể.
+- Nếu import list dài, xuống dòng rõ ràng để tránh dòng quá rối.
+
+## Frontend (`frontend/src`)
+
+- Ưu tiên alias theo repo (`@/*`, `@shared/*`, `@features/*`, ...).
+- Khi import từ core/assets sibling, ưu tiên alias đã cấu hình thay vì đường tương đối dài.
+- Không thêm import `../../` trở lên nếu alias tương đương tồn tại.
+
+## Backend (`backend/src`)
+
+- Ưu tiên alias backend đã khai báo trong `backend/tsconfig.json`.
+- Tránh tạo import parent-relative sâu khi có alias thay thế.
+
+## Chính sách khi sửa file
+
+- Bắt buộc: khi đã chạm file code, normalize import của file đó ngay trong cùng patch.
+- Nếu alias đã có, dùng alias-first.
+- Nếu alias chưa có cho module đó, giữ relative import an toàn và ghi rõ follow-up cần setup alias.
+- `./` cho cùng thư mục vẫn hợp lệ.
+- Hạn chế `../` nhiều tầng vì gây bẩn mắt và khó maintain.

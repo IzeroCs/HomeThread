@@ -1,0 +1,19 @@
+---
+description: Enforce ESLint and Stylelint conventions in namorix-thread
+globs:
+  - "frontend/src/**/*.{ts,tsx,scss,css}"
+  - "backend/src/**/*.ts"
+alwaysApply: true
+---
+# Lint And Style (namorix-thread)
+
+- TypeScript/JavaScript follow ESLint rules in repo config.
+- CSS/SCSS follow Stylelint rules in repo config.
+- Style conventions:
+  - `semi: always`
+  - `indent: 2`
+  - import order grouped + sorted
+- When touching code files, keep them lint-clean by default.
+- Preferred scripts:
+  - `npm run lint`
+  - `npm run lint:fix`
