@@ -53,7 +53,9 @@ Chi tiết đầy đủ: [coap/device_payload_spec.md](coap/device_payload_spec.
 - Dùng `@namorix/core/components` để đảm bảo bundle tương thích importmap host.
 - Runtime addon UI kết nối trực tiếp addon backend Socket.IO (direct runtime), không đi qua Desktop runtime relay.
 - Desktop quản lý addon theo container lifecycle (pull/create/start/stop/remove/logs) qua Docker API; addon backend không còn control WS registration lifecycle.
+- Desktop shell hiện mở danh sách app qua `nmx-apps-overview` (thay launcher cũ); addon stopped vẫn hiển thị trong list ở trạng thái disabled.
 - Docker image labels rời (`namorix.addon.*`) giữ tối giản theo runtime fields đang dùng; compose dev build target `dev` từ cùng `Dockerfile`.
 - Khi debug addon trong Desktop shell, host có thể tự reload khi `thread.js`/`thread.css` đổi để đồng bộ nhanh hơn với vòng lặp dev.
 - Entry addon nên bật shell mode cho app container để layout bám khung `nmx-window` thay vì bám viewport full-screen.
+- Theo roadmap host hiện tại, built-in plugin `logs` được ưu tiên hoàn thiện trước; `settings` và `addon-manager` được scaffold trước ở pha đầu.
 - Xem thêm hướng dẫn tích hợp tại `../namorix/documents/thread-desktop-addon-integration.md` (repo sibling trong cùng workspace).

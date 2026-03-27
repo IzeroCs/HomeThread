@@ -8,6 +8,7 @@ Version notation in this file uses Semantic Versioning `MAJOR.MINOR.PATCH` (no l
 
 | Version | Notes |
 |---------|--------|
+| 2.36.7  | **Cross-repo context sync with Desktop host.** Updated Thread context/docs notes to reflect host UI/runtime direction: Desktop now uses `nmx-apps-overview` (launcher replacement), stopped addons remain visible as disabled tiles, and current built-in rollout priority on host is logs-first (`logs` full, `settings`/`addon-manager` scaffold). *(2026-03-27.)* |
 | 2.36.6  | **Desktop embed layout + dev sync docs.** Thread entry `nmx-thread-main` now passes shell mode to `nmx-app-container` so addon content follows shell window size instead of viewport sizing. Synced integration context/docs for Desktop dev auto-reload behavior when `thread.js`/`thread.css` changes. *(2026-03-26.)* |
 | 2.36.5  | **Addon image labels switched to flat keys.** Replaced inline JSON label `namorix.manifest` in `Dockerfile` with explicit `namorix.addon.*` labels (`id`, `display_name`, `entry`, `styles`, `element`, `internal_port`, `window_width`, `window_height`) and synced docs/memory context to new contract. *(2026-03-26.)* |
 | 2.36.4  | **Lint/style rollout for Thread repo.** Added ESLint + TypeScript ESLint + Stylelint configs at repo root, wired `lint`/`lint:fix` scripts for root/frontend/backend, and updated root `dev` to run lint watchers in parallel with backend/frontend/addon workflows. *(2026-03-26.)* |
