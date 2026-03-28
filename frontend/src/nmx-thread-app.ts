@@ -12,7 +12,7 @@ import { setLocale, wsConnectionActions } from "@namorix/core/store";
 import { normalizeLocale } from "@namorix/core/i18n";
 import { t } from "@/core/i18n/i18n";
 
-import namorixLogo from "@namorix/assets/logo/namorix-logo-symbol-light.svg?url";
+import namorixLogo from "@namorix/assets/dist/namorix-logo-symbol-light.svg?url";
 import "@namorix/core/components";
 
 import "@/features/network/status.component";

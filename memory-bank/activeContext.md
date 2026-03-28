@@ -17,6 +17,7 @@ Backend ổn định với BR qua TCP + frame protocol, CoAP device ingest, SRP 
   - Entry `nmx-thread-main` truyền `shellMode` cho `nmx-app-container` khi chạy trong shell để nội dung addon bám kích thước `nmx-window`.
   - Desktop host bổ sung dev watcher cho `thread.js` / `thread.css` và tự reload shell khi asset thay đổi, giảm thao tác refresh tay khi debug addon trong Desktop.
 - **Desktop host UI sync (cross-repo):** host `namorix` đã chuyển launcher sang `nmx-apps-overview` và hiển thị addon stopped dưới trạng thái disabled (không biến mất khỏi list). Kế hoạch host hiện ưu tiên built-in plugin `logs` full, còn `settings`/`addon-manager` scaffold trước.
+- **Desktop window chrome (host 0.9.44+):** cửa sổ shell dùng `nmx-apps-button` variant `titlebar` cho icon addon trước tiêu đề; WM tách thứ tự taskbar khỏi z-order để UI taskbar không nhảy khi đổi focus — xem `namorix/memory-bank/progress.md` và `namorix/documents/namorix-desktop-architecture.md` §4.2–4.3.
 
 Frontend align với hệ “core/shared”:
 - **Spec Desktop (SoT):** `namorix/documents/namorix-desktop-architecture.md`; mục lục host: `namorix/documents/README.md`.
